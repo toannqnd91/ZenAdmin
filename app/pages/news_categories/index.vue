@@ -1,6 +1,7 @@
 <script setup lang="ts">
-
 import { ref, computed } from 'vue'
+import type { TableColumn } from '@nuxt/ui'
+
 import { useApiFetch } from '@/composables/useApiFetch'
 import { API_ENDPOINTS } from '@/utils/api'
 import type { NewsCategoriesApiResponse, NewsCategory } from '@/types/newsCategory'
@@ -31,32 +32,65 @@ const { data, pending: loading, error } = await useApiFetch<NewsCategoriesApiRes
   default: () => ({ code: '', success: false, message: '', data: [] })
 })
 
-const categories = computed(() => data.value.data)
+const categories = computed(() => data.value.data || [])
+
+const filtered = computed(() =>
+  categories.value.filter(cat => cat.name.toLowerCase().includes(q.value.toLowerCase()))
+)
+
+const columns: TableColumn<NewsCategory>[] = [
+  { id: 'id', key: 'id', label: 'ID' },
+  { id: 'name', key: 'name', label: 'Tên danh mục' },
+  { id: 'description', key: 'description', label: 'Mô tả' }
+]
+
+watch(data, (val) => {
+  console.log('API Response:', val)
+}, { immediate: true, deep: true })
 </script>
 
 <template>
-    <UDashboardPanel id="news-categories">
-        <template #header>
-            <UDashboardNavbar title="Danh mục tin tức">
-                <template #leading>
-                    <UDashboardSidebarCollapse />
-                </template>
-            </UDashboardNavbar>
+  <UDashboardPanel id="news-categories">
+    <template #header>
+      <UDashboardNavbar title="Danh mục tin tức">
+        <template #leading>
+          <UDashboardSidebarCollapse />
         </template>
+        <template #right>
+          <NewsCategoriesAddModal />
+        </template>
+      </UDashboardNavbar>
+    </template>
 
-        <UDashboardToolbar>
-            <UInput v-model="q" placeholder="Tìm kiếm danh mục..." icon="i-lucide-search" class="w-full max-w-sm" />
-        </UDashboardToolbar>
-        <div>
-            <h1>News Categories</h1>
-            <div v-if="loading">Đang tải...</div>
-            <div v-else-if="error">{{ error }}</div>
-            <ul v-else>
-                <li v-for="cat in categories" :key="cat.id" class="mb-2">
-                    <strong>{{ cat.name }}</strong>
-                    <div>{{ cat.description }}</div>
-                </li>
-            </ul>
-        </div>
-    </UDashboardPanel>
+    <template #body>
+      <div class="flex flex-wrap items-center justify-between gap-1.5 mb-4">
+        <UInput
+          v-model="q"
+          placeholder="Tìm kiếm danh mục..."
+          icon="i-lucide-search"
+          class="max-w-sm"
+        />
+
+        <NewsCategoriesDeleteModal>
+          <UButton label="Delete" color="error" variant="subtle" icon="i-lucide-trash" />
+        </NewsCategoriesDeleteModal>
+      </div>
+
+      <UTable
+        :data="filtered"
+        :columns="columns"
+        :loading="loading"
+        class="shrink-0"
+        :ui="{
+          base: 'table-fixed border-separate border-spacing-0',
+          thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
+          tbody: '[&>tr]:last:[&>td]:border-b-0',
+          th: 'first:rounded-l-lg last:rounded-r-lg border-y border-default first:border-l last:border-r',
+          td: 'border-b border-default'
+        }"
+      />
+
+      <div v-if="error" class="text-error mt-4">{{ error }}</div>
+    </template>
+  </UDashboardPanel>
 </template>
