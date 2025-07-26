@@ -3,6 +3,7 @@ import { useCookie } from "#app";
 // import { decodeJwt, JwtPayload } from "~/utils";
 import { decodeJwt } from "~/utils";
 import type { JwtPayload } from "~/utils";
+import { API_ENDPOINTS } from "~/utils/api";
 
 interface LoginResponse {
   tokenType: string;
@@ -49,12 +50,8 @@ export const useAuth = () => {
   })
 
   async function login(email: string, password: string) {
-    // const { data, error } = await useFetch<LoginResponse>('https://tbu-test.vnnsoft.com/api/v1/Identity/login', {
-    //   method: 'POST',
-    //   body: { email, password }
-    // })
     const { data, error } = await useApiFetch<LoginResponse>(
-      "https://tbu-test.vnnsoft.com/api/v1/Identity/login",
+      API_ENDPOINTS.login,
       {
         method: "POST",
         body: { email, password },

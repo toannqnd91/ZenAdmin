@@ -12,7 +12,7 @@ const namTuyenSinhOptions = ['Năm tuyển sinh 2025']
 
 const { isNotificationsSlideoverOpen } = useDashboard()
 
-const { data: admissionsResponse } = await useApiFetch<ApiResponse>('https://tbu-test.vnnsoft.com/api/v1/admissions', {
+const { data: admissionsResponse } = await useApiFetch<ApiResponse>('https://dongtrunghathaophunhan.vn/api/v1/admissions', {
   default: () => ({ code: '', success: false, message: '', data: [] })
 })
 

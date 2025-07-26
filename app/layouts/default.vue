@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
+import type { DashboardMenuResponse } from '~/types/dashboard'
+import { API_ENDPOINTS } from '~/utils/api'
 
 const { userInfo } = useAuth()
 const userRoles = computed(() => userInfo.value?.role)
@@ -9,69 +11,41 @@ watch(userRoles, (val) => {
   console.log('User roles:', val)
 }, { immediate: true })
 
+
 const route = useRoute()
 const toast = useToast()
 
 const open = ref(false)
 
-const links = [[{
-  label: 'Trang chủ',
-  icon: 'i-lucide-home',
-  to: '/',
-  exact: false,
-  onSelect: () => {
-    open.value = false
-  }
-}, {
-  label: 'Đăng ký xét tuyển',
-  icon: 'i-lucide-file-text',
-  to: '/dang-ky-xet-tuyen',
-  exact: false,
-  onSelect: () => {
-    open.value = false
-  }
-},{
-  label: 'Đăng ký học bổng',
-  icon: 'i-lucide-award',
-  to: '/dang-ky-hoc-bong',
-  exact: false,
-  // badge: '4',
-  onSelect: () => {
-    open.value = false
-  }
-}, {
-  label: 'Kết quả xét tuyển',
-  icon: 'i-lucide-check-circle',
-  to: '/ket-qua-xet-tuyen',
-  exact: false,
-  onSelect: () => {
-    open.value = false
-  }
-}, {
-  label: 'Nhập học',
-  icon: 'i-lucide-graduation-cap',
-  to: '/nhap-hoc',
-  exact: false,
-  onSelect: () => {
-    open.value = false
-  }
-}, {
-  label: 'Thanh toán',
-  icon: 'i-lucide-credit-card',
-  to: '/thanh-toan',
-  exact: false,
-  onSelect: () => {
-    open.value = false
-  }
-}, {
-  label: 'Khảo sát',
-  icon: 'i-lucide-clipboard-list',
-  to: '/khao-sat',
-  exact: false,
-  onSelect: () => {
-    open.value = false
-  }
-}], [{
+const { data: menuRes } = await useApiFetch<DashboardMenuResponse>(API_ENDPOINTS.dashboardMenu, {
+  default: () => ({ code: '', success: false, message: '', data: [] })
+})
+
+const menuItems = computed<NavigationMenuItem[]>(() =>
+  (menuRes.value.data || []).map(item => ({
+    label: item.name,
+    icon: item.icon || undefined,
+    to: item.url,
+    exact: false,
+    onSelect: () => {
+      open.value = false
+    },
+    children: item.children?.map(child => ({
+      label: child.name,
+      icon: child.icon || undefined,
+      to: child.url,
+      exact: false
+    })) || undefined
+  }))
+)
+
+// in ra kết quả call API
+watch(menuRes, (val) => {
+  console.log('API Response:', val)
+}, { immediate: true, deep: true })
+
+
+const staticLinks: NavigationMenuItem[] = [{
   label: 'Phản hồi',
   icon: 'i-lucide-message-circle',
   to: 'https://github.com/nuxt-ui-pro/dashboard',
@@ -81,12 +55,18 @@ const links = [[{
   icon: 'i-lucide-info',
   to: 'https://github.com/nuxt/ui-pro',
   target: '_blank'
-}]] satisfies NavigationMenuItem[][]
+}]
+
+const links = computed<NavigationMenuItem[][]>(() => {
+  const menuArray = Array.isArray(menuItems.value) ? menuItems.value : []
+  const staticArray = Array.isArray(staticLinks) ? staticLinks : []
+  return [menuArray, staticArray]
+})
 
 const groups = computed(() => [{
   id: 'links',
   label: 'Go to',
-  items: links.flat()
+  items: links.value.flat()
 }, {
   id: 'code',
   label: 'Code',
@@ -111,13 +91,6 @@ onMounted(async () => {
     close: false,
     actions: [{
       label: 'Chấp nhận',
-      color: 'neutral',
-      variant: 'outline',
-      onClick: () => {
-        cookie.value = 'accepted'
-      }
-    }, {
-      label: 'Từ chối',
       color: 'neutral',
       variant: 'ghost'
     }]
@@ -144,7 +117,7 @@ onMounted(async () => {
 
         <UNavigationMenu
           :collapsed="collapsed"
-          :items="links[0]"
+          :items="links[0] || []"
           orientation="vertical"
           tooltip
           popover
@@ -152,7 +125,7 @@ onMounted(async () => {
 
         <UNavigationMenu
           :collapsed="collapsed"
-          :items="links[1]"
+          :items="links[1] || []"
           orientation="vertical"
           tooltip
           class="mt-auto"

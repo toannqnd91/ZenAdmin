@@ -6,7 +6,7 @@ defineProps<{
 const team = {
   label: 'Đại Học Thái Bình',
   avatar: {
-    src: 'https://tbu-test.vnnsoft.com/images/favicon.png',
+    src: 'https://dongtrunghathaophunhan.vn/images/favicon.png',
     alt: 'Đại Học Thái Bình'
   }
 }

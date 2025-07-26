@@ -49,7 +49,7 @@ const { data: studentInfoResponse, pending } = await useApiFetch<{
     phoneNumber: string
     parentPhoneNumber: string
   }
-}>('https://tbu-test.vnnsoft.com/api/v1/StudentInfo')
+}>('https://dongtrunghathaophunhan.vn/api/v1/StudentInfo')
 
 // Console log kết quả API
 console.log('API Response:', studentInfoResponse.value)

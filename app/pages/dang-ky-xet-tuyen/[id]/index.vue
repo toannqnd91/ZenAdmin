@@ -8,7 +8,7 @@ const { isNotificationsSlideoverOpen } = useDashboard()
 const route = useRoute()
 const id = route.params.id
 
-const { data: admissionRes, pending } = await useApiFetch<ApiResponse>(`https://tbu-test.vnnsoft.com/api/v1/admission/${id}`)
+const { data: admissionRes, pending } = await useApiFetch<ApiResponse>(`https://dongtrunghathaophunhan.vn/api/v1/admission/${id}`)
 const admission = computed<Admission | null>(() => admissionRes.value?.data ?? null)
 
 const items = ref<BreadcrumbItem[]>([
