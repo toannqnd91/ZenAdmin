@@ -39,9 +39,9 @@ const filtered = computed(() =>
 )
 
 const columns: TableColumn<NewsCategory>[] = [
-  { id: 'id', key: 'id', label: 'ID' },
-  { id: 'name', key: 'name', label: 'Tên danh mục' },
-  { id: 'description', key: 'description', label: 'Mô tả' }
+  { accessorKey: 'id', header: 'ID' },
+  { accessorKey: 'name', header: 'Tên danh mục' },
+  { accessorKey: 'description', header: 'Mô tả' }
 ]
 
 watch(data, (val) => {
