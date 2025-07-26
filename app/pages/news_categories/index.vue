@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, h, defineComponent } from 'vue'
 import type { TableColumn } from '@nuxt/ui'
 
 import { useApiFetch } from '@/composables/useApiFetch'
 import { API_ENDPOINTS } from '@/utils/api'
 import type { NewsCategoriesApiResponse, NewsCategory } from '@/types/newsCategory'
+
+const UDropdownMenu = resolveComponent('UDropdownMenu')
+const UButton = resolveComponent('UButton')
+const UCheckbox = resolveComponent('UCheckbox')
+
 
 const q = ref('')
 
@@ -38,10 +43,92 @@ const filtered = computed(() =>
   categories.value.filter(cat => cat.name.toLowerCase().includes(q.value.toLowerCase()))
 )
 
+
+function getRowItems(row: Row<User>) {
+  return [
+    {
+      type: 'label',
+      label: 'Actions'
+    },
+    {
+      label: 'Copy customer ID',
+      icon: 'i-lucide-copy',
+      onSelect() {
+        navigator.clipboard.writeText(row.original.id.toString())
+        toast.add({
+          title: 'Copied to clipboard',
+          description: 'Customer ID copied to clipboard'
+        })
+      }
+    },
+    {
+      type: 'separator'
+    },
+    {
+      label: 'View customer details',
+      icon: 'i-lucide-list'
+    },
+    {
+      label: 'View customer payments',
+      icon: 'i-lucide-wallet'
+    },
+    {
+      type: 'separator'
+    },
+    {
+      label: 'Delete customer',
+      icon: 'i-lucide-trash',
+      color: 'error',
+      onSelect() {
+        toast.add({
+          title: 'Customer deleted',
+          description: 'The customer has been deleted.'
+        })
+      }
+    }
+  ]
+}
+
 const columns: TableColumn<NewsCategory>[] = [
-  // { accessorKey: 'id', header: 'ID' },
+  {
+    id: 'select',
+    header: ({ table }) =>
+      h(UCheckbox, {
+        'modelValue': table.getIsSomePageRowsSelected()
+          ? 'indeterminate'
+          : table.getIsAllPageRowsSelected(),
+        'onUpdate:modelValue': (value: boolean | 'indeterminate') =>
+          table.toggleAllPageRowsSelected(!!value),
+        'ariaLabel': 'Select all'
+      }),
+    cell: ({ row }) =>
+      h(UCheckbox, {
+        'modelValue': row.getIsSelected(),
+        'onUpdate:modelValue': (value: boolean | 'indeterminate') => row.toggleSelected(!!value),
+        'ariaLabel': 'Select row'
+      })
+  },
   { accessorKey: 'name', header: 'Tên danh mục' },
-  { accessorKey: 'description', header: 'Mô tả' }
+  { accessorKey: 'description', header: 'Mô tả' },
+  {
+    id: 'actions',
+    header: '',
+    cell: ({ row }) => h(
+      UDropdownMenu,
+      {
+        content: { align: 'end' },
+        items: getRowItems(row)
+      },
+      {
+        default: () => h(UButton, {
+          icon: 'i-lucide-ellipsis-vertical',
+          color: 'neutral',
+          variant: 'ghost',
+          class: 'ml-auto'
+        })
+      }
+    )
+  }
 ]
 
 watch(data, (val) => {
@@ -63,7 +150,7 @@ watch(data, (val) => {
     </template>
 
     <template #body>
-      <div class="flex flex-wrap items-center justify-between gap-1.5 mb-4">
+      <div class="flex flex-wrap items-center justify-between gap-1.5">
         <UInput
           v-model="q"
           placeholder="Tìm kiếm danh mục..."
@@ -85,7 +172,7 @@ watch(data, (val) => {
           base: 'table-fixed border-separate border-spacing-0',
           thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
           tbody: '[&>tr]:last:[&>td]:border-b-0',
-          th: 'first:rounded-l-lg last:rounded-r-lg border-y border-default first:border-l last:border-r',
+          th: 'py-3 first:rounded-l-lg last:rounded-r-lg border-y border-default first:border-l last:border-r',
           td: 'border-b border-default'
         }"
       />
