@@ -32,7 +32,7 @@ const fetchCategories = async () => {
                 Reverse: false
             }
         }
-        const { data } = await useApiFetch<NewsCategoriesApiResponse>('https://dongtrunghathaophunhan.vn/api/v1/NewsCategories', {
+        const { data } = await useApiFetch<NewsCategoriesApiResponse>(API_ENDPOINTS.newsCategories, {
             method: 'POST',
             body
         })
