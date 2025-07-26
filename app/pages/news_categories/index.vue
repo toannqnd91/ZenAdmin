@@ -39,7 +39,7 @@ const filtered = computed(() =>
 )
 
 const columns: TableColumn<NewsCategory>[] = [
-  { accessorKey: 'id', header: 'ID' },
+  // { accessorKey: 'id', header: 'ID' },
   { accessorKey: 'name', header: 'Tên danh mục' },
   { accessorKey: 'description', header: 'Mô tả' }
 ]
