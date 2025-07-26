@@ -1,5 +1,7 @@
 <script setup lang="ts">
 const colorMode = useColorMode()
+const appConfig = useAppConfig()
+const { settings } = appConfig
 
 const color = computed(() => colorMode.value === 'dark' ? '#1b1718' : 'white')
 
@@ -10,15 +12,17 @@ useHead({
     { key: 'theme-color', name: 'theme-color', content: color }
   ],
   link: [
-    { rel: 'icon', href: '/favicon.ico' }
+    { rel: 'icon', href: settings.favicon },
+    // { rel: 'apple-touch-icon', href: settings.favicon },
+    // { rel: 'mask-icon', href: settings.favicon, color: '#5bbad5' }
   ],
   htmlAttrs: {
     lang: 'en'
   }
 })
 
-const title = 'Hệ thống xét tuyển trực tuyến Trường Đại học Thái Bình'
-const description = 'Hệ thống xét tuyển trực tuyến Trường Đại học Thái Bình'
+const title = settings.title
+const description = settings.description
 
 useSeoMeta({
   title,

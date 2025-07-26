@@ -1,13 +1,16 @@
 <script setup lang="ts">
+const appConfig = useAppConfig()
+const { settings } = appConfig
+
 defineProps<{
   collapsed?: boolean
 }>()
 
 const team = {
-  label: 'Đại Học Thái Bình',
+  label: settings.team.label,
   avatar: {
-    src: 'https://dongtrunghathaophunhan.vn/images/favicon.png',
-    alt: 'Đại Học Thái Bình'
+    src: settings.team.avatar.src,
+    alt: settings.team.avatar.alt
   }
 }
 
