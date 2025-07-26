@@ -9,6 +9,9 @@ const loading = ref(false)
 const error = ref('')
 
 const fetchCategories = async () => {
+    // Chỉ gọi API ở client
+    // if (!import.meta.client) return // cũng không được nhé
+
     loading.value = true
     error.value = ''
     try {
@@ -39,6 +42,7 @@ const fetchCategories = async () => {
             error.value = data.value?.message || 'Lỗi khi lấy dữ liệu.'
         }
     } catch (e) {
+        console.error(e)
         error.value = 'Lỗi kết nối API.'
     } finally {
         loading.value = false
