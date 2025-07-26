@@ -1,55 +1,37 @@
 <script setup lang="ts">
 
-import { ref, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useApiFetch } from '@/composables/useApiFetch'
+import { API_ENDPOINTS } from '@/utils/api'
 import type { NewsCategoriesApiResponse, NewsCategory } from '@/types/newsCategory'
 
-const categories = ref<NewsCategory[]>([])
-const loading = ref(false)
-const error = ref('')
+const q = ref('')
 
-const fetchCategories = async () => {
-    // Chỉ gọi API ở client
-    // if (!import.meta.client) return // cũng không được nhé
-
-    loading.value = true
-    error.value = ''
-    try {
-        const body = {
-            Pagination: {
-                Start: 0,
-                TotalItemCount: 0,
-                Number: 20,
-                NumberOfPages: 10
-            },
-            Search: {
-                QueryObject: {
-                    Name: null
-                }
-            },
-            Sort: {
-                Field: 'Id',
-                Reverse: false
-            }
-        }
-        const { data } = await useApiFetch<NewsCategoriesApiResponse>(API_ENDPOINTS.newsCategories, {
-            method: 'POST',
-            body
-        })
-        if (data.value && data.value.success) {
-            categories.value = data.value.data
-        } else {
-            error.value = data.value?.message || 'Lỗi khi lấy dữ liệu.'
-        }
-    } catch (e) {
-        console.error(e)
-        error.value = 'Lỗi kết nối API.'
-    } finally {
-        loading.value = false
+const body = {
+  Pagination: {
+    Start: 0,
+    TotalItemCount: 0,
+    Number: 20,
+    NumberOfPages: 10
+  },
+  Search: {
+    QueryObject: {
+      Name: null
     }
+  },
+  Sort: {
+    Field: 'Id',
+    Reverse: false
+  }
 }
 
-onMounted(fetchCategories)
+const { data, pending: loading, error } = await useApiFetch<NewsCategoriesApiResponse>(API_ENDPOINTS.newsCategories, {
+  method: 'POST',
+  body,
+  default: () => ({ code: '', success: false, message: '', data: [] })
+})
+
+const categories = computed(() => data.value.data)
 </script>
 
 <template>
