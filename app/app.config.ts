@@ -5,6 +5,9 @@ export default defineAppConfig({
       neutral: 'zinc'
     }
   },
+  colorMode: {
+    preference: 'dark'
+  },
   settings: {
     title: 'Đông Trùng Hạ Thảo Phú Nhân',
     description: 'Đông Trùng Hạ Thảo Phú Nhân - Sản phẩm đông trùng hạ thảo chất lượng cao, hỗ trợ sức khỏe và tăng cường sinh lực.',
