@@ -1,46 +1,48 @@
 <script setup lang="ts">
-import { useNews } from '@/composables/useNews'
+import { useProducts } from '@/composables/useProducts'
 
 const {
   q,
   rowSelection,
   pagination,
-  news,
+  products,
   loading,
   error,
   truncateText,
+  getFirstImageUrl,
   getRowItems
-} = useNews()
+} = useProducts()
 </script>
 
 <template>
-  <UDashboardPanel id="news">
+  <UDashboardPanel id="products">
     <template #header>
-      <UDashboardNavbar title="Tin tức">
+      <UDashboardNavbar title="Sản phẩm">
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
         <template #right>
-          <NewsAddModal>
+          <ProductsAddModal>
             <UButton
-              label="New News"
+              label="New Product"
               color="primary"
               variant="solid"
               icon="i-lucide-plus"
             />
-          </NewsAddModal>
+          </ProductsAddModal>
         </template>
       </UDashboardNavbar>
     </template>
 
     <template #body>
-      <NewsTable
+      <ProductsTable
         v-model:q="q"
         v-model:row-selection="rowSelection"
         v-model:pagination="pagination"
-        :data="news"
+        :data="products"
         :loading="loading"
         :truncate-text="truncateText"
+        :get-first-image-url="getFirstImageUrl"
         :get-row-items="getRowItems"
       />
 
