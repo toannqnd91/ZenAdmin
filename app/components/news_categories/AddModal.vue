@@ -17,14 +17,14 @@ const state = reactive<Partial<Schema>>({
 
 const toast = useToast()
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-  toast.add({ title: 'Success', description: `New category ${event.data.name} added`, color: 'success' })
+  toast.add({ title: 'Success', description: `Thêm danh mục ${event.data.name} thành công`, color: 'success' })
   open.value = false
 }
 </script>
 
 <template>
-  <UModal v-model:open="open" title="New category" description="Add a new news category">
-    <UButton label="New category" icon="i-lucide-plus" />
+  <UModal v-model:open="open" title="Thêm danh mục" description="Thêm một danh mục tin tức mới">
+    <UButton label="Thêm danh mục" icon="i-lucide-plus" />
 
     <template #body>
       <UForm
