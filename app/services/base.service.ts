@@ -26,7 +26,9 @@ export abstract class BaseService {
       method: options.method || 'GET',
       url,
       body: options.body ? JSON.parse(options.body as string) : undefined,
-      headers: (options as any).headers
+      headers: (options as any).headers,
+      // Log authorization token for debugging
+      authToken: (options as any).headers?.Authorization || 'No token'
     })
     
     try {

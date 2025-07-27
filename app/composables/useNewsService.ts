@@ -5,6 +5,7 @@ import type { News } from '@/services/news.service'
 
 export const useNewsService = () => {
   const toast = useToast()
+  const { accessToken } = useAuthService() // Get token from auth service
 
   // Reactive state
   const q = ref('')
@@ -50,6 +51,11 @@ export const useNewsService = () => {
     error.value = null
 
     try {
+      //console.log('[useNewsService] Fetching news with token:', accessToken.value ? 'Token available' : 'No token')
+
+      // in token ra 
+      //console.log('Access Token:', accessToken.value)
+
       const response = await newsService.getNews(options)
       if (response.success) {
         news.value = response.data
@@ -72,6 +78,7 @@ export const useNewsService = () => {
     categoriesLoading.value = true
 
     try {
+      console.log('[useNewsService] Fetching categories with token:', accessToken.value ? 'Token available' : 'No token')
       const response = await newsService.getCategories()
       if (response.success) {
         categories.value = response.data
