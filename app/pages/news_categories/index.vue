@@ -106,7 +106,9 @@ const columns: TableColumn<NewsCategory>[] = [
         'modelValue': row.getIsSelected(),
         'onUpdate:modelValue': (value: boolean | 'indeterminate') => row.toggleSelected(!!value),
         'ariaLabel': 'Select row'
-      })
+      }),
+    // Thêm thuộc tính width cho cột select
+    meta: { style: 'width: 20px; min-width: 20px; max-width: 20px;' }
   },
   { accessorKey: 'name', header: 'Tên danh mục' },
   { accessorKey: 'description', header: 'Mô tả' },
@@ -114,20 +116,27 @@ const columns: TableColumn<NewsCategory>[] = [
     id: 'actions',
     header: '',
     cell: ({ row }) => h(
-      UDropdownMenu,
-      {
-        content: { align: 'end' },
-        items: getRowItems(row)
-      },
-      {
-        default: () => h(UButton, {
-          icon: 'i-lucide-ellipsis-vertical',
-          color: 'neutral',
-          variant: 'ghost',
-          class: 'ml-auto'
-        })
-      }
-    )
+      'div',
+      { class: 'flex justify-end pr-2' },
+      [
+        h(
+          UDropdownMenu,
+          {
+            content: { align: 'end' },
+            items: getRowItems(row)
+          },
+          {
+            default: () => h(UButton, {
+              icon: 'i-lucide-ellipsis-vertical',
+              color: 'neutral',
+              variant: 'ghost',
+              class: 'ml-auto'
+            })
+          }
+        )
+      ]
+    ),
+    meta: { style: 'width: 48px; min-width: 48px; max-width: 48px;' }
   }
 ]
 
