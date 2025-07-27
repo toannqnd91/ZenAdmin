@@ -7,7 +7,7 @@ defineProps<{
 
 const colorMode = useColorMode()
 const appConfig = useAppConfig()
-const { userInfo, logout } = useAuth()
+const { user: userInfo, logout } = useAuthService()
 
 const showLogoutConfirm = ref(false)
 

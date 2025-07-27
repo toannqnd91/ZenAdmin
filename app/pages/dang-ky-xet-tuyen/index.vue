@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Admission, ApiResponse } from '~/types'
 
-const { userInfo } = useAuth()
+const { user: userInfo } = useAuthService()
 const userName = computed(() => userInfo.value?.display_name || 'bạn')
 
 const heDaoTao = ref('Chính quy')

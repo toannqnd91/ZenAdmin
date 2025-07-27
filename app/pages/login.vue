@@ -2,7 +2,7 @@
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 
-const { login } = useAuth()
+const { login } = useAuthService()
 
 definePageMeta({
   layout: 'auth'
@@ -55,11 +55,14 @@ type Schema = z.output<typeof schema>
 
 async function onSubmit(payload: FormSubmitEvent<Schema>) {
   try {
-    await login(payload.data.email, payload.data.password)
-    toast.add({ title: 'Đăng nhập thành công' })
-    await navigateTo('/')
+    await login({
+      email: payload.data.email, // Use email directly as API expects
+      password: payload.data.password
+    })
+    // Login success handled by useAuthService (toast + redirect)
   } catch (err) {
-    toast.add({ title: 'Đăng nhập thất bại', color: 'red' })
+    // Error handled by useAuthService
+    console.error('Login failed:', err)
   }
 }
 </script>

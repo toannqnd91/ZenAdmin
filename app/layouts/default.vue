@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
 
-const { userInfo } = useAuth()
+const { user: userInfo } = useAuthService()
 const userRoles = computed(() => userInfo.value?.role)
 
 // in ra các quyền của người dùng

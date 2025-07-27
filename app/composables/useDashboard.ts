@@ -45,7 +45,7 @@ const _useDashboard = () => {
 
     try {
       // Check if user is authenticated first
-      const { accessToken } = useAuth()
+      const { accessToken } = useAuthService()
       if (!accessToken.value) {
         throw new Error('No access token available')
       }
@@ -105,7 +105,7 @@ const _useDashboard = () => {
   async function getStats() {
     try {
       // Check auth before making request
-      const { accessToken } = useAuth()
+      const { accessToken } = useAuthService()
       if (!accessToken.value) {
         throw new Error('Authentication required')
       }
@@ -130,7 +130,7 @@ const _useDashboard = () => {
   async function getOverview() {
     try {
       // Check auth before making request
-      const { accessToken } = useAuth()
+      const { accessToken } = useAuthService()
       if (!accessToken.value) {
         throw new Error('Authentication required')
       }
@@ -170,7 +170,7 @@ const _useDashboard = () => {
   // Auto-initialize menu when composable is created
   // But only if we're authenticated
   onMounted(async () => {
-    const { accessToken } = useAuth()
+    const { accessToken } = useAuthService()
     if (accessToken.value) {
       await fetchMenu()
     }
@@ -179,7 +179,7 @@ const _useDashboard = () => {
   // Watch for auth state changes
   watch(() => {
     try {
-      const { accessToken } = useAuth()
+      const { accessToken } = useAuthService()
       return accessToken.value
     } catch {
       return null

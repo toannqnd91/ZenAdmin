@@ -21,15 +21,29 @@ export abstract class BaseService {
   ): Promise<ApiResponse<T>> {
     const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`
     
+    // Log request details
+    console.log('[BaseService] API Request:', {
+      method: options.method || 'GET',
+      url,
+      body: options.body ? JSON.parse(options.body as string) : undefined,
+      headers: (options as any).headers
+    })
+    
     try {
       const response = await httpInterceptor.request(url, options)
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
+        console.error('API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        })
         throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorData.message || ''}`)
       }
 
       const data = await response.json()
+      console.log('API Success Response:', data)
       return data as ApiResponse<T>
     } catch (error) {
       console.error('API Request failed:', error)

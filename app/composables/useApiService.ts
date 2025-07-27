@@ -5,7 +5,7 @@ import type { ApiResponse } from '@/types/common'
  * This wraps the service calls with authentication headers
  */
 export function useApiService() {
-  const { accessToken } = useAuth()
+  const { accessToken } = useAuthService()
 
   /**
    * Generic service caller with authentication

@@ -22,12 +22,17 @@ export const useAuthService = () => {
     error.value = null
 
     try {
+      // Use the correct format that worked: {email, password}
       const response = await authService.login(credentials)
       
-      if (response.success) {
-        // Store tokens
-        accessToken.value = response.data.accessToken
-        user.value = response.data.user
+      console.log('Full API response:', response)
+      
+      // Check if response has accessToken (success) or success flag
+      if ((response as any).success || (response as any).accessToken) {
+        // Store tokens - check both data structure formats
+        const tokenData = (response as any).data || response
+        accessToken.value = tokenData.accessToken
+        user.value = tokenData.user || { fullName: 'User' } // fallback if no user data
         
         // Store in localStorage/cookies (consistent with useAuth)
         const accessTokenCookie = useCookie('access_token', {
@@ -45,21 +50,21 @@ export const useAuthService = () => {
         })
 
         // Encode token like useAuth does
-        const encodedToken = process.client ? btoa(response.data.accessToken) : Buffer.from(response.data.accessToken).toString('base64')
+        const encodedToken = process.client ? btoa(tokenData.accessToken) : Buffer.from(tokenData.accessToken).toString('base64')
         accessTokenCookie.value = encodedToken
-        refreshTokenCookie.value = response.data.refreshToken
+        refreshTokenCookie.value = tokenData.refreshToken
 
         toast.add({
           title: 'Đăng nhập thành công',
-          description: `Chào mừng ${response.data.user.fullName}!`
+          description: `Chào mừng ${tokenData.user?.fullName || 'bạn'}!`
         })
 
         // Redirect to dashboard
         await router.push('/')
 
-        return response.data
+        return tokenData
       } else {
-        throw new Error(response.message)
+        throw new Error(response.message || 'Login failed')
       }
     } catch (err) {
       error.value = err instanceof Error ? err : new Error('Đăng nhập thất bại')
