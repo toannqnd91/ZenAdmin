@@ -6,5 +6,6 @@ export const API_ENDPOINTS = {
   newsCategories: `${API_BASE_URL}/NewsCategories`,
   news: `${API_BASE_URL}/News`,
   productCategories: `${API_BASE_URL}/ProductCategories`,
-  products: `${API_BASE_URL}/Products`
+  products: `${API_BASE_URL}/Products`,
+  uploadFiles: `${API_BASE_URL}/File/UploadMultiple`
 }
