@@ -68,7 +68,7 @@ function getRowItems(row: any) {
 </script>
 
 <template>
-  <UDashboardPanel id="news">
+  <UDashboardPanel id="news" class="flex flex-col h-full">
     <template #header>
       <UDashboardNavbar title="Tin tức">
         <template #leading>
@@ -88,18 +88,21 @@ function getRowItems(row: any) {
     </template>
 
     <template #body>
-      <NewsTable
-        v-model:q="q"
-        v-model:row-selection="rowSelection"
-        v-model:pagination="pagination"
-        :data="news"
-        :loading="loading"
-        :truncate-text="truncateText"
-        :get-row-items="getRowItems"
-      />
+      <div class="flex flex-col h-full">
+        <NewsTable
+          v-model:q="q"
+          v-model:row-selection="rowSelection"
+          v-model:pagination="pagination"
+          :data="news"
+          :loading="loading"
+          :truncate-text="truncateText"
+          :get-row-items="getRowItems"
+          class="flex-1 min-h-0"
+        />
 
-      <div v-if="error" class="text-error mt-4">
-        {{ error }}
+        <div v-if="error" class="text-error mt-4">
+          {{ error }}
+        </div>
       </div>
     </template>
   </UDashboardPanel>

@@ -29,7 +29,6 @@ const emit = defineEmits<{
 const UDropdownMenu = resolveComponent('UDropdownMenu')
 const UButton = resolveComponent('UButton')
 const UCheckbox = resolveComponent('UCheckbox')
-const UAvatar = resolveComponent('UAvatar')
 
 const table = useTemplateRef('table')
 
@@ -61,10 +60,14 @@ const columns: TableColumn<ProductItem>[] = [
     header: 'Tên sản phẩm',
     cell: ({ row }) => {
       return h('div', { class: 'flex items-center gap-3' }, [
-        h(UAvatar, {
-          src: props.getFirstImageUrl(row.original.imageUrls),
+        h('img', {
+          src: props.getFirstImageUrl(row.original.imageUrls) || '/no-avatar.jpg',
           alt: row.original.name,
-          size: 'lg'
+          class: 'w-12 h-12 rounded-lg object-cover flex-shrink-0',
+          onError: (e: Event) => {
+            const target = e.target as HTMLImageElement
+            target.src = '/no-avatar.jpg'
+          }
         }),
         h('div', undefined, [
           h('p', { class: 'font-medium text-highlighted' }, row.original.name),
@@ -118,9 +121,9 @@ const columns: TableColumn<ProductItem>[] = [
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="flex flex-col h-full">
     <!-- Search & Actions Bar -->
-    <div class="flex flex-wrap items-center justify-between gap-1.5">
+    <div class="flex flex-wrap items-center justify-between gap-1.5 mb-4">
       <UInput
         :model-value="q"
         placeholder="Tìm kiếm sản phẩm..."
@@ -159,7 +162,7 @@ const columns: TableColumn<ProductItem>[] = [
       :data="filtered"
       :columns="columns"
       :loading="loading"
-      class="shrink-0"
+      class="shrink-0 flex-1"
       :ui="{
         base: 'table-fixed border-separate border-spacing-0',
         thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
@@ -171,8 +174,8 @@ const columns: TableColumn<ProductItem>[] = [
       @update:pagination="emit('update:pagination', $event)"
     />
 
-    <!-- Pagination Info -->
-    <div class="flex items-center justify-between gap-3 border-t border-default pt-4">
+    <!-- Pagination Info - Pinned to bottom -->
+    <div class="flex items-center justify-between gap-3 border-t border-default pt-4 mt-auto">
       <div class="text-sm text-muted">
         {{ (table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length || 0 }} of
         {{ (table as any)?.tableApi?.getFilteredRowModel().rows.length || 0 }} row(s) selected.
