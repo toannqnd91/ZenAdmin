@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
-import type { DashboardMenuResponse } from '~/types/dashboard'
-import { API_ENDPOINTS } from '~/utils/api'
 
 const { userInfo } = useAuth()
 const userRoles = computed(() => userInfo.value?.role)
@@ -11,39 +9,21 @@ watch(userRoles, (val) => {
   console.log('User roles:', val)
 }, { immediate: true })
 
-
 const route = useRoute()
 const toast = useToast()
 
 const open = ref(false)
 
-const { data: menuRes } = await useApiFetch<DashboardMenuResponse>(API_ENDPOINTS.dashboardMenu, {
-  default: () => ({ code: '', success: false, message: '', data: [] })
-})
+// Sử dụng dashboard composable với service integration
+const {
+  menuItems,
+  menuLoading,
+  menuError,
+  hasMenuError,
+  retryFetchMenu
+} = useDashboard()
 
-const menuItems = computed<NavigationMenuItem[]>(() =>
-  (menuRes.value.data || []).map(item => ({
-    label: item.name,
-    icon: item.icon || undefined,
-    to: item.url,
-    exact: false,
-    onSelect: () => {
-      open.value = false
-    },
-    children: item.children?.map(child => ({
-      label: child.name,
-      icon: child.icon || undefined,
-      to: child.url,
-      exact: false
-    })) || undefined
-  }))
-)
-
-// in ra kết quả call API
-watch(menuRes, (val) => {
-  console.log('API Response:', val)
-}, { immediate: true, deep: true })
-
+// No need to manually call fetchMenu anymore - composable handles it automatically
 
 const staticLinks: NavigationMenuItem[] = [{
   label: 'Phản hồi',
@@ -79,6 +59,7 @@ const groups = computed(() => [{
   }]
 }])
 
+// Handle cookie consent
 onMounted(async () => {
   const cookie = useCookie('cookie-consent')
   if (cookie.value === 'accepted') {
@@ -92,10 +73,18 @@ onMounted(async () => {
     actions: [{
       label: 'Chấp nhận',
       color: 'neutral',
-      variant: 'ghost'
+      variant: 'ghost',
+      onClick: () => {
+        cookie.value = 'accepted'
+      }
     }]
   })
 })
+
+// Provide loading state for child components
+provide('dashboardLoading', menuLoading)
+provide('dashboardError', menuError)
+provide('refreshDashboard', retryFetchMenu)
 </script>
 
 <template>

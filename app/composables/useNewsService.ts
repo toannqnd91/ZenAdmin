@@ -25,13 +25,15 @@ export const useNewsService = () => {
     if (q.value) {
       filtered = filtered.filter(item => 
         item.title.toLowerCase().includes(q.value.toLowerCase()) ||
-        item.description.toLowerCase().includes(q.value.toLowerCase())
+        item.desc.toLowerCase().includes(q.value.toLowerCase()) // Changed from description to desc
       )
     }
     
-    // Filter by category
+    // Filter by category - now check categories array
     if (selectedCategoryId.value) {
-      filtered = filtered.filter(item => item.categoryId === selectedCategoryId.value)
+      filtered = filtered.filter(item => 
+        item.categories && item.categories.some(cat => cat.id === selectedCategoryId.value)
+      )
     }
     
     return filtered
@@ -91,7 +93,7 @@ export const useNewsService = () => {
   async function createNews(data: {
     title: string
     content: string
-    description: string
+    desc: string // Changed from description to desc
     categoryId: number
     imageUrl?: string
     isPublished?: boolean
@@ -127,7 +129,7 @@ export const useNewsService = () => {
   async function updateNews(id: number, data: Partial<{
     title: string
     content: string
-    description: string
+    desc: string // Changed from description to desc
     categoryId: number
     imageUrl: string
     isPublished: boolean

@@ -5,21 +5,28 @@ export interface News {
   id: number
   title: string
   content: string
-  description: string
+  desc: string // Changed from description to match API response
   imageUrl: string | null
   url: string
-  categoryId: number
-  category: NewsCategory
-  publishDate: string
-  isPublished: boolean
-  views: number
-  createdAt: string
+  categoryId?: number // Make optional since some items don't have it
+  categories: Array<{ id: number, name: string, url: string | null }> // Changed to match API response
+  createdDate: string // Changed from publishDate to match API response
+  createdBy: string | null
+  updatedDate: string
+  updatedBy: string | null
+  tags: string[] | null
+}
+
+export interface NewsListResponse {
+  items: News[]
+  totalRecord: number
+  numberOfPages: number
 }
 
 export interface CreateNewsRequest {
   title: string
   content: string
-  description: string
+  desc: string // Changed from description to match API
   categoryId: number
   imageUrl?: string
   isPublished?: boolean
@@ -56,7 +63,21 @@ export class NewsService extends BaseService {
       sort: options?.sort
     })
     
-    return this.post<News[]>('/News', body)
+    // API returns data.items, not data directly
+    const response = await this.post<NewsListResponse>('/News', body)
+    
+    // Transform the response to return items directly but maintain the response structure
+    if (response.success && response.data) {
+      return {
+        ...response,
+        data: response.data.items || []
+      }
+    }
+    
+    return {
+      ...response,
+      data: []
+    }
   }
 
   /**

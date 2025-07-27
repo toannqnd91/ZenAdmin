@@ -238,7 +238,7 @@ export const useProductsService = () => {
     q,
     rowSelection,
     pagination,
-    products: readonly(products),
+    products: computed(() => products.value),
     filtered,
     loading: readonly(loading),
     error: readonly(error),

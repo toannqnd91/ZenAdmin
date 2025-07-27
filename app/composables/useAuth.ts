@@ -9,7 +9,7 @@ interface LoginResponse {
   tokenType: string;
   accessToken: string;
   expiresIn: number;
-  refreshToken: string;
+  refreshToken?: string;
 }
 
 function encode(value: string): string {
@@ -62,11 +62,25 @@ export const useAuth = () => {
 
     if (data.value?.accessToken) {
       accessToken.value = data.value.accessToken;
+      
+      // Also store refresh token if provided
+      if (data.value?.refreshToken) {
+        const refreshTokenCookie = useCookie('refresh_token', {
+          sameSite: "lax",
+          path: "/",
+        });
+        refreshTokenCookie.value = data.value.refreshToken;
+      }
     }
   }
 
   function logout() {
     accessToken.value = null;
+    
+    // Also clear refresh token
+    const refreshTokenCookie = useCookie('refresh_token');
+    refreshTokenCookie.value = null;
+    
     router.push("/login");
   }
 

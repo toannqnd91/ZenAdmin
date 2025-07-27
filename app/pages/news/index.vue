@@ -1,16 +1,70 @@
 <script setup lang="ts">
-import { useNews } from '@/composables/useNews'
+import { useNewsService } from '@/composables/useNewsService'
+import type { NewsItem } from '@/composables/useNews'
 
 const {
   q,
-  rowSelection,
-  pagination,
-  news,
+  news: newsData,
+  filteredNews,
   loading,
   error,
-  truncateText,
-  getRowItems
-} = useNews()
+  truncateContent,
+  formatDate,
+  createNews,
+  updateNews,
+  deleteNews
+} = useNewsService()
+
+// For compatibility with existing NewsTable component
+// Transform service data to match NewsTable expected format
+const news = computed(() => 
+  filteredNews.value.map(item => ({
+    id: item.id,
+    title: item.title,
+    desc: item.desc, // Already matches now
+    url: item.url,
+    content: item.content,
+    imageUrl: item.imageUrl,
+    createdDate: item.createdDate, // Already matches now
+    categories: item.categories || [] // Already matches now
+  } as NewsItem))
+)
+
+const rowSelection = ref({})
+const pagination = ref({
+  pageIndex: 0,
+  pageSize: 10
+})
+
+function truncateText(text: string | null | undefined, wordLimit: number = 20): string {
+  return truncateContent(text || '', wordLimit * 5) // Adjust word count to character count
+}
+
+function getRowItems(row: any) {
+  return [
+    {
+      type: 'label',
+      label: 'Actions'
+    },
+    {
+      label: 'View',
+      icon: 'i-lucide-eye'
+    },
+    {
+      label: 'Edit',
+      icon: 'i-lucide-edit'
+    },
+    {
+      type: 'separator'
+    },
+    {
+      label: 'Delete',
+      icon: 'i-lucide-trash',
+      color: 'error',
+      onSelect: () => deleteNews(row.original.id)
+    }
+  ]
+}
 </script>
 
 <template>

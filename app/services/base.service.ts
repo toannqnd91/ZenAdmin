@@ -1,4 +1,5 @@
 import type { ApiResponse, ApiRequestBody } from '@/types/common'
+import { httpInterceptor } from '@/utils/http-interceptor'
 
 export abstract class BaseService {
   protected baseURL: string
@@ -14,16 +15,11 @@ export abstract class BaseService {
     const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`
     
     try {
-      const response = await fetch(url, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-        ...options,
-      })
+      const response = await httpInterceptor.request(url, options)
 
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`)
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorData.message || ''}`)
       }
 
       const data = await response.json()

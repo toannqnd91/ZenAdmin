@@ -1,0 +1,198 @@
+import { ref, computed } from 'vue'
+import { authService } from '@/services'
+import type { LoginRequest } from '@/types/common'
+
+export const useAuthService = () => {
+  const toast = useToast()
+  const router = useRouter()
+  
+  // State
+  const loading = ref(false)
+  const user = ref<any>(null)
+  const accessToken = ref<string | null>(null)
+  const error = ref<Error | null>(null)
+
+  // Computed
+  const isAuthenticated = computed(() => !!accessToken.value)
+  const isLoading = computed(() => loading.value)
+
+  // Methods
+  async function login(credentials: LoginRequest) {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await authService.login(credentials)
+      
+      if (response.success) {
+        // Store tokens
+        accessToken.value = response.data.accessToken
+        user.value = response.data.user
+        
+        // Store in localStorage/cookies (consistent with useAuth)
+        const accessTokenCookie = useCookie('access_token', {
+          httpOnly: false,
+          secure: true,
+          sameSite: 'strict',
+          maxAge: 60 * 60 * 24 * 7 // 7 days
+        })
+        
+        const refreshTokenCookie = useCookie('refresh_token', {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'strict',
+          maxAge: 60 * 60 * 24 * 30 // 30 days
+        })
+
+        // Encode token like useAuth does
+        const encodedToken = process.client ? btoa(response.data.accessToken) : Buffer.from(response.data.accessToken).toString('base64')
+        accessTokenCookie.value = encodedToken
+        refreshTokenCookie.value = response.data.refreshToken
+
+        toast.add({
+          title: 'Đăng nhập thành công',
+          description: `Chào mừng ${response.data.user.fullName}!`
+        })
+
+        // Redirect to dashboard
+        await router.push('/')
+
+        return response.data
+      } else {
+        throw new Error(response.message)
+      }
+    } catch (err) {
+      error.value = err instanceof Error ? err : new Error('Đăng nhập thất bại')
+      
+      toast.add({
+        title: 'Lỗi đăng nhập',
+        description: error.value.message,
+        color: 'error'
+      })
+      
+      throw error.value
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function logout() {
+    loading.value = true
+
+    try {
+      // Call logout API
+      await authService.logout()
+    } catch (err) {
+      console.error('Logout API failed:', err)
+    } finally {
+      // Clear local state
+      accessToken.value = null
+      user.value = null
+      
+      // Clear cookies (consistent with useAuth)
+      const accessTokenCookie = useCookie('access_token')
+      const refreshTokenCookie = useCookie('refresh_token')
+      
+      accessTokenCookie.value = null
+      refreshTokenCookie.value = null
+
+      toast.add({
+        title: 'Đăng xuất thành công',
+        description: 'Hẹn gặp lại bạn!'
+      })
+
+      // Redirect to login
+      await router.push('/login')
+      
+      loading.value = false
+    }
+  }
+
+  async function refreshToken() {
+    const refreshTokenCookie = useCookie('refresh_token')
+    
+    if (!refreshTokenCookie.value) {
+      throw new Error('No refresh token available')
+    }
+
+    try {
+      const response = await authService.refreshToken(refreshTokenCookie.value)
+      
+      if (response.success) {
+        accessToken.value = response.data.accessToken
+        user.value = response.data.user
+        
+        // Update access token cookie (encode like useAuth)
+        const accessTokenCookie = useCookie('access_token')
+        const encodedToken = process.client ? btoa(response.data.accessToken) : Buffer.from(response.data.accessToken).toString('base64')
+        accessTokenCookie.value = encodedToken
+        
+        return response.data
+      } else {
+        throw new Error(response.message)
+      }
+    } catch (err) {
+      // Refresh failed, redirect to login
+      await logout()
+      throw err
+    }
+  }
+
+  async function getProfile() {
+    try {
+      const response = await authService.getProfile()
+      
+      if (response.success) {
+        user.value = response.data
+        return response.data
+      } else {
+        throw new Error(response.message)
+      }
+    } catch (err) {
+      console.error('Failed to get profile:', err)
+      throw err
+    }
+  }
+
+  // Initialize from cookies (consistent with useAuth)
+  function initialize() {
+    const accessTokenCookie = useCookie('access_token')
+    
+    if (accessTokenCookie.value) {
+      // Decode token like useAuth stores it
+      try {
+        const token = process.client ? atob(accessTokenCookie.value) : Buffer.from(accessTokenCookie.value, 'base64').toString('utf8')
+        accessToken.value = token
+      } catch {
+        // If decode fails, use as is
+        accessToken.value = accessTokenCookie.value
+      }
+      
+      // Optionally fetch user profile
+      getProfile().catch(() => {
+        // If profile fetch fails, token might be invalid
+        console.warn('Failed to get profile, token might be invalid')
+      })
+    }
+  }
+
+  // Auto-initialize on composable creation
+  initialize()
+
+  return {
+    // State
+    user: readonly(user),
+    accessToken: readonly(accessToken),
+    loading: readonly(loading),
+    error: readonly(error),
+    isAuthenticated,
+    isLoading,
+
+    // Methods
+    login,
+    logout,
+    refreshToken,
+    getProfile,
+    initialize
+  }
+}

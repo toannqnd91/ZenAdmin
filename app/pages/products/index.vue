@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useProducts } from '@/composables/useProducts'
+import { useProductsService } from '@/composables/useProductsService'
 
 const {
   q,
@@ -11,7 +11,7 @@ const {
   truncateText,
   getFirstImageUrl,
   getRowItems
-} = useProducts()
+} = useProductsService()
 </script>
 
 <template>
