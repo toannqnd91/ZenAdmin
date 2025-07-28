@@ -224,7 +224,7 @@ const onDragEnd = () => {
     </template>
 
     <template #body>
-      <div class="w-full p-6">
+      <div class="w-full">
         <!-- Breadcrumb -->
         <nav class="mb-6" aria-label="Breadcrumb">
           <ol class="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
@@ -262,14 +262,11 @@ const onDragEnd = () => {
                   <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider" style="width: 5%">
                     <!-- Drag handle column -->
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider" style="width: 20%">
+                  <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider" style="width: 35%">
                     Tên liên kết
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider" style="width: 20%">
+                  <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider" style="width: 45%">
                     URL
-                  </th>
-                  <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider" style="width: 40%">
-                    Sắp xếp
                   </th>
                   <th class="px-6 py-3 text-right text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider" style="width: 15%">
                     Action
@@ -278,12 +275,12 @@ const onDragEnd = () => {
               </thead>
               <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr v-if="!menuResponse || !currentLinks.length" class="hover:bg-gray-50 dark:hover:bg-gray-800">
-                  <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                  <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                     <template v-if="!menuResponse">
-                      Đang tải dữ liệu...
+                      Không có dữ liệu
                     </template>
                     <template v-else>
-                      Không có menu items
+                      Không có dữ liệu
                     </template>
                   </td>
                 </tr>
@@ -311,34 +308,39 @@ const onDragEnd = () => {
                       </svg>
                     </div>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium" style="width: 20%">
-                    <div class="flex items-center" :style="{ paddingLeft: `${link.level * 20}px` }">
-                      <!-- Expand/Collapse button for items with children -->
-                      <button
-                        v-if="link.hasChildren"
-                        class="mr-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                        @click="toggleExpand(link.id)"
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium" style="width: 35%">
+                    <div class="flex items-center">
+                      <!-- Container with indentation for hierarchy and negative margin for parent items -->
+                      <div
+                        class="flex items-center"
+                        :style="{
+                          paddingLeft: `${link.level * 20}px`,
+                          marginLeft: link.hasChildren ? '-30px' : '0px'
+                        }"
                       >
-                        <svg
-                          class="w-4 h-4 text-gray-500 transition-transform"
-                          :class="{ 'rotate-90': expandedItems.has(link.id) }"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
+                        <!-- Expand/Collapse button for items with children -->
+                        <button
+                          v-if="link.hasChildren"
+                          class="mr-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                          @click="toggleExpand(link.id)"
                         >
-                          <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                        </svg>
-                      </button>
-                      <!-- Spacer for items without children to align text -->
-                      <div v-else class="w-6 mr-2" />
-                      
-                      <span>{{ link.name }}</span>
+                          <svg
+                            class="w-4 h-4 text-gray-500 transition-transform"
+                            :class="{ 'rotate-90': expandedItems.has(link.id) }"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                          </svg>
+                        </button>
+                        
+                        <!-- Text name with hierarchy indentation -->
+                        <span>{{ link.name }}</span>
+                      </div>
                     </div>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-primary-600 dark:text-primary-400 font-mono" style="width: 20%">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-primary-600 dark:text-primary-400 font-mono" style="width: 45%">
                     {{ link.url }}
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-800 dark:text-gray-200" style="width: 40%">
-                    {{ link.description }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" style="width: 15%">
                     <div class="flex items-center space-x-2 justify-end">
@@ -389,7 +391,7 @@ const onDragEnd = () => {
             <!-- Add new link button -->
             <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
               <button
-                class="flex items-center text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium"
+                class="flex items-center text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 text-sm font-medium"
                 @click="addNewLink"
               >
                 <svg
@@ -405,7 +407,7 @@ const onDragEnd = () => {
                     d="M12 6v6m0 0v6m0-6h6m-6 0H6"
                   />
                 </svg>
-                Thêm liên kết cho "{{ currentMenu.title }}"
+                Thêm liên kết
               </button>
             </div>
           </div>

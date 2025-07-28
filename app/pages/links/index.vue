@@ -6,10 +6,6 @@ definePageMeta({
   layout: 'default'
 })
 
-useHead({
-  title: 'Danh sách menu - Đông Trùng Hạ Thảo Phú Nhân'
-})
-
 // Fetch menu data from API using service
 const { data: menuResponse } = await useAsyncData('links', async () => {
   const response = await linksService.getLinks()
@@ -40,7 +36,7 @@ const menuItems = computed(() => {
     </template>
 
     <template #body>
-      <div class="w-full p-6">
+      <div class="w-full">
         <!-- Combined Section: Header + Table in one bordered container -->
         <div class="bg-white dark:bg-gray-900 shadow rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
           <!-- Header Section -->
