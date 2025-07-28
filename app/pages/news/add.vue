@@ -323,43 +323,12 @@ const cancel = () => {
               title="Ảnh bài viết"
               variant="soft"
             >
-              <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
-                <div class="space-y-2">
-                  <svg
-                    class="mx-auto h-8 w-8 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  <div class="text-sm">
-                    <button type="button" class="text-primary-600 hover:text-primary-700">
-                      Kéo thả hoặc thêm ảnh từ URL
-                    </button>
-                  </div>
-                  <div class="text-sm">
-                    <button type="button" class="text-primary-600 hover:text-primary-700">
-                      Tải ảnh từ thiết bị
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <UFileUpload
+                label="Click vào đây để tải lên ảnh"
+                description="SVG, PNG, JPG or GIF (max. 2MB)"
+                class="w-full min-h-48"
+              />
               
-              <!-- Image URL Input -->
-              <div class="mt-3">
-                <input
-                  v-model="formData.imageUrl"
-                  type="url"
-                  placeholder="https://example.com/image.jpg"
-                  class="w-full px-3 py-2.5 text-sm rounded-md border-0 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-              </div>
             </UPageCard>
 
             <!-- Categories -->
