@@ -70,7 +70,7 @@ const columns: TableColumn<ProductCategory>[] = [
     cell: ({ row }) => {
       return h('div', { class: 'flex items-center gap-3' }, [
         h('div', {
-          class: 'w-12 h-12 rounded-lg bg-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden'
+          class: 'w-12 h-12 bg-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden'
         }, [
           h('img', {
             src: row.original.imageUrl || '/no-image.svg',

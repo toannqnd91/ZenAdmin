@@ -12,6 +12,10 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  colorMode: {
+    preference: 'dark'
+  },
+
   runtimeConfig: {
     public: {
       apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'https://dongtrunghathaophunhan.vn/api/v1'
