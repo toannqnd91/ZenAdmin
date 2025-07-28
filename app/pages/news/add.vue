@@ -105,6 +105,61 @@ const submitForm = async () => {
   }
 }
 
+// Categories management
+const isDropdownOpen = ref(false)
+const searchTerm = ref('')
+
+// Layout selection
+const selectedLayout = ref('article')
+const layoutOptions = [
+  { label: 'Article', value: 'article' }
+]
+
+// Author selection
+const selectedAuthor = ref('Phạm Văn Toàn')
+const authorOptions = [
+  { label: 'Phạm Văn Toàn', value: 'Phạm Văn Toàn' }
+]
+
+const filteredCategories = computed(() => {
+  if (!searchTerm.value) return categories.value
+  return categories.value.filter(category =>
+    category.name.toLowerCase().includes(searchTerm.value.toLowerCase())
+  )
+})
+
+const selectedCategories = computed(() => {
+  return categories.value.filter(category =>
+    formData.value.categoryIds.includes(category.id)
+  )
+})
+
+const toggleCategory = (categoryId: number) => {
+  const index = formData.value.categoryIds.indexOf(categoryId)
+  if (index > -1) {
+    formData.value.categoryIds.splice(index, 1)
+  } else {
+    formData.value.categoryIds.push(categoryId)
+  }
+}
+
+const removeCategory = (categoryId: number) => {
+  const index = formData.value.categoryIds.indexOf(categoryId)
+  if (index > -1) {
+    formData.value.categoryIds.splice(index, 1)
+  }
+}
+
+// Close dropdown when clicking outside
+onMounted(() => {
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement
+    if (!target.closest('.dropdown-container')) {
+      isDropdownOpen.value = false
+    }
+  })
+})
+
 // Cancel and go back
 const cancel = () => {
   navigateTo('/news')
@@ -141,19 +196,16 @@ const cancel = () => {
         </nav>
 
         <!-- Main Layout - 2 columns -->
-        <div class="flex gap-6">
+        <div class="flex flex-col lg:flex-row gap-6">
           <!-- Left Column - Main Form -->
           <div class="flex-1">
-            <div class="bg-white dark:bg-gray-900 shadow rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
-              <!-- Header Section -->
-              <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-                <h1 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                  Thông tin bài viết
-                </h1>
-              </div>
-
+            <UPageCard
+              title="Thông tin bài viết"
+              variant="soft"
+              class="overflow-hidden"
+            >
               <!-- Form -->
-              <form class="p-6 space-y-6" @submit.prevent="submitForm">
+              <form class="space-y-6" @submit.prevent="submitForm">
                 <!-- Title -->
                 <div>
                   <label for="title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -163,9 +215,9 @@ const cancel = () => {
                     id="title"
                     v-model="formData.title"
                     type="text"
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-800 dark:text-white"
-                    :class="{ 'border-red-500': errors.title }"
                     placeholder="Nhập tiêu đề"
+                    :class="{ 'border-red-500': errors.title }"
+                    class="w-full px-3 py-2.5 text-sm rounded-md border-0 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                   <p v-if="errors.title" class="mt-1 text-sm text-red-600">
                     {{ errors.title }}
@@ -175,58 +227,19 @@ const cancel = () => {
                 <!-- Content Editor -->
                 <div>
                   <label for="content" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Nội dung bài viết
+                    Nội dung bài viết <span class="text-red-500">*</span>
                   </label>
-                  <div class="border border-gray-300 dark:border-gray-600 rounded-md">
-                    <!-- Toolbar -->
-                    <div class="border-b border-gray-200 dark:border-gray-700 p-2 flex items-center space-x-2 bg-gray-50 dark:bg-gray-800">
-                      <select class="text-sm border-0 bg-transparent">
-                        <option>Đoạn</option>
-                      </select>
-                      <div class="border-l border-gray-300 h-6 mx-2" />
-                      <button
-                        type="button"
-                        class="p-1 text-gray-600 hover:text-gray-900"
-                      >
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M4 4h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z" />
-                        </svg>
-                      </button>
-                      <button
-                        type="button"
-                        class="p-1 text-gray-600 hover:text-gray-900 font-bold"
-                      >
-                        B
-                      </button>
-                      <button
-                        type="button"
-                        class="p-1 text-gray-600 hover:text-gray-900 italic"
-                      >
-                        I
-                      </button>
-                      <button
-                        type="button"
-                        class="p-1 text-gray-600 hover:text-gray-900 underline"
-                      >
-                        U
-                      </button>
-                    </div>
-                    
-                    <!-- Editor Area -->
-                    <textarea
-                      id="content"
+                  <ClientOnly>
+                    <CustomTiptapEditor
                       v-model="formData.content"
-                      rows="12"
-                      class="w-full px-4 py-3 border-0 focus:outline-none focus:ring-0 resize-none dark:bg-gray-900 dark:text-white"
-                      :class="{ 'border-red-500': errors.content }"
                       placeholder="Nhập nội dung bài viết..."
                     />
-                  </div>
+                    <template #fallback>
+                      <div class="animate-pulse bg-gray-200 dark:bg-gray-700 h-96 rounded-md" />
+                    </template>
+                  </ClientOnly>
                   <p v-if="errors.content" class="mt-1 text-sm text-red-600">
                     {{ errors.content }}
-                  </p>
-                  <p class="mt-1 text-xs text-gray-500">
-                    HTML: 0/100000
                   </p>
                 </div>
 
@@ -239,9 +252,9 @@ const cancel = () => {
                     id="desc"
                     v-model="formData.desc"
                     rows="3"
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-800 dark:text-white"
-                    :class="{ 'border-red-500': errors.desc }"
                     placeholder="Nhập mô tả ngắn"
+                    :class="{ 'border-red-500': errors.desc }"
+                    class="w-full px-3 py-2.5 text-sm rounded-md border-0 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                   />
                   <p v-if="errors.desc" class="mt-1 text-sm text-red-600">
                     {{ errors.desc }}
@@ -267,16 +280,16 @@ const cancel = () => {
                   </button>
                 </div>
               </form>
-            </div>
+            </UPageCard>
           </div>
 
           <!-- Right Column - Sidebar -->
-          <div class="w-80 space-y-6">
+          <div class="w-full lg:w-80 space-y-6">
             <!-- Publication Status -->
-            <div class="bg-white dark:bg-gray-900 shadow rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-              <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
-                Trạng thái
-              </h3>
+            <UPageCard
+              title="Trạng thái"
+              variant="soft"
+            >
               <div class="space-y-2">
                 <label class="flex items-center">
                   <input
@@ -303,13 +316,13 @@ const cancel = () => {
                   Đặt lịch hiển thị
                 </button>
               </div>
-            </div>
+            </UPageCard>
 
             <!-- Featured Image -->
-            <div class="bg-white dark:bg-gray-900 shadow rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-              <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
-                Ảnh bài viết
-              </h3>
+            <UPageCard
+              title="Ảnh bài viết"
+              variant="soft"
+            >
               <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
                 <div class="space-y-2">
                   <svg
@@ -343,49 +356,141 @@ const cancel = () => {
                 <input
                   v-model="formData.imageUrl"
                   type="url"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-800 dark:text-white"
                   placeholder="https://example.com/image.jpg"
+                  class="w-full px-3 py-2.5 text-sm rounded-md border-0 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
               </div>
-            </div>
+            </UPageCard>
 
             <!-- Categories -->
-            <div class="bg-white dark:bg-gray-900 shadow rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-              <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
-                Khung giao diện
-              </h3>
-              <select class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-800 dark:text-white">
-                <option value="article">
-                  article
+            <UPageCard
+              title="Khung giao diện"
+              variant="soft"
+            >
+              <select
+                v-model="selectedLayout"
+                class="w-full px-3 py-2.5 text-sm rounded-md border-0 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="" disabled>
+                  Chọn khung giao diện
+                </option>
+                <option v-for="option in layoutOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
                 </option>
               </select>
-            </div>
+            </UPageCard>
 
             <!-- Additional Info -->
-            <div class="bg-white dark:bg-gray-900 shadow rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-              <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
-                Thông tin khác
-              </h3>
-              
+            <UPageCard
+              title="Thông tin khác"
+              variant="soft"
+            >
               <!-- Author -->
               <div class="mb-4">
                 <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Tác giả</label>
-                <select class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-800 dark:text-white">
-                  <option>Phạm Văn Toàn</option>
+                <select
+                  v-model="selectedAuthor"
+                  class="w-full px-3 py-2.5 text-sm rounded-md border-0 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="" disabled>
+                    Chọn tác giả
+                  </option>
+                  <option v-for="option in authorOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
                 </select>
               </div>
 
               <!-- Categories -->
               <div class="mb-4">
                 <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Danh mục bài viết</label>
-                <select class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-800 dark:text-white">
-                  <option>Chọn danh mục bài viết</option>
-                  <option v-for="category in categories" :key="category.id" :value="category.id">
+                
+                <!-- Dropdown Container -->
+                <div class="relative dropdown-container">
+                  <button
+                    type="button"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-left flex items-center justify-between"
+                    @click="isDropdownOpen = !isDropdownOpen"
+                  >
+                    <span class="text-gray-500">
+                      {{ selectedCategories.length > 0 ? `Đã chọn ${selectedCategories.length} danh mục` : 'Chọn danh mục bài viết' }}
+                    </span>
+                    <svg
+                      class="w-4 h-4 transform transition-transform"
+                      :class="{ 'rotate-180': isDropdownOpen }"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </button>
+
+                  <!-- Dropdown Menu -->
+                  <div
+                    v-if="isDropdownOpen"
+                    class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg"
+                  >
+                    <!-- Search Input -->
+                    <div class="p-2 border-b border-gray-200 dark:border-gray-700">
+                      <input
+                        v-model="searchTerm"
+                        type="text"
+                        placeholder="Tìm kiếm"
+                        class="w-full px-3 py-2 text-sm rounded-md border-0 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      >
+                    </div>
+
+                    <!-- Categories List -->
+                    <div class="max-h-40 overflow-y-auto">
+                      <div v-if="filteredCategories.length === 0" class="p-3 text-sm text-gray-500">
+                        {{ searchTerm ? 'Không tìm thấy danh mục' : 'Đang tải danh mục...' }}
+                      </div>
+                      <label
+                        v-for="category in filteredCategories"
+                        :key="category.id"
+                        class="flex items-center space-x-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                      >
+                        <input
+                          :checked="formData.categoryIds.includes(category.id)"
+                          type="checkbox"
+                          class="text-primary-600 focus:ring-primary-500 rounded"
+                          @change="toggleCategory(category.id)"
+                        >
+                        <span class="text-sm text-gray-700 dark:text-gray-300">{{ category.name }}</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Selected Categories Tags -->
+                <div v-if="selectedCategories.length > 0" class="flex flex-wrap gap-1 mt-2">
+                  <span
+                    v-for="category in selectedCategories"
+                    :key="category.id"
+                    class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                  >
                     {{ category.name }}
-                  </option>
-                </select>
+                    <button
+                      type="button"
+                      class="ml-1 inline-flex items-center justify-center w-3 h-3 rounded-full text-blue-600 hover:bg-blue-200 hover:text-blue-800 focus:outline-none"
+                      @click="removeCategory(category.id)"
+                    >
+                      ×
+                    </button>
+                  </span>
+                </div>
+
                 <p v-if="errors.categoryIds" class="mt-1 text-sm text-red-600">
                   {{ errors.categoryIds }}
+                </p>
+                <p class="mt-1 text-xs text-gray-500">
+                  Chọn một hoặc nhiều danh mục cho bài viết
                 </p>
               </div>
 
@@ -402,8 +507,8 @@ const cancel = () => {
                     id="tagInput"
                     v-model="tagInput"
                     type="text"
-                    class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-800 dark:text-white"
                     placeholder="Tìm kiếm hoặc thêm mới"
+                    class="flex-1 px-3 py-2.5 text-sm rounded-md border-0 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     @keydown.enter="addTag($event)"
                   >
                 </div>
@@ -424,7 +529,7 @@ const cancel = () => {
                   </span>
                 </div>
               </div>
-            </div>
+            </UPageCard>
           </div>
         </div>
       </div>
