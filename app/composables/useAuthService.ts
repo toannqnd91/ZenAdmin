@@ -32,7 +32,23 @@ export const useAuthService = () => {
         // Store tokens - check both data structure formats
         const tokenData = (response as any).data || response
         accessToken.value = tokenData.accessToken
-        user.value = tokenData.user || { fullName: 'User' } // fallback if no user data
+        
+        // Decode JWT token to get user info
+        if (tokenData.accessToken && tokenData.accessToken.includes('.')) {
+          try {
+            const parts = tokenData.accessToken.split('.')
+            if (parts[1]) {
+              const payload = JSON.parse(atob(parts[1]))
+              user.value = payload
+              console.log('Decoded user from login token:', payload)
+            }
+          } catch (error) {
+            console.error('Failed to decode login token:', error)
+            user.value = tokenData.user || { fullName: 'User' } // fallback
+          }
+        } else {
+          user.value = tokenData.user || { fullName: 'User' } // fallback if no token data
+        }
         
         // Store in localStorage/cookies (consistent with useAuth)
         const accessTokenCookie = useCookie('access_token', {
@@ -163,21 +179,44 @@ export const useAuthService = () => {
   function initialize() {
     const accessTokenCookie = useCookie('access_token')
     
+    console.log('Initialize - accessTokenCookie.value:', accessTokenCookie.value)
+    
     if (accessTokenCookie.value) {
       // Decode token like useAuth stores it
       try {
-        const token = process.client ? atob(accessTokenCookie.value) : Buffer.from(accessTokenCookie.value, 'base64').toString('utf8')
+        let token = accessTokenCookie.value
+        
+        // First decode from base64 if needed
+        try {
+          const decodedFromBase64 = import.meta.client ? atob(accessTokenCookie.value) : Buffer.from(accessTokenCookie.value, 'base64').toString('utf8')
+          token = decodedFromBase64
+        } catch {
+          // If base64 decode fails, use original value
+          token = accessTokenCookie.value
+        }
+        
         accessToken.value = token
-      } catch {
-        // If decode fails, use as is
+        console.log('Initialize - final token:', token)
+        
+        // Decode JWT token to get user info
+        if (token && typeof token === 'string' && token.includes('.')) {
+          const parts = token.split('.')
+          if (parts.length === 3 && parts[1]) {
+            try {
+              const payload = JSON.parse(atob(parts[1]))
+              user.value = payload
+              console.log('Initialize - decoded user from JWT token:', payload)
+            } catch (jwtError) {
+              console.error('Failed to decode JWT payload:', jwtError)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to process token:', error)
         accessToken.value = accessTokenCookie.value
       }
-      
-      // Optionally fetch user profile
-      getProfile().catch(() => {
-        // If profile fetch fails, token might be invalid
-        console.warn('Failed to get profile, token might be invalid')
-      })
+    } else {
+      console.log('No access token cookie found')
     }
   }
 

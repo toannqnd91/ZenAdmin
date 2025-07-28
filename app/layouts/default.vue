@@ -2,7 +2,10 @@
 import type { NavigationMenuItem } from '@nuxt/ui'
 
 const { user: userInfo } = useAuthService()
-const userRoles = computed(() => userInfo.value?.role)
+const userRoles = computed(() => {
+  console.log('userInfo in default.vue:', userInfo.value)
+  return userInfo.value?.role
+})
 
 // in ra các quyền của người dùng
 watch(userRoles, (val) => {

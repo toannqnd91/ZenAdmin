@@ -27,14 +27,17 @@ const neutrals = ['slate', 'gray', 'zinc', 'neutral', 'stone']
 //   }
 // })
 
-const user = computed(() => ({
-  name: userInfo.value?.display_name || 'User',
-  avatar: {
-    src:
-      userInfo.value?.avatar || 'no-avatar.jpg',
-    alt: userInfo.value?.display_name || 'User',
+const user = computed(() => {
+  console.log('UserMenu - userInfo.value:', userInfo.value)
+  
+  return {
+    name: userInfo.value?.display_name || userInfo.value?.fullName || 'User',
+    avatar: {
+      src: userInfo.value?.avatar || 'no-avatar.jpg',
+      alt: userInfo.value?.display_name || userInfo.value?.fullName || 'User'
+    }
   }
-}))
+})
 
 
 const items = computed<DropdownMenuItem[][]>(() => ([[{
