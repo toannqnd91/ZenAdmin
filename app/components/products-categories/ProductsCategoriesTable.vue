@@ -1,12 +1,20 @@
 <script setup lang="ts">
 import { h } from 'vue'
 import type { TableColumn } from '@nuxt/ui'
-import type { NewsItem } from '@/composables/useNews'
-import type { Row } from '@tanstack/table-core'
-import { getPaginationRowModel } from '@tanstack/table-core'
+
+export interface ProductCategory {
+  id: number
+  name: string
+  description: string
+  sortOrder: number
+  isDeleted: boolean
+  parentId?: number
+  categories: ProductCategory[]
+  imageUrl?: string
+}
 
 interface Props {
-  data: NewsItem[]
+  data: readonly ProductCategory[]
   loading: boolean
   q: string
   rowSelection: Record<string, unknown>
@@ -14,12 +22,10 @@ interface Props {
     pageIndex: number
     pageSize: number
   }
-  truncateText: (text: string, wordLimit?: number) => string
-  getRowItems: (row: Row<NewsItem>) => unknown[]
 }
 
 const props = defineProps<Props>()
-const emit = defineEmits<{
+const _emit = defineEmits<{
   'update:q': [value: string]
   'update:rowSelection': [value: Record<string, unknown>]
   'update:pagination': [value: { pageIndex: number, pageSize: number }]
@@ -32,65 +38,52 @@ const UCheckbox = resolveComponent('UCheckbox')
 const table = useTemplateRef('table')
 
 const filtered = computed(() =>
-  props.data.filter(item => item.title.toLowerCase().includes(props.q.toLowerCase()))
+  props.data.filter(item => item.name.toLowerCase().includes(props.q.toLowerCase()))
 )
 
-const columns: TableColumn<NewsItem>[] = [
+const columns: TableColumn<ProductCategory>[] = [
   {
     id: 'select',
-    header: ({ table }) =>
-      h(UCheckbox, {
+    header: ({ table }) => {
+      return h(UCheckbox, {
         'modelValue': table.getIsSomePageRowsSelected()
           ? 'indeterminate'
           : table.getIsAllPageRowsSelected(),
         'onUpdate:modelValue': (value: boolean | 'indeterminate') =>
           table.toggleAllPageRowsSelected(!!value),
         'ariaLabel': 'Select all'
-      }),
-    cell: ({ row }) =>
-      h(UCheckbox, {
-        'modelValue': row.getIsSelected(),
-        'onUpdate:modelValue': (value: boolean | 'indeterminate') => row.toggleSelected(!!value),
-        'ariaLabel': 'Select row'
       })
+    },
+    cell: ({ row }) => {
+      return h(UCheckbox, {
+        'modelValue': row.getIsSelected(),
+        'onUpdate:modelValue': (value: boolean) => row.toggleSelected(!!value),
+        'ariaLabel': `Select row ${row.index + 1}`
+      })
+    },
+    enableSorting: false,
+    enableColumnFilter: false
   },
   {
-    accessorKey: 'title',
-    header: 'Tiêu đề',
+    accessorKey: 'name',
+    header: 'Tên danh mục',
     cell: ({ row }) => {
       return h('div', { class: 'flex items-center gap-3' }, [
-        h('img', {
-          src: row.original.imageUrl || '/no-image.svg',
-          alt: row.original.title,
-          class: 'w-12 h-12 rounded-lg object-cover flex-shrink-0',
-          onError: (e: Event) => {
-            const target = e.target as HTMLImageElement
-            target.src = '/no-image.svg'
-          }
-        }),
+        h('div', {
+          class: 'w-12 h-12 rounded-lg bg-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden'
+        }, [
+          h('img', {
+            src: row.original.imageUrl || '/no-image.svg',
+            alt: row.original.name,
+            class: 'w-full h-full object-cover',
+            style: 'min-width: 100%; min-height: 100%;'
+          })
+        ]),
         h('div', undefined, [
-          h('p', { class: 'font-medium text-highlighted' }, row.original.title),
-          h('p', { class: 'text-sm text-muted line-clamp-2' }, props.truncateText(row.original.desc))
+          h('p', { class: 'font-medium text-highlighted' }, row.original.name),
+          h('p', { class: 'text-sm text-muted line-clamp-2' }, row.original.description || 'Không có mô tả')
         ])
       ])
-    }
-  },
-  {
-    accessorKey: 'categories',
-    header: 'Danh mục',
-    cell: ({ row }) => {
-      const categories = row.original.categories || []
-      return categories.length > 0
-        ? categories.map(cat => cat.name).join(', ')
-        : 'Chưa phân loại'
-    }
-  },
-  {
-    accessorKey: 'createdDate',
-    header: 'Ngày tạo',
-    cell: ({ row }) => {
-      const date = new Date(row.original.createdDate)
-      return date.toLocaleDateString('vi-VN')
     }
   },
   {
@@ -114,16 +107,16 @@ const columns: TableColumn<NewsItem>[] = [
                   click: () => console.log('View details:', row.original)
                 },
                 {
-                  label: 'Edit news',
+                  label: 'Edit category',
                   icon: 'i-lucide-edit',
-                  click: () => console.log('Edit news:', row.original)
+                  click: () => console.log('Edit category:', row.original)
                 }
               ],
               [
                 {
-                  label: 'Delete news',
+                  label: 'Delete category',
                   icon: 'i-lucide-trash',
-                  click: () => console.log('Delete news:', row.original)
+                  click: () => console.log('Delete category:', row.original)
                 }
               ]
             ]
@@ -147,36 +140,53 @@ const columns: TableColumn<NewsItem>[] = [
   <div class="flex flex-col h-full">
     <!-- Search & Actions Bar -->
     <div class="flex flex-wrap items-center justify-between gap-1.5 mb-4">
-      <UInput :model-value="q" placeholder="Tìm kiếm tin tức..." icon="i-lucide-search" class="max-w-sm"
-        @update:model-value="emit('update:q', $event)" />
+      <UInput
+        :model-value="q"
+        placeholder="Tìm kiếm danh mục..."
+        icon="i-lucide-search"
+        class="max-w-sm"
+        @update:model-value="$emit('update:q', $event)"
+      />
 
       <div class="flex flex-wrap items-center gap-1.5">
-        <NewsDeleteModal :count="(table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length">
-          <UButton v-if="(table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length" label="Delete"
-            color="error" variant="subtle" icon="i-lucide-trash">
+        <ProductsCategoriesDeleteModal :count="(table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length">
+          <UButton
+            v-if="(table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length"
+            label="Delete"
+            color="error"
+            variant="subtle"
+            icon="i-lucide-trash"
+          >
             <template #trailing>
               <UKbd>
                 {{ (table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length }}
               </UKbd>
             </template>
           </UButton>
-        </NewsDeleteModal>
+        </ProductsCategoriesDeleteModal>
       </div>
     </div>
 
-    <!-- Data Table -->
-    <UTable ref="table" :model-value="rowSelection" :pagination="pagination" :pagination-options="{
-      getPaginationRowModel: getPaginationRowModel()
-    }" :data="filtered" :columns="columns" :loading="loading" class="shrink-0 flex-1" :ui="{
+    <!-- Table -->
+    <UTable
+      ref="table"
+      :model-value="rowSelection"
+      :data="filtered"
+      :columns="columns"
+      :loading="loading"
+      class="shrink-0"
+      :ui="{
         base: 'table-fixed border-separate border-spacing-0',
         thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
         tbody: '[&>tr]:last:[&>td]:border-b-0',
         th: 'py-3 first:rounded-l-lg last:rounded-r-lg border-y border-default first:border-l last:border-r first:w-10',
         td: 'border-b border-default first:w-10'
-      }" @update:model-value="emit('update:rowSelection', $event)"
-      @update:pagination="emit('update:pagination', $event)" />
+      }"
+      @update:model-value="$emit('update:rowSelection', $event)"
+      @update:pagination="$emit('update:pagination', $event)"
+    />
 
-    <!-- Pagination Info - Pinned to bottom -->
+    <!-- Footer -->
     <div class="flex items-center justify-between gap-3 border-t border-default pt-4 mt-auto">
       <div class="text-sm text-muted">
         {{ (table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length || 0 }} of
@@ -184,10 +194,12 @@ const columns: TableColumn<NewsItem>[] = [
       </div>
 
       <div class="flex items-center gap-1.5">
-        <UPagination :default-page="((table as any)?.tableApi?.getState().pagination.pageIndex || 0) + 1"
+        <UPagination
+          :default-page="((table as any)?.tableApi?.getState().pagination.pageIndex || 0) + 1"
           :items-per-page="(table as any)?.tableApi?.getState().pagination.pageSize"
           :total="(table as any)?.tableApi?.getFilteredRowModel().rows.length"
-          @update:page="(p: number) => (table as any)?.tableApi?.setPageIndex(p - 1)" />
+          @update:page="(p: number) => (table as any)?.tableApi?.setPageIndex(p - 1)"
+        />
       </div>
     </div>
   </div>

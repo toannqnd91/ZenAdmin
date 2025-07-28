@@ -102,8 +102,32 @@ const columns: TableColumn<ProductItem>[] = [
         h(
           UDropdownMenu,
           {
-            content: { align: 'end' },
-            items: props.getRowItems(row)
+            items: [
+              [
+                {
+                  label: 'Copy ID',
+                  icon: 'i-lucide-copy',
+                  click: () => console.log('Copy ID:', row.original.id)
+                },
+                {
+                  label: 'View details',
+                  icon: 'i-lucide-list',
+                  click: () => console.log('View details:', row.original)
+                },
+                {
+                  label: 'Edit product',
+                  icon: 'i-lucide-edit',
+                  click: () => console.log('Edit product:', row.original)
+                }
+              ],
+              [
+                {
+                  label: 'Delete product',
+                  icon: 'i-lucide-trash',
+                  click: () => console.log('Delete product:', row.original)
+                }
+              ]
+            ]
           },
           {
             default: () =>
@@ -124,23 +148,13 @@ const columns: TableColumn<ProductItem>[] = [
   <div class="flex flex-col h-full">
     <!-- Search & Actions Bar -->
     <div class="flex flex-wrap items-center justify-between gap-1.5 mb-4">
-      <UInput
-        :model-value="q"
-        placeholder="Tìm kiếm sản phẩm..."
-        icon="i-lucide-search"
-        class="max-w-sm"
-        @update:model-value="emit('update:q', $event)"
-      />
+      <UInput :model-value="q" placeholder="Tìm kiếm sản phẩm..." icon="i-lucide-search" class="max-w-sm"
+        @update:model-value="emit('update:q', $event)" />
 
       <div class="flex flex-wrap items-center gap-1.5">
         <ProductsDeleteModal :count="(table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length">
-          <UButton
-            v-if="(table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length"
-            label="Delete"
-            color="error"
-            variant="subtle"
-            icon="i-lucide-trash"
-          >
+          <UButton v-if="(table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length" label="Delete"
+            color="error" variant="subtle" icon="i-lucide-trash">
             <template #trailing>
               <UKbd>
                 {{ (table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length }}
@@ -152,27 +166,16 @@ const columns: TableColumn<ProductItem>[] = [
     </div>
 
     <!-- Data Table -->
-    <UTable
-      ref="table"
-      :model-value="rowSelection"
-      :pagination="pagination"
-      :pagination-options="{
-        getPaginationRowModel: getPaginationRowModel()
-      }"
-      :data="filtered"
-      :columns="columns"
-      :loading="loading"
-      class="shrink-0 flex-1"
-      :ui="{
+    <UTable ref="table" :model-value="rowSelection" :pagination="pagination" :pagination-options="{
+      getPaginationRowModel: getPaginationRowModel()
+    }" :data="filtered" :columns="columns" :loading="loading" class="shrink-0 flex-1" :ui="{
         base: 'table-fixed border-separate border-spacing-0',
         thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
         tbody: '[&>tr]:last:[&>td]:border-b-0',
         th: 'py-3 first:rounded-l-lg last:rounded-r-lg border-y border-default first:border-l last:border-r first:w-10',
         td: 'border-b border-default first:w-10'
-      }"
-      @update:model-value="emit('update:rowSelection', $event)"
-      @update:pagination="emit('update:pagination', $event)"
-    />
+      }" @update:model-value="emit('update:rowSelection', $event)"
+      @update:pagination="emit('update:pagination', $event)" />
 
     <!-- Pagination Info - Pinned to bottom -->
     <div class="flex items-center justify-between gap-3 border-t border-default pt-4 mt-auto">
@@ -182,12 +185,10 @@ const columns: TableColumn<ProductItem>[] = [
       </div>
 
       <div class="flex items-center gap-1.5">
-        <UPagination
-          :default-page="((table as any)?.tableApi?.getState().pagination.pageIndex || 0) + 1"
+        <UPagination :default-page="((table as any)?.tableApi?.getState().pagination.pageIndex || 0) + 1"
           :items-per-page="(table as any)?.tableApi?.getState().pagination.pageSize"
           :total="(table as any)?.tableApi?.getFilteredRowModel().rows.length"
-          @update:page="(p: number) => (table as any)?.tableApi?.setPageIndex(p - 1)"
-        />
+          @update:page="(p: number) => (table as any)?.tableApi?.setPageIndex(p - 1)" />
       </div>
     </div>
   </div>
