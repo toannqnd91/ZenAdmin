@@ -1,153 +1,22 @@
 <script setup lang="ts">
-import { ref, computed, h, defineComponent } from 'vue'
-import type { TableColumn } from '@nuxt/ui'
-
-import { useApiFetch } from '@/composables/useApiFetch'
-import { API_ENDPOINTS } from '@/utils/api'
-import type { NewsCategoriesApiResponse, NewsCategory } from '@/types/newsCategory'
-
-const UDropdownMenu = resolveComponent('UDropdownMenu')
-const UButton = resolveComponent('UButton')
-const UCheckbox = resolveComponent('UCheckbox')
-
-const toast = useToast()
-const table = useTemplateRef('table')
-
-const q = ref('')
-
-// Thêm state để quản lý row selection
-const rowSelection = ref({})
-
-const body = {
-  Pagination: {
-    Start: 0,
-    TotalItemCount: 0,
-    Number: 20,
-    NumberOfPages: 10
-  },
-  Search: {
-    QueryObject: {
-      Name: null
-    }
-  },
-  Sort: {
-    Field: 'Id',
-    Reverse: false
-  }
-}
-
-const { data, pending: loading, error } = await useApiFetch<NewsCategoriesApiResponse>(API_ENDPOINTS.newsCategories, {
-  method: 'POST',
-  body,
-  default: () => ({ code: '', success: false, message: '', data: [] })
-})
-
-const categories = computed(() => data.value.data || [])
-
-const filtered = computed(() =>
-  categories.value.filter(cat => cat.name.toLowerCase().includes(q.value.toLowerCase()))
-)
-
-function getRowItems(row: Row<NewsCategory>) {
-  return [
-    {
-      type: 'label',
-      label: 'Actions'
-    },
-    {
-      label: 'Copy ID',
-      icon: 'i-lucide-copy',
-      onSelect() {
-        navigator.clipboard.writeText(row.original.id.toString())
-        toast.add({
-          title: 'Copied to clipboard',
-          description: 'ID copied to clipboard'
-        })
-      }
-    },
-    {
-      type: 'separator'
-    },
-    {
-      label: 'View details',
-      icon: 'i-lucide-list'
-    },
-    {
-      label: 'Edit category',
-      icon: 'i-lucide-edit'
-    },
-    {
-      type: 'separator'
-    },
-    {
-      label: 'Delete category',
-      icon: 'i-lucide-trash',
-      color: 'error',
-      onSelect() {
-        toast.add({
-          title: 'Category deleted',
-          description: 'The category has been deleted.'
-        })
-      }
-    }
-  ]
-}
-
-const columns: TableColumn<NewsCategory>[] = [
-  {
-    id: 'select',
-    header: ({ table }) =>
-      h(UCheckbox, {
-        'modelValue': table.getIsSomePageRowsSelected()
-          ? 'indeterminate'
-          : table.getIsAllPageRowsSelected(),
-        'onUpdate:modelValue': (value: boolean | 'indeterminate') =>
-          table.toggleAllPageRowsSelected(!!value),
-        'ariaLabel': 'Select all'
-      }),
-    cell: ({ row }) =>
-      h(UCheckbox, {
-        'modelValue': row.getIsSelected(),
-        'onUpdate:modelValue': (value: boolean | 'indeterminate') => row.toggleSelected(!!value),
-        'ariaLabel': 'Select row'
-      })
-  },
-  {
-    accessorKey: 'name',
-    header: 'Tên danh mục'
-  },
-  {
-    accessorKey: 'description',
-    header: 'Mô tả'
-  },
-  {
-    id: 'actions',
-    header: '',
-    cell: ({ row }) =>
-      h('div', { class: 'flex justify-end pr-2' }, [
-        h(
-          UDropdownMenu,
-          {
-            content: { align: 'end' },
-            items: getRowItems(row)
-          },
-          {
-            default: () =>
-              h(UButton, {
-                icon: 'i-lucide-ellipsis-vertical',
-                color: 'neutral',
-                variant: 'ghost',
-                class: 'ml-auto'
-              })
-          }
-        )
-      ])
-  }
-]
-
-watch(data, (val) => {
-  console.log('API Response:', val)
-}, { immediate: true, deep: true })
+const {
+  // State
+  q,
+  rowSelection,
+  table,
+  
+  // Data
+  categories,
+  filtered,
+  loading,
+  error,
+  
+  // Table config
+  columns,
+  
+  // Table API
+  tableApi
+} = await useNewsCategoriesTable()
 </script>
 
 <template>
@@ -174,9 +43,9 @@ watch(data, (val) => {
         />
 
         <div class="flex flex-wrap items-center gap-1.5">
-          <NewsCategoriesDeleteModal :count="table?.tableApi?.getFilteredSelectedRowModel().rows.length">
+          <NewsCategoriesDeleteModal :count="tableApi?.getFilteredSelectedRowModel().rows.length">
             <UButton
-              v-if="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
+              v-if="tableApi?.getFilteredSelectedRowModel().rows.length"
               label="Delete"
               color="error"
               variant="subtle"
@@ -184,7 +53,7 @@ watch(data, (val) => {
             >
               <template #trailing>
                 <UKbd>
-                  {{ table?.tableApi?.getFilteredSelectedRowModel().rows.length }}
+                  {{ tableApi?.getFilteredSelectedRowModel().rows.length }}
                 </UKbd>
               </template>
             </UButton>
@@ -212,16 +81,16 @@ watch(data, (val) => {
 
             <div class="flex items-center justify-between gap-3 border-t border-default pt-4 mt-auto">
         <div class="text-sm text-muted">
-          {{ table?.tableApi?.getFilteredSelectedRowModel().rows.length || 0 }} of
-          {{ table?.tableApi?.getFilteredRowModel().rows.length || 0 }} row(s) selected.
+          {{ tableApi?.getFilteredSelectedRowModel().rows.length || 0 }} of
+          {{ tableApi?.getFilteredRowModel().rows.length || 0 }} row(s) selected.
         </div>
 
         <div class="flex items-center gap-1.5">
           <UPagination
-            :default-page="(table?.tableApi?.getState().pagination.pageIndex || 0) + 1"
-            :items-per-page="table?.tableApi?.getState().pagination.pageSize"
-            :total="table?.tableApi?.getFilteredRowModel().rows.length"
-            @update:page="(p: number) => table?.tableApi?.setPageIndex(p - 1)"
+            :default-page="(tableApi?.getState().pagination.pageIndex || 0) + 1"
+            :items-per-page="tableApi?.getState().pagination.pageSize"
+            :total="tableApi?.getFilteredRowModel().rows.length"
+            @update:page="(p: number) => tableApi?.setPageIndex(p - 1)"
           />
         </div>
       </div>
