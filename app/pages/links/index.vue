@@ -66,7 +66,7 @@ const menuItems: MenuItem[] = [
     </template>
 
     <template #body>
-      <div class="max-w-5xl mx-auto p-6">
+      <div class="w-full p-6">
         <!-- Combined Section: Header + Table in one bordered container -->
         <div class="bg-white dark:bg-gray-900 shadow rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
           <!-- Header Section -->
@@ -85,17 +85,17 @@ const menuItems: MenuItem[] = [
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead class="bg-gray-100 dark:bg-gray-800">
                 <tr>
-                  <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
+                  <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider" style="width: 25%">
                     Tên menu
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
+                  <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider" style="width: 75%">
                     Liên kết
                   </th>
                 </tr>
               </thead>
               <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr v-for="item in menuItems" :key="item.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium" style="width: 25%">
                     <NuxtLink
                       :to="item.url"
                       class="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium"
@@ -103,7 +103,7 @@ const menuItems: MenuItem[] = [
                       {{ item.name }}
                     </NuxtLink>
                   </td>
-                  <td class="px-6 py-4 text-sm text-gray-800 dark:text-gray-200">
+                  <td class="px-6 py-4 text-sm text-gray-800 dark:text-gray-200" style="width: 75%">
                     {{ item.description }}
                   </td>
                 </tr>
