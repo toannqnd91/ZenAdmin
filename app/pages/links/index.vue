@@ -1,10 +1,6 @@
 <script setup lang="ts">
-interface MenuItem {
-  id: number
-  name: string
-  description: string
-  url: string
-}
+import { linksService } from '@/services'
+import type { LinkData } from '@/services'
 
 definePageMeta({
   layout: 'default'
@@ -14,45 +10,23 @@ useHead({
   title: 'Danh sách menu - Đông Trùng Hạ Thảo Phú Nhân'
 })
 
-// Menu data structure
-const menuItems: MenuItem[] = [
-  {
-    id: 1,
-    name: 'Main menu',
-    description: 'Trang chủ, Giới thiệu, Sản phẩm, Tin tức, Liên hệ',
-    url: '/links/main-menu'
-  },
-  {
-    id: 2,
-    name: 'Footer',
-    description: 'Tìm kiếm, Giới thiệu',
-    url: '/links/footer'
-  },
-  {
-    id: 3,
-    name: 'Thông tin',
-    description: 'Trang chủ, Giới thiệu, Sản phẩm',
-    url: '/links/thong-tin'
-  },
-  {
-    id: 4,
-    name: 'Hỗ trợ',
-    description: 'Tìm kiếm, Đăng nhập, Đăng ký 12222, Giỏ hàng',
-    url: '/links/ho-tro'
-  },
-  {
-    id: 5,
-    name: 'Hướng dẫn',
-    description: 'Hướng dẫn mua hàng, Hướng dẫn thanh toán, Hướng dẫn giao nhận, Điều khoản dịch vụ',
-    url: '/links/huong-dan'
-  },
-  {
-    id: 6,
-    name: 'Chính sách',
-    description: 'Chính sách bảo mật, Chính sách vận chuyển, Chính sách đổi trả, Quy định sử dụng',
-    url: '/links/chinh-sach'
-  }
-]
+// Fetch menu data from API using service
+const { data: menuResponse } = await useAsyncData('links', async () => {
+  const response = await linksService.getLinks()
+  return response
+})
+
+// Transform API data to display format
+const menuItems = computed(() => {
+  if (!menuResponse.value?.success || !menuResponse.value.data) return []
+  
+  return menuResponse.value.data.map((item: LinkData) => ({
+    id: item.sortOrder,
+    name: item.name,
+    description: item.description.replace(/\r\n/g, '').trim(),
+    url: `/links/${item.url}`
+  }))
+})
 </script>
 
 <template>
@@ -94,6 +68,16 @@ const menuItems: MenuItem[] = [
                 </tr>
               </thead>
               <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr v-if="!menuResponse || !menuItems.length" class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td colspan="2" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <template v-if="!menuResponse">
+                      Đang tải dữ liệu...
+                    </template>
+                    <template v-else>
+                      Không có dữ liệu menu
+                    </template>
+                  </td>
+                </tr>
                 <tr v-for="item in menuItems" :key="item.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium" style="width: 25%">
                     <NuxtLink

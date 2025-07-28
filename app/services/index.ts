@@ -6,6 +6,7 @@ export { newsService, NewsService } from './news.service'
 export { productService, ProductService } from './product.service'
 export { fileService, FileService } from './file.service'
 export { admissionService, scholarshipService, AdmissionService, ScholarshipService } from './admission.service'
+export { linksService, LinksService } from './links.service'
 
 // Export types
 export type { 
@@ -22,7 +23,16 @@ export type {
   UpdateNewsRequest 
 } from './news.service'
 
-export type { 
-  AdmissionApplication, 
-  CreateAdmissionApplicationRequest 
+export type {
+  AdmissionApplication,
+  CreateAdmissionApplicationRequest
 } from './admission.service'
+
+export type {
+  LinkData,
+  MenuItem,
+  CreateLinkRequest,
+  UpdateLinkRequest,
+  CreateMenuItemRequest,
+  UpdateMenuItemRequest
+} from './links.service'

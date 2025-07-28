@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { linksService } from '@/services'
+import type { MenuItem } from '@/services'
+
 const route = useRoute()
 const menuId = route.params.id as string
 
@@ -6,65 +9,31 @@ definePageMeta({
   layout: 'default'
 })
 
-// Menu configurations
+// Menu configurations for display info
 const menuConfigs = {
   'main-menu': {
     title: 'Main menu',
-    description: 'Quản lý các liên kết trong menu chính của website. Menu này sẽ hiển thị ở header và là navigation chính cho khách hàng.',
-    links: [
-      { id: 1, name: 'Trang chủ', url: '/', description: 'Trang chủ của website' },
-      { id: 2, name: 'Giới thiệu', url: '/gioi-thieu', description: 'Thông tin về công ty' },
-      { id: 3, name: 'Sản phẩm', url: '/san-pham', description: 'Danh sách sản phẩm' },
-      { id: 4, name: 'Tin tức', url: '/tin-tuc', description: 'Tin tức và bài viết' },
-      { id: 5, name: 'Liên hệ', url: '/lien-he', description: 'Thông tin liên hệ' }
-    ]
+    description: 'Quản lý các liên kết trong menu chính của website. Menu này sẽ hiển thị ở header và là navigation chính cho khách hàng.'
   },
   'footer': {
     title: 'Footer',
-    description: 'Quản lý các liên kết trong footer của website. Những liên kết này sẽ hiển thị ở cuối mỗi trang.',
-    links: [
-      { id: 1, name: 'Tìm kiếm', url: '/tim-kiem', description: 'Chức năng tìm kiếm sản phẩm' },
-      { id: 2, name: 'Giới thiệu', url: '/gioi-thieu', description: 'Thông tin về công ty (footer)' }
-    ]
+    description: 'Quản lý các liên kết trong footer của website. Những liên kết này sẽ hiển thị ở cuối mỗi trang.'
   },
   'thong-tin': {
     title: 'Thông tin',
-    description: 'Quản lý các liên kết thông tin quan trọng của website. Menu này chứa các trang cung cấp thông tin cơ bản về công ty và sản phẩm.',
-    links: [
-      { id: 1, name: 'Trang chủ', url: '/', description: 'Trang chủ website' },
-      { id: 2, name: 'Giới thiệu', url: '/gioi-thieu', description: 'Thông tin chi tiết về công ty' },
-      { id: 3, name: 'Sản phẩm', url: '/san-pham', description: 'Catalog sản phẩm đông trùng hạ thảo' }
-    ]
+    description: 'Quản lý các liên kết thông tin quan trọng của website. Menu này chứa các trang cung cấp thông tin cơ bản về công ty và sản phẩm.'
   },
   'ho-tro': {
     title: 'Hỗ trợ',
-    description: 'Quản lý các liên kết hỗ trợ khách hàng. Menu này chứa các chức năng hỗ trợ người dùng trên website.',
-    links: [
-      { id: 1, name: 'Tìm kiếm', url: '/tim-kiem', description: 'Tìm kiếm sản phẩm nhanh chóng' },
-      { id: 2, name: 'Đăng nhập', url: '/login', description: 'Đăng nhập tài khoản' },
-      { id: 3, name: 'Đăng ký', url: '/signup', description: 'Tạo tài khoản mới' },
-      { id: 4, name: 'Giỏ hàng', url: '/gio-hang', description: 'Xem giỏ hàng của bạn' }
-    ]
+    description: 'Quản lý các liên kết hỗ trợ khách hàng. Menu này chứa các chức năng hỗ trợ người dùng trên website.'
   },
   'huong-dan': {
     title: 'Hướng dẫn',
-    description: 'Quản lý các liên kết hướng dẫn sử dụng website. Menu này chứa các trang hướng dẫn chi tiết cho khách hàng.',
-    links: [
-      { id: 1, name: 'Hướng dẫn mua hàng', url: '/huong-dan/mua-hang', description: 'Cách thức mua hàng trên website' },
-      { id: 2, name: 'Hướng dẫn thanh toán', url: '/huong-dan/thanh-toan', description: 'Các phương thức thanh toán' },
-      { id: 3, name: 'Hướng dẫn giao nhận', url: '/huong-dan/giao-nhan', description: 'Quy trình giao nhận hàng' },
-      { id: 4, name: 'Điều khoản dịch vụ', url: '/dieu-khoan', description: 'Điều khoản và điều kiện sử dụng' }
-    ]
+    description: 'Quản lý các liên kết hướng dẫn sử dụng website. Menu này chứa các trang hướng dẫn chi tiết cho khách hàng.'
   },
   'chinh-sach': {
     title: 'Chính sách',
-    description: 'Quản lý các liên kết chính sách của website. Menu này chứa các trang về chính sách và quy định.',
-    links: [
-      { id: 1, name: 'Chính sách bảo mật', url: '/chinh-sach/bao-mat', description: 'Chính sách bảo vệ thông tin khách hàng' },
-      { id: 2, name: 'Chính sách vận chuyển', url: '/chinh-sach/van-chuyen', description: 'Quy định về vận chuyển hàng hóa' },
-      { id: 3, name: 'Chính sách đổi trả', url: '/chinh-sach/doi-tra', description: 'Quy trình đổi trả sản phẩm' },
-      { id: 4, name: 'Quy định sử dụng', url: '/quy-dinh', description: 'Quy định chung khi sử dụng website' }
-    ]
+    description: 'Quản lý các liên kết chính sách của website. Menu này chứa các trang về chính sách và quy định.'
   }
 }
 
@@ -85,7 +54,13 @@ useHead({
   title: `${currentMenu.value.title} - Đông Trùng Hạ Thảo Phú Nhân`
 })
 
-// Action handlers
+// Fetch menu data from API
+const { data: menuResponse, refresh: refreshMenuData } = await useAsyncData(`menu-${menuId}`, async () => {
+  const response = await linksService.getMenuCategories(menuId)
+  return response
+})
+
+// Transform API data to display format
 interface LinkItem {
   id: number
   name: string
@@ -96,10 +71,15 @@ interface LinkItem {
 // Make links reactive for drag & drop
 const currentLinks = ref<LinkItem[]>([])
 
-// Initialize links when menu changes
-watch(currentMenu, (newMenu) => {
-  if (newMenu) {
-    currentLinks.value = [...newMenu.links]
+// Initialize links from API data
+watch(menuResponse, (newResponse) => {
+  if (newResponse?.success && newResponse.data) {
+    currentLinks.value = newResponse.data.map((item: MenuItem) => ({
+      id: item.id,
+      name: item.title,
+      url: item.url,
+      description: `Order: ${item.order}${item.children.length > 0 ? ` (${item.children.length} children)` : ''}`
+    }))
   }
 }, { immediate: true })
 
@@ -112,9 +92,16 @@ const editLink = (link: LinkItem) => {
   // TODO: Implement edit functionality
 }
 
-const deleteLink = (link: LinkItem) => {
+const deleteLink = async (link: LinkItem) => {
   console.log('Delete link:', link)
-  // TODO: Implement delete functionality
+  // TODO: Implement delete functionality using API
+  try {
+    await linksService.deleteMenuItem(menuId, link.id)
+    // Refresh data after deletion
+    await refreshMenuData()
+  } catch (error) {
+    console.error('Error deleting link:', error)
+  }
 }
 
 // Drag & drop handlers
@@ -134,7 +121,7 @@ const onDragOver = (event: DragEvent) => {
   }
 }
 
-const onDrop = (event: DragEvent, targetIndex: number) => {
+const onDrop = async (event: DragEvent, targetIndex: number) => {
   event.preventDefault()
   
   if (draggedIndex.value !== -1 && draggedIndex.value !== targetIndex && draggedItem.value) {
@@ -145,7 +132,21 @@ const onDrop = (event: DragEvent, targetIndex: number) => {
       currentLinks.value = links
       
       console.log('Reordered links:', links)
-      // TODO: Save new order to backend
+      
+      // Save new order to backend
+      try {
+        const reorderData = links.map((link, index) => ({
+          id: link.id,
+          order: index + 1
+        }))
+        
+        await linksService.reorderMenuItems(menuId, reorderData)
+        console.log('Successfully saved new order to API')
+      } catch (error) {
+        console.error('Error saving new order:', error)
+        // Revert changes on error
+        await refreshMenuData()
+      }
     }
   }
   
@@ -215,7 +216,7 @@ const onDragEnd = () => {
                     URL
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider" style="width: 40%">
-                    Mô tả
+                    Sắp xếp
                   </th>
                   <th class="px-6 py-3 text-right text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider" style="width: 15%">
                     Action
@@ -223,6 +224,16 @@ const onDragEnd = () => {
                 </tr>
               </thead>
               <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr v-if="!menuResponse || !currentLinks.length" class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <template v-if="!menuResponse">
+                      Đang tải dữ liệu...
+                    </template>
+                    <template v-else>
+                      Không có menu items
+                    </template>
+                  </td>
+                </tr>
                 <tr
                   v-for="(link, index) in currentLinks"
                   :key="link.id"
