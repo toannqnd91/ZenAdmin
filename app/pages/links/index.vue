@@ -67,46 +67,49 @@ const menuItems: MenuItem[] = [
 
     <template #body>
       <div class="max-w-5xl mx-auto p-6">
-        <!-- Header Section -->
-        <div class="mb-6">
-          <h1 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Danh sách menu
-          </h1>
-          <p class="text-gray-700 dark:text-gray-300 text-sm">
-            Menu và liên kết giúp khách hàng điều hướng trên website của bạn dễ dàng hơn. Bạn có thể tùy chỉnh hiển thị các menu mới cho giao diện của mình thông qua
-            <ULink to="/admin/theme" class="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium">chỉnh sửa giao diện</ULink>
-          </p>
-        </div>
+        <!-- Combined Section: Header + Table in one bordered container -->
+        <div class="bg-white dark:bg-gray-900 shadow rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <!-- Header Section -->
+          <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h1 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              Danh sách menu
+            </h1>
+            <p class="text-gray-700 dark:text-gray-300 text-sm">
+              Menu và liên kết giúp khách hàng điều hướng trên website của bạn dễ dàng hơn. Bạn có thể tùy chỉnh hiển thị các menu mới cho giao diện của mình thông qua
+              <ULink to="/admin/theme" class="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium">chỉnh sửa giao diện</ULink>
+            </p>
+          </div>
 
-        <!-- Menu Table -->
-        <div class="overflow-hidden bg-white dark:bg-gray-900 shadow rounded-lg border border-gray-200 dark:border-gray-800">
-          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead class="bg-gray-100 dark:bg-gray-800">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
-                  Tên menu
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
-                  Liên kết
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-              <tr v-for="item in menuItems" :key="item.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium">
-                  <NuxtLink
-                    :to="item.url"
-                    class="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium"
-                  >
-                    {{ item.name }}
-                  </NuxtLink>
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-800 dark:text-gray-200">
-                  {{ item.description }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <!-- Menu Table -->
+          <div class="overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead class="bg-gray-100 dark:bg-gray-800">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
+                    Tên menu
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
+                    Liên kết
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr v-for="item in menuItems" :key="item.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium">
+                    <NuxtLink
+                      :to="item.url"
+                      class="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium"
+                    >
+                      {{ item.name }}
+                    </NuxtLink>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-gray-800 dark:text-gray-200">
+                    {{ item.description }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <!-- Footer Section -->
