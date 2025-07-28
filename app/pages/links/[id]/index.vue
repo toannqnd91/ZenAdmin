@@ -60,28 +60,81 @@ const { data: menuResponse, refresh: refreshMenuData } = await useAsyncData(`men
   return response
 })
 
-// Transform API data to display format
+// Transform API data to display format with children support
 interface LinkItem {
   id: number
   name: string
   url: string
   description: string
+  level: number
+  isExpanded?: boolean
+  hasChildren: boolean
+  parentId?: number
 }
 
 // Make links reactive for drag & drop
 const currentLinks = ref<LinkItem[]>([])
+const expandedItems = ref<Set<number>>(new Set())
+
+// Function to flatten menu items with hierarchy
+const flattenMenuItems = (items: MenuItem[], level: number = 0, parentId?: number): LinkItem[] => {
+  const result: LinkItem[] = []
+  
+  items.forEach((item) => {
+    const linkItem: LinkItem = {
+      id: item.id,
+      name: item.title,
+      url: item.url,
+      description: `Order: ${item.order}`,
+      level,
+      hasChildren: item.children && item.children.length > 0,
+      parentId
+    }
+    
+    result.push(linkItem)
+    
+    // Add children if item is expanded
+    if (item.children && item.children.length > 0 && expandedItems.value.has(item.id)) {
+      result.push(...flattenMenuItems(item.children, level + 1, item.id))
+    }
+  })
+  
+  return result
+}
+
+// Toggle expand/collapse for items with children
+const toggleExpand = (itemId: number) => {
+  if (expandedItems.value.has(itemId)) {
+    expandedItems.value.delete(itemId)
+  } else {
+    expandedItems.value.add(itemId)
+  }
+  
+  // Refresh the flattened list
+  if (menuResponse.value?.success && menuResponse.value.data) {
+    currentLinks.value = flattenMenuItems(menuResponse.value.data)
+  }
+}
+
+// Add new link function
+const addNewLink = () => {
+  console.log('Add new link for menu:', menuId)
+  // TODO: Implement add new link functionality
+}
 
 // Initialize links from API data
 watch(menuResponse, (newResponse) => {
   if (newResponse?.success && newResponse.data) {
-    currentLinks.value = newResponse.data.map((item: MenuItem) => ({
-      id: item.id,
-      name: item.title,
-      url: item.url,
-      description: `Order: ${item.order}${item.children.length > 0 ? ` (${item.children.length} children)` : ''}`
-    }))
+    currentLinks.value = flattenMenuItems(newResponse.data)
   }
 }, { immediate: true })
+
+// Watch for changes in expanded items
+watch(expandedItems, () => {
+  if (menuResponse.value?.success && menuResponse.value.data) {
+    currentLinks.value = flattenMenuItems(menuResponse.value.data)
+  }
+}, { deep: true })
 
 // Drag & drop state
 const draggedItem = ref<LinkItem | null>(null)
@@ -259,7 +312,27 @@ const onDragEnd = () => {
                     </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium" style="width: 20%">
-                    {{ link.name }}
+                    <div class="flex items-center" :style="{ paddingLeft: `${link.level * 20}px` }">
+                      <!-- Expand/Collapse button for items with children -->
+                      <button
+                        v-if="link.hasChildren"
+                        class="mr-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                        @click="toggleExpand(link.id)"
+                      >
+                        <svg
+                          class="w-4 h-4 text-gray-500 transition-transform"
+                          :class="{ 'rotate-90': expandedItems.has(link.id) }"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                        </svg>
+                      </button>
+                      <!-- Spacer for items without children to align text -->
+                      <div v-else class="w-6 mr-2" />
+                      
+                      <span>{{ link.name }}</span>
+                    </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-primary-600 dark:text-primary-400 font-mono" style="width: 20%">
                     {{ link.url }}
@@ -312,6 +385,29 @@ const onDragEnd = () => {
                 </tr>
               </tbody>
             </table>
+            
+            <!-- Add new link button -->
+            <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+              <button
+                class="flex items-center text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium"
+                @click="addNewLink"
+              >
+                <svg
+                  class="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+                Thêm liên kết cho "{{ currentMenu.title }}"
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -338,5 +434,13 @@ tr[draggable="true"]:active {
 
 tr.opacity-50 {
   background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+.transition-transform {
+  transition: transform 0.2s ease;
+}
+
+.rotate-90 {
+  transform: rotate(90deg);
 }
 </style>
