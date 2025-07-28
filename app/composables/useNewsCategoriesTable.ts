@@ -1,5 +1,6 @@
 import { ref, computed, h } from 'vue'
-import type { TableColumn, Row } from '@nuxt/ui'
+import type { TableColumn } from '@nuxt/ui'
+import type { Row } from '@tanstack/table-core'
 import { useApiFetch } from '@/composables/useApiFetch'
 import { API_ENDPOINTS } from '@/utils/api'
 import type { NewsCategoriesApiResponse, NewsCategory } from '@/types/newsCategory'
@@ -7,6 +8,11 @@ import type { NewsCategoriesApiResponse, NewsCategory } from '@/types/newsCatego
 export const useNewsCategoriesTable = async () => {
   const toast = useToast()
   const { accessToken } = useAuthService()
+  
+  // Resolve components
+  const UCheckbox = resolveComponent('UCheckbox')
+  const UDropdownMenu = resolveComponent('UDropdownMenu')
+  const UButton = resolveComponent('UButton')
   
   // Template refs
   const table = useTemplateRef('table')
@@ -34,7 +40,7 @@ export const useNewsCategoriesTable = async () => {
     }
   }
 
-  console.log('[useNewsCategoriesTable] Fetching with token:', accessToken.value ? 'Token available' : 'No token')
+  console.log('[useProductsCategoriesTable] Fetching with token:', accessToken.value ? 'Token available' : 'No token')
 
   // Fetch data
   const { data, pending: loading, error } = await useApiFetch<NewsCategoriesApiResponse>(API_ENDPOINTS.newsCategories, {
@@ -100,7 +106,7 @@ export const useNewsCategoriesTable = async () => {
     {
       id: 'select',
       header: ({ table }) =>
-        h(resolveComponent('UCheckbox'), {
+        h(UCheckbox, {
           'modelValue': table.getIsSomePageRowsSelected()
             ? 'indeterminate'
             : table.getIsAllPageRowsSelected(),
@@ -109,7 +115,7 @@ export const useNewsCategoriesTable = async () => {
           'ariaLabel': 'Select all'
         }),
       cell: ({ row }) =>
-        h(resolveComponent('UCheckbox'), {
+        h(UCheckbox, {
           'modelValue': row.getIsSelected(),
           'onUpdate:modelValue': (value: boolean | 'indeterminate') => row.toggleSelected(!!value),
           'ariaLabel': 'Select row'
@@ -124,19 +130,23 @@ export const useNewsCategoriesTable = async () => {
       header: 'Mô tả'
     },
     {
+      accessorKey: 'sortOrder',
+      header: 'Thứ tự'
+    },
+    {
       id: 'actions',
       header: '',
       cell: ({ row }) =>
         h('div', { class: 'flex justify-end pr-2' }, [
           h(
-            resolveComponent('UDropdownMenu'),
+            UDropdownMenu,
             {
               content: { align: 'end' },
               items: getRowItems(row)
             },
             {
               default: () =>
-                h(resolveComponent('UButton'), {
+                h(UButton, {
                   icon: 'i-lucide-ellipsis-vertical',
                   color: 'neutral',
                   variant: 'ghost',
@@ -150,7 +160,7 @@ export const useNewsCategoriesTable = async () => {
 
   // Watch data changes
   watch(data, (val) => {
-    console.log('News Categories API Response:', val)
+    console.log('Products Categories API Response:', val)
   }, { immediate: true, deep: true })
 
   return {
