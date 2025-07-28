@@ -25,11 +25,11 @@ export interface NewsListResponse {
 
 export interface CreateNewsRequest {
   title: string
+  desc: string
   content: string
-  desc: string // Changed from description to match API
-  categoryId: number
   imageUrl?: string
-  isPublished?: boolean
+  tags?: string[]
+  categoryIds: number[]
 }
 
 export interface UpdateNewsRequest extends Partial<CreateNewsRequest> {
@@ -91,7 +91,7 @@ export class NewsService extends BaseService {
    * Create new news
    */
   async createNews(data: CreateNewsRequest) {
-    return this.post<News>('/News', data)
+    return this.post<boolean>('/News/create', data)
   }
 
   /**

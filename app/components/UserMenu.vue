@@ -33,7 +33,7 @@ const user = computed(() => {
   return {
     name: userInfo.value?.display_name || userInfo.value?.fullName || 'User',
     avatar: {
-      src: userInfo.value?.avatar || 'no-avatar.jpg',
+      src: userInfo.value?.avatar || '/no-avatar.jpg',
       alt: userInfo.value?.display_name || userInfo.value?.fullName || 'User'
     }
   }

@@ -75,14 +75,13 @@ function getRowItems(row: any) {
           <UDashboardSidebarCollapse />
         </template>
         <template #right>
-          <NewsAddModal>
-            <UButton
-              label="New News"
-              color="primary"
-              variant="solid"
-              icon="i-lucide-plus"
-            />
-          </NewsAddModal>
+          <UButton
+            label="New News"
+            color="primary"
+            variant="solid"
+            icon="i-lucide-plus"
+            @click="navigateTo('/news/add')"
+          />
         </template>
       </UDashboardNavbar>
     </template>
