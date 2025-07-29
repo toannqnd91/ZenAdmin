@@ -517,16 +517,14 @@ input[type="checkbox"]:checked {
 /* Input dashed border styling */
 input[type="text"],
 textarea,
-select,
-button {
+select {
   border: 1px dashed #d1d5db !important;
   border-style: dashed !important;
 }
 
 .dark input[type="text"],
 .dark textarea,
-.dark select,
-.dark button {
+.dark select {
   border: 1px dashed #4b5563 !important;
   border-style: dashed !important;
 }
@@ -534,31 +532,25 @@ button {
 /* Focus state for dashed inputs */
 input[type="text"]:focus,
 textarea:focus,
-select:focus,
-button:focus {
+select:focus {
   border: none !important;
   border-style: none !important;
 }
 
-/* Exceptions - buttons that should not have dashed border */
-button[class*="i-lucide"],
-button[class*="text-primary-600"],
-button[class*="text-xs"],
-.inline-flex button,
-form button[type="submit"],
-form button[type="button"]:not(.dropdown-container button) {
-  border: 1px solid #d1d5db !important;
-  border-style: solid !important;
+/* Dropdown button - specific styling */
+.dropdown-container button {
+  border: 1px dashed #d1d5db !important;
+  border-style: dashed !important;
 }
 
-.dark button[class*="i-lucide"],
-.dark button[class*="text-primary-600"],
-.dark button[class*="text-xs"],
-.dark .inline-flex button,
-.dark form button[type="submit"],
-.dark form button[type="button"]:not(.dropdown-container button) {
-  border: 1px solid #4b5563 !important;
-  border-style: solid !important;
+.dark .dropdown-container button {
+  border: 1px dashed #4b5563 !important;
+  border-style: dashed !important;
+}
+
+.dropdown-container button:focus {
+  border: none !important;
+  border-style: none !important;
 }
 
 /* Dropdown menu dashed border */
