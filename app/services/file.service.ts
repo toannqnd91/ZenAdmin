@@ -61,8 +61,28 @@ export class FileService extends BaseService {
   /**
    * Get file URL
    */
-  getFileUrl(fileName: string) {
-    return `https://dongtrunghathaophunhan.vn/image/${fileName}`
+  getFileUrl(fileName: string | null | undefined): string | null {
+    // If fileName is null, return null
+    if (fileName === null) {
+      return null
+    }
+    
+    // If fileName is undefined, empty, or "string", return default image
+    if (!fileName || fileName === '' || fileName === 'string') {
+      return '/no-image.svg'
+    }
+    
+    // If fileName is already a full URL, return it directly
+    if (fileName.startsWith('http://') || fileName.startsWith('https://')) {
+      return fileName
+    }
+    
+    // Get image base URL from runtime config
+    const config = useRuntimeConfig()
+    const imageBaseUrl = config.public.imageBaseUrl
+    
+    // If it's just a filename, construct the full URL
+    return `${imageBaseUrl}/image/${fileName}`
   }
 }
 

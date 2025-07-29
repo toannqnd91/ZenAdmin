@@ -4,6 +4,7 @@ import type { TableColumn } from '@nuxt/ui'
 import type { NewsItem } from '@/composables/useNews'
 import type { Row } from '@tanstack/table-core'
 import { getPaginationRowModel } from '@tanstack/table-core'
+import { fileService } from '@/services/file.service'
 
 interface Props {
   data: NewsItem[]
@@ -87,7 +88,7 @@ const columns: TableColumn<NewsItem>[] = [
     cell: ({ row }) => {
       return h('div', { class: 'flex items-center gap-3' }, [
         h('img', {
-          src: row.original.imageUrl || '/no-image.svg',
+          src: fileService.getFileUrl(row.original.imageUrl) || '/no-image.svg',
           alt: row.original.title,
           class: 'w-12 h-12 object-cover flex-shrink-0',
           onError: (e: Event) => {
