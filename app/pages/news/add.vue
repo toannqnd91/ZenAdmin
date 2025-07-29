@@ -229,7 +229,7 @@ const cancel = () => {
                   <label for="content" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Nội dung bài viết <span class="text-red-500">*</span>
                   </label>
-                  <TinyMCEEditor
+                  <TinyMCESelfHost
                     v-model="formData.content"
                     placeholder="Nhập nội dung bài viết..."
                     :height="500"
