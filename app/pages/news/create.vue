@@ -2,18 +2,6 @@
 import { newsService, fileService } from '@/services'
 import type { CreateNewsRequest } from '@/services'
 
-// Extended interface for API response handling
-interface ApiFileUploadResponse {
-  success: boolean
-  data: {
-    fileName: string
-    url: string
-    size: number
-    contentType: string
-  }
-  message?: string
-}
-
 definePageMeta({
   layout: 'default'
 })
@@ -230,34 +218,21 @@ const handleImageUpload = async (event: Event) => {
     
     // Debug: Log the entire response to see its structure
     console.log('Upload response:', response)
-    console.log('Response type:', typeof response)
-    console.log('Response keys:', Object.keys(response || {}))
     
-    // Handle different response formats
-    if (response) {
-      // Case 1: Standard API response format with success/data
-      const apiResponse = response as unknown as ApiFileUploadResponse
-      if (apiResponse.success && apiResponse.data && apiResponse.data.fileName) {
-        formData.value.imageUrl = apiResponse.data.fileName
-        console.log('Upload ảnh thành công! FileName:', apiResponse.data.fileName)
-      } else if (response.fileName) {
-        // Case 2: Direct FileUploadResponse format
-        formData.value.imageUrl = response.fileName
-        console.log('Upload ảnh thành công! FileName:', response.fileName)
-      } else if (typeof response === 'string') {
-        // Case 3: Response is just the filename string
-        formData.value.imageUrl = response
-        console.log('Upload ảnh thành công! Response string:', response)
-      } else if (response.url) {
-        // Case 4: Response has url property
-        const fileName = response.url.split('/').pop()
-        formData.value.imageUrl = fileName || response.url
-        console.log('Upload ảnh thành công! From URL:', fileName)
+    // Handle API response with success/data format
+    if (response && response.success && response.data) {
+      // For single file upload, response.data should be an object
+      // For multiple files, it would be an array, but we take the first one
+      const fileData = Array.isArray(response.data) ? response.data[0] : response.data
+      
+      if (fileData && fileData.fileName) {
+        formData.value.imageUrl = fileData.fileName
+        console.log('Upload ảnh thành công! FileName:', fileData.fileName)
       } else {
-        console.error('Lỗi upload ảnh: Response không hợp lệ', response)
+        console.error('Lỗi upload ảnh: Không tìm thấy fileName trong response data', fileData)
       }
     } else {
-      console.error('Lỗi upload ảnh: Response rỗng')
+      console.error('Lỗi upload ảnh: Response không hợp lệ', response)
     }
   } catch (error) {
     console.error('Lỗi upload ảnh:', error)

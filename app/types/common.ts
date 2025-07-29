@@ -53,3 +53,11 @@ export interface FileUploadResponse {
   size: number
   contentType: string
 }
+
+// API File upload response (with success wrapper)
+export interface ApiFileUploadResponse {
+  code: string
+  success: boolean
+  message: string
+  data: FileUploadResponse | FileUploadResponse[]
+}

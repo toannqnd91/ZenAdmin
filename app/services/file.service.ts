@@ -1,5 +1,5 @@
 import { BaseService } from './base.service'
-import type { FileUploadResponse } from '@/types/common'
+import type { FileUploadResponse, ApiFileUploadResponse } from '@/types/common'
 
 export class FileService extends BaseService {
   /**
@@ -24,7 +24,7 @@ export class FileService extends BaseService {
     const result = await response.json()
     console.log('Raw upload response:', result)
     
-    return result as FileUploadResponse
+    return result as ApiFileUploadResponse
   }
 
   /**
