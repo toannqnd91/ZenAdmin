@@ -357,14 +357,14 @@ onBeforeUnmount(() => {
 <style scoped>
 .tinymce-selfhost-wrapper {
   width: 100%;
-  border: 1px solid #e5e7eb;
+  border: none;
   border-radius: 8px;
   overflow: hidden;
   background: white;
 }
 
 .dark .tinymce-selfhost-wrapper {
-  border-color: #374151;
+  border: none;
   background: #1f2937;
 }
 
