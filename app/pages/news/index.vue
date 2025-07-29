@@ -66,6 +66,11 @@ function getRowItems(row: any) {
     }
   ]
 }
+
+// Handle row click to navigate to update page
+function handleRowClick(row: NewsItem) {
+  navigateTo(`/news/${row.id}/update`)
+}
 </script>
 
 <template>
@@ -97,6 +102,7 @@ function getRowItems(row: any) {
           :loading="loading"
           :truncate-text="truncateText"
           :get-row-items="getRowItems"
+          :on-row-click="handleRowClick"
           class="flex-1 min-h-0"
         />
 

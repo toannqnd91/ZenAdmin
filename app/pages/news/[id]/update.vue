@@ -229,7 +229,7 @@ const cancel = () => {
                   
                   <!-- Upload Area -->
                   <div
-                    v-else
+                    v-if="!imagePreview"
                     class="upload-area border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center bg-white dark:bg-gray-800 hover:border-primary-500 dark:hover:border-primary-400 focus-within:border-primary-500 dark:focus-within:border-primary-400 focus-within:ring-2 focus-within:ring-primary-500 transition-colors cursor-pointer"
                     @click="clickFileInput"
                   >
@@ -243,13 +243,16 @@ const cancel = () => {
                         />
                       </svg>
                       <div class="text-sm text-gray-600 dark:text-gray-400">
-                        <span class="font-medium text-primary-600 dark:text-primary-400">Click để tải lên ảnh</span>
+                        <span class="font-medium text-primary-600 dark:text-primary-400">Click để tải lên ảnh bài viết</span>
                         hoặc kéo thả vào đây
                       </div>
+                      <!-- <p class="text-xs text-gray-500 mt-1">
+                        Chỉ được chọn 1 ảnh (JPG, PNG, GIF, SVG - tối đa 2MB)
+                      </p> -->
                     </div>
                   </div>
                   
-                  <!-- Hidden File Input -->
+                  <!-- Hidden File Input - Single image only -->
                   <input
                     ref="fileInput"
                     type="file"
@@ -512,6 +515,7 @@ select:focus {
 
 /* Upload area dashed border styling */
 .upload-area {
+  margin-bottom: 0;
   border: 1px dashed #d1d5db !important;
   border-style: dashed !important;
 }

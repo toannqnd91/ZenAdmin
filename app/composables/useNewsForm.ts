@@ -102,6 +102,7 @@ export const useNewsForm = async (newsId?: number) => {
   const isUploadingImage = ref(false)
   const imageFile = ref<File | null>(null)
   const imagePreview = ref<string>('')
+  const originalImageUrl = ref<string>('')
   const fileInput = ref<HTMLInputElement>()
 
   const handleImageUpload = async (event: Event) => {
@@ -114,12 +115,16 @@ export const useNewsForm = async (newsId?: number) => {
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml']
     if (!allowedTypes.includes(file.type)) {
       console.error('Vui lòng chọn file ảnh (JPG, PNG, GIF, SVG)')
+      // Reset file input
+      target.value = ''
       return
     }
     
     // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       console.error('Kích thước file không được vượt quá 2MB')
+      // Reset file input
+      target.value = ''
       return
     }
     
@@ -160,6 +165,18 @@ export const useNewsForm = async (newsId?: number) => {
     imageFile.value = null
     imagePreview.value = ''
     formData.value.imageUrl = ''
+    // Reset file input to allow selecting the same file again
+    if (fileInput.value) {
+      fileInput.value.value = ''
+    }
+  }
+
+  const restoreOriginalImage = () => {
+    if (originalImageUrl.value) {
+      imageFile.value = null
+      imagePreview.value = fileService.getFileUrl(originalImageUrl.value)
+      formData.value.imageUrl = originalImageUrl.value
+    }
   }
 
   const clickFileInput = () => {
@@ -209,7 +226,8 @@ export const useNewsForm = async (newsId?: number) => {
         
         // Set image preview if exists
         if (news.imageUrl) {
-          imagePreview.value = news.imageUrl
+          originalImageUrl.value = news.imageUrl
+          imagePreview.value = fileService.getFileUrl(news.imageUrl)
         }
       }
     } catch (error) {
@@ -286,9 +304,11 @@ export const useNewsForm = async (newsId?: number) => {
     isUploadingImage,
     imageFile,
     imagePreview,
+    originalImageUrl,
     fileInput,
     handleImageUpload,
     removeImage,
+    restoreOriginalImage,
     clickFileInput,
     
     // Form methods

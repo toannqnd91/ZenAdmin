@@ -16,6 +16,7 @@ interface Props {
   }
   truncateText: (text: string, wordLimit?: number) => string
   getRowItems: (row: Row<NewsItem>) => unknown[]
+  onRowClick?: (item: NewsItem) => void
 }
 
 const props = defineProps<Props>()
@@ -24,6 +25,32 @@ const emit = defineEmits<{
   'update:rowSelection': [value: Record<string, unknown>]
   'update:pagination': [value: { pageIndex: number, pageSize: number }]
 }>()
+
+// Handle row click
+const handleRowClick = (item: NewsItem) => {
+  if (props.onRowClick) {
+    props.onRowClick(item)
+  }
+}
+
+// Handle table click to detect row clicks
+const onTableClick = (event: Event) => {
+  const target = event.target as HTMLElement
+  const row = target.closest('tbody tr')
+  if (row && !target.closest('button') && !target.closest('[role="button"]')) {
+    const rowIndex = Array.from(row.parentElement!.children).indexOf(row)
+    
+    // Calculate actual index considering pagination
+    const currentPage = props.pagination.pageIndex
+    const pageSize = props.pagination.pageSize
+    const actualIndex = currentPage * pageSize + rowIndex
+    
+    const newsItem = filtered.value[actualIndex]
+    if (newsItem) {
+      handleRowClick(newsItem)
+    }
+  }
+}
 
 const UDropdownMenu = resolveComponent('UDropdownMenu')
 const UButton = resolveComponent('UButton')
@@ -165,18 +192,28 @@ const columns: TableColumn<NewsItem>[] = [
     </div>
 
     <!-- Data Table -->
-    <UTable ref="table" :model-value="rowSelection" :pagination="pagination" :pagination-options="{
-      getPaginationRowModel: getPaginationRowModel()
-    }" :data="filtered" :columns="columns" :loading="loading" class="shrink-0 flex-1" :ui="{
+    <UTable 
+      ref="table" 
+      :model-value="rowSelection" 
+      :pagination="pagination" 
+      :pagination-options="{
+        getPaginationRowModel: getPaginationRowModel()
+      }" 
+      :data="filtered" 
+      :columns="columns" 
+      :loading="loading" 
+      class="shrink-0 flex-1" 
+      :ui="{
         base: 'table-fixed border-separate border-spacing-0',
         thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
-        tbody: '[&>tr]:last:[&>td]:border-b-0',
+        tbody: '[&>tr]:last:[&>td]:border-b-0 [&>tr]:cursor-pointer [&>tr:hover]:bg-gray-50',
         th: 'py-3 first:rounded-l-lg last:rounded-r-lg border-y border-default first:border-l last:border-r first:w-10',
         td: 'border-b border-default first:w-10'
-      }" @update:model-value="emit('update:rowSelection', $event)"
-      @update:pagination="emit('update:pagination', $event)" />
-
-    <!-- Pagination Info - Pinned to bottom -->
+      }" 
+      @update:model-value="emit('update:rowSelection', $event)"
+      @update:pagination="emit('update:pagination', $event)"
+      @click="onTableClick"
+    />    <!-- Pagination Info - Pinned to bottom -->
     <div class="flex items-center justify-between gap-3 border-t border-default pt-4 mt-auto">
       <div class="text-sm text-muted">
         {{ (table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length || 0 }} of
