@@ -1,6 +1,18 @@
 <script setup lang="ts">
-import { newsService } from '@/services'
+import { newsService, fileService } from '@/services'
 import type { CreateNewsRequest } from '@/services'
+
+// Extended interface for API response handling
+interface ApiFileUploadResponse {
+  success: boolean
+  data: {
+    fileName: string
+    url: string
+    size: number
+    contentType: string
+  }
+  message?: string
+}
 
 definePageMeta({
   layout: 'default'
@@ -176,6 +188,93 @@ onMounted(() => {
 const cancel = () => {
   navigateTo('/news')
 }
+
+// Image upload handling
+const isUploadingImage = ref(false)
+const imageFile = ref<File | null>(null)
+const imagePreview = ref<string>('')
+const fileInput = ref<HTMLInputElement>()
+
+const handleImageUpload = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (!file) return
+  
+  // Validate file type
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml']
+  if (!allowedTypes.includes(file.type)) {
+    console.error('Vui lòng chọn file ảnh (JPG, PNG, GIF, SVG)')
+    return
+  }
+  
+  // Validate file size (max 2MB)
+  if (file.size > 2 * 1024 * 1024) {
+    console.error('Kích thước file không được vượt quá 2MB')
+    return
+  }
+  
+  imageFile.value = file
+  
+  // Create preview
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    imagePreview.value = e.target?.result as string
+  }
+  reader.readAsDataURL(file)
+  
+  // Upload file
+  try {
+    isUploadingImage.value = true
+    const response = await fileService.uploadFile(file, 'news')
+    
+    // Debug: Log the entire response to see its structure
+    console.log('Upload response:', response)
+    console.log('Response type:', typeof response)
+    console.log('Response keys:', Object.keys(response || {}))
+    
+    // Handle different response formats
+    if (response) {
+      // Case 1: Standard API response format with success/data
+      const apiResponse = response as unknown as ApiFileUploadResponse
+      if (apiResponse.success && apiResponse.data && apiResponse.data.fileName) {
+        formData.value.imageUrl = apiResponse.data.fileName
+        console.log('Upload ảnh thành công! FileName:', apiResponse.data.fileName)
+      } else if (response.fileName) {
+        // Case 2: Direct FileUploadResponse format
+        formData.value.imageUrl = response.fileName
+        console.log('Upload ảnh thành công! FileName:', response.fileName)
+      } else if (typeof response === 'string') {
+        // Case 3: Response is just the filename string
+        formData.value.imageUrl = response
+        console.log('Upload ảnh thành công! Response string:', response)
+      } else if (response.url) {
+        // Case 4: Response has url property
+        const fileName = response.url.split('/').pop()
+        formData.value.imageUrl = fileName || response.url
+        console.log('Upload ảnh thành công! From URL:', fileName)
+      } else {
+        console.error('Lỗi upload ảnh: Response không hợp lệ', response)
+      }
+    } else {
+      console.error('Lỗi upload ảnh: Response rỗng')
+    }
+  } catch (error) {
+    console.error('Lỗi upload ảnh:', error)
+  } finally {
+    isUploadingImage.value = false
+  }
+}
+
+const removeImage = () => {
+  imageFile.value = null
+  imagePreview.value = ''
+  formData.value.imageUrl = ''
+}
+
+const clickFileInput = () => {
+  fileInput.value?.click()
+}
 </script>
 
 <template>
@@ -313,11 +412,63 @@ const cancel = () => {
               title="Ảnh bài viết"
               variant="soft"
             >
-              <UFileUpload
-                label="Click vào đây để tải lên ảnh"
-                description="SVG, PNG, JPG or GIF (max. 2MB)"
-                class="w-full min-h-48"
-              />
+              <div class="space-y-4">
+                <!-- Image Preview -->
+                <div v-if="imagePreview" class="relative">
+                  <img 
+                    :src="imagePreview" 
+                    alt="Preview" 
+                    class="w-full h-48 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
+                  >
+                  <button
+                    type="button"
+                    class="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                    @click="removeImage"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                
+                <!-- Upload Area -->
+                <div
+                  v-else
+                  class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer"
+                  @click="clickFileInput"
+                >
+                  <div class="space-y-2">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                      <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                      <span class="font-medium text-primary-600 dark:text-primary-400">Click để tải lên ảnh</span>
+                      hoặc kéo thả vào đây
+                    </div>
+                    <p class="text-xs text-gray-500">SVG, PNG, JPG or GIF (max. 2MB)</p>
+                  </div>
+                </div>
+                
+                <!-- Hidden File Input -->
+                <input
+                  ref="fileInput"
+                  type="file"
+                  accept="image/*"
+                  class="hidden"
+                  @change="handleImageUpload"
+                >
+                
+                <!-- Loading State -->
+                <div v-if="isUploadingImage" class="text-center">
+                  <div class="inline-flex items-center px-4 py-2 text-sm text-primary-600 dark:text-primary-400">
+                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Đang tải lên...
+                  </div>
+                </div>
+              </div>
             </UPageCard>
 
             <!-- Categories -->

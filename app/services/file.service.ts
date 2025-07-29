@@ -21,7 +21,10 @@ export class FileService extends BaseService {
       throw new Error(`Upload failed: ${response.status}`)
     }
 
-    return response.json() as Promise<FileUploadResponse>
+    const result = await response.json()
+    console.log('Raw upload response:', result)
+    
+    return result as FileUploadResponse
   }
 
   /**
