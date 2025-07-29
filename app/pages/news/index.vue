@@ -52,7 +52,8 @@ function getRowItems(row: any) {
     },
     {
       label: 'Edit',
-      icon: 'i-lucide-edit'
+      icon: 'i-lucide-edit',
+      onSelect: () => navigateTo(`/news/${row.original.id}/edit`)
     },
     {
       type: 'separator'

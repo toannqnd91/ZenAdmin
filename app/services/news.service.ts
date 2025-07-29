@@ -23,7 +23,7 @@ export interface NewsListResponse {
   numberOfPages: number
 }
 
-export interface CreateNewsRequest {
+export interface NewsFormData {
   title: string
   desc: string
   content: string
@@ -32,7 +32,9 @@ export interface CreateNewsRequest {
   categoryIds: number[]
 }
 
-export interface UpdateNewsRequest extends Partial<CreateNewsRequest> {
+export type CreateNewsRequest = NewsFormData
+
+export interface UpdateNewsRequest extends NewsFormData {
   id: number
 }
 
@@ -97,8 +99,8 @@ export class NewsService extends BaseService {
   /**
    * Update news
    */
-  async updateNews(data: UpdateNewsRequest) {
-    return this.put<News>(`/News/${data.id}`, data)
+  async updateNews(id: number, data: NewsFormData) {
+    return this.put<boolean>(`/News/${id}/update`, data)
   }
 
   /**

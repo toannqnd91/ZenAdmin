@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { newsService, fileService } from '@/services'
-import type { CreateNewsRequest } from '@/services'
-
 definePageMeta({
   layout: 'default'
 })
@@ -10,245 +7,45 @@ useHead({
   title: 'Thêm tin tức mới - Đông Trùng Hạ Thảo Phú Nhân'
 })
 
-// Form data
-const formData = ref<CreateNewsRequest>({
-  title: '',
-  desc: '',
-  content: '',
-  imageUrl: '',
-  tags: [],
-  categoryIds: []
-})
-
-// Form states
-const isSubmitting = ref(false)
-const errors = ref<Record<string, string>>({})
-
-// Publication status
-const publicationStatus = ref('published')
-const statusItems = [
-  { value: 'published', label: 'Hiện' },
-  { value: 'draft', label: 'Ẩn' }
-]
-
-// Tags input
-const tagInput = ref('')
-const addTag = (event?: Event) => {
-  // Prevent form submission if called from Enter key
-  if (event) {
-    event.preventDefault()
-  }
+// Use the news form composable
+const {
+  // Form data
+  formData,
+  isSubmitting,
+  errors,
   
-  const tag = tagInput.value.trim()
-  if (tag && !formData.value.tags?.includes(tag)) {
-    if (!formData.value.tags) formData.value.tags = []
-    formData.value.tags.push(tag)
-    tagInput.value = ''
-  }
-}
-
-const removeTag = (index: number) => {
-  if (formData.value.tags) {
-    formData.value.tags.splice(index, 1)
-  }
-}
-
-// Fetch categories
-const { data: categoriesResponse } = await useAsyncData('news-categories', async () => {
-  const response = await newsService.getCategories()
-  return response
-})
-
-const categories = computed(() => {
-  if (!categoriesResponse.value?.success || !categoriesResponse.value.data) return []
-  return categoriesResponse.value.data
-})
-
-// Form validation
-const validateForm = () => {
-  errors.value = {}
+  // Publication
+  publicationStatus,
+  statusItems,
   
-  if (!formData.value.title.trim()) {
-    errors.value.title = 'Tiêu đề là bắt buộc'
-  }
+  // Tags
+  tagInput,
+  addTag,
+  removeTag,
   
-  if (!formData.value.desc.trim()) {
-    errors.value.desc = 'Mô tả ngắn là bắt buộc'
-  }
+  // Categories
+  isDropdownOpen,
+  searchTerm,
+  filteredCategories,
+  selectedCategories,
+  toggleCategory,
+  removeCategory,
   
-  if (!formData.value.content.trim()) {
-    errors.value.content = 'Nội dung là bắt buộc'
-  }
+  // Image upload
+  isUploadingImage,
+  imagePreview,
+  fileInput,
+  handleImageUpload,
+  removeImage,
+  clickFileInput,
   
-  if (!formData.value.categoryIds.length) {
-    errors.value.categoryIds = 'Vui lòng chọn ít nhất một danh mục'
-  }
-  
-  return Object.keys(errors.value).length === 0
-}
-
-// Submit form
-const submitForm = async () => {
-  if (!validateForm()) return
-  
-  isSubmitting.value = true
-  
-  try {
-    // Debug: Log the data being sent
-    console.log('Form data before sending:', formData.value)
-    console.log('Tags specifically:', formData.value.tags)
-    console.log('Tags JSON stringified:', JSON.stringify(formData.value.tags))
-    
-    const response = await newsService.createNews(formData.value)
-    
-    if (response.success) {
-      // Show success notification
-      console.log('Tạo tin tức thành công!')
-      
-      // Redirect to news list
-      await navigateTo('/news')
-    } else {
-      console.error('Lỗi tạo tin tức:', response.message)
-    }
-  } catch (error) {
-    console.error('Lỗi:', error)
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-// Categories management
-const isDropdownOpen = ref(false)
-const searchTerm = ref('')
-
-// Layout selection
-const selectedLayout = ref('article')
-const layoutOptions = [
-  { label: 'Article', value: 'article' }
-]
-
-// Author selection
-const selectedAuthor = ref('Phạm Văn Toàn')
-const authorOptions = [
-  { label: 'Phạm Văn Toàn', value: 'Phạm Văn Toàn' }
-]
-
-const filteredCategories = computed(() => {
-  if (!searchTerm.value) return categories.value
-  return categories.value.filter(category =>
-    category.name.toLowerCase().includes(searchTerm.value.toLowerCase())
-  )
-})
-
-const selectedCategories = computed(() => {
-  return categories.value.filter(category =>
-    formData.value.categoryIds.includes(category.id)
-  )
-})
-
-const toggleCategory = (categoryId: number) => {
-  const index = formData.value.categoryIds.indexOf(categoryId)
-  if (index > -1) {
-    formData.value.categoryIds.splice(index, 1)
-  } else {
-    formData.value.categoryIds.push(categoryId)
-  }
-}
-
-const removeCategory = (categoryId: number) => {
-  const index = formData.value.categoryIds.indexOf(categoryId)
-  if (index > -1) {
-    formData.value.categoryIds.splice(index, 1)
-  }
-}
-
-// Close dropdown when clicking outside
-onMounted(() => {
-  document.addEventListener('click', (e) => {
-    const target = e.target as HTMLElement
-    if (!target.closest('.dropdown-container')) {
-      isDropdownOpen.value = false
-    }
-  })
-})
+  // Form methods
+  submitForm
+} = await useNewsForm()
 
 // Cancel and go back
 const cancel = () => {
   navigateTo('/news')
-}
-
-// Image upload handling
-const isUploadingImage = ref(false)
-const imageFile = ref<File | null>(null)
-const imagePreview = ref<string>('')
-const fileInput = ref<HTMLInputElement>()
-
-const handleImageUpload = async (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  
-  if (!file) return
-  
-  // Validate file type
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml']
-  if (!allowedTypes.includes(file.type)) {
-    console.error('Vui lòng chọn file ảnh (JPG, PNG, GIF, SVG)')
-    return
-  }
-  
-  // Validate file size (max 2MB)
-  if (file.size > 2 * 1024 * 1024) {
-    console.error('Kích thước file không được vượt quá 2MB')
-    return
-  }
-  
-  imageFile.value = file
-  
-  // Create preview
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    imagePreview.value = e.target?.result as string
-  }
-  reader.readAsDataURL(file)
-  
-  // Upload file
-  try {
-    isUploadingImage.value = true
-    const response = await fileService.uploadFile(file, 'news')
-    
-    // Debug: Log the entire response to see its structure
-    console.log('Upload response:', response)
-    
-    // Handle API response with success/data format
-    if (response && response.success && response.data) {
-      // For single file upload, response.data should be an object
-      // For multiple files, it would be an array, but we take the first one
-      const fileData = Array.isArray(response.data) ? response.data[0] : response.data
-      
-      if (fileData && fileData.fileName) {
-        formData.value.imageUrl = fileData.fileName
-        console.log('Upload ảnh thành công! FileName:', fileData.fileName)
-      } else {
-        console.error('Lỗi upload ảnh: Không tìm thấy fileName trong response data', fileData)
-      }
-    } else {
-      console.error('Lỗi upload ảnh: Response không hợp lệ', response)
-    }
-  } catch (error) {
-    console.error('Lỗi upload ảnh:', error)
-  } finally {
-    isUploadingImage.value = false
-  }
-}
-
-const removeImage = () => {
-  imageFile.value = null
-  imagePreview.value = ''
-  formData.value.imageUrl = ''
-}
-
-const clickFileInput = () => {
-  fileInput.value?.click()
 }
 </script>
 

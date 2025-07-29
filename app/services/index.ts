@@ -19,6 +19,7 @@ export type {
 
 export type { 
   News, 
+  NewsFormData,
   CreateNewsRequest, 
   UpdateNewsRequest 
 } from './news.service'
