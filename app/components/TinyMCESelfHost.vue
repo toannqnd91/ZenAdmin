@@ -17,6 +17,8 @@
 </template>
 
 <script setup lang="ts">
+import { fileService } from '@/services'
+
 interface Props {
   modelValue?: string
   placeholder?: string
@@ -78,7 +80,7 @@ interface TinyMCEConfig {
   paste_retain_style_properties: string
   automatic_uploads: boolean
   file_picker_types: string
-  images_upload_handler: (blobInfo: { blob: () => Blob, base64: () => string }, _progress: unknown) => Promise<string>
+  images_upload_handler: (blobInfo: { blob: () => Blob, base64: () => string }, progress: unknown) => Promise<string>
   promotion: boolean
   convert_urls: boolean
   relative_urls: boolean
@@ -163,9 +165,9 @@ const initializeEditor = async () => {
         'insertdatetime', 'media', 'table', 'help', 'wordcount'
       ],
       
-      // Toolbar configuration
+      // Toolbar configuration - with custom image upload button
       toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | '
-        + 'forecolor backcolor | link image media table | align lineheight | '
+        + 'forecolor backcolor | link image customImageUpload media table | align lineheight | '
         + 'numlist bullist indent outdent | emoticons charmap | removeformat | '
         + 'code fullscreen help',
       
@@ -248,15 +250,62 @@ const initializeEditor = async () => {
       paste_as_text: false,
       paste_retain_style_properties: 'font-weight font-style color text-decoration',
       
-      // Image handling
-      automatic_uploads: false,
+      // Image handling with API integration
+      automatic_uploads: true,
       file_picker_types: 'image',
-      images_upload_handler: (blobInfo: { blob: () => Blob, base64: () => string }, _progress: unknown) => {
-        return new Promise((resolve) => {
-          // Placeholder for image upload - bạn có thể implement upload logic ở đây
-          const base64 = `data:${blobInfo.blob().type};base64,${blobInfo.base64()}`
-          resolve(base64)
-        })
+      images_upload_handler: async (blobInfo: { blob: () => Blob, base64: () => string }, progress: unknown) => {
+        try {
+          const blob = blobInfo.blob()
+          
+          // Convert blob to File object
+          const file = new File([blob], `image-${Date.now()}.${blob.type.split('/')[1]}`, {
+            type: blob.type
+          })
+          
+          // Validate file
+          const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml']
+          if (!allowedTypes.includes(file.type)) {
+            throw new Error('Chỉ hỗ trợ file ảnh (JPG, PNG, GIF, SVG)')
+          }
+          
+          // Validate file size (max 5MB for editor)
+          if (file.size > 5 * 1024 * 1024) {
+            throw new Error('Kích thước file không được vượt quá 5MB')
+          }
+          
+          // Show progress if available
+          if (typeof progress === 'function') {
+            progress(10)
+          }
+          
+          // Upload using fileService
+          const response = await fileService.uploadFile(file, 'editor')
+          
+          if (typeof progress === 'function') {
+            progress(90)
+          }
+          
+          // Handle API response
+          if (response && response.success && response.data) {
+            const fileData = Array.isArray(response.data) ? response.data[0] : response.data
+            
+            if (fileData && fileData.fileName) {
+              if (typeof progress === 'function') {
+                progress(100)
+              }
+              // Return the full URL for the uploaded image
+              return fileService.getFileUrl(fileData.fileName)
+            } else {
+              throw new Error('Không nhận được thông tin file từ server')
+            }
+          } else {
+            throw new Error('Upload thất bại')
+          }
+        } catch (error) {
+          console.error('Lỗi upload ảnh trong editor:', error)
+          // Fallback to base64 if upload fails
+          return `data:${blobInfo.blob().type};base64,${blobInfo.base64()}`
+        }
       },
       
       // Advanced settings
@@ -288,13 +337,53 @@ const initializeEditor = async () => {
           emit('update:modelValue', content)
         })
         
-        // Custom button example
-        ed.ui.registry.addButton('customButton', {
-          text: 'Tùy chỉnh',
-          onAction: () => {
-            ed.insertContent('<p><strong>Nội dung tùy chỉnh</strong></p>')
-          }
-        })
+        // Custom button for image upload from server
+        // ed.ui.registry.addButton('customImageUpload', {
+        //   text: 'Upload Ảnh',
+        //   onAction: () => {
+        //     // Create file input
+        //     const input = document.createElement('input')
+        //     input.type = 'file'
+        //     input.accept = 'image/*'
+        //     input.style.display = 'none'
+            
+        //     input.onchange = async (e) => {
+        //       const file = (e.target as HTMLInputElement).files?.[0]
+        //       if (!file) return
+              
+        //       try {
+        //         // Show loading message
+        //         ed.insertContent('<p><em>Đang tải ảnh lên...</em></p>')
+                
+        //         // Upload file
+        //         const response = await fileService.uploadFile(file, 'editor')
+                
+        //         if (response && response.success && response.data) {
+        //           const fileData = Array.isArray(response.data) ? response.data[0] : response.data
+                  
+        //           if (fileData && fileData.fileName) {
+        //             const imageUrl = fileService.getFileUrl(fileData.fileName)
+                    
+        //             // Remove loading message and insert image
+        //             const content = ed.getContent().replace('<p><em>Đang tải ảnh lên...</em></p>', '')
+        //             ed.setContent(content)
+        //             ed.insertContent(`<img src="${imageUrl}" alt="Uploaded image" style="max-width: 100%; height: auto;" />`)
+        //           }
+        //         }
+        //       } catch (error) {
+        //         console.error('Lỗi upload ảnh:', error)
+        //         // Remove loading message
+        //         const content = ed.getContent().replace('<p><em>Đang tải ảnh lên...</em></p>', '')
+        //         ed.setContent(content)
+        //         ed.insertContent('<p><em>Lỗi tải ảnh lên. Vui lòng thử lại.</em></p>')
+        //       }
+        //     }
+            
+        //     document.body.appendChild(input)
+        //     input.click()
+        //     document.body.removeChild(input)
+        //   }
+        // })
       }
     })
   } catch (error) {

@@ -409,7 +409,7 @@ const clickFileInput = () => {
                 <!-- Upload Area -->
                 <div
                   v-else
-                  class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer"
+                  class="upload-area border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center bg-white dark:bg-gray-800 hover:border-primary-500 dark:hover:border-primary-400 focus-within:border-primary-500 dark:focus-within:border-primary-400 focus-within:ring-2 focus-within:ring-primary-500 transition-colors cursor-pointer"
                   @click="clickFileInput"
                 >
                   <div class="space-y-2">
@@ -420,7 +420,7 @@ const clickFileInput = () => {
                       <span class="font-medium text-primary-600 dark:text-primary-400">Click để tải lên ảnh</span>
                       hoặc kéo thả vào đây
                     </div>
-                    <p class="text-xs text-gray-500">SVG, PNG, JPG or GIF (max. 2MB)</p>
+                    <!-- <p class="text-xs text-gray-500">SVG, PNG, JPG or GIF (max. 2MB)</p> -->
                   </div>
                 </div>
                 
@@ -540,12 +540,10 @@ const clickFileInput = () => {
                         :key="category.id"
                         class="flex items-center space-x-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                       >
-                        <input
-                          :checked="formData.categoryIds.includes(category.id)"
-                          type="checkbox"
-                          class="text-primary-600 focus:ring-primary-500 rounded"
-                          @change="toggleCategory(category.id)"
-                        >
+                        <UCheckbox
+                          :model-value="formData.categoryIds.includes(category.id)"
+                          @update:model-value="toggleCategory(category.id)"
+                        />
                         <span class="text-sm text-gray-700 dark:text-gray-300">{{ category.name }}</span>
                       </label>
                     </div>
@@ -557,12 +555,12 @@ const clickFileInput = () => {
                   <span
                     v-for="category in selectedCategories"
                     :key="category.id"
-                    class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                    class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200"
                   >
                     {{ category.name }}
                     <button
                       type="button"
-                      class="ml-1 inline-flex items-center justify-center w-3 h-3 rounded-full text-blue-600 hover:bg-blue-200 hover:text-blue-800 focus:outline-none"
+                      class="ml-1 inline-flex items-center justify-center w-3 h-3 rounded-full text-primary-600 hover:bg-primary-200 hover:text-primary-800 focus:outline-none"
                       @click="removeCategory(category.id)"
                     >
                       ×
@@ -628,9 +626,33 @@ const clickFileInput = () => {
 }
 
 /* Checkbox custom styling */
+input[type="checkbox"] {
+  color: var(--color-primary-600);
+  border-color: var(--color-gray-300);
+}
+
 input[type="checkbox"]:checked {
   background-color: var(--color-primary-600);
   border-color: var(--color-primary-600);
+}
+
+input[type="checkbox"]:focus {
+  box-shadow: 0 0 0 2px var(--color-primary-500);
+  border-color: var(--color-primary-500);
+}
+
+.dark input[type="checkbox"] {
+  border-color: var(--color-gray-600);
+}
+
+.dark input[type="checkbox"]:checked {
+  background-color: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+}
+
+.dark input[type="checkbox"]:focus {
+  box-shadow: 0 0 0 2px var(--color-primary-400);
+  border-color: var(--color-primary-400);
 }
 
 /* Input dashed border styling */
@@ -654,6 +676,7 @@ textarea:focus,
 select:focus {
   border: none !important;
   border-style: none !important;
+  box-shadow: 0 0 0 2px var(--color-primary-500) !important;
 }
 
 /* Dropdown button - specific styling */
@@ -670,6 +693,7 @@ select:focus {
 .dropdown-container button:focus {
   border: none !important;
   border-style: none !important;
+  box-shadow: 0 0 0 2px var(--color-primary-500) !important;
 }
 
 /* Dropdown menu dashed border */
@@ -681,5 +705,24 @@ select:focus {
 .dark .dropdown-container .absolute {
   border: 1px dashed #4b5563 !important;
   border-style: dashed !important;
+}
+
+/* Upload area dashed border styling */
+.upload-area {
+  border: 1px dashed #d1d5db !important;
+  border-style: dashed !important;
+}
+
+.dark .upload-area {
+  border: 1px dashed #4b5563 !important;
+  border-style: dashed !important;
+}
+
+.upload-area:hover {
+  border-color: var(--color-primary-500) !important;
+}
+
+.dark .upload-area:hover {
+  border-color: var(--color-primary-400) !important;
 }
 </style>
