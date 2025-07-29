@@ -229,15 +229,11 @@ const cancel = () => {
                   <label for="content" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Nội dung bài viết <span class="text-red-500">*</span>
                   </label>
-                  <ClientOnly>
-                    <CustomTiptapEditor
-                      v-model="formData.content"
-                      placeholder="Nhập nội dung bài viết..."
-                    />
-                    <template #fallback>
-                      <div class="animate-pulse bg-gray-200 dark:bg-gray-700 h-96 rounded-md" />
-                    </template>
-                  </ClientOnly>
+                  <TinyMCEEditor
+                    v-model="formData.content"
+                    placeholder="Nhập nội dung bài viết..."
+                    :height="500"
+                  />
                   <p v-if="errors.content" class="mt-1 text-sm text-red-600">
                     {{ errors.content }}
                   </p>

@@ -30,6 +30,15 @@ export default defineNuxtConfig({
 
   compatibilityDate: '2024-07-11',
 
+  vite: {
+    optimizeDeps: {
+      include: ['tinymce']
+    },
+    ssr: {
+      noExternal: ['@tinymce/tinymce-vue']
+    }
+  },
+
   eslint: {
     config: {
       stylistic: {
