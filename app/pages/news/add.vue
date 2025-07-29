@@ -374,7 +374,7 @@ const cancel = () => {
                 <div class="relative dropdown-container">
                   <button
                     type="button"
-                    class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-left flex items-center justify-between"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-left flex items-center justify-between"
                     @click="isDropdownOpen = !isDropdownOpen"
                   >
                     <span class="text-gray-500">
@@ -399,7 +399,7 @@ const cancel = () => {
                   <!-- Dropdown Menu -->
                   <div
                     v-if="isDropdownOpen"
-                    class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg"
+                    class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md"
                   >
                     <!-- Search Input -->
                     <div class="p-2 border-b border-gray-200 dark:border-gray-700">
@@ -512,5 +512,63 @@ const cancel = () => {
 input[type="checkbox"]:checked {
   background-color: var(--color-primary-600);
   border-color: var(--color-primary-600);
+}
+
+/* Input dashed border styling */
+input[type="text"],
+textarea,
+select,
+button {
+  border: 1px dashed #d1d5db !important;
+  border-style: dashed !important;
+}
+
+.dark input[type="text"],
+.dark textarea,
+.dark select,
+.dark button {
+  border: 1px dashed #4b5563 !important;
+  border-style: dashed !important;
+}
+
+/* Focus state for dashed inputs */
+input[type="text"]:focus,
+textarea:focus,
+select:focus,
+button:focus {
+  border: none !important;
+  border-style: none !important;
+}
+
+/* Exceptions - buttons that should not have dashed border */
+button[class*="i-lucide"],
+button[class*="text-primary-600"],
+button[class*="text-xs"],
+.inline-flex button,
+form button[type="submit"],
+form button[type="button"]:not(.dropdown-container button) {
+  border: 1px solid #d1d5db !important;
+  border-style: solid !important;
+}
+
+.dark button[class*="i-lucide"],
+.dark button[class*="text-primary-600"],
+.dark button[class*="text-xs"],
+.dark .inline-flex button,
+.dark form button[type="submit"],
+.dark form button[type="button"]:not(.dropdown-container button) {
+  border: 1px solid #4b5563 !important;
+  border-style: solid !important;
+}
+
+/* Dropdown menu dashed border */
+.dropdown-container .absolute {
+  border: 1px dashed #d1d5db !important;
+  border-style: dashed !important;
+}
+
+.dark .dropdown-container .absolute {
+  border: 1px dashed #4b5563 !important;
+  border-style: dashed !important;
 }
 </style>
