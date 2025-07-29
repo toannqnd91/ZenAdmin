@@ -24,6 +24,13 @@ const formData = ref<CreateNewsRequest>({
 const isSubmitting = ref(false)
 const errors = ref<Record<string, string>>({})
 
+// Publication status
+const publicationStatus = ref('published')
+const statusItems = [
+  { value: 'published', label: 'Hiện' },
+  { value: 'draft', label: 'Ẩn' }
+]
+
 // Tags input
 const tagInput = ref('')
 const addTag = (event?: Event) => {
@@ -173,6 +180,22 @@ const cancel = () => {
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
+
+        <template #right>
+          <div class="flex items-center gap-1.5">
+            <UButton
+              label="Hủy"
+              variant="ghost"
+              color="neutral"
+              @click="cancel"
+            />
+            <UButton
+              label="Lưu"
+              :loading="isSubmitting"
+              @click="submitForm"
+            />
+          </div>
+        </template>
       </UDashboardNavbar>
     </template>
 
@@ -257,24 +280,6 @@ const cancel = () => {
                   </p>
                 </div>
 
-                <!-- Form Actions -->
-                <div class="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
-                  <button
-                    type="button"
-                    class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    @click="cancel"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="submit"
-                    :disabled="isSubmitting"
-                    class="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span v-if="isSubmitting">Đang lưu...</span>
-                    <span v-else>Lưu</span>
-                  </button>
-                </div>
               </form>
             </UPageCard>
           </div>
@@ -286,28 +291,12 @@ const cancel = () => {
               title="Trạng thái"
               variant="soft"
             >
-              <div class="space-y-2">
-                <label class="flex items-center">
-                  <input
-                    type="radio"
-                    name="status"
-                    value="published"
-                    class="text-primary-600 focus:ring-primary-500"
-                    checked
-                  >
-                  <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Hiện</span>
-                </label>
-                <label class="flex items-center">
-                  <input
-                    type="radio"
-                    name="status"
-                    value="draft"
-                    class="text-primary-600 focus:ring-primary-500"
-                  >
-                  <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Ẩn</span>
-                </label>
-              </div>
-              <div class="mt-3">
+              <URadioGroup
+                v-model="publicationStatus"
+                :items="statusItems"
+                class="space-y-2"
+              />
+              <div>
                 <button type="button" class="text-primary-600 hover:text-primary-700 text-sm">
                   Đặt lịch hiển thị
                 </button>
@@ -324,11 +313,10 @@ const cancel = () => {
                 description="SVG, PNG, JPG or GIF (max. 2MB)"
                 class="w-full min-h-48"
               />
-              
             </UPageCard>
 
             <!-- Categories -->
-            <UPageCard
+            <!-- <UPageCard
               title="Khung giao diện"
               variant="soft"
             >
@@ -343,7 +331,7 @@ const cancel = () => {
                   {{ option.label }}
                 </option>
               </select>
-            </UPageCard>
+            </UPageCard> -->
 
             <!-- Additional Info -->
             <UPageCard
