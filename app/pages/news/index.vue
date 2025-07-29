@@ -76,11 +76,11 @@ function getRowItems(row: any) {
         </template>
         <template #right>
           <UButton
-            label="New News"
+            label="Thêm tin tức"
             color="primary"
             variant="solid"
             icon="i-lucide-plus"
-            @click="navigateTo('/news/add')"
+            @click="navigateTo('/news/create')"
           />
         </template>
       </UDashboardNavbar>

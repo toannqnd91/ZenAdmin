@@ -30,9 +30,9 @@ export class HttpInterceptor {
   private async addAuthHeaders(existingHeaders?: HeadersInit): Promise<Headers> {
     const headers = new Headers(existingHeaders)
     
-    // Set default content type if not exists
+    // Set default content type with UTF-8 charset if not exists
     if (!headers.has('Content-Type')) {
-      headers.set('Content-Type', 'application/json')
+      headers.set('Content-Type', 'application/json; charset=utf-8')
     }
 
     try {
@@ -98,7 +98,7 @@ export class HttpInterceptor {
     const response = await fetch(`https://dongtrunghathaophunhan.vn/api/v1/Identity/refresh`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json; charset=utf-8'
       },
       body: JSON.stringify({
         refreshToken: refreshTokenCookie.value

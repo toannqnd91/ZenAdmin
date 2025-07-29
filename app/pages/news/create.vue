@@ -94,6 +94,11 @@ const submitForm = async () => {
   isSubmitting.value = true
   
   try {
+    // Debug: Log the data being sent
+    console.log('Form data before sending:', formData.value)
+    console.log('Tags specifically:', formData.value.tags)
+    console.log('Tags JSON stringified:', JSON.stringify(formData.value.tags))
+    
     const response = await newsService.createNews(formData.value)
     
     if (response.success) {
@@ -339,7 +344,7 @@ const cancel = () => {
               variant="soft"
             >
               <!-- Author -->
-              <div class="mb-4">
+              <!-- <div class="mb-4">
                 <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Tác giả</label>
                 <select
                   v-model="selectedAuthor"
@@ -352,7 +357,7 @@ const cancel = () => {
                     {{ option.label }}
                   </option>
                 </select>
-              </div>
+              </div> -->
 
               <!-- Categories -->
               <div class="mb-4">
@@ -461,7 +466,7 @@ const cancel = () => {
                     v-model="tagInput"
                     type="text"
                     placeholder="Tìm kiếm hoặc thêm mới"
-                    class="flex-1 px-3 py-2.5 text-sm rounded-md border-0 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    class="flex-1 px-3 py-2.5 text-sm rounded-md border-0 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     @keydown.enter="addTag($event)"
                   >
                 </div>
