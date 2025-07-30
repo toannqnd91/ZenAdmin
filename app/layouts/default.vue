@@ -7,7 +7,7 @@ const userRoles = computed(() => {
   return userInfo.value?.role
 })
 
-// in ra các quyền của người dùng
+// Print out the user's roles
 watch(userRoles, (val) => {
   console.log('User roles:', val)
 }, { immediate: true })
@@ -17,7 +17,7 @@ const toast = useToast()
 
 const open = ref(false)
 
-// Sử dụng dashboard composable với service integration
+// Use dashboard composable with service integration
 const {
   menuItems,
   menuLoading,
@@ -27,7 +27,6 @@ const {
 } = useDashboard()
 
 // No need to manually call fetchMenu anymore - composable handles it automatically
-
 const staticLinks: NavigationMenuItem[] = [{
   label: 'Phản hồi',
   icon: 'i-lucide-message-circle',
