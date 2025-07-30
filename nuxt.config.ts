@@ -7,7 +7,7 @@ export default defineNuxtConfig({
   ],
 
   devtools: {
-    enabled: true
+    enabled: false
   },
 
   css: ['~/assets/css/main.css'],
@@ -37,11 +37,11 @@ export default defineNuxtConfig({
     },
     ssr: {
       noExternal: ['@tinymce/tinymce-vue']
+    },
+    server: {
+      host: '0.0.0.0'
+      // allowedHosts: ['web.vnnsoft.com']
     }
-    // server: {
-    //   host: '0.0.0.0',
-    //   allowedHosts: ['web.vnnsoft.com']
-    // }
   },
 
   eslint: {
