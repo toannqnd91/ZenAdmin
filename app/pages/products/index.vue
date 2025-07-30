@@ -22,14 +22,13 @@ const {
           <UDashboardSidebarCollapse />
         </template>
         <template #right>
-          <ProductsAddModal>
-            <UButton
-              label="New Product"
-              color="primary"
-              variant="solid"
-              icon="i-lucide-plus"
-            />
-          </ProductsAddModal>
+          <UButton
+            label="New Product"
+            color="primary"
+            variant="solid"
+            icon="i-lucide-plus"
+            @click="navigateTo('/products/create')"
+          />
         </template>
       </UDashboardNavbar>
     </template>

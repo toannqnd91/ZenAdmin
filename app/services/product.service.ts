@@ -64,21 +64,21 @@ export class ProductService extends BaseService {
    * Get single product by ID
    */
   async getProductById(id: number) {
-    return this.get<ProductItem>(`/Products/${id}`)
+    return this.get<ProductItem>(`/Product/${id}`)
   }
 
   /**
    * Create new product
    */
   async createProduct(data: CreateProductRequest) {
-    return this.post<ProductItem>('/Products', data)
+    return this.post<ProductItem>('/Product/create', data)
   }
 
   /**
    * Update product
    */
   async updateProduct(data: UpdateProductRequest) {
-    return this.put<ProductItem>(`/Products/${data.id}`, data)
+    return this.put<ProductItem>(`/Products/${data.id}/update`, data)
   }
 
   /**
