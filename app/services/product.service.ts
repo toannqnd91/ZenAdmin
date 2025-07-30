@@ -78,7 +78,7 @@ export class ProductService extends BaseService {
    * Update product
    */
   async updateProduct(data: UpdateProductRequest) {
-    return this.put<ProductItem>(`/Products/${data.id}/update`, data)
+    return this.put<ProductItem>(`/Product/${data.id}/update`, data)
   }
 
   /**

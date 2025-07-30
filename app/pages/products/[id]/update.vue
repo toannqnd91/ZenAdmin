@@ -118,6 +118,22 @@ const onSubmit = async () => {
 
     <template #body>
       <div class="w-full">
+        <!-- Breadcrumb -->
+        <nav class="mb-6" aria-label="Breadcrumb">
+          <ol class="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+            <li>
+              <NuxtLink to="/products" class="hover:text-primary-600 dark:hover:text-primary-400">
+                Quản lý sản phẩm
+              </NuxtLink>
+            </li>
+            <li class="flex items-center">
+              <svg class="w-4 h-4 mx-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+              </svg>
+              <span class="text-gray-900 dark:text-white font-medium">Chỉnh sửa sản phẩm</span>
+            </li>
+          </ol>
+        </nav>
         <div v-if="loadingDetail" class="text-center py-10 text-gray-500">Đang tải dữ liệu sản phẩm...</div>
         <div v-else-if="fetchError" class="text-error py-10">{{ fetchError }}</div>
         <div v-else>

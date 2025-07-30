@@ -142,6 +142,28 @@ const columns: TableColumn<ProductItem>[] = [
       ])
   }
 ]
+
+// Handle row click
+const handleRowClick = (item: ProductItem) => {
+  navigateTo(`/products/${item.id}/update`)
+}
+
+// Handle table click to detect row clicks
+const onTableClick = (event: Event) => {
+  const target = event.target as HTMLElement
+  const row = target.closest('tbody tr')
+  if (row && !target.closest('button') && !target.closest('[role="button"]')) {
+    const rowIndex = Array.from(row.parentElement!.children).indexOf(row)
+    // Calculate actual index considering pagination
+    const currentPage = props.pagination.pageIndex
+    const pageSize = props.pagination.pageSize
+    const actualIndex = currentPage * pageSize + rowIndex
+    const productItem = filtered.value[actualIndex]
+    if (productItem) {
+      handleRowClick(productItem)
+    }
+  }
+}
 </script>
 
 <template>
@@ -171,11 +193,13 @@ const columns: TableColumn<ProductItem>[] = [
     }" :data="filtered" :columns="columns" :loading="loading" class="shrink-0 flex-1" :ui="{
         base: 'table-fixed border-separate border-spacing-0',
         thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
-        tbody: '[&>tr]:last:[&>td]:border-b-0',
+        tbody: '[&>tr]:last:[&>td]:border-b-0 [&>tr]:cursor-pointer [&>tr:hover]:bg-gray-50',
         th: 'py-3 first:rounded-l-lg last:rounded-r-lg border-y border-default first:border-l last:border-r first:w-10',
         td: 'border-b border-default first:w-10'
       }" @update:model-value="emit('update:rowSelection', $event)"
-      @update:pagination="emit('update:pagination', $event)" />
+      @update:pagination="emit('update:pagination', $event)"
+      @click="onTableClick"
+    />
 
     <!-- Pagination Info - Pinned to bottom -->
     <div class="flex items-center justify-between gap-3 border-t border-default pt-4 mt-auto">

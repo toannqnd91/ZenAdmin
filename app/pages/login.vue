@@ -71,17 +71,16 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
   <UAuthForm
     :fields="fields"
     :schema="schema"
-    :providers="providers"
-    title="Welcome back"
+    title="Phú Nhân"
     icon="i-lucide-lock"
     @submit="onSubmit"
   >
-    <template #description>
+    <!-- <template #description>
       Don't have an account? <ULink
         to="/signup"
         class="text-primary font-medium"
       >Sign up</ULink>.
-    </template>
+    </template> -->
 
     <template #password-hint>
       <ULink

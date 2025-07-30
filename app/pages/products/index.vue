@@ -23,7 +23,7 @@ const {
         </template>
         <template #right>
           <UButton
-            label="New Product"
+            label="Thêm sản phẩm"
             color="primary"
             variant="solid"
             icon="i-lucide-plus"
