@@ -39,7 +39,7 @@ export default defineNuxtConfig({
       noExternal: ['@tinymce/tinymce-vue']
     },
     server: {
-      host: true,
+      // host: true,
       allowedHosts: ['web.vnnsoft.com']
     }
   },
