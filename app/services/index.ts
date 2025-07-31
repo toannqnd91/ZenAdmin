@@ -7,6 +7,7 @@ export { productService, ProductService } from './product.service'
 export { fileService, FileService } from './file.service'
 export { admissionService, scholarshipService, AdmissionService, ScholarshipService } from './admission.service'
 export { linksService, LinksService } from './links.service'
+export { widgetsService, WidgetsService } from './widgets.service'
 
 // Export types
 export type { 
@@ -37,3 +38,8 @@ export type {
   CreateMenuItemRequest,
   UpdateMenuItemRequest
 } from './links.service'
+
+export type {
+  WidgetInstance,
+  WidgetApiResponse
+} from './widgets.service'
