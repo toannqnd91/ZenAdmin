@@ -1,6 +1,3 @@
-
-
-
 <script setup lang="ts">
 import { useWidgets } from '@/composables/useWidgets'
 import WidgetsTable from '@/components/widgets/WidgetsTable.vue'
@@ -21,6 +18,49 @@ const pagination = ref({
   pageSize: 10
 })
 
+const widgetTypes = [
+  { label: 'Carousel Widget', value: 'carousel' },
+  { label: 'Category Widget', value: 'category' },
+  { label: 'Html Widget', value: 'html' },
+  { label: 'Product Widget', value: 'product' },
+  { label: 'Recently Viewed Widget', value: 'recently-viewed' },
+  { label: 'Simple Product Widget', value: 'simple-product' },
+  { label: 'SpaceBar Widget', value: 'spacebar' }
+]
+
+const widgetTypeMenu = widgetTypes.map(type => {
+  let page = ''
+  switch (type.value) {
+    case 'carousel':
+      page = 'create-carousel'
+      break
+    case 'category':
+      page = 'create-category'
+      break
+    case 'html':
+      page = 'create-html'
+      break
+    case 'product':
+      page = 'create-product'
+      break
+    case 'recently-viewed':
+      page = 'create-recently-viewed'
+      break
+    case 'simple-product':
+      page = 'create-simple-product'
+      break
+    case 'spacebar':
+      page = 'create-spacebar'
+      break
+    default:
+      page = 'create'
+  }
+  return {
+    label: type.label,
+    to: `/widgets/${page}`
+  }
+})
+
 function getRowItems(row: any) {
   return [
     { type: 'label', label: 'Actions' },
@@ -29,6 +69,7 @@ function getRowItems(row: any) {
     { label: 'Delete', icon: 'i-lucide-trash', color: 'error', onSelect: () => deleteWidget(row.original.id) }
   ]
 }
+
 
 onMounted(fetchWidgets)
 </script>
@@ -41,14 +82,19 @@ onMounted(fetchWidgets)
           <UDashboardSidebarCollapse />
         </template>
         <template #right>
-          <UButton
-            label="Thêm widget"
-            color="primary"
-            variant="solid"
-            icon="i-lucide-plus"
-            @click="navigateTo('/widgets/create')"
-          />
+          <UDropdownMenu
+            :items="widgetTypeMenu"
+            :popper="{ placement: 'bottom-end' }"
+          >
+            <UButton
+              label="Thêm widget"
+              color="primary"
+              variant="solid"
+              icon="i-lucide-plus"
+            />
+          </UDropdownMenu>
         </template>
+
       </UDashboardNavbar>
     </template>
     <template #body>
