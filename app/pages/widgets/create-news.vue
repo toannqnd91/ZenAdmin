@@ -50,7 +50,7 @@ function onCancel() {
 <template>
   <UDashboardPanel class="flex flex-col h-full">
     <template #header>
-      <UDashboardNavbar title="Create Product Widget">
+      <UDashboardNavbar title="Create News Widget">
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
@@ -59,7 +59,7 @@ function onCancel() {
     <template #body>
       <UCard class="w-full mt-6">
         <UForm @submit="onSave" class="space-y-6">
-          <div class="text-3xl font-light mb-8">Create Product Widget</div>
+          <div class="text-3xl font-light mb-8">Create News Widget</div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Widget Name</label>
             <div class="col-span-10 w-full">
@@ -97,9 +97,9 @@ function onCancel() {
             </div>
           </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
-            <label class="col-span-2 text-right pr-2">Number of Products</label>
+            <label class="col-span-2 text-right pr-2">Number of News</label>
             <div class="col-span-10 w-full">
-              <UInput v-model="numberOfProducts" type="number" min="1" class="w-full" />
+              <UInput v-model="numberOfNews" type="number" min="1" class="w-full" />
             </div>
           </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
@@ -112,7 +112,7 @@ function onCancel() {
             <div class="col-span-2"></div>
             <div class="col-span-10 w-full flex items-center">
               <UCheckbox v-model="isFeaturedOnly" class="mr-2" />
-              <span>Is Featured Products Only</span>
+              <span>Is Featured News Only</span>
             </div>
           </div>
           <div class="flex gap-2 mt-4">

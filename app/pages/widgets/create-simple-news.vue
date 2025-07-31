@@ -5,38 +5,17 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 
 const widgetName = ref('')
-const widgetZone = ref('Home Featured')
+const widgetZone = ref('Home Main Content')
 const publishStart = ref('')
 const publishEnd = ref('')
-const displayOrder = ref('')
-
-const category = ref('')
-const numberOfProducts = ref(4)
-const orderBy = ref('Newest')
-const isFeaturedOnly = ref(false)
-
-const categoryOptions = [
-  { label: '@Localizer["All Categories"]', value: '' },
-  { label: 'Cordyceps', value: 'cordyceps' },
-  { label: 'Tea', value: 'tea' },
-  { label: 'Extract', value: 'extract' }
-]
-const orderByOptions = [
-  { label: 'Newest', value: 'Newest' },
-  { label: 'Oldest', value: 'Oldest' },
-  { label: 'Price: Low to High', value: 'PriceAsc' },
-  { label: 'Price: High to Low', value: 'PriceDesc' }
-]
+const displayOrder = ref('0')
+const products = ref([])
 
 const widgetZoneOptions = [
+  { label: 'Home Main Content', value: 'Home Main Content' },
   { label: 'Home Featured', value: 'Home Featured' },
   { label: 'Home Banner', value: 'Home Banner' },
   { label: 'Home Bottom', value: 'Home Bottom' }
-]
-const productOptions = [
-  { label: 'Cordyceps Capsule', value: 'Cordyceps Capsule' },
-  { label: 'Cordyceps Tea', value: 'Cordyceps Tea' },
-  { label: 'Cordyceps Extract', value: 'Cordyceps Extract' }
 ]
 
 function onSave() {
@@ -46,11 +25,15 @@ function onSave() {
 function onCancel() {
   router.back()
 }
+function manageNews() {
+  // TODO: open modal/select news
+  alert('Open news manager!')
+}
 </script>
 <template>
   <UDashboardPanel class="flex flex-col h-full">
     <template #header>
-      <UDashboardNavbar title="Create Product Widget">
+      <UDashboardNavbar title="Create Simple News Widget">
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
@@ -59,7 +42,7 @@ function onCancel() {
     <template #body>
       <UCard class="w-full mt-6">
         <UForm @submit="onSave" class="space-y-6">
-          <div class="text-3xl font-light mb-8">Create Product Widget</div>
+          <div class="text-3xl font-light mb-8">Create Simple News Widget</div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Widget Name</label>
             <div class="col-span-10 w-full">
@@ -91,29 +74,30 @@ function onCancel() {
             </div>
           </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
-            <label class="col-span-2 text-right pr-2">Category</label>
+            <label class="col-span-2 text-right pr-2">News</label>
             <div class="col-span-10 w-full">
-              <USelect v-model="category" :options="categoryOptions" class="w-full" />
+              <UButton color="primary" variant="outline" @click="manageNews">Manage News</UButton>
             </div>
           </div>
-          <div class="grid grid-cols-12 gap-4 items-center mb-2">
-            <label class="col-span-2 text-right pr-2">Number of Products</label>
-            <div class="col-span-10 w-full">
-              <UInput v-model="numberOfProducts" type="number" min="1" class="w-full" />
-            </div>
-          </div>
-          <div class="grid grid-cols-12 gap-4 items-center mb-2">
-            <label class="col-span-2 text-right pr-2">Order By</label>
-            <div class="col-span-10 w-full">
-              <USelect v-model="orderBy" :options="orderByOptions" class="w-full" />
-            </div>
-          </div>
-          <div class="grid grid-cols-12 gap-4 items-center mb-2">
-            <div class="col-span-2"></div>
-            <div class="col-span-10 w-full flex items-center">
-              <UCheckbox v-model="isFeaturedOnly" class="mr-2" />
-              <span>Is Featured Products Only</span>
-            </div>
+          <!-- Table -->
+          <div class="col-span-12 w-full">
+            <table class="min-w-full text-sm border-separate border-spacing-0">
+              <thead>
+                <tr class="bg-gray-50">
+                  <th class="px-4 py-2 text-left font-semibold">Name</th>
+                  <th class="px-4 py-2 text-left font-semibold">Is Published</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="!products.length">
+                  <td colspan="2" class="px-4 py-2 text-gray-400">No products selected</td>
+                </tr>
+                <tr v-for="(prod, idx) in products" :key="idx">
+                  <td class="px-4 py-2">{{ prod.name }}</td>
+                  <td class="px-4 py-2">{{ prod.isPublished ? 'Yes' : 'No' }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
           <div class="flex gap-2 mt-4">
             <UButton icon="i-lucide-check" color="primary" type="submit">Save</UButton>

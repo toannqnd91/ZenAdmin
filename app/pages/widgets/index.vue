@@ -23,8 +23,10 @@ const widgetTypes = [
   { label: 'Category Widget', value: 'category' },
   { label: 'Html Widget', value: 'html' },
   { label: 'Product Widget', value: 'product' },
+  { label: 'News Widget', value: 'news' },
   { label: 'Recently Viewed Widget', value: 'recently-viewed' },
   { label: 'Simple Product Widget', value: 'simple-product' },
+  { label: 'Simple News Widget', value: 'simple-news' },
   { label: 'SpaceBar Widget', value: 'spacebar' }
 ]
 
@@ -43,11 +45,17 @@ const widgetTypeMenu = widgetTypes.map(type => {
     case 'product':
       page = 'create-product'
       break
+    case 'news':
+      page = 'create-news'
+      break
     case 'recently-viewed':
       page = 'create-recently-viewed'
       break
     case 'simple-product':
       page = 'create-simple-product'
+      break
+    case 'simple-news':
+      page = 'create-simple-news'
       break
     case 'spacebar':
       page = 'create-spacebar'
