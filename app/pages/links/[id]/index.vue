@@ -1,20 +1,12 @@
 <script setup lang="ts">
 import { linksService } from '@/services'
 import type { MenuItem } from '@/services'
+import { VueDraggable } from 'vue-draggable-plus'
+import type { SortableEvent } from 'sortablejs'
 
 const route = useRoute()
 
 const menuId = route.params.id as string
-// Map menuId slug sang số cho API
-const menuIdMap: Record<string, number> = {
-  'main-menu': 1,
-  'footer': 2,
-  'thong-tin': 3,
-  'ho-tro': 4,
-  'huong-dan': 5,
-  'chinh-sach': 6
-}
-const menuIdNumber = menuIdMap[menuId] || 0
 
 definePageMeta({
   layout: 'default'
@@ -143,9 +135,8 @@ watch(expandedItems, () => {
   }
 }, { deep: true })
 
-// Drag & drop state
-const draggedItem = ref<LinkItem | null>(null)
-const draggedIndex = ref<number>(-1)
+// Drag & drop state - sử dụng Vue Draggable Plus
+const isDragging = ref(false)
 
 const editLink = (link: LinkItem) => {
   console.log('Edit link:', link)
@@ -164,54 +155,81 @@ const deleteLink = async (link: LinkItem) => {
   }
 }
 
-// Drag & drop handlers
-const onDragStart = (event: DragEvent, item: LinkItem, index: number) => {
-  draggedItem.value = item
-  draggedIndex.value = index
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/html', '')
+// Hàm helper để xác định parentId và level mới dựa trên vị trí drop
+const determineNewHierarchy = (targetIndex: number, links: LinkItem[]) => {
+  // Nếu drop ở đầu danh sách
+  if (targetIndex === 0) {
+    return { newParentId: null, newLevel: 0 }
   }
-}
-
-const onDragOver = (event: DragEvent) => {
-  event.preventDefault()
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
-  }
-}
-
-const onDrop = async (event: DragEvent, targetIndex: number) => {
-  event.preventDefault()
   
-  if (draggedIndex.value !== -1 && draggedIndex.value !== targetIndex && draggedItem.value) {
-    const links = [...currentLinks.value]
-    const draggedLink = links.splice(draggedIndex.value, 1)[0]
+  // Lấy item trước vị trí drop
+  const prevItem = links[targetIndex - 1]
+  if (!prevItem) {
+    return { newParentId: null, newLevel: 0 }
+  }
+  
+  // Nếu item trước có children và đang expanded
+  if (prevItem.hasChildren && expandedItems.value.has(prevItem.id)) {
+    // Kiểm tra xem item sau có phải là con của prevItem không
+    const nextItem = links[targetIndex]
+    if (nextItem && nextItem.parentId === prevItem.id) {
+      // Drop vào giữa các con của prevItem
+      return { newParentId: prevItem.id, newLevel: prevItem.level + 1 }
+    } else {
+      // Drop sau prevItem và các con của nó - cùng level với prevItem
+      return { newParentId: prevItem.parentId ?? null, newLevel: prevItem.level }
+    }
+  } else {
+    // Item trước không có children hoặc đang collapsed - cùng level
+    return { newParentId: prevItem.parentId ?? null, newLevel: prevItem.level }
+  }
+}
+
+// Handle drag & drop events với Vue Draggable Plus
+const onDragStart = () => {
+  isDragging.value = true
+}
+
+const onDragEnd = async (event: SortableEvent) => {
+  isDragging.value = false
+  
+  // Kiểm tra nếu có thay đổi vị trí
+  if (event.oldIndex !== undefined && event.newIndex !== undefined && event.oldIndex !== event.newIndex) {
+    const draggedLink = currentLinks.value[event.newIndex]
+    
     if (draggedLink) {
-      links.splice(targetIndex, 0, draggedLink)
-      currentLinks.value = links
-      
-      console.log('Reordered links:', links)
-      
-      // Save new order to backend - chỉ gọi API cho item được kéo thả
       try {
-        // Tìm parentId của item được kéo thả
-        const parentId = draggedLink.parentId ?? null
+        // Xác định hierarchy mới dựa trên vị trí mới
+        const { newParentId, newLevel } = determineNewHierarchy(event.newIndex, currentLinks.value)
         
-        // Tìm vị trí mới của item trong nhóm cha (sortOrder trong cha)
-        // Lọc các item cùng parentId và tìm vị trí của item được kéo thả
-        const siblings = links.filter(l => (l.parentId ?? null) === parentId)
+        // Cập nhật thông tin hierarchy cho draggedLink
+        draggedLink.parentId = newParentId ?? undefined
+        draggedLink.level = newLevel
+        
+        console.log('Hierarchy change:', {
+          item: draggedLink.name,
+          newParentId,
+          newLevel,
+          oldIndex: event.oldIndex,
+          newIndex: event.newIndex
+        })
+        
+        // Tính newSortOrder trong nhóm cha mới
+        const siblings = currentLinks.value.filter(l => (l.parentId ?? null) === newParentId)
         const newSortOrder = siblings.findIndex(l => l.id === draggedLink.id)
         
         console.log('Calling reorder API with:', {
-          menuId: menuIdNumber,
-          itemId: draggedLink.id,
-          parentId,
-          newSortOrder
+          menuId: draggedLink.id, // menuId chính là itemId
+          newParentId,
+          newSortOrder,
+          siblingCount: siblings.length
         })
         
-        await linksService.reorderMenuItemsV2(menuIdNumber, draggedLink.id, parentId, newSortOrder)
+        await linksService.reorderMenuItemsV2(draggedLink.id, newParentId, newSortOrder)
         console.log('Successfully saved new order to API')
+        
+        // Refresh để cập nhật hierarchy từ server
+        await refreshMenuData()
       } catch (error) {
         console.error('Error saving new order:', error)
         // Revert changes on error
@@ -219,14 +237,6 @@ const onDrop = async (event: DragEvent, targetIndex: number) => {
       }
     }
   }
-  
-  draggedItem.value = null
-  draggedIndex.value = -1
-}
-
-const onDragEnd = () => {
-  draggedItem.value = null
-  draggedIndex.value = -1
 }
 </script>
 
@@ -301,107 +311,116 @@ const onDragEnd = () => {
                     </template>
                   </td>
                 </tr>
-                <tr
-                  v-for="(link, index) in currentLinks"
-                  :key="link.id"
-                  class="hover:bg-gray-50 dark:hover:bg-gray-800"
-                  :class="{ 'opacity-50': draggedIndex === index }"
-                  draggable="true"
-                  @dragstart="onDragStart($event, link, index)"
-                  @dragover="onDragOver($event)"
-                  @drop="onDrop($event, index)"
-                  @dragend="onDragEnd"
+                <VueDraggable
+                  v-else
+                  v-model="currentLinks"
+                  tag="tbody"
+                  handle=".drag-handle"
+                  ghost-class="ghost"
+                  chosen-class="chosen"
+                  drag-class="drag"
+                  :animation="300"
+                  easing="cubic-bezier(1, 0, 0, 1)"
+                  @start="onDragStart"
+                  @end="onDragEnd"
                 >
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" style="width: 5%">
-                    <div class="cursor-move">
-                      <svg
-                        class="w-4 h-4 text-gray-400"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                        <path d="M6 6a2 2 0 110-4 2 2 0 010 4zM6 12a2 2 0 110-4 2 2 0 010 4zM6 18a2 2 0 110-4 2 2 0 010 4z" />
-                        <path d="M14 6a2 2 0 110-4 2 2 0 010 4zM14 12a2 2 0 110-4 2 2 0 010 4zM14 18a2 2 0 110-4 2 2 0 010 4z" />
-                      </svg>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium" style="width: 35%">
-                    <div class="flex items-center">
-                      <!-- Container with indentation for hierarchy and negative margin for parent items -->
-                      <div
-                        class="flex items-center"
-                        :style="{
-                          paddingLeft: `${link.level * 20}px`,
-                          marginLeft: link.hasChildren ? '-30px' : '0px'
-                        }"
-                      >
-                        <!-- Expand/Collapse button for items with children -->
+                  <tr
+                    v-for="link in currentLinks"
+                    :key="link.id"
+                    class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200"
+                    :class="{ 'opacity-60': isDragging }"
+                  >
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" style="width: 5%">
+                      <div class="drag-handle cursor-move">
+                        <svg
+                          class="w-4 h-4 text-gray-400 hover:text-gray-600 transition-colors"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                          <path d="M6 6a2 2 0 110-4 2 2 0 010 4zM6 12a2 2 0 110-4 2 2 0 010 4zM6 18a2 2 0 110-4 2 2 0 010 4z" />
+                          <path d="M14 6a2 2 0 110-4 2 2 0 010 4zM14 12a2 2 0 110-4 2 2 0 010 4zM14 18a2 2 0 110-4 2 2 0 010 4z" />
+                        </svg>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium" style="width: 35%">
+                      <div class="flex items-center">
+                        <!-- Container with indentation for hierarchy and negative margin for parent items -->
+                        <div
+                          class="flex items-center"
+                          :style="{
+                            paddingLeft: `${link.level * 20}px`,
+                            marginLeft: link.hasChildren ? '-30px' : '0px'
+                          }"
+                        >
+                          <!-- Expand/Collapse button for items with children -->
+                          <button
+                            v-if="link.hasChildren"
+                            class="mr-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                            @click="toggleExpand(link.id)"
+                          >
+                            <svg
+                              class="w-4 h-4 text-gray-500 transition-transform"
+                              :class="{ 'rotate-90': expandedItems.has(link.id) }"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            </svg>
+                          </button>
+                          
+                          <!-- Text name with hierarchy indentation -->
+                          <span>{{ link.name }}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-primary-600 dark:text-primary-400 font-mono" style="width: 45%">
+                      {{ link.url }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" style="width: 15%">
+                      <div class="flex items-center space-x-2 justify-end">
                         <button
-                          v-if="link.hasChildren"
-                          class="mr-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                          @click="toggleExpand(link.id)"
+                          title="Chỉnh sửa"
+                          class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                          @click="editLink(link)"
                         >
                           <svg
-                            class="w-4 h-4 text-gray-500 transition-transform"
-                            :class="{ 'rotate-90': expandedItems.has(link.id) }"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
+                            class="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            viewBox="0 0 24 24"
                           >
-                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                            />
                           </svg>
                         </button>
-                        
-                        <!-- Text name with hierarchy indentation -->
-                        <span>{{ link.name }}</span>
+                        <button
+                          title="Xóa"
+                          class="text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                          @click="deleteLink(link)"
+                        >
+                          <svg
+                            class="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        </button>
                       </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-primary-600 dark:text-primary-400 font-mono" style="width: 45%">
-                    {{ link.url }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" style="width: 15%">
-                    <div class="flex items-center space-x-2 justify-end">
-                      <button
-                        title="Chỉnh sửa"
-                        class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-                        @click="editLink(link)"
-                      >
-                        <svg
-                          class="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        title="Xóa"
-                        class="text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400"
-                        @click="deleteLink(link)"
-                      >
-                        <svg
-                          class="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
+                </VueDraggable>
               </tbody>
             </table>
             
@@ -435,24 +454,31 @@ const onDragEnd = () => {
 </template>
 
 <style scoped>
-.cursor-move:hover {
+.drag-handle:hover {
   cursor: grab;
 }
 
-.cursor-move:active {
+.drag-handle:active {
   cursor: grabbing;
 }
 
-tr[draggable="true"]:hover {
-  cursor: grab;
+/* Vue Draggable Plus CSS Classes */
+.ghost {
+  opacity: 0.5;
+  background: #f3f4f6;
+  transform: rotate(2deg);
 }
 
-tr[draggable="true"]:active {
-  cursor: grabbing;
+.chosen {
+  opacity: 0.8;
+  background: #e5e7eb;
 }
 
-tr.opacity-50 {
-  background-color: rgba(59, 130, 246, 0.1) !important;
+.drag {
+  opacity: 0.9;
+  background: #ddd6fe;
+  transform: rotate(-2deg);
+  transition: all 0.3s ease;
 }
 
 .transition-transform {
@@ -461,5 +487,28 @@ tr.opacity-50 {
 
 .rotate-90 {
   transform: rotate(90deg);
+}
+
+.transition-colors {
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+/* Smooth animations */
+tbody tr {
+  transition: all 0.3s ease;
+}
+
+tbody tr.sortable-ghost {
+  opacity: 0.4;
+  background: #f3f4f6;
+}
+
+tbody tr.sortable-chosen {
+  background: #e5e7eb;
+}
+
+tbody tr.sortable-drag {
+  background: #ddd6fe;
+  transform: rotate(1deg);
 }
 </style>
