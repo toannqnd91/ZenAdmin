@@ -118,10 +118,22 @@ export class LinksService extends BaseService {
   }
 
   /**
-   * Reorder menu items
+   * Reorder menu items (old, keep for backward compatibility)
    */
   async reorderMenuItems(linkUrl: string, items: { id: number, order: number }[]) {
     return this.put<MenuItem[]>(`/Links/${linkUrl}/MenuItems/reorder`, { items })
+  }
+
+  /**
+   * Reorder menu items (new API)
+   * POST /Menus/reorder { menuId, newParentId, newSortOrder }
+   */
+  async reorderMenuItemsV2(menuId: number, newParentId: number | null, newSortOrder: number) {
+    return this.post<any>(`/Menus/reorder`, {
+      menuId,
+      newParentId,
+      newSortOrder
+    })
   }
 
   /**

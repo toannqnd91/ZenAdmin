@@ -186,14 +186,14 @@ const onDrop = async (event: DragEvent, targetIndex: number) => {
       
       console.log('Reordered links:', links)
       
-      // Save new order to backend
+      // Save new order to backend (new API)
       try {
-        const reorderData = links.map((link, index) => ({
-          id: link.id,
-          order: index + 1
-        }))
-        
-        await linksService.reorderMenuItems(menuId, reorderData)
+        // Gọi API mới cho từng item bị reorder
+        for (let i = 0; i < links.length; i++) {
+          const link = links[i]
+          // menuId: menuId, newParentId: null (chưa hỗ trợ drag vào nhóm), newSortOrder: i
+          await linksService.reorderMenuItemsV2(Number(menuId), null, i)
+        }
         console.log('Successfully saved new order to API')
       } catch (error) {
         console.error('Error saving new order:', error)
