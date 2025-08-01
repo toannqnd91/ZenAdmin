@@ -28,6 +28,7 @@ const widgetTypes = [
   { label: 'Recently Viewed Widget', value: 'recently-viewed' },
   { label: 'Simple Product Widget', value: 'simple-product' },
   { label: 'Simple News Widget', value: 'simple-news' },
+  { label: 'Custom Data Widget', value: 'custom-data' },
   { label: 'SpaceBar Widget', value: 'spacebar' }
 ]
 
@@ -57,6 +58,9 @@ const widgetTypeMenu = widgetTypes.map((type) => {
       break
     case 'simple-news':
       page = 'create-simple-news'
+      break
+    case 'custom-data':
+      page = 'create-custom-data'
       break
     case 'spacebar':
       page = 'create-spacebar'
