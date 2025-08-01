@@ -6,13 +6,13 @@ import { widgetsService, type CreateCarouselWidgetRequest, type WidgetZone } fro
 const router = useRouter()
 
 const widgetName = ref('')
-const widgetZone = ref<string | null>(null)
+const widgetZone = ref<string | undefined>(undefined)
 const publishStart = ref('')
 const publishEnd = ref('')
 const displayOrder = ref(0)
 const isSubmitting = ref(false)
 const widgetZones = ref<WidgetZone[]>([])
-const widgetZoneOptions = ref<string[]>([])
+const widgetZoneItems = ref<string[]>([])
 
 const items = ref([
   { caption: '', subCaption: '', linkUrl: '', linkText: '', image: null as File | null, imageUrl: '' }
@@ -29,13 +29,13 @@ onMounted(async () => {
       widgetZones.value = response.data
       
       // Try different option formats for USelect
-      widgetZoneOptions.value = response.data.map((zone: WidgetZone) => zone.name)
+      widgetZoneItems.value = response.data.map((zone: WidgetZone) => zone.name)
       
-      console.log('Widget zone options:', widgetZoneOptions.value)
+      console.log('Widget zone items:', widgetZoneItems.value)
       
       // Set default value to first zone if available
       if (response.data.length > 0) {
-        widgetZone.value = response.data[0]?.name || null
+        widgetZone.value = response.data[0]?.name || undefined
         console.log('Set default widget zone:', widgetZone.value)
       }
     } else {
@@ -187,23 +187,12 @@ function onCancel() {
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Widget Zone</label>
             <div class="col-span-10 w-full">
-              <div class="relative">
-                <select
-                  v-model="widgetZone"
-                  class="w-full px-3 py-2.5 text-sm bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-900 dark:border-gray-700 dark:text-white appearance-none cursor-pointer"
-                >
-                  <option value="">Select widget zone</option>
-                  <option v-for="zone in widgetZones" :key="zone.id" :value="zone.name">
-                    {{ zone.name }}
-                  </option>
-                </select>
-                <!-- Custom dropdown arrow -->
-                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
+              <USelect
+                v-model="widgetZone"
+                :items="widgetZoneItems"
+                placeholder="Select widget zone"
+                class="w-full"
+              />
             </div>
           </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
