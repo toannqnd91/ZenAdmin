@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { widgetsService, type WidgetZone } from '~/services/widgets.service'
+import { fileService } from '~/services/file.service'
 
 const router = useRouter()
 const route = useRoute()
@@ -20,7 +21,7 @@ const widgetZones = ref<WidgetZone[]>([])
 const widgetZoneItems = ref<string[]>([])
 
 const items = ref([
-  { caption: '', subCaption: '', linkUrl: '', linkText: '', image: null as File | null, imageUrl: '' }
+  { caption: '', subCaption: '', linkUrl: '', linkText: '', image: null as File | null, imageUrl: '', uploading: false }
 ])
 
 // Helper function to convert ISO string to dd/MM/yyyy HH:mm format
@@ -78,7 +79,8 @@ onMounted(async () => {
           linkUrl: item.targetUrl,
           linkText: item.linkText,
           image: null,
-          imageUrl: item.imageUrl
+          imageUrl: item.imageUrl,
+          uploading: false
         }))
       }
     } else {
@@ -94,20 +96,49 @@ onMounted(async () => {
 })
 
 function addItem() {
-  items.value.push({ caption: '', subCaption: '', linkUrl: '', linkText: '', image: null as File | null, imageUrl: '' })
+  items.value.push({ caption: '', subCaption: '', linkUrl: '', linkText: '', image: null as File | null, imageUrl: '', uploading: false })
 }
 
 function removeItem(idx: number) {
   items.value.splice(idx, 1)
 }
 
-function onFileChange(file: File | null, idx: number) {
-  if (items.value[idx]) {
-    items.value[idx].image = file
-    if (file) {
-      items.value[idx].imageUrl = URL.createObjectURL(file)
+async function onFileChange(file: File | null, idx: number) {
+  if (!items.value[idx]) return
+  // Always reset imageUrl and image
+  items.value[idx].image = null
+  items.value[idx].imageUrl = ''
+  if (!file) return
+  // Show preview immediately
+  items.value[idx].image = file
+  items.value[idx].imageUrl = URL.createObjectURL(file)
+  items.value[idx].uploading = true
+  try {
+    const res = await fileService.uploadFile(file)
+    if (res && res.success && res.data) {
+      const fileData = Array.isArray(res.data) ? res.data[0] : res.data
+      if (fileData && fileData.fileName) {
+        items.value[idx].imageUrl = fileService.getFileUrl(fileData.fileName) || ''
+      } else {
+        alert('Upload failed: Không tìm thấy fileName trong response')
+        items.value[idx].imageUrl = ''
+      }
+    } else {
+      alert('Upload failed: ' + (res.message || 'Unknown error'))
+      items.value[idx].imageUrl = ''
     }
+  } catch (err) {
+    alert('Upload failed')
+    items.value[idx].imageUrl = ''
+  } finally {
+    items.value[idx].uploading = false
   }
+}
+
+function removeImage(idx: number) {
+  if (!items.value[idx]) return
+  items.value[idx].image = null
+  items.value[idx].imageUrl = ''
 }
 
 async function onUpdate() {
@@ -261,11 +292,31 @@ function onCancel() {
             <div class="grid grid-cols-12 gap-2 items-center mb-2">
               <label class="col-span-2 text-right pr-2">Image</label>
               <div class="col-span-8 w-full">
-                <UFileUpload
-                  v-model="item.image"
-                  class="w-full"
-                  @update:model-value="(file: unknown) => onFileChange(file as File | null, idx)"
-                />
+                <div v-if="item.imageUrl" class="relative group w-full">
+                  <div class="aspect-[16/9] w-full max-h-56 bg-gray-50 border rounded flex items-center justify-center overflow-hidden">
+                    <img
+                      :src="item.image && item.imageUrl.startsWith('blob:') ? item.imageUrl : (fileService.getFileUrl(item.imageUrl) || '')"
+                      alt="Preview"
+                      class="w-full h-full object-cover"
+                    >
+                  </div>
+                  <button
+                    type="button"
+                    @click="removeImage(idx)"
+                    class="absolute top-2 right-2 flex items-center justify-center w-8 h-8 bg-white/80 hover:bg-white text-red-500 rounded-full shadow group-hover:opacity-100 opacity-80 transition"
+                    title="Xoá ảnh"
+                  >
+                    <UIcon name="i-lucide-x" class="w-4 h-4" />
+                  </button>
+                </div>
+                <div v-else>
+                  <UFileUpload
+                    v-model="item.image"
+                    class="w-full"
+                    :multiple="false"
+                    @update:model-value="(file: unknown) => onFileChange(file as File | null, idx)"
+                  />
+                </div>
               </div>
             </div>
           </div>
