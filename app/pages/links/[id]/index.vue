@@ -3,7 +3,18 @@ import { linksService } from '@/services'
 import type { MenuItem } from '@/services'
 
 const route = useRoute()
+
 const menuId = route.params.id as string
+// Map menuId slug sang số cho API
+const menuIdMap: Record<string, number> = {
+  'main-menu': 1,
+  'footer': 2,
+  'thong-tin': 3,
+  'ho-tro': 4,
+  'huong-dan': 5,
+  'chinh-sach': 6
+}
+const menuIdNumber = menuIdMap[menuId] || 0
 
 definePageMeta({
   layout: 'default'
@@ -77,9 +88,9 @@ const currentLinks = ref<LinkItem[]>([])
 const expandedItems = ref<Set<number>>(new Set())
 
 // Function to flatten menu items with hierarchy
-const flattenMenuItems = (items: MenuItem[], level: number = 0, parentId?: number): LinkItem[] => {
+// Flatten menu items, giữ parentId cho từng item
+const flattenMenuItems = (items: MenuItem[], level: number = 0, parentId: number | null = null): LinkItem[] => {
   const result: LinkItem[] = []
-  
   items.forEach((item) => {
     const linkItem: LinkItem = {
       id: item.id,
@@ -88,17 +99,13 @@ const flattenMenuItems = (items: MenuItem[], level: number = 0, parentId?: numbe
       description: `Order: ${item.order}`,
       level,
       hasChildren: item.children && item.children.length > 0,
-      parentId
+      parentId: parentId ?? undefined
     }
-    
     result.push(linkItem)
-    
-    // Add children if item is expanded
     if (item.children && item.children.length > 0 && expandedItems.value.has(item.id)) {
       result.push(...flattenMenuItems(item.children, level + 1, item.id))
     }
   })
-  
   return result
 }
 
@@ -186,14 +193,24 @@ const onDrop = async (event: DragEvent, targetIndex: number) => {
       
       console.log('Reordered links:', links)
       
-      // Save new order to backend (new API)
+      // Save new order to backend - chỉ gọi API cho item được kéo thả
       try {
-        // Gọi API mới cho từng item bị reorder
-        for (let i = 0; i < links.length; i++) {
-          const link = links[i]
-          // menuId: menuId, newParentId: null (chưa hỗ trợ drag vào nhóm), newSortOrder: i
-          await linksService.reorderMenuItemsV2(Number(menuId), null, i)
-        }
+        // Tìm parentId của item được kéo thả
+        const parentId = draggedLink.parentId ?? null
+        
+        // Tìm vị trí mới của item trong nhóm cha (sortOrder trong cha)
+        // Lọc các item cùng parentId và tìm vị trí của item được kéo thả
+        const siblings = links.filter(l => (l.parentId ?? null) === parentId)
+        const newSortOrder = siblings.findIndex(l => l.id === draggedLink.id)
+        
+        console.log('Calling reorder API with:', {
+          menuId: menuIdNumber,
+          itemId: draggedLink.id,
+          parentId,
+          newSortOrder
+        })
+        
+        await linksService.reorderMenuItemsV2(menuIdNumber, draggedLink.id, parentId, newSortOrder)
         console.log('Successfully saved new order to API')
       } catch (error) {
         console.error('Error saving new order:', error)
