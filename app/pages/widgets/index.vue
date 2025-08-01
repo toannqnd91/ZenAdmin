@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useWidgets } from '@/composables/useWidgets'
+import type { WidgetInstance } from '@/composables/useWidgets'
 import WidgetsTable from '@/components/widgets/WidgetsTable.vue'
 
 const {
@@ -30,7 +31,7 @@ const widgetTypes = [
   { label: 'SpaceBar Widget', value: 'spacebar' }
 ]
 
-const widgetTypeMenu = widgetTypes.map(type => {
+const widgetTypeMenu = widgetTypes.map((type) => {
   let page = ''
   switch (type.value) {
     case 'carousel':
@@ -69,15 +70,25 @@ const widgetTypeMenu = widgetTypes.map(type => {
   }
 })
 
-function getRowItems(row: any) {
-  return [
-    { type: 'label', label: 'Actions' },
-    { label: 'Edit', icon: 'i-lucide-edit', onSelect: () => navigateTo(`/widgets/${row.original.id}/edit`) },
-    { type: 'separator' },
-    { label: 'Delete', icon: 'i-lucide-trash', color: 'error', onSelect: () => deleteWidget(row.original.id) }
-  ]
+// Function to normalize widget type for URL
+function normalizeWidgetType(widgetType: string): string {
+  return widgetType
+    .toLowerCase()
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/[^a-z0-9-]/g, '') // Remove special characters except hyphens
 }
 
+function getRowItems(row: { original: WidgetInstance }) {
+  const widget = row.original
+  const normalizedType = normalizeWidgetType(widget.widgetType)
+  
+  return [
+    { type: 'label', label: 'Actions' },
+    { label: 'Edit', icon: 'i-lucide-edit', onSelect: () => navigateTo(`/widgets/${widget.id}/${normalizedType}`) },
+    { type: 'separator' },
+    { label: 'Delete', icon: 'i-lucide-trash', color: 'error', onSelect: () => deleteWidget(widget.id) }
+  ]
+}
 
 onMounted(fetchWidgets)
 </script>
@@ -102,7 +113,6 @@ onMounted(fetchWidgets)
             />
           </UDropdownMenu>
         </template>
-
       </UDashboardNavbar>
     </template>
     <template #body>

@@ -47,6 +47,23 @@ export interface CreateCarouselWidgetRequest {
   items: CarouselWidgetItem[]
 }
 
+export interface CarouselWidgetData {
+  items: CarouselWidgetItem[]
+  id: number
+  name: string
+  widgetZoneId: number
+  publishStart: string
+  publishEnd: string
+  displayOrder: number
+}
+
+export interface CarouselWidgetResponse {
+  code: string
+  success: boolean
+  message: string
+  data: CarouselWidgetData
+}
+
 export interface CreateWidgetApiResponse {
   code: string
   success: boolean
@@ -74,6 +91,13 @@ export class WidgetsService extends BaseService {
    */
   async createCarouselWidget(data: CreateCarouselWidgetRequest) {
     return this.post<CreateWidgetApiResponse>('/widgets/carousel-widgets', data)
+  }
+
+  /**
+   * Get carousel widget by ID
+   */
+  async getCarouselWidget(id: number): Promise<ApiResponse<CarouselWidgetData>> {
+    return this.get<CarouselWidgetData>(`/widgets/${id}/carousel-widgets`)
   }
 
   // You can add more CRUD methods here as needed
