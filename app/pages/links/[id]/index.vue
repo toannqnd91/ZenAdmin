@@ -283,25 +283,25 @@ const onDragEnd = async (event: SortableEvent) => {
 
           <!-- Links Table -->
           <div class="overflow-hidden">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <table class="min-w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
               <thead class="bg-gray-100 dark:bg-gray-800">
                 <tr>
-                  <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider" style="width: 5%">
+                  <th class="col-drag px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
                     <!-- Drag handle column -->
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider" style="width: 35%">
+                  <th class="col-name px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
                     Tên liên kết
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider" style="width: 45%">
+                  <th class="col-url px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
                     URL
                   </th>
-                  <th class="px-6 py-3 text-right text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider" style="width: 15%">
+                  <th class="col-action px-6 py-3 text-right text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
                     Action
                   </th>
                 </tr>
               </thead>
-              <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                <tr v-if="!menuResponse || !currentLinks.length" class="hover:bg-gray-50 dark:hover:bg-gray-800">
+              <tbody v-if="!menuResponse || !currentLinks.length" class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                   <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                     <template v-if="!menuResponse">
                       Không có dữ liệu
@@ -311,117 +311,118 @@ const onDragEnd = async (event: SortableEvent) => {
                     </template>
                   </td>
                 </tr>
-                <VueDraggable
-                  v-else
-                  v-model="currentLinks"
-                  tag="tbody"
-                  handle=".drag-handle"
-                  ghost-class="ghost"
-                  chosen-class="chosen"
-                  drag-class="drag"
-                  :animation="300"
-                  easing="cubic-bezier(1, 0, 0, 1)"
-                  @start="onDragStart"
-                  @end="onDragEnd"
-                >
-                  <tr
-                    v-for="link in currentLinks"
-                    :key="link.id"
-                    class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200"
-                    :class="{ 'opacity-60': isDragging }"
-                  >
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" style="width: 5%">
-                      <div class="drag-handle cursor-move">
-                        <svg
-                          class="w-4 h-4 text-gray-400 hover:text-gray-600 transition-colors"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                          <path d="M6 6a2 2 0 110-4 2 2 0 010 4zM6 12a2 2 0 110-4 2 2 0 010 4zM6 18a2 2 0 110-4 2 2 0 010 4z" />
-                          <path d="M14 6a2 2 0 110-4 2 2 0 010 4zM14 12a2 2 0 110-4 2 2 0 010 4zM14 18a2 2 0 110-4 2 2 0 010 4z" />
-                        </svg>
-                      </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium" style="width: 35%">
-                      <div class="flex items-center">
-                        <!-- Container with indentation for hierarchy and negative margin for parent items -->
-                        <div
-                          class="flex items-center"
-                          :style="{
-                            paddingLeft: `${link.level * 20}px`,
-                            marginLeft: link.hasChildren ? '-30px' : '0px'
-                          }"
-                        >
-                          <!-- Expand/Collapse button for items with children -->
-                          <button
-                            v-if="link.hasChildren"
-                            class="mr-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                            @click="toggleExpand(link.id)"
-                          >
-                            <svg
-                              class="w-4 h-4 text-gray-500 transition-transform"
-                              :class="{ 'rotate-90': expandedItems.has(link.id) }"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                            </svg>
-                          </button>
-                          
-                          <!-- Text name with hierarchy indentation -->
-                          <span>{{ link.name }}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-primary-600 dark:text-primary-400 font-mono" style="width: 45%">
-                      {{ link.url }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" style="width: 15%">
-                      <div class="flex items-center space-x-2 justify-end">
-                        <button
-                          title="Chỉnh sửa"
-                          class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                          @click="editLink(link)"
-                        >
-                          <svg
-                            class="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                            />
-                          </svg>
-                        </button>
-                        <button
-                          title="Xóa"
-                          class="text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-                          @click="deleteLink(link)"
-                        >
-                          <svg
-                            class="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                </VueDraggable>
               </tbody>
+              <VueDraggable
+                v-else
+                v-model="currentLinks"
+                tag="tbody"
+                handle=".drag-handle"
+                ghost-class="ghost"
+                chosen-class="chosen"
+                drag-class="drag"
+                :animation="300"
+                easing="cubic-bezier(1, 0, 0, 1)"
+                class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700"
+                @start="onDragStart"
+                @end="onDragEnd"
+              >
+                <tr
+                  v-for="link in currentLinks"
+                  :key="link.id"
+                  class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200"
+                  :class="{ 'opacity-60': isDragging }"
+                >
+                  <td class="col-drag px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div class="drag-handle cursor-move">
+                      <svg
+                        class="w-4 h-4 text-gray-400 hover:text-gray-600 transition-colors"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                        <path d="M6 6a2 2 0 110-4 2 2 0 010 4zM6 12a2 2 0 110-4 2 2 0 010 4zM6 18a2 2 0 110-4 2 2 0 010 4z" />
+                        <path d="M14 6a2 2 0 110-4 2 2 0 010 4zM14 12a2 2 0 110-4 2 2 0 010 4zM14 18a2 2 0 110-4 2 2 0 010 4z" />
+                      </svg>
+                    </div>
+                  </td>
+                  <td class="col-name px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium">
+                    <div class="flex items-center">
+                      <!-- Container with indentation for hierarchy and negative margin for parent items -->
+                      <div
+                        class="flex items-center"
+                        :style="{
+                          paddingLeft: `${link.level * 20}px`,
+                          marginLeft: link.hasChildren ? '-30px' : '0px'
+                        }"
+                      >
+                        <!-- Expand/Collapse button for items with children -->
+                        <button
+                          v-if="link.hasChildren"
+                          class="mr-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                          @click="toggleExpand(link.id)"
+                        >
+                          <svg
+                            class="w-4 h-4 text-gray-500 transition-transform"
+                            :class="{ 'rotate-90': expandedItems.has(link.id) }"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                          </svg>
+                        </button>
+                        
+                        <!-- Text name with hierarchy indentation -->
+                        <span>{{ link.name }}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="col-url px-6 py-4 whitespace-nowrap text-sm text-primary-600 dark:text-primary-400 font-mono">
+                    {{ link.url }}
+                  </td>
+                  <td class="col-action px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div class="flex items-center space-x-2 justify-end">
+                      <button
+                        title="Chỉnh sửa"
+                        class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                        @click="editLink(link)"
+                      >
+                        <svg
+                          class="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        title="Xóa"
+                        class="text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                        @click="deleteLink(link)"
+                      >
+                        <svg
+                          class="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </VueDraggable>
             </table>
             
             <!-- Add new link button -->
@@ -454,6 +455,23 @@ const onDragEnd = async (event: SortableEvent) => {
 </template>
 
 <style scoped>
+/* Table column widths */
+.col-drag {
+  width: 5%;
+}
+
+.col-name {
+  width: 35%;
+}
+
+.col-url {
+  width: 45%;
+}
+
+.col-action {
+  width: 15%;
+}
+
 .drag-handle:hover {
   cursor: grab;
 }
