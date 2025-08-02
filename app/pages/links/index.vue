@@ -10,7 +10,7 @@ definePageMeta({
 const { data: menuResponse } = await useAsyncData('links', async () => {
   const response = await linksService.getLinks()
   return response
-})
+}, { server: false })
 
 // Transform API data to display format
 const menuItems = computed(() => {

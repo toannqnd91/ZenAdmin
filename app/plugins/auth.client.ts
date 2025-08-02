@@ -24,7 +24,8 @@ export default defineNuxtPlugin(async () => {
           // Token is expired, try to refresh
           console.log('Access token expired, attempting refresh...')
           
-          const response = await fetch('https://demo.cokhitamlong.vn/api/v1/Identity/refresh', {
+          const { API_ENDPOINTS } = await import('@/utils/api')
+          const response = await fetch(API_ENDPOINTS.refreshToken, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'

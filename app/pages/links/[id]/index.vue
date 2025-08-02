@@ -61,7 +61,7 @@ useHead({
 const { data: menuResponse, refresh: refreshMenuData } = await useAsyncData(`menu-${menuId}`, async () => {
   const response = await linksService.getMenuCategories(menuId)
   return response
-})
+}, { server: false })
 
 // Transform API data to display format with children support
 interface LinkItem {

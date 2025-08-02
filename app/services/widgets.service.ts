@@ -97,7 +97,7 @@ export class WidgetsService extends BaseService {
    * Get carousel widget by ID
    */
   async getCarouselWidget(id: number): Promise<ApiResponse<CarouselWidgetData>> {
-    return this.get<CarouselWidgetData>(`/widgets/${id}/carousel-widgets`)
+    return this.get<CarouselWidgetData>(`/CarouselWidget/${id}`)
   }
 
   // You can add more CRUD methods here as needed

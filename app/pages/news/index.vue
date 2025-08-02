@@ -13,7 +13,7 @@ const {
   createNews,
   updateNews,
   deleteNews
-} = useNewsService()
+} = await useNewsService()
 
 // For compatibility with existing NewsTable component
 // Transform service data to match NewsTable expected format

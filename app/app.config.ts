@@ -15,7 +15,7 @@ export default defineAppConfig({
     team: {
       label: 'Cơ Khí Tam Long',
       avatar: {
-        src: 'https://demo.cokhitamlong.vn/images/logo.png',
+        src: 'https://localhost:62939/images/logo.png',
         alt: 'Cơ Khí Tam Long'
       }
     }

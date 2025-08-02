@@ -1,18 +1,13 @@
 import type { ApiResponse, ApiRequestBody } from '@/types/common'
 import { httpInterceptor } from '@/utils/http-interceptor'
-import { getApiBaseUrl } from '@/utils/api'
+import { API_BASE_URL } from '@/utils/api'
 
 export abstract class BaseService {
   protected baseURL: string
 
   constructor(baseURL?: string) {
-    // Use runtime config API base URL if available, otherwise fallback to provided URL or default
-    try {
-      this.baseURL = baseURL || getApiBaseUrl()
-    } catch {
-      // Fallback for server-side or when runtime config is not available
-      this.baseURL = baseURL || process.env.NUXT_PUBLIC_API_BASE_URL || 'https://demo.cokhitamlong.vn/api/v1'
-    }
+    // Use the API_BASE_URL constant which has a fallback value
+    this.baseURL = baseURL || API_BASE_URL
   }
 
   protected async request<T>(

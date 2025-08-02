@@ -5,11 +5,14 @@ export const getApiBaseUrl = () => {
 }
 
 // Fallback API base URL for server-side or when runtime config is not available
-export const API_BASE_URL = process.env.NUXT_PUBLIC_API_BASE_URL || 'https://demo.cokhitamlong.vn/api/v1'
+
+export const IMAGE_BASE_URL = process.env.NUXT_PUBLIC_IMAGE_BASE_URL || 'https://localhost:62939'
+export const API_BASE_URL = process.env.NUXT_PUBLIC_API_BASE_URL || 'https://localhost:62939/api/v1'
 
 export const API_ENDPOINTS = {
   dashboardMenu: `${API_BASE_URL}/DashboardMenu`,
   login: `${API_BASE_URL}/Identity/login`,
+  refreshToken: `${API_BASE_URL}/Identity/refresh`,
   newsCategories: `${API_BASE_URL}/NewsCategories`,
   news: `${API_BASE_URL}/News`,
   productCategories: `${API_BASE_URL}/ProductCategories`,

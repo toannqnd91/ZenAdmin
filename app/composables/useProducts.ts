@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { useApiFetch } from '@/composables/useApiFetch'
-import { API_ENDPOINTS } from '@/utils/api'
+import { API_ENDPOINTS, IMAGE_BASE_URL } from '@/utils/api'
 import type { Row } from '@tanstack/table-core'
 import { getPaginationRowModel } from '@tanstack/table-core'
 
@@ -80,7 +80,7 @@ export const useProducts = () => {
 
   function getFirstImageUrl(imageUrls: string[]): string | undefined {
     if (!imageUrls || imageUrls.length === 0) return undefined
-    return `https://demo.cokhitamlong.vn/image/${imageUrls[0]}`
+    return `${IMAGE_BASE_URL}/image/${imageUrls[0]}`
   }
 
   function getRowItems(row: Row<ProductItem>) {

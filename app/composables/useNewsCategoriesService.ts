@@ -4,7 +4,7 @@ import { API_ENDPOINTS } from '@/utils/api'
 import type { NewsCategoriesApiResponse, NewsCategory } from '@/types/newsCategory'
 import type { Row } from '@tanstack/table-core'
 
-export const useNewsCategoriesService = async () => {
+export const useNewsCategoriesService = () => {
   const toast = useToast()
   const { accessToken } = useAuthService()
   
@@ -38,9 +38,10 @@ export const useNewsCategoriesService = async () => {
   console.log('[useNewsCategoriesService] Fetching with token:', accessToken.value ? 'Token available' : 'No token')
 
   // Fetch data
-  const { data, pending: loading, error } = await useApiFetch<NewsCategoriesApiResponse>(API_ENDPOINTS.newsCategories, {
+  const { data, pending: loading, error } = useApiFetch<NewsCategoriesApiResponse>(API_ENDPOINTS.newsCategories, {
     method: 'POST',
-    body
+    body,
+    server: false
   })
 
   // Computed
