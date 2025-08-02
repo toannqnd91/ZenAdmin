@@ -95,7 +95,7 @@ export class HttpInterceptor {
       throw new Error('No refresh token available')
     }
 
-    const response = await fetch(`https://dongtrunghathaophunhan.vn/api/v1/Identity/refresh`, {
+    const response = await fetch(`https://demo.cokhitamlong.vn/api/v1/Identity/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8'

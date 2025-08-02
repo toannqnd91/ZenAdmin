@@ -4,7 +4,7 @@ definePageMeta({
 })
 
 useHead({
-  title: 'Thêm sản phẩm mới - Đông Trùng Hạ Thảo Phú Nhân'
+  title: 'Thêm sản phẩm mới - Cơ Khí Tam Long'
 })
 
 const {

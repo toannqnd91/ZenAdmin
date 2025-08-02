@@ -4,7 +4,7 @@ definePageMeta({
 })
 
 useHead({
-  title: 'Thêm tin tức mới - Đông Trùng Hạ Thảo Phú Nhân'
+  title: 'Thêm tin tức mới - Cơ Khí Tam Long'
 })
 
 // Use the news form composable

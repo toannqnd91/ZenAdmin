@@ -4,7 +4,7 @@ import ScholarshipsList from '~/components/ScholarshipsList.vue'
 
 const { isNotificationsSlideoverOpen } = useDashboard()
 
-const { data: scholarshipsResponse } = await useApiFetch<ApiResponse>('https://dongtrunghathaophunhan.vn/api/v1/scholarships', {
+const { data: scholarshipsResponse } = await useApiFetch<ApiResponse>('https://demo.cokhitamlong.vn/api/v1/scholarships', {
   default: () => ({ code: '', success: false, message: '', data: [] })
 })
 

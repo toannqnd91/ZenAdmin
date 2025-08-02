@@ -9,14 +9,14 @@ export default defineAppConfig({
     preference: 'dark'
   },
   settings: {
-    title: 'Đông Trùng Hạ Thảo Phú Nhân',
-    description: 'Đông Trùng Hạ Thảo Phú Nhân - Sản phẩm đông trùng hạ thảo chất lượng cao, hỗ trợ sức khỏe và tăng cường sinh lực.',
+    title: 'Cơ Khí Tam Long',
+    description: 'Cơ Khí Tam Long - Nơi cung cấp các sản phẩm cơ khí chất lượng cao',
     favicon: '/favicon.png',
     team: {
-      label: 'Phú Nhân',
+      label: 'Cơ Khí Tam Long',
       avatar: {
-        src: 'https://dongtrunghathaophunhan.vn/images/phunhan-icon.png',
-        alt: 'Phú Nhân'
+        src: 'https://demo.cokhitamlong.vn/images/logo.png',
+        alt: 'Cơ Khí Tam Long'
       }
     }
   }

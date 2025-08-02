@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { newsService, fileService } from '@/services'
 import type { NewsFormData } from '@/services/news.service'
 
@@ -9,7 +9,7 @@ interface FormErrors {
   categoryIds?: string
 }
 
-export const useNewsForm = async (newsId?: number) => {
+export const useNewsForm = (newsId?: number) => {
   // Form data
   const formData = ref<NewsFormData>({
     title: '',
@@ -59,7 +59,7 @@ export const useNewsForm = async (newsId?: number) => {
   const searchTerm = ref('')
 
   // Fetch categories
-  const { data: categoriesResponse } = await useAsyncData('news-categories', async () => {
+  const { data: categoriesResponse } = useAsyncData('news-categories', async () => {
     const response = await newsService.getCategories()
     return response
   })
@@ -101,7 +101,7 @@ export const useNewsForm = async (newsId?: number) => {
   // Image upload handling
   const isUploadingImage = ref(false)
   const imageFile = ref<File | null>(null)
-  const imagePreview = ref<string>('')
+  const imagePreview = ref<string | null>('')
   const originalImageUrl = ref<string>('')
   const fileInput = ref<HTMLInputElement>()
 
@@ -172,10 +172,11 @@ export const useNewsForm = async (newsId?: number) => {
   }
 
   const restoreOriginalImage = () => {
-    if (originalImageUrl.value) {
+    const imageUrl = originalImageUrl.value
+    if (imageUrl && imageUrl.trim()) {
       imageFile.value = null
-      imagePreview.value = fileService.getFileUrl(originalImageUrl.value)
-      formData.value.imageUrl = originalImageUrl.value
+      imagePreview.value = fileService.getFileUrl(imageUrl)
+      formData.value.imageUrl = imageUrl
     }
   }
 
@@ -272,7 +273,10 @@ export const useNewsForm = async (newsId?: number) => {
 
   // Load data on init if editing
   if (newsId) {
-    await loadNewsData()
+    // Load data asynchronously without blocking composable initialization
+    onMounted(async () => {
+      await loadNewsData()
+    })
   }
 
   return {

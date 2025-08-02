@@ -7,7 +7,7 @@ const route = useRoute()
 const newsId = parseInt(route.params.id as string)
 
 useHead({
-  title: 'Chỉnh sửa tin tức - Đông Trùng Hạ Thảo Phú Nhân'
+  title: 'Chỉnh sửa tin tức - Cơ Khí Tam Long'
 })
 
 // Use the news form composable with newsId for edit mode
@@ -48,7 +48,7 @@ const {
   
   // Computed
   isEditMode
-} = await useNewsForm(newsId)
+} = useNewsForm(newsId)
 
 // Cancel and go back
 const cancel = () => {

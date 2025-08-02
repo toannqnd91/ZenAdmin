@@ -80,7 +80,7 @@ export const useProducts = () => {
 
   function getFirstImageUrl(imageUrls: string[]): string | undefined {
     if (!imageUrls || imageUrls.length === 0) return undefined
-    return `https://dongtrunghathaophunhan.vn/image/${imageUrls[0]}`
+    return `https://demo.cokhitamlong.vn/image/${imageUrls[0]}`
   }
 
   function getRowItems(row: Row<ProductItem>) {

@@ -11,7 +11,7 @@ export abstract class BaseService {
       this.baseURL = baseURL || getApiBaseUrl()
     } catch {
       // Fallback for server-side or when runtime config is not available
-      this.baseURL = baseURL || process.env.NUXT_PUBLIC_API_BASE_URL || 'https://dongtrunghathaophunhan.vn/api/v1'
+      this.baseURL = baseURL || process.env.NUXT_PUBLIC_API_BASE_URL || 'https://demo.cokhitamlong.vn/api/v1'
     }
   }
 

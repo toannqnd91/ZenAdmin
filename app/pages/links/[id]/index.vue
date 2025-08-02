@@ -54,7 +54,7 @@ if (!currentMenu.value) {
 }
 
 useHead({
-  title: `${currentMenu.value.title} - Đông Trùng Hạ Thảo Phú Nhân`
+  title: `${currentMenu.value.title} - Cơ Khí Tam Long`
 })
 
 // Fetch menu data from API

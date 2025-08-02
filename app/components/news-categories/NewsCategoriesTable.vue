@@ -2,6 +2,7 @@
 import { h } from 'vue'
 import type { TableColumn } from '@nuxt/ui'
 import type { NewsCategory } from '@/types/newsCategory'
+import { fileService } from '@/services'
 import type { Row } from '@tanstack/table-core'
 
 interface Props {
@@ -65,7 +66,7 @@ const columns: TableColumn<NewsCategory>[] = [
           class: 'w-12 h-12 bg-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden'
         }, [
           h('img', {
-            src: row.original.imageUrl || '/no-image.svg',
+            src: fileService.getFileUrl(row.original.imageUrl) || '/no-image.svg',
             alt: row.original.name,
             class: 'w-full h-full object-cover',
             style: 'min-width: 100%; min-height: 100%;'
