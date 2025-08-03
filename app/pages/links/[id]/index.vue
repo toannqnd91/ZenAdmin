@@ -339,9 +339,12 @@ const onDragEnd = async (event: SortableEvent) => {
                         fill="currentColor"
                         viewBox="0 0 20 20"
                       >
-                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                        <path d="M6 6a2 2 0 110-4 2 2 0 010 4zM6 12a2 2 0 110-4 2 2 0 010 4zM6 18a2 2 0 110-4 2 2 0 010 4z" />
-                        <path d="M14 6a2 2 0 110-4 2 2 0 010 4zM14 12a2 2 0 110-4 2 2 0 010 4zM14 18a2 2 0 110-4 2 2 0 010 4z" />
+                        <circle cx="5" cy="5" r="2" />
+                        <circle cx="5" cy="10" r="2" />
+                        <circle cx="5" cy="15" r="2" />
+                        <circle cx="10" cy="5" r="2" />
+                        <circle cx="10" cy="10" r="2" />
+                        <circle cx="10" cy="15" r="2" />
                       </svg>
                     </div>
                   </td>
