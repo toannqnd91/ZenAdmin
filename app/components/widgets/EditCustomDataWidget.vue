@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { widgetsService } from '@/services/widgets.service'
+import { widgetsService, type WidgetZone } from '@/services/widgets.service'
 
 const router = useRouter()
 const route = useRoute()
@@ -10,29 +10,65 @@ const widgetId = route.params.id as string
 const widgetType = route.params.widgetType as string
 
 const name = ref('')
-const widgetZoneId = ref(1)
+const widgetZone = ref<string | undefined>(undefined)
 const publishStart = ref('')
 const publishEnd = ref('')
 const displayOrder = ref(0)
+const isSubmitting = ref(false)
+const isLoading = ref(true)
+const widgetZones = ref<WidgetZone[]>([])
+const widgetZoneItems = ref<string[]>([])
 const items = ref([
   { caption: '', subCaption: '', imageUrl: '', linkText: '', targetUrl: '', sortOrder: 0 }
 ])
-const isSubmitting = ref(false)
+
+// Helper function to convert ISO string to yyyy-MM-dd HH:mm format
+function formatDateTimeForInput(isoString: string): string {
+  if (!isoString) return ''
+  
+  try {
+    const date = new Date(isoString)
+    const year = date.getFullYear()
+    const month = (date.getMonth() + 1).toString().padStart(2, '0')
+    const day = date.getDate().toString().padStart(2, '0')
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}`
+  } catch {
+    return ''
+  }
+}
 
 async function fetchWidget() {
   try {
+    isLoading.value = true
+    
+    // Load widget zones
+    const zonesResponse = await widgetsService.getWidgetZones()
+    if (zonesResponse.success && zonesResponse.data) {
+      widgetZones.value = zonesResponse.data
+      widgetZoneItems.value = zonesResponse.data.map((zone: WidgetZone) => zone.name)
+    }
+    
+    // Load widget data
     const response = await widgetsService.getCustomDataWidget(Number(widgetId))
     if (response.success && response.data) {
       const data = response.data
       name.value = data.name
-      widgetZoneId.value = data.widgetZoneId
-      publishStart.value = data.publishStart?.slice(0, 16).replace('T', ' ') || ''
-      publishEnd.value = data.publishEnd?.slice(0, 16).replace('T', ' ') || ''
+      publishStart.value = formatDateTimeForInput(data.publishStart)
+      publishEnd.value = formatDateTimeForInput(data.publishEnd)
       displayOrder.value = data.displayOrder
       items.value = data.items || []
+      
+      // Find widget zone name by ID
+      const selectedZone = widgetZones.value.find(zone => zone.id === data.widgetZoneId)
+      widgetZone.value = selectedZone?.name
     }
   } catch (e) {
     alert('Không lấy được dữ liệu widget!')
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -45,7 +81,7 @@ async function onUpdate() {
     const payload = {
       id: Number(widgetId),
       name: name.value,
-      widgetZoneId: widgetZoneId.value,
+      widgetZoneId: widgetZones.value.find(z => z.name === widgetZone.value)?.id || 1,
       publishStart: publishStart.value ? new Date(publishStart.value.replace(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/, '$1-$2-$3T$4:$5:00')).toISOString() : '',
       publishEnd: publishEnd.value ? new Date(publishEnd.value.replace(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/, '$1-$2-$3T$4:$5:00')).toISOString() : '',
       displayOrder: displayOrder.value,
@@ -72,7 +108,13 @@ function onCancel() {
 
 <template>
   <div class="p-6 w-full">
-    <form class="space-y-6" @submit.prevent="onUpdate">
+    <div v-if="isLoading" class="text-center py-8">
+      <UIcon name="i-lucide-loader-2" class="animate-spin text-4xl text-primary mb-4" />
+      <p class="text-gray-600">
+        Loading widget data...
+      </p>
+    </div>
+    <form v-else class="space-y-6" @submit.prevent="onUpdate">
       <div class="text-3xl font-light mb-8">Edit Custom Data Widget</div>
       <div class="grid grid-cols-12 gap-4 items-center mb-2">
         <label class="col-span-2 text-right pr-2">Widget ID</label>
@@ -87,9 +129,14 @@ function onCancel() {
         </div>
       </div>
       <div class="grid grid-cols-12 gap-4 items-center mb-2">
-        <label class="col-span-2 text-right pr-2">Widget Zone ID</label>
+        <label class="col-span-2 text-right pr-2">Widget Zone</label>
         <div class="col-span-10 w-full">
-          <UInput v-model="widgetZoneId" type="number" min="1" class="w-full" />
+          <USelect
+            v-model="widgetZone"
+            :items="widgetZoneItems"
+            placeholder="Select widget zone"
+            class="w-full"
+          />
         </div>
       </div>
       <div class="grid grid-cols-12 gap-4 items-center mb-2">
