@@ -1,4 +1,3 @@
-
 import { BaseService } from './base.service'
 import type { ApiResponse } from '@/types/common'
 
@@ -111,6 +110,20 @@ export class WidgetsService extends BaseService {
    */
   async getCarouselWidget(id: number): Promise<ApiResponse<CarouselWidgetData>> {
     return this.get<CarouselWidgetData>(`/CarouselWidget/${id}`)
+  }
+
+  /**
+   * Get custom data widget by ID
+   */
+  async getCustomDataWidget(id: number) {
+    return this.get(`/custom-data-widgets/${id}`)
+  }
+
+  /**
+   * Update custom data widget by ID
+   */
+  async updateCustomDataWidget(id: number, data: any) {
+    return this.put(`/custom-data-widgets/${id}`, data)
   }
 
   // You can add more CRUD methods here as needed

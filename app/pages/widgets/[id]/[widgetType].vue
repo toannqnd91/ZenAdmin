@@ -2,6 +2,7 @@
 import EditCarouselWidget from '@/components/widgets/EditCarouselWidget.vue'
 import EditCategoryWidget from '@/components/widgets/EditCategoryWidget.vue'
 import EditHtmlWidget from '@/components/widgets/EditHtmlWidget.vue'
+import EditCustomDataWidget from '@/components/widgets/EditCustomDataWidget.vue'
 
 const route = useRoute()
 
