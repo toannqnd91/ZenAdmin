@@ -1,35 +1,99 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { widgetsService } from '~/services/widgets.service'
+import type { WidgetZone } from '~/services/widgets.service'
+
+interface NewsItem {
+  id: number
+  name: string
+  isPublished: boolean
+  selected: boolean
+}
+
+interface FormData {
+  widgetName: string
+  widgetZone: string
+  publishStart: string
+  publishEnd: string
+  displayOrder: string
+}
 
 const router = useRouter()
 
 const widgetName = ref('')
-const widgetZone = ref('Home Main Content')
+const widgetZone = ref<string | undefined>(undefined)
+const widgetZones = ref<WidgetZone[]>([])
+const widgetZoneItems = ref<string[]>([])
 const publishStart = ref('')
 const publishEnd = ref('')
 const displayOrder = ref('0')
-const products = ref([])
+const products = ref<NewsItem[]>([])
+const isNewsModalOpen = ref(false)
 
-const widgetZoneOptions = [
-  { label: 'Home Main Content', value: 'Home Main Content' },
-  { label: 'Home Featured', value: 'Home Featured' },
-  { label: 'Home Banner', value: 'Home Banner' },
-  { label: 'Home Bottom', value: 'Home Bottom' }
-]
+const formData = reactive<FormData>({
+  widgetName: '',
+  widgetZone: 'Home Main Content',
+  publishStart: '',
+  publishEnd: '',
+  displayOrder: '0'
+})
+
+const allNews = ref<NewsItem[]>([
+  { id: 1, name: 'Tin tức 1', isPublished: true, selected: false },
+  { id: 2, name: 'Tin tức 2', isPublished: false, selected: false },
+  { id: 3, name: 'Tin tức 3', isPublished: true, selected: false },
+  { id: 4, name: 'Tin tức 4', isPublished: true, selected: false },
+  { id: 5, name: 'Tin tức 5', isPublished: false, selected: false }
+])
+
+onMounted(async () => {
+  try {
+    const response = await widgetsService.getWidgetZones()
+    if (response.success && response.data) {
+      widgetZones.value = response.data
+      widgetZoneItems.value = response.data.map((zone: WidgetZone) => zone.name)
+      if (response.data.length > 0) {
+        widgetZone.value = response.data[0]?.name || undefined
+      }
+    } else {
+      console.error('Failed to load widget zones:', response.message)
+    }
+  } catch (error) {
+    console.error('Error loading widget zones:', error)
+  }
+})
 
 function onSave() {
   // TODO: submit logic
   alert('Saved!')
 }
+
 function onCancel() {
   router.back()
 }
+
 function manageNews() {
-  // TODO: open modal/select news
-  alert('Open news manager!')
+  // Sync selected state with current products
+  allNews.value.forEach((news) => {
+    news.selected = products.value.some(p => p.id === news.id)
+  })
+  isNewsModalOpen.value = true
+}
+
+function confirmNewsSelection() {
+  // Update products with selected news
+  products.value = allNews.value.filter(news => news.selected).map(news => ({
+    id: news.id,
+    name: news.name,
+    isPublished: news.isPublished,
+    selected: news.selected
+  }))
+  isNewsModalOpen.value = false
 }
 </script>
+
 <template>
   <UDashboardPanel class="flex flex-col h-full">
     <template #header>
@@ -41,8 +105,14 @@ function manageNews() {
     </template>
     <template #body>
       <UCard class="w-full mt-6">
-        <UForm @submit="onSave" class="space-y-6">
-          <div class="text-3xl font-light mb-8">Create Simple News Widget</div>
+        <UForm
+          :state="formData"
+          class="space-y-6"
+          @submit="onSave"
+        >
+          <div class="text-3xl font-light mb-8">
+            Create Simple News Widget
+          </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Widget Name</label>
             <div class="col-span-10 w-full">
@@ -52,7 +122,12 @@ function manageNews() {
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Widget Zone</label>
             <div class="col-span-10 w-full">
-              <USelect v-model="widgetZone" :options="widgetZoneOptions" class="w-full" />
+              <USelect
+                v-model="widgetZone"
+                :items="widgetZoneItems"
+                placeholder="Select widget zone"
+                class="w-full"
+              />
             </div>
           </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
@@ -70,13 +145,21 @@ function manageNews() {
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Display Order</label>
             <div class="col-span-10 w-full">
-              <UInput v-model="displayOrder" type="number" min="0" placeholder="0" class="w-full" />
+              <UInput
+                v-model="displayOrder"
+                type="number"
+                min="0"
+                placeholder="0"
+                class="w-full"
+              />
             </div>
           </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">News</label>
             <div class="col-span-10 w-full">
-              <UButton color="primary" variant="outline" @click="manageNews">Manage News</UButton>
+              <UButton color="primary" variant="outline" @click="manageNews">
+                Manage News
+              </UButton>
             </div>
           </div>
           <!-- Table -->
@@ -84,27 +167,89 @@ function manageNews() {
             <table class="min-w-full text-sm border-separate border-spacing-0">
               <thead>
                 <tr class="bg-gray-50">
-                  <th class="px-4 py-2 text-left font-semibold">Name</th>
-                  <th class="px-4 py-2 text-left font-semibold">Is Published</th>
+                  <th class="px-4 py-2 text-left font-semibold">
+                    Name
+                  </th>
+                  <th class="px-4 py-2 text-left font-semibold">
+                    Is Published
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="!products.length">
-                  <td colspan="2" class="px-4 py-2 text-gray-400">No products selected</td>
+                  <td colspan="2" class="px-4 py-2 text-gray-400">
+                    No news selected
+                  </td>
                 </tr>
                 <tr v-for="(prod, idx) in products" :key="idx">
-                  <td class="px-4 py-2">{{ prod.name }}</td>
-                  <td class="px-4 py-2">{{ prod.isPublished ? 'Yes' : 'No' }}</td>
+                  <td class="px-4 py-2">
+                    {{ prod.name }}
+                  </td>
+                  <td class="px-4 py-2">
+                    {{ prod.isPublished ? 'Yes' : 'No' }}
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div class="flex gap-2 mt-4">
-            <UButton icon="i-lucide-check" color="primary" type="submit">Save</UButton>
-            <UButton color="neutral" variant="soft" @click="onCancel">Cancel</UButton>
+            <UButton icon="i-lucide-check" color="primary" type="submit">
+              Save
+            </UButton>
+            <UButton color="neutral" variant="soft" @click="onCancel">
+              Cancel
+            </UButton>
           </div>
         </UForm>
       </UCard>
     </template>
   </UDashboardPanel>
+
+  <!-- News Selection Modal -->
+  <UModal
+    v-model:open="isNewsModalOpen"
+    title="Select News"
+    description="Choose news items for your widget"
+    :ui="{ footer: 'justify-end' }"
+  >
+    <template #body>
+      <div class="max-h-96 overflow-y-auto">
+        <div
+          v-for="news in allNews"
+          :key="news.id"
+          class="flex items-center space-x-3 py-2"
+        >
+          <input
+            v-model="news.selected"
+            type="checkbox"
+            class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+          >
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-900 dark:text-white">
+              {{ news.name }}
+            </p>
+            <p class="text-xs text-gray-500">
+              {{ news.isPublished ? 'Published' : 'Not Published' }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <template #footer="{ close }">
+      <UButton
+        color="neutral"
+        variant="outline"
+        @click="close"
+      >
+        Cancel
+      </UButton>
+      <UButton
+        color="primary"
+        @click="confirmNewsSelection"
+      >
+        Confirm Selection
+      </UButton>
+    </template>
+  </UModal>
 </template>
