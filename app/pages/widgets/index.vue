@@ -76,10 +76,24 @@ const widgetTypeMenu = widgetTypes.map((type) => {
 
 // Function to normalize widget type for URL
 function normalizeWidgetType(widgetType: string): string {
-  return widgetType
+  // Tách các từ viết hoa liền nhau thành dạng có dấu gạch ngang
+  const type = widgetType
+    .replace(/([a-z])([A-Z])/g, '$1-$2')
+    .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
     .toLowerCase()
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/[^a-z0-9-]/g, '') // Remove special characters except hyphens
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+  if (type.includes('custom-data')) return 'custom-data-widget'
+  if (type.includes('carousel')) return 'carousel-widget'
+  if (type.includes('category')) return 'category-widget'
+  if (type.includes('html')) return 'html-widget'
+  if (type.includes('product')) return 'product-widget'
+  if (type.includes('news')) return 'news-widget'
+  if (type.includes('recently-viewed')) return 'recently-viewed-widget'
+  if (type.includes('simple-product')) return 'simple-product-widget'
+  if (type.includes('simple-news')) return 'simple-news-widget'
+  if (type.includes('spacebar')) return 'spacebar-widget'
+  return type + '-widget'
 }
 
 function getRowItems(row: { original: WidgetInstance }) {

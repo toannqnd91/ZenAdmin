@@ -73,6 +73,12 @@ export interface CreateWidgetApiResponse {
 
 export class WidgetsService extends BaseService {
   /**
+   * Create custom data widget
+   */
+  async createCustomDataWidget(data: any) {
+    return this.post('/custom-data-widgets', data)
+  }
+  /**
    * Get all widgets
    */
   async getWidgets() {
@@ -91,6 +97,13 @@ export class WidgetsService extends BaseService {
    */
   async createCarouselWidget(data: CreateCarouselWidgetRequest) {
     return this.post<CreateWidgetApiResponse>('/widgets/carousel-widgets', data)
+  }
+
+  /**
+   * Update carousel widget by ID
+   */
+  async updateCarouselWidget(id: number, data: CreateCarouselWidgetRequest) {
+    return this.put<CreateWidgetApiResponse>(`/CarouselWidget/${id}`, data)
   }
 
   /**

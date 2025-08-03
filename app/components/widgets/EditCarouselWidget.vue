@@ -143,26 +143,46 @@ function removeImage(idx: number) {
 
 async function onUpdate() {
   if (isSubmitting.value) return
-  
+
   try {
     isSubmitting.value = true
-    
+
     // Validate required fields
     if (!widgetName.value.trim()) {
       alert('Widget Name is required')
       return
     }
-
     if (!widgetZone.value) {
       alert('Widget Zone is required')
       return
     }
 
-    // TODO: Call update API
-    console.log('Updating carousel widget:', widgetId)
-    
-    alert('Carousel widget updated successfully!')
-    router.push('/widgets')
+    // Chuẩn hóa dữ liệu items
+    const payload = {
+      id: widgetId,
+      name: widgetName.value,
+      widgetZoneId: widgetZones.value.find(z => z.name === widgetZone.value)?.id,
+      publishStart: publishStart.value ? new Date(publishStart.value.replace(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})/, '$3-$2-$1T$4:$5:00')).toISOString() : '',
+      publishEnd: publishEnd.value ? new Date(publishEnd.value.replace(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})/, '$3-$2-$1T$4:$5:00')).toISOString() : '',
+      displayOrder: displayOrder.value,
+      items: items.value.map((item, idx) => ({
+        imageUrl: item.imageUrl,
+        caption: item.caption,
+        subCaption: item.subCaption,
+        linkText: item.linkText,
+        targetUrl: item.linkUrl,
+        sortOrder: idx
+      }))
+    }
+
+    // Gọi API PUT
+    const response = await widgetsService.updateCarouselWidget(widgetId, payload)
+    if (response.success) {
+      alert('Carousel widget updated successfully!')
+      router.push('/widgets')
+    } else {
+      alert('Update failed: ' + (response.message || 'Unknown error'))
+    }
   } catch (error) {
     console.error('Error updating carousel widget:', error)
     alert('Failed to update carousel widget')

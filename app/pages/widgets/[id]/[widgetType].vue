@@ -19,7 +19,8 @@ const validWidgetTypes = [
   'recently-viewed-widget',
   'simple-product-widget',
   'simple-news-widget',
-  'spacebar-widget'
+  'spacebar-widget',
+  'custom-data-widget'
 ]
 
 if (!validWidgetTypes.includes(widgetType.toLowerCase())) {
@@ -45,9 +46,10 @@ if (!validWidgetTypes.includes(widgetType.toLowerCase())) {
           widgetType === 'carousel-widget' ? EditCarouselWidget :
           widgetType === 'category-widget' ? EditCategoryWidget :
           widgetType === 'html-widget' ? EditHtmlWidget :
+          widgetType === 'custom-data-widget' ? EditCustomDataWidget :
           null
         "
-        v-if="['carousel-widget','category-widget','html-widget'].includes(widgetType)"
+        v-if="['carousel-widget','category-widget','html-widget','custom-data-widget'].includes(widgetType)"
       />
       <div v-else class="w-full mt-6">
         <UCard class="w-full">
