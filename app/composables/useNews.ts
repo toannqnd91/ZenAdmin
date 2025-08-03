@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { useApiFetch } from '@/composables/useApiFetch'
-import { API_ENDPOINTS } from '@/utils/api'
+import { getApiEndpoints } from '@/utils/api'
 import type { Row } from '@tanstack/table-core'
 import { getPaginationRowModel } from '@tanstack/table-core'
 
@@ -59,7 +59,8 @@ export const useNews = () => {
     }
   }
 
-  const { data, pending: loading, error } = useApiFetch<NewsApiResponse>(API_ENDPOINTS.news, {
+  const endpoints = getApiEndpoints()
+  const { data, pending: loading, error } = useApiFetch<NewsApiResponse>(endpoints.news, {
     method: 'POST',
     body,
     default: () => ({ code: '', success: false, message: '', data: { items: [], totalRecord: 0, numberOfPages: 0 } })

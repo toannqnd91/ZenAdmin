@@ -1,21 +1,28 @@
-// Get API base URL from runtime config
+// Best practice: Sử dụng composable useApiConfig() trực tiếp
+// import { useApiConfig } from '@/composables/useApiConfig'
+
+// Backward compatibility exports (deprecated)
 export const getApiBaseUrl = () => {
-  const runtimeConfig = useRuntimeConfig()
-  return runtimeConfig.public.apiBaseUrl
+  const config = useRuntimeConfig()
+  return config.public.apiBaseUrl
 }
 
-// Fallback API base URL for server-side or when runtime config is not available
+export const getImageBaseUrl = () => {
+  const config = useRuntimeConfig()
+  return config.public.imageBaseUrl
+}
 
-export const IMAGE_BASE_URL = process.env.NUXT_PUBLIC_IMAGE_BASE_URL || 'https://localhost:62939'
-export const API_BASE_URL = process.env.NUXT_PUBLIC_API_BASE_URL || 'https://localhost:62939/api/v1'
-
-export const API_ENDPOINTS = {
-  dashboardMenu: `${API_BASE_URL}/DashboardMenu`,
-  login: `${API_BASE_URL}/Identity/login`,
-  refreshToken: `${API_BASE_URL}/Identity/refresh`,
-  newsCategories: `${API_BASE_URL}/NewsCategories`,
-  news: `${API_BASE_URL}/News`,
-  productCategories: `${API_BASE_URL}/ProductCategories`,
-  products: `${API_BASE_URL}/Products`,
-  uploadFiles: `${API_BASE_URL}/File/UploadMultiple`
+export const getApiEndpoints = () => {
+  const config = useRuntimeConfig()
+  const apiBaseUrl = config.public.apiBaseUrl
+  return {
+    dashboardMenu: `${apiBaseUrl}/DashboardMenu`,
+    login: `${apiBaseUrl}/Identity/login`,
+    refreshToken: `${apiBaseUrl}/Identity/refresh`,
+    newsCategories: `${apiBaseUrl}/NewsCategories`,
+    news: `${apiBaseUrl}/News`,
+    productCategories: `${apiBaseUrl}/ProductCategories`,
+    products: `${apiBaseUrl}/Products`,
+    uploadFiles: `${apiBaseUrl}/File/UploadMultiple`
+  }
 }

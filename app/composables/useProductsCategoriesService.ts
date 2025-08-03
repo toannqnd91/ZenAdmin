@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 import { useApiFetch } from '@/composables/useApiFetch'
-import { API_ENDPOINTS } from '@/utils/api'
+import { getApiEndpoints } from '@/utils/api'
 
 export interface ProductCategory {
   id: number
@@ -25,7 +25,7 @@ export const useProductsCategoriesService = () => {
   
   // Fetch data from API using POST with required body
   const { data: response, error, pending: loading } = useApiFetch<ProductCategoriesApiResponse>(
-    API_ENDPOINTS.productCategories,
+    getApiEndpoints().productCategories,
     {
       method: 'POST',
       headers: computed(() => ({

@@ -2,7 +2,7 @@ import { ref, computed, h } from 'vue'
 import type { TableColumn } from '@nuxt/ui'
 import type { Row } from '@tanstack/table-core'
 import { useApiFetch } from '@/composables/useApiFetch'
-import { API_ENDPOINTS } from '@/utils/api'
+import { getApiEndpoints } from '@/utils/api'
 
 export interface ProductCategory {
   id: number
@@ -54,7 +54,8 @@ export const useProductsCategoriesTable = async () => {
   console.log('[useProductsCategoriesTable] Fetching with token:', accessToken.value ? 'Token available' : 'No token')
 
   // Fetch data
-  const { data, pending: loading, error } = await useApiFetch<ProductCategoriesApiResponse>(API_ENDPOINTS.productCategories, {
+  const endpoints = getApiEndpoints()
+  const { data, pending: loading, error } = await useApiFetch<ProductCategoriesApiResponse>(endpoints.productCategories, {
     method: 'POST',
     body
   })

@@ -1,8 +1,8 @@
 import { useApiFetch } from '@/composables/useApiFetch'
-import { API_ENDPOINTS } from '@/utils/api'
+import { getApiEndpoints } from '@/utils/api'
 import type { UploadMultipleResponse } from '@/types/upload'
 
-export function useFileUpload(endpoint: string = API_ENDPOINTS.uploadFiles) {
+export function useFileUpload(endpoint: string = getApiEndpoints().uploadFiles) {
   async function upload(files: File[]) {
     const formData = new FormData()
     files.forEach(file => {

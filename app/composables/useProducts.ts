@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { useApiFetch } from '@/composables/useApiFetch'
-import { API_ENDPOINTS, IMAGE_BASE_URL } from '@/utils/api'
+import { getApiEndpoints, getImageBaseUrl } from '@/utils/api'
 import type { Row } from '@tanstack/table-core'
 import { getPaginationRowModel } from '@tanstack/table-core'
 
@@ -60,7 +60,8 @@ export const useProducts = () => {
     }
   }
 
-  const { data, pending: loading, error } = useApiFetch<ProductApiResponse>(API_ENDPOINTS.products, {
+  const endpoints = getApiEndpoints()
+  const { data, pending: loading, error } = useApiFetch<ProductApiResponse>(endpoints.products, {
     method: 'POST',
     body
   })
@@ -80,7 +81,7 @@ export const useProducts = () => {
 
   function getFirstImageUrl(imageUrls: string[]): string | undefined {
     if (!imageUrls || imageUrls.length === 0) return undefined
-    return `${IMAGE_BASE_URL}/image/${imageUrls[0]}`
+    return `${getImageBaseUrl()}/image/${imageUrls[0]}`
   }
 
   function getRowItems(row: Row<ProductItem>) {

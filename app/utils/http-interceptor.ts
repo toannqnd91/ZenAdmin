@@ -1,6 +1,6 @@
 
 import type { ApiResponse } from '@/types/common'
-import { API_ENDPOINTS } from '@/utils/api'
+import { getApiEndpoints } from '@/utils/api'
 
 /**
  * HTTP interceptor for handling authentication and automatic token refresh
@@ -97,7 +97,8 @@ export class HttpInterceptor {
       throw new Error('No refresh token available')
     }
 
-    const response = await fetch(API_ENDPOINTS.refreshToken, {
+    const endpoints = getApiEndpoints()
+    const response = await fetch(endpoints.refreshToken, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8'

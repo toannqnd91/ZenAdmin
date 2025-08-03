@@ -1,20 +1,30 @@
 import type { ApiResponse, ApiRequestBody } from '@/types/common'
 import { httpInterceptor } from '@/utils/http-interceptor'
-import { API_BASE_URL } from '@/utils/api'
 
 export abstract class BaseService {
   protected baseURL: string
 
   constructor(baseURL?: string) {
-    // Use the API_BASE_URL constant which has a fallback value
-    this.baseURL = baseURL || API_BASE_URL
+    // Chỉ lưu baseURL được truyền vào, không gọi composable
+    this.baseURL = baseURL || ''
+  }
+
+  protected getBaseURL(): string {
+    // Lazy load chỉ khi cần và chưa có baseURL
+    if (!this.baseURL) {
+      // Gọi useRuntimeConfig trực tiếp, không cache global
+      const config = useRuntimeConfig()
+      this.baseURL = config.public.apiBaseUrl
+    }
+    return this.baseURL
   }
 
   protected async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
-    const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`
+    const baseURL = this.getBaseURL()
+    const url = endpoint.startsWith('http') ? endpoint : `${baseURL}${endpoint}`
     
     // Log request details
     console.log('[BaseService] API Request:', {

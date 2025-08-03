@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { useApiFetch } from '@/composables/useApiFetch'
-import { API_ENDPOINTS } from '@/utils/api'
+import { getApiEndpoints } from '@/utils/api'
 import type { NewsCategoriesApiResponse, NewsCategory } from '@/types/newsCategory'
 import type { Row } from '@tanstack/table-core'
 
@@ -38,7 +38,8 @@ export const useNewsCategoriesService = () => {
   console.log('[useNewsCategoriesService] Fetching with token:', accessToken.value ? 'Token available' : 'No token')
 
   // Fetch data
-  const { data, pending: loading, error } = useApiFetch<NewsCategoriesApiResponse>(API_ENDPOINTS.newsCategories, {
+  const endpoints = getApiEndpoints()
+  const { data, pending: loading, error } = useApiFetch<NewsCategoriesApiResponse>(endpoints.newsCategories, {
     method: 'POST',
     body,
     server: false

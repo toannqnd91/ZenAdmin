@@ -2,7 +2,7 @@ import { ref, computed, h } from 'vue'
 import type { TableColumn } from '@nuxt/ui'
 import type { Row } from '@tanstack/table-core'
 import { useApiFetch } from '@/composables/useApiFetch'
-import { API_ENDPOINTS } from '@/utils/api'
+import { getApiEndpoints } from '@/utils/api'
 import type { NewsCategoriesApiResponse, NewsCategory } from '@/types/newsCategory'
 
 export const useNewsCategoriesTable = async () => {
@@ -43,7 +43,8 @@ export const useNewsCategoriesTable = async () => {
   console.log('[useProductsCategoriesTable] Fetching with token:', accessToken.value ? 'Token available' : 'No token')
 
   // Fetch data
-  const { data, pending: loading, error } = await useApiFetch<NewsCategoriesApiResponse>(API_ENDPOINTS.newsCategories, {
+  const endpoints = getApiEndpoints()
+  const { data, pending: loading, error } = await useApiFetch<NewsCategoriesApiResponse>(endpoints.newsCategories, {
     method: 'POST',
     body
   })
