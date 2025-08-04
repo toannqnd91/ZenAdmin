@@ -1,9 +1,11 @@
 <script setup lang="ts">
 
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { widgetsService } from '~/services/widgets.service'
 import type { WidgetZone } from '~/services/widgets.service'
+import { useNewsService } from '@/composables/useNewsService'
+import type { NewsItem as NewsServiceItem } from '@/composables/useNews'
 
 interface NewsItem {
   id: number
@@ -40,13 +42,21 @@ const formData = reactive<FormData>({
   displayOrder: '0'
 })
 
-const allNews = ref<NewsItem[]>([
-  { id: 1, name: 'Tin tức 1', isPublished: true, selected: false },
-  { id: 2, name: 'Tin tức 2', isPublished: false, selected: false },
-  { id: 3, name: 'Tin tức 3', isPublished: true, selected: false },
-  { id: 4, name: 'Tin tức 4', isPublished: true, selected: false },
-  { id: 5, name: 'Tin tức 5', isPublished: false, selected: false }
-])
+// Lấy danh sách tin tức từ service như trang /news
+const {
+  filteredNews,
+  loading: newsLoading,
+  error: newsError
+} = await useNewsService()
+
+const allNews = computed<NewsItem[]>(() =>
+  filteredNews.value.map((item: NewsServiceItem) => ({
+    id: item.id,
+    name: item.title,
+    isPublished: !!item.published,
+    selected: false
+  }))
+)
 
 onMounted(async () => {
   try {
@@ -76,21 +86,31 @@ function onCancel() {
 
 function manageNews() {
   // Sync selected state with current products
-  allNews.value.forEach((news) => {
+  // allNews là computed nên cần tạo bản sao để chỉnh selected
+  const currentNews = allNews.value.map(news => ({ ...news }))
+  currentNews.forEach((news) => {
     news.selected = products.value.some(p => p.id === news.id)
   })
+  // Gán lại cho modal
+  modalNews.value = currentNews
   isNewsModalOpen.value = true
 }
 
+const modalNews = ref<NewsItem[]>([])
+
 function confirmNewsSelection() {
   // Update products with selected news
-  products.value = allNews.value.filter(news => news.selected).map(news => ({
+  products.value = modalNews.value.filter(news => news.selected).map(news => ({
     id: news.id,
     name: news.name,
     isPublished: news.isPublished,
     selected: news.selected
   }))
   isNewsModalOpen.value = false
+}
+
+function removeNews(idx: number) {
+  products.value.splice(idx, 1)
 }
 </script>
 
@@ -173,11 +193,14 @@ function confirmNewsSelection() {
                   <th class="px-4 py-2 text-left font-semibold">
                     Is Published
                   </th>
+                  <th class="px-4 py-2 text-left font-semibold">
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="!products.length">
-                  <td colspan="2" class="px-4 py-2 text-gray-400">
+                  <td colspan="3" class="px-4 py-2 text-gray-400">
                     No news selected
                   </td>
                 </tr>
@@ -187,6 +210,16 @@ function confirmNewsSelection() {
                   </td>
                   <td class="px-4 py-2">
                     {{ prod.isPublished ? 'Yes' : 'No' }}
+                  </td>
+                  <td class="px-4 py-2">
+                    <UButton
+                      icon="i-lucide-trash"
+                      color="error"
+                      variant="soft"
+                      size="sm"
+                      title="Remove"
+                      @click="removeNews(idx)"
+                    />
                   </td>
                 </tr>
               </tbody>
@@ -214,23 +247,27 @@ function confirmNewsSelection() {
   >
     <template #body>
       <div class="max-h-96 overflow-y-auto">
-        <div
-          v-for="news in allNews"
-          :key="news.id"
-          class="flex items-center space-x-3 py-2"
-        >
-          <input
-            v-model="news.selected"
-            type="checkbox"
-            class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+        <div v-if="newsLoading" class="p-4 text-gray-500">Đang tải tin tức...</div>
+        <div v-else-if="newsError" class="p-4 text-error">{{ newsError }}</div>
+        <div v-else>
+          <div
+            v-for="news in modalNews"
+            :key="news.id"
+            class="flex items-center space-x-3 py-2"
           >
-          <div class="flex-1">
-            <p class="text-sm font-medium text-gray-900 dark:text-white">
-              {{ news.name }}
-            </p>
-            <p class="text-xs text-gray-500">
-              {{ news.isPublished ? 'Published' : 'Not Published' }}
-            </p>
+            <input
+              v-model="news.selected"
+              type="checkbox"
+              class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+            >
+            <div class="flex-1">
+              <p class="text-sm font-medium text-gray-900 dark:text-white">
+                {{ news.name }}
+              </p>
+              <p class="text-xs text-gray-500">
+                {{ news.isPublished ? 'Published' : 'Not Published' }}
+              </p>
+            </div>
           </div>
         </div>
       </div>
