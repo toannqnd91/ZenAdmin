@@ -12,18 +12,18 @@ const publishStart = ref('')
 const publishEnd = ref('')
 const displayOrder = ref('')
 
-const category = ref('')
-const numberOfProducts = ref(4)
-const orderBy = ref('Newest')
+const category = ref(0)
+const numberOfNews = ref(4)
 const isFeaturedOnly = ref(false)
 
 const categoryOptions = ref<{ label: string, value: string | number }[]>([])
 const orderByOptions = [
-  { label: 'Newest', value: 'Newest' },
-  { label: 'Oldest', value: 'Oldest' },
-  { label: 'Price: Low to High', value: 'PriceAsc' },
-  { label: 'Price: High to Low', value: 'PriceDesc' }
+  { label: 'Newest', value: 0 },
+  { label: 'Most Viewed', value: 1 },
+  { label: 'Most Commented', value: 2 }
 ]
+
+const orderBy = ref(0)
 
 
 const widgetZones = ref<WidgetZone[]>([])
@@ -43,7 +43,11 @@ onMounted(async () => {
     const newsService = new NewsService()
     const catRes = await newsService.getCategories()
     if (catRes && catRes.data) {
-      categoryOptions.value = catRes.data.map((cat: any) => ({ label: cat.name, value: cat.id }))
+      categoryOptions.value = [
+        { label: 'Tất cả danh mục', value: 0 },
+        ...catRes.data.map((cat: any) => ({ label: cat.name, value: cat.id }))
+      ]
+      category.value = 0
     }
   } catch (error) {
     console.error('Error loading widget zones or categories:', error)
@@ -56,8 +60,12 @@ const productOptions = [
 ]
 
 function onSave() {
-  // TODO: submit logic
-  alert('Saved!')
+  // Submit logic, orderBy là int
+  const payload = {
+    // ...other fields
+    orderBy: orderBy.value,
+  }
+  alert('Saved! orderBy: ' + orderBy.value)
 }
 function onCancel() {
   router.back()
@@ -126,7 +134,7 @@ function onCancel() {
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Order By</label>
             <div class="col-span-10 w-full">
-              <USelect v-model="orderBy" :options="orderByOptions" class="w-full" />
+              <USelect v-model="orderBy" :items="orderByOptions" placeholder="Select order" class="w-full" />
             </div>
           </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">

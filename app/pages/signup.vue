@@ -62,15 +62,15 @@ function onSubmit(payload: FormSubmitEvent<Schema>) {
     :fields="fields"
     :schema="schema"
     :providers="providers"
-    title="Create an account"
-    :submit="{ label: 'Create account' }"
+    title="Đăng ký tài khoản"
+    :submit="{ label: 'Tạo tài khoản' }"
     @submit="onSubmit"
   >
     <template #description>
-      Already have an account? <ULink
+      Đã có tài khoản? <ULink
         to="/login"
         class="text-primary font-medium"
-      >Login</ULink>.
+      >Đăng nhập</ULink>.
     </template>
 
     <template #footer>
