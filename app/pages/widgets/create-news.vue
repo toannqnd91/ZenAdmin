@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { widgetsService, type WidgetZone } from '~/services/widgets.service'
+import { NewsService } from '~/services/news.service'
 
 const router = useRouter()
 
 const widgetName = ref('')
-const widgetZone = ref('Home Featured')
+const widgetZone = ref<string | undefined>(undefined)
 const publishStart = ref('')
 const publishEnd = ref('')
 const displayOrder = ref('')
@@ -15,12 +17,7 @@ const numberOfProducts = ref(4)
 const orderBy = ref('Newest')
 const isFeaturedOnly = ref(false)
 
-const categoryOptions = [
-  { label: '@Localizer["All Categories"]', value: '' },
-  { label: 'Cordyceps', value: 'cordyceps' },
-  { label: 'Tea', value: 'tea' },
-  { label: 'Extract', value: 'extract' }
-]
+const categoryOptions = ref<{ label: string, value: string | number }[]>([])
 const orderByOptions = [
   { label: 'Newest', value: 'Newest' },
   { label: 'Oldest', value: 'Oldest' },
@@ -28,11 +25,30 @@ const orderByOptions = [
   { label: 'Price: High to Low', value: 'PriceDesc' }
 ]
 
-const widgetZoneOptions = [
-  { label: 'Home Featured', value: 'Home Featured' },
-  { label: 'Home Banner', value: 'Home Banner' },
-  { label: 'Home Bottom', value: 'Home Bottom' }
-]
+
+const widgetZones = ref<WidgetZone[]>([])
+const widgetZoneItems = ref<string[]>([])
+onMounted(async () => {
+  try {
+    // Widget Zones
+    const response = await widgetsService.getWidgetZones()
+    if (response.success && response.data) {
+      widgetZones.value = response.data
+      widgetZoneItems.value = response.data.map((zone: WidgetZone) => zone.name)
+      if (response.data.length > 0) {
+        widgetZone.value = response.data[0]?.name || undefined
+      }
+    }
+    // News Categories
+    const newsService = new NewsService()
+    const catRes = await newsService.getCategories()
+    if (catRes && catRes.data) {
+      categoryOptions.value = catRes.data.map((cat: any) => ({ label: cat.name, value: cat.id }))
+    }
+  } catch (error) {
+    console.error('Error loading widget zones or categories:', error)
+  }
+})
 const productOptions = [
   { label: 'Cordyceps Capsule', value: 'Cordyceps Capsule' },
   { label: 'Cordyceps Tea', value: 'Cordyceps Tea' },
@@ -69,7 +85,12 @@ function onCancel() {
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Widget Zone</label>
             <div class="col-span-10 w-full">
-              <USelect v-model="widgetZone" :options="widgetZoneOptions" class="w-full" />
+              <USelect
+                v-model="widgetZone"
+                :items="widgetZoneItems"
+                placeholder="Select widget zone"
+                class="w-full"
+              />
             </div>
           </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
@@ -93,7 +114,7 @@ function onCancel() {
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Category</label>
             <div class="col-span-10 w-full">
-              <USelect v-model="category" :options="categoryOptions" class="w-full" />
+              <USelect v-model="category" :items="categoryOptions" placeholder="Select category" class="w-full" />
             </div>
           </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
