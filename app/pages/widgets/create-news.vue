@@ -53,11 +53,6 @@ onMounted(async () => {
     console.error('Error loading widget zones or categories:', error)
   }
 })
-const productOptions = [
-  { label: 'Cordyceps Capsule', value: 'Cordyceps Capsule' },
-  { label: 'Cordyceps Tea', value: 'Cordyceps Tea' },
-  { label: 'Cordyceps Extract', value: 'Cordyceps Extract' }
-]
 
 function onSave() {
   // Submit logic, orderBy là int
