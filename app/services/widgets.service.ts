@@ -1,6 +1,28 @@
 import { BaseService } from './base.service'
 import type { ApiResponse } from '@/types/common'
 
+
+export interface SimpleNewsWidgetData {
+  id: number;
+  name: string;
+  widgetZoneId: number;
+  publishStart: string;
+  publishEnd: string;
+  displayOrder: number;
+  news: Array<{
+    id: number;
+    name: string;
+    isPublished: boolean;
+  }>;
+}
+
+export interface SimpleNewsWidgetResponse {
+  code: string;
+  success: boolean;
+  message: string;
+  data: SimpleNewsWidgetData;
+}
+
 export interface WidgetInstance {
   id: number
   name: string
@@ -77,6 +99,7 @@ export class WidgetsService extends BaseService {
   async createCustomDataWidget(data: any) {
     return this.post('/custom-data-widgets', data)
   }
+
   /**
    * Get all widgets
    */
@@ -130,6 +153,20 @@ export class WidgetsService extends BaseService {
   // async getWidgetById(id: number) { ... }
   // async updateWidget(id: number, data: ...) { ... }
   // async deleteWidget(id: number) { ... }
+
+  /**
+   * Get simple news widget by ID
+   */
+  async getSimpleNewsWidget(id: number): Promise<SimpleNewsWidgetResponse> {
+    return this.get<SimpleNewsWidgetResponse>(`/simple-news-widgets/${id}`)
+  }
+
+  /**
+   * Update simple news widget by ID
+   */
+  async updateSimpleNewsWidget(id: number, data: SimpleNewsWidgetData): Promise<ApiResponse<null>> {
+    return this.put<null>(`/simple-news-widgets/${id}`, data)
+  }
 }
 
 // Export singleton instance

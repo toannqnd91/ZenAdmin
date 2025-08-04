@@ -3,6 +3,7 @@ import EditCarouselWidget from '@/components/widgets/EditCarouselWidget.vue'
 import EditCategoryWidget from '@/components/widgets/EditCategoryWidget.vue'
 import EditHtmlWidget from '@/components/widgets/EditHtmlWidget.vue'
 import EditCustomDataWidget from '@/components/widgets/EditCustomDataWidget.vue'
+import EditSimpleNewsWidget from '@/components/widgets/EditSimpleNewsWidget.vue'
 
 const route = useRoute()
 
@@ -48,9 +49,10 @@ if (!validWidgetTypes.includes(widgetType.toLowerCase())) {
           widgetType === 'category-widget' ? EditCategoryWidget :
           widgetType === 'html-widget' ? EditHtmlWidget :
           widgetType === 'custom-data-widget' ? EditCustomDataWidget :
+          widgetType === 'simple-news-widget' ? EditSimpleNewsWidget :
           null
         "
-        v-if="['carousel-widget','category-widget','html-widget','custom-data-widget'].includes(widgetType)"
+        v-if="['carousel-widget','category-widget','html-widget','custom-data-widget','simple-news-widget'].includes(widgetType)"
       />
       <div v-else class="w-full mt-6">
         <UCard class="w-full">

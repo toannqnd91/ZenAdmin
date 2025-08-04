@@ -75,9 +75,73 @@ onMounted(async () => {
   }
 })
 
-function onSave() {
-  // TODO: submit logic
-  alert('Saved!')
+
+async function onSave() {
+  // Validate required fields
+  if (!widgetName.value.trim()) {
+    alert('Widget Name is required')
+    return
+  }
+  if (!widgetZone.value) {
+    alert('Widget Zone is required')
+    return
+  }
+  if (!products.value.length) {
+    alert('Vui lòng chọn ít nhất 1 tin tức')
+    return
+  }
+
+  // Tìm zone object để lấy id
+  const selectedZone = widgetZones.value.find(zone => zone.name === widgetZone.value)
+  if (!selectedZone) {
+    alert('Widget Zone không hợp lệ')
+    return
+  }
+
+  // Format ngày về ISO
+  function toISO(val: string) {
+    if (!val) return new Date().toISOString()
+    try {
+      return new Date(val).toISOString()
+    } catch {
+      return new Date().toISOString()
+    }
+  }
+
+  // Chuẩn bị dữ liệu gửi API
+  const payload = {
+    id: 0,
+    name: widgetName.value,
+    widgetZoneId: selectedZone.id,
+    publishStart: toISO(publishStart.value),
+    publishEnd: toISO(publishEnd.value),
+    displayOrder: Number(displayOrder.value) || 0,
+    news: products.value.map(n => ({
+      id: n.id,
+      name: n.name,
+      isPublished: n.isPublished
+    }))
+  }
+
+  try {
+    const res = await fetch('https://demo.cokhitamlong.vn/api/v1/simple-news-widgets', {
+      method: 'POST',
+      headers: {
+        'accept': '*/*',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
+    const data = await res.json()
+    if (data.success) {
+      alert('Tạo widget thành công!')
+      router.push('/widgets')
+    } else {
+      alert('Lỗi: ' + (data.message || 'Unknown error'))
+    }
+  } catch (err) {
+    alert('Lỗi khi gọi API!')
+  }
 }
 
 function onCancel() {
