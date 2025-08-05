@@ -19,6 +19,19 @@ export abstract class BaseService {
     return this.baseURL
   }
 
+  private getBodyForLogging(body: BodyInit | null | undefined): unknown {
+    if (!body) return undefined
+    if (body instanceof FormData) return '[FormData]'
+    if (typeof body === 'string') {
+      try {
+        return JSON.parse(body)
+      } catch {
+        return body
+      }
+    }
+    return body
+  }
+
   protected async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -30,7 +43,7 @@ export abstract class BaseService {
     console.log('[BaseService] API Request:', {
       method: options.method || 'GET',
       url,
-      body: options.body ? JSON.parse(options.body as string) : undefined,
+      body: this.getBodyForLogging(options.body),
       headers: (options as any).headers,
       // Log authorization token for debugging
       authToken: (options as any).headers?.Authorization || 'No token'

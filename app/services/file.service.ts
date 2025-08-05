@@ -12,19 +12,49 @@ export class FileService extends BaseService {
       formData.append('folder', folder)
     }
 
-    const response = await fetch(`${this.baseURL}/File/Upload`, {
-      method: 'POST',
-      body: formData,
-    })
-
-    if (!response.ok) {
-      throw new Error(`Upload failed: ${response.status}`)
+    try {
+      console.log('Starting file upload:', { fileName: file.name, fileSize: file.size, folder })
+      console.log('API Base URL:', this.getBaseURL())
+      
+      const response = await this.request<ApiFileUploadResponse>('/File/Upload', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          // Set empty Content-Type to let browser handle multipart/form-data
+          'Content-Type': ''
+        }
+      })
+      
+      console.log('Upload successful:', response)
+      // Return the full API response (not just data) for component compatibility
+      return response
+    } catch (error: unknown) {
+      const err = error as Error
+      console.error('Upload error details:', {
+        error,
+        fileName: file.name,
+        fileSize: file.size,
+        folder,
+        errorMessage: err?.message || 'Unknown error',
+        errorStack: err?.stack,
+        errorName: err?.name,
+        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error))
+      })
+      
+      // Check if it's a network error
+      if (err?.message?.includes('fetch')) {
+        throw new Error(`Network error uploading "${file.name}": Check internet connection and server availability`)
+      }
+      
+      // Check if it's an API error
+      if (err?.message?.includes('API Error:')) {
+        throw new Error(`Server error uploading "${file.name}": ${err.message}`)
+      }
+      
+      // Re-throw with more context
+      const errorMsg = err?.message || String(error) || 'Unknown error'
+      throw new Error(`File upload failed for "${file.name}": ${errorMsg}`)
     }
-
-    const result = await response.json()
-    console.log('Raw upload response:', result)
-    
-    return result as ApiFileUploadResponse
   }
 
   /**
@@ -32,23 +62,29 @@ export class FileService extends BaseService {
    */
   async uploadMultipleFiles(files: File[], folder?: string) {
     const formData = new FormData()
-    files.forEach(file => {
+    files.forEach((file) => {
       formData.append('files', file)
     })
     if (folder) {
       formData.append('folder', folder)
     }
 
-    const response = await fetch(`${this.baseURL}/File/UploadMultiple`, {
-      method: 'POST',
-      body: formData,
-    })
-
-    if (!response.ok) {
-      throw new Error(`Upload failed: ${response.status}`)
+    try {
+      const response = await this.request<FileUploadResponse[]>('/File/UploadMultiple', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          // Set empty Content-Type to let browser handle multipart/form-data
+          'Content-Type': ''
+        }
+      })
+      
+      // Return the full API response (not just data) for component compatibility
+      return response
+    } catch (error) {
+      console.error('Upload error:', error)
+      throw error
     }
-
-    return response.json() as Promise<FileUploadResponse[]>
   }
 
   /**

@@ -75,6 +75,18 @@ async function onSave() {
 function onCancel() {
   router.back()
 }
+
+function handleFileChange(e: Event, idx: number) {
+  const input = e.target as HTMLInputElement
+  if (input.files && input.files[0]) {
+    const file = input.files[0]
+    const reader = new FileReader()
+    reader.onload = function(ev) {
+      items.value[idx].imageUrl = ev.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  }
+}
 </script>
 <template>
   <UDashboardPanel class="flex flex-col h-full">
@@ -150,7 +162,8 @@ function onCancel() {
                 <div class="grid grid-cols-12 gap-2 items-center mb-2">
                   <label class="col-span-2 text-right pr-2">Image URL</label>
                   <div class="col-span-10 w-full">
-                    <UInput v-model="item.imageUrl" placeholder="Image URL" class="w-full" />
+                    <UInput type="file" class="w-full" @change="(e) => handleFileChange(e, idx)" />
+                    <div v-if="item.imageUrl" class="mt-2 text-xs text-gray-500">{{ item.imageUrl }}</div>
                   </div>
                 </div>
                 <div class="grid grid-cols-12 gap-2 items-center mb-2">

@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { widgetsService, type WidgetZone } from '@/services/widgets.service'
+import { fileService } from '@/services/file.service'
 
 const router = useRouter()
 const route = useRoute()
@@ -19,7 +20,7 @@ const isLoading = ref(true)
 const widgetZones = ref<WidgetZone[]>([])
 const widgetZoneItems = ref<string[]>([])
 const items = ref([
-  { caption: '', subCaption: '', imageUrl: '', linkText: '', targetUrl: '', sortOrder: 0 }
+  { caption: '', subCaption: '', linkText: '', targetUrl: '', sortOrder: 0, image: null as File | null, imageUrl: '', uploading: false }
 ])
 
 // Helper function to convert ISO string to yyyy-MM-dd HH:mm format
@@ -104,6 +105,41 @@ async function onUpdate() {
 function onCancel() {
   router.back()
 }
+
+function removeItem(idx: number) {
+  items.value.splice(idx, 1)
+}
+
+async function onFileChange(file: File | null, idx: number) {
+  if (!items.value[idx]) return
+  items.value[idx].image = file
+  items.value[idx].imageUrl = ''
+  if (!file) return
+  // Show preview immediately
+  items.value[idx].imageUrl = URL.createObjectURL(file)
+  items.value[idx].uploading = true
+  try {
+    // Giả sử có fileService.uploadFile như bên create-carousel
+    const res = await fileService.uploadFile(file)
+    if (res && res.success && res.data) {
+      const fileData = Array.isArray(res.data) ? res.data[0] : res.data
+      if (fileData && fileData.fileName) {
+        items.value[idx].imageUrl = fileService.getFileUrl(fileData.fileName)
+      } else {
+        alert('Upload failed: Không tìm thấy fileName trong response')
+        items.value[idx].imageUrl = ''
+      }
+    } else {
+      alert('Upload failed: ' + (res.message || 'Unknown error'))
+      items.value[idx].imageUrl = ''
+    }
+  } catch (err) {
+    alert('Upload failed')
+    items.value[idx].imageUrl = ''
+  } finally {
+    items.value[idx].uploading = false
+  }
+}
 </script>
 
 <template>
@@ -168,19 +204,13 @@ function onCancel() {
                   <UInput v-model="item.caption" placeholder="Caption" class="w-full" />
                 </div>
                 <div class="col-span-2 flex justify-end">
-                  <UButton v-if="items.length > 1" icon="i-lucide-x" color="error" variant="soft" size="xs" title="Remove item" @click="(e) => { items.splice(idx, 1) }" />
+                  <UButton v-if="items.length > 1" icon="i-lucide-x" color="error" variant="soft" size="xs" title="Remove item" @click="(e) => { removeItem(idx) }" />
                 </div>
               </div>
               <div class="grid grid-cols-12 gap-2 items-center mb-2">
                 <label class="col-span-2 text-right pr-2">Sub Caption</label>
                 <div class="col-span-10 w-full ml-0">
                   <UInput v-model="item.subCaption" placeholder="Sub Caption" class="w-full" />
-                </div>
-              </div>
-              <div class="grid grid-cols-12 gap-2 items-center mb-2">
-                <label class="col-span-2 text-right pr-2">Image URL</label>
-                <div class="col-span-10 w-full ml-0">
-                  <UInput v-model="item.imageUrl" placeholder="Image URL" class="w-full" />
                 </div>
               </div>
               <div class="grid grid-cols-12 gap-2 items-center mb-2">
@@ -201,8 +231,38 @@ function onCancel() {
                   <UInput v-model="item.sortOrder" type="number" min="0" class="w-full" />
                 </div>
               </div>
+              <div class="grid grid-cols-12 gap-2 items-center mb-2">
+                <label class="col-span-2 text-right pr-2">Image</label>
+                <div class="col-span-10 w-full ml-0">
+                  <div v-if="item.imageUrl" class="relative group w-full">
+                    <div class="aspect-[16/9] w-full max-h-56 bg-gray-50 border rounded flex items-center justify-center overflow-hidden">
+                      <img
+                        :src="item.image && item.imageUrl.startsWith('blob:') ? item.imageUrl : (fileService.getFileUrl(item.imageUrl) || '')"
+                        alt="Preview"
+                        class="w-full h-full object-cover"
+                      >
+                    </div>
+                    <button
+                      type="button"
+                      @click="() => { item.image = null; item.imageUrl = '' }"
+                      class="absolute top-2 right-2 flex items-center justify-center w-8 h-8 bg-white/80 hover:bg-white text-red-500 rounded-full shadow group-hover:opacity-100 opacity-80 transition"
+                      title="Xoá ảnh"
+                    >
+                      <UIcon name="i-lucide-x" class="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div v-else>
+                    <UFileUpload
+                      v-model="item.image"
+                      class="w-full"
+                      :multiple="false"
+                      @update:model-value="(file: unknown) => onFileChange(file as File | null, idx)"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-            <UButton icon="i-lucide-plus" color="primary" variant="ghost" size="xs" class="mt-2" @click="(e) => { items.push({ caption: '', subCaption: '', imageUrl: '', linkText: '', targetUrl: '', sortOrder: items.length }) }">Add more</UButton>
+            <UButton icon="i-lucide-plus" color="primary" variant="ghost" size="xs" class="mt-2" @click="(e) => { items.push({ caption: '', subCaption: '', linkText: '', targetUrl: '', sortOrder: items.length, image: null, imageUrl: '' }) }">Add more</UButton>
           </div>
         </div>
       </div>

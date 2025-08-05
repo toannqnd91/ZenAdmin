@@ -118,7 +118,7 @@ export class WidgetsService extends BaseService {
    * Create carousel widget
    */
   async createCarouselWidget(data: CreateCarouselWidgetRequest) {
-    return this.post<CreateWidgetApiResponse>('/widgets/carousel-widgets', data)
+    return this.post<CreateWidgetApiResponse>('/CarouselWidget', data)
   }
 
   /**

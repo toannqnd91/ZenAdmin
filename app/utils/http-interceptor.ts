@@ -32,9 +32,13 @@ export class HttpInterceptor {
   private async addAuthHeaders(existingHeaders?: HeadersInit): Promise<Headers> {
     const headers = new Headers(existingHeaders)
     
-    // Set default content type with UTF-8 charset if not exists
+    // Set default content type with UTF-8 charset if not exists,
+    // but skip if explicitly set to empty (for FormData uploads)
     if (!headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json; charset=utf-8')
+    } else if (headers.get('Content-Type') === '') {
+      // Remove empty Content-Type to let browser set it for FormData
+      headers.delete('Content-Type')
     }
 
     try {
