@@ -14,7 +14,7 @@ interface Props {
     pageSize: number
   }
   getRowItems: (row: Row<WidgetInstance>) => unknown[]
-  formatDate: (date: string) => string
+  formatDate: (date: string | null) => string
 }
 
 const props = defineProps<Props>()
