@@ -110,7 +110,7 @@ const columns: TableColumn<WidgetInstance>[] = [
         base: 'table-fixed border-separate border-spacing-0',
         thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
         tbody: '[&>tr]:last:[&>td]:border-b-0 [&>tr]:cursor-pointer [&>tr:hover]:bg-gray-50',
-        th: 'py-3 first:rounded-l-lg last:rounded-r-lg border-y border-default first:border-l last:border-r',
+        th: 'py-3 first:rounded-l-lg last:rounded-r-lg',
         td: 'border-b border-default'
       }"
       @update:model-value="emit('update:rowSelection', $event)"
