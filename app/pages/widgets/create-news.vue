@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { widgetsService, type WidgetZone } from '~/services/widgets.service'
+import { widgetsService } from '~/services/widgets.service'
 import { NewsService } from '~/services/news.service'
+import type { WidgetZone, CreateNewsWidgetRequest } from '~/services/widgets.service'
 
 const router = useRouter()
 
@@ -24,7 +25,6 @@ const orderByOptions = [
 ]
 
 const orderBy = ref(0)
-
 
 const widgetZones = ref<WidgetZone[]>([])
 const widgetZoneItems = ref<string[]>([])
@@ -54,13 +54,43 @@ onMounted(async () => {
   }
 })
 
-function onSave() {
-  // Submit logic, orderBy là int
-  const payload = {
-    // ...other fields
-    orderBy: orderBy.value,
+async function onSaveNewsWidget() {
+  try {
+    // Find the widget zone ID by name
+    const selectedZone = widgetZones.value.find(zone => zone.name === widgetZone.value)
+    if (!selectedZone) {
+      alert('Please select a valid widget zone')
+      return
+    }
+
+    const payload: CreateNewsWidgetRequest = {
+      id: 0,
+      name: widgetName.value,
+      widgetZoneId: selectedZone.id,
+      publishStart: publishStart.value || null,
+      publishEnd: publishEnd.value || null,
+      displayOrder: parseInt(displayOrder.value) || 0,
+      setting: {
+        numberOfNews: numberOfNews.value,
+        categoryId: category.value === 0 ? null : category.value,
+        orderBy: orderBy.value,
+        featuredOnly: isFeaturedOnly.value
+      }
+    }
+
+    const response = await widgetsService.createNewsWidget(payload)
+    
+    if (response.success) {
+      alert('News widget created successfully!')
+      router.back()
+    } else {
+      alert('Failed to create news widget: ' + response.message)
+    }
+  } catch (error: unknown) {
+    console.error('Error creating news widget:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    alert('Error creating news widget: ' + errorMessage)
   }
-  alert('Saved! orderBy: ' + orderBy.value)
 }
 function onCancel() {
   router.back()
@@ -77,7 +107,7 @@ function onCancel() {
     </template>
     <template #body>
       <UCard class="w-full mt-6">
-        <UForm @submit="onSave" class="space-y-6">
+        <form @submit.prevent="onSaveNewsWidget" class="space-y-6">
           <div class="text-3xl font-light mb-8">Create News Widget</div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Widget Name</label>
@@ -143,7 +173,7 @@ function onCancel() {
             <UButton icon="i-lucide-check" color="primary" type="submit">Save</UButton>
             <UButton color="neutral" variant="soft" @click="onCancel">Cancel</UButton>
           </div>
-        </UForm>
+        </form>
       </UCard>
     </template>
   </UDashboardPanel>

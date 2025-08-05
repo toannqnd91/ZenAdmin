@@ -86,6 +86,23 @@ export interface CarouselWidgetResponse {
   data: CarouselWidgetData
 }
 
+export interface NewsWidgetSetting {
+  numberOfNews: number
+  categoryId: number | null
+  orderBy: number
+  featuredOnly: boolean
+}
+
+export interface CreateNewsWidgetRequest {
+  id: number
+  name: string
+  widgetZoneId: number
+  publishStart: string | null
+  publishEnd: string | null
+  displayOrder: number
+  setting: NewsWidgetSetting
+}
+
 export interface CreateWidgetApiResponse {
   code: string
   success: boolean
@@ -98,21 +115,21 @@ export class WidgetsService extends BaseService {
    * Create custom data widget
    */
   async createCustomDataWidget(data: any) {
-    return this.post('/custom-data-widgets', data)
+    return this.post(API_ENDPOINTS.CUSTOM_DATA_WIDGETS, data)
   }
 
   /**
    * Get all widgets
    */
   async getWidgets() {
-    return this.get<WidgetInstance[]>('/widget-instances')
+    return this.get<WidgetInstance[]>(API_ENDPOINTS.WIDGET_INSTANCES)
   }
 
   /**
    * Get all widget zones
    */
   async getWidgetZones(): Promise<ApiResponse<WidgetZone[]>> {
-    return this.get<WidgetZone[]>('/widget-zones')
+    return this.get<WidgetZone[]>(API_ENDPOINTS.WIDGET_ZONES)
   }
 
   /**
@@ -120,6 +137,27 @@ export class WidgetsService extends BaseService {
    */
   async createCarouselWidget(data: CreateCarouselWidgetRequest) {
     return this.post<CreateWidgetApiResponse>(API_ENDPOINTS.CAROUSEL_WIDGET, data)
+  }
+
+  /**
+   * Create news widget
+   */
+  async createNewsWidget(data: CreateNewsWidgetRequest): Promise<ApiResponse<null>> {
+    return this.post<null>(API_ENDPOINTS.NEWS_WIDGET, data)
+  }
+
+  /**
+   * Get news widget by ID
+   */
+  async getNewsWidget(id: number): Promise<ApiResponse<CreateNewsWidgetRequest>> {
+    return this.get<CreateNewsWidgetRequest>(API_ENDPOINTS.NEWS_WIDGET_BY_ID(id))
+  }
+
+  /**
+   * Update news widget by ID
+   */
+  async updateNewsWidget(id: number, data: CreateNewsWidgetRequest): Promise<ApiResponse<null>> {
+    return this.put<null>(API_ENDPOINTS.NEWS_WIDGET_BY_ID(id), data)
   }
 
   /**
@@ -140,33 +178,28 @@ export class WidgetsService extends BaseService {
    * Get custom data widget by ID
    */
   async getCustomDataWidget(id: number) {
-    return this.get(`/custom-data-widgets/${id}`)
+    return this.get(API_ENDPOINTS.CUSTOM_DATA_WIDGET_BY_ID(id))
   }
 
   /**
    * Update custom data widget by ID
    */
   async updateCustomDataWidget(id: number, data: any) {
-    return this.put(`/custom-data-widgets/${id}`, data)
+    return this.put(API_ENDPOINTS.CUSTOM_DATA_WIDGET_BY_ID(id), data)
   }
-
-  // You can add more CRUD methods here as needed
-  // async getWidgetById(id: number) { ... }
-  // async updateWidget(id: number, data: ...) { ... }
-  // async deleteWidget(id: number) { ... }
 
   /**
    * Get simple news widget by ID
    */
-  async getSimpleNewsWidget(id: number): Promise<SimpleNewsWidgetResponse> {
-    return this.get<SimpleNewsWidgetResponse>(`/simple-news-widgets/${id}`)
+  async getSimpleNewsWidget(id: number): Promise<ApiResponse<SimpleNewsWidgetData>> {
+    return this.get<SimpleNewsWidgetData>(API_ENDPOINTS.SIMPLE_NEWS_WIDGET_BY_ID(id))
   }
 
   /**
    * Update simple news widget by ID
    */
   async updateSimpleNewsWidget(id: number, data: SimpleNewsWidgetData): Promise<ApiResponse<null>> {
-    return this.put<null>(`/simple-news-widgets/${id}`, data)
+    return this.put<null>(API_ENDPOINTS.SIMPLE_NEWS_WIDGET_BY_ID(id), data)
   }
 }
 

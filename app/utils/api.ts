@@ -8,6 +8,14 @@ export const API_ENDPOINTS = {
   // Widget endpoints  
   CAROUSEL_WIDGET: '/CarouselWidget',
   CAROUSEL_WIDGET_BY_ID: (id: number) => `/CarouselWidget/${id}`,
+  NEWS_WIDGET: '/NewsWidget',
+  NEWS_WIDGET_BY_ID: (id: number) => `/NewsWidget/${id}`,
+  WIDGET_INSTANCES: '/widget-instances',
+  WIDGET_ZONES: '/widget-zones',
+  CUSTOM_DATA_WIDGETS: '/custom-data-widgets',
+  CUSTOM_DATA_WIDGET_BY_ID: (id: number) => `/custom-data-widgets/${id}`,
+  SIMPLE_NEWS_WIDGETS: '/simple-news-widgets',
+  SIMPLE_NEWS_WIDGET_BY_ID: (id: number) => `/simple-news-widgets/${id}`,
   
   // Auth endpoints
   LOGIN: '/Identity/login',
