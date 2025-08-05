@@ -1,4 +1,5 @@
 import { BaseService } from './base.service'
+import { API_ENDPOINTS } from '@/utils/api'
 import type { ApiResponse } from '@/types/common'
 
 
@@ -118,21 +119,21 @@ export class WidgetsService extends BaseService {
    * Create carousel widget
    */
   async createCarouselWidget(data: CreateCarouselWidgetRequest) {
-    return this.post<CreateWidgetApiResponse>('/CarouselWidget', data)
+    return this.post<CreateWidgetApiResponse>(API_ENDPOINTS.CAROUSEL_WIDGET, data)
   }
 
   /**
    * Update carousel widget by ID
    */
   async updateCarouselWidget(id: number, data: CreateCarouselWidgetRequest) {
-    return this.put<CreateWidgetApiResponse>(`/CarouselWidget/${id}`, data)
+    return this.put<CreateWidgetApiResponse>(API_ENDPOINTS.CAROUSEL_WIDGET_BY_ID(id), data)
   }
 
   /**
    * Get carousel widget by ID
    */
   async getCarouselWidget(id: number): Promise<ApiResponse<CarouselWidgetData>> {
-    return this.get<CarouselWidgetData>(`/CarouselWidget/${id}`)
+    return this.get<CarouselWidgetData>(API_ENDPOINTS.CAROUSEL_WIDGET_BY_ID(id))
   }
 
   /**

@@ -1,4 +1,5 @@
 import { BaseService } from './base.service'
+import { API_ENDPOINTS } from '@/utils/api'
 import type { FileUploadResponse, ApiFileUploadResponse } from '@/types/common'
 
 export class FileService extends BaseService {
@@ -16,7 +17,7 @@ export class FileService extends BaseService {
       console.log('Starting file upload:', { fileName: file.name, fileSize: file.size, folder })
       console.log('API Base URL:', this.getBaseURL())
       
-      const response = await this.request<ApiFileUploadResponse>('/File/Upload', {
+      const response = await this.request<ApiFileUploadResponse>(API_ENDPOINTS.UPLOAD_FILE, {
         method: 'POST',
         body: formData,
         headers: {
@@ -70,7 +71,7 @@ export class FileService extends BaseService {
     }
 
     try {
-      const response = await this.request<FileUploadResponse[]>('/File/UploadMultiple', {
+      const response = await this.request<FileUploadResponse[]>(API_ENDPOINTS.UPLOAD_MULTIPLE_FILES, {
         method: 'POST',
         body: formData,
         headers: {
@@ -91,7 +92,7 @@ export class FileService extends BaseService {
    * Delete file
    */
   async deleteFile(fileName: string) {
-    return this.delete(`/File/${fileName}`)
+    return this.delete(API_ENDPOINTS.DELETE_FILE(fileName))
   }
 
   /**

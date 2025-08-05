@@ -5,7 +5,6 @@ export { dashboardService, DashboardService } from './dashboard.service'
 export { newsService, NewsService } from './news.service'
 export { productService, ProductService } from './product.service'
 export { fileService, FileService } from './file.service'
-export { admissionService, scholarshipService, AdmissionService, ScholarshipService } from './admission.service'
 export { linksService, LinksService } from './links.service'
 export { widgetsService, WidgetsService } from './widgets.service'
 
@@ -24,11 +23,6 @@ export type {
   CreateNewsRequest, 
   UpdateNewsRequest 
 } from './news.service'
-
-export type {
-  AdmissionApplication,
-  CreateAdmissionApplicationRequest
-} from './admission.service'
 
 export type {
   LinkData,

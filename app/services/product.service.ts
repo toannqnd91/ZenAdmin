@@ -1,4 +1,5 @@
 import { BaseService } from './base.service'
+import { API_ENDPOINTS } from '@/utils/api'
 import type { ProductItem } from '@/composables/useProducts'
 
 export interface ProductCategory {
@@ -57,35 +58,35 @@ export class ProductService extends BaseService {
       sort: options?.sort
     })
     
-    return this.post<ProductItem[]>('/Products', body)
+    return this.post<ProductItem[]>(API_ENDPOINTS.PRODUCTS, body)
   }
 
   /**
    * Get single product by ID
    */
   async getProductById(id: number) {
-    return this.get<ProductItem>(`/Product/${id}`)
+    return this.get<ProductItem>(API_ENDPOINTS.PRODUCT_BY_ID(id))
   }
 
   /**
    * Create new product
    */
   async createProduct(data: CreateProductRequest) {
-    return this.post<ProductItem>('/Product/create', data)
+    return this.post<ProductItem>(API_ENDPOINTS.PRODUCT_CREATE, data)
   }
 
   /**
    * Update product
    */
   async updateProduct(data: UpdateProductRequest) {
-    return this.put<ProductItem>(`/Product/${data.id}/update`, data)
+    return this.put<ProductItem>(API_ENDPOINTS.PRODUCT_UPDATE(data.id), data)
   }
 
   /**
    * Delete product
    */
   async deleteProduct(id: number) {
-    return this.delete(`/Products/${id}`)
+    return this.delete(API_ENDPOINTS.PRODUCT_BY_ID(id))
   }
 
   /**
@@ -106,35 +107,35 @@ export class ProductService extends BaseService {
       sort: options?.sort
     })
     
-    return this.post<ProductCategory[]>('/ProductCategories', body)
+    return this.post<ProductCategory[]>(API_ENDPOINTS.PRODUCT_CATEGORIES, body)
   }
 
   /**
    * Get single product category by ID
    */
   async getCategoryById(id: number) {
-    return this.get<ProductCategory>(`/ProductCategories/${id}`)
+    return this.get<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORY_BY_ID(id))
   }
 
   /**
    * Create new product category
    */
   async createCategory(data: CreateProductCategoryRequest) {
-    return this.post<ProductCategory>('/ProductCategories', data)
+    return this.post<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORIES, data)
   }
 
   /**
    * Update product category
    */
   async updateCategory(data: UpdateProductCategoryRequest) {
-    return this.put<ProductCategory>(`/ProductCategories/${data.id}`, data)
+    return this.put<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORY_BY_ID(data.id), data)
   }
 
   /**
    * Delete product category
    */
   async deleteCategory(id: number) {
-    return this.delete(`/ProductCategories/${id}`)
+    return this.delete(API_ENDPOINTS.PRODUCT_CATEGORY_BY_ID(id))
   }
 
   /**

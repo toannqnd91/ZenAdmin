@@ -1,4 +1,5 @@
 import { BaseService } from './base.service'
+import { API_ENDPOINTS } from '@/utils/api'
 
 export interface MenuItem {
   id: number
@@ -51,77 +52,77 @@ export class LinksService extends BaseService {
    * Get all links
    */
   async getLinks() {
-    return this.get<LinkData[]>('/Links')
+    return this.get<LinkData[]>(API_ENDPOINTS.LINKS)
   }
 
   /**
    * Get single link by URL
    */
   async getLinkByUrl(url: string) {
-    return this.get<LinkData>(`/Links/${url}`)
+    return this.get<LinkData>(API_ENDPOINTS.LINK_BY_URL(url))
   }
 
   /**
    * Create new link
    */
   async createLink(data: CreateLinkRequest) {
-    return this.post<LinkData>('/Links', data)
+    return this.post<LinkData>(API_ENDPOINTS.LINKS, data)
   }
 
   /**
    * Update link
    */
   async updateLink(url: string, data: UpdateLinkRequest) {
-    return this.put<LinkData>(`/Links/${url}`, data)
+    return this.put<LinkData>(API_ENDPOINTS.LINK_BY_URL(url), data)
   }
 
   /**
    * Delete link
    */
   async deleteLink(url: string) {
-    return this.delete(`/Links/${url}`)
+    return this.delete(API_ENDPOINTS.LINK_BY_URL(url))
   }
 
   /**
    * Get menu items for a specific link
    */
   async getMenuItems(linkUrl: string) {
-    return this.get<MenuItem[]>(`/Links/${linkUrl}/MenuItems`)
+    return this.get<MenuItem[]>(API_ENDPOINTS.LINK_MENU_ITEMS(linkUrl))
   }
 
   /**
    * Get menu categories by URL (for the new API endpoint)
    */
   async getMenuCategories(menuUrl: string) {
-    return this.get<MenuItem[]>(`/Menus/${menuUrl}/category`)
+    return this.get<MenuItem[]>(API_ENDPOINTS.MENU_CATEGORIES(menuUrl))
   }
 
   /**
    * Create new menu item
    */
   async createMenuItem(data: CreateMenuItemRequest) {
-    return this.post<MenuItem>(`/Links/${data.parentUrl}/MenuItems`, data)
+    return this.post<MenuItem>(API_ENDPOINTS.LINK_MENU_ITEMS(data.parentUrl), data)
   }
 
   /**
    * Update menu item
    */
   async updateMenuItem(linkUrl: string, data: UpdateMenuItemRequest) {
-    return this.put<MenuItem>(`/Links/${linkUrl}/MenuItems/${data.id}`, data)
+    return this.put<MenuItem>(API_ENDPOINTS.LINK_MENU_ITEM_BY_ID(linkUrl, data.id), data)
   }
 
   /**
    * Delete menu item
    */
   async deleteMenuItem(linkUrl: string, itemId: number) {
-    return this.delete(`/Links/${linkUrl}/MenuItems/${itemId}`)
+    return this.delete(API_ENDPOINTS.LINK_MENU_ITEM_BY_ID(linkUrl, itemId))
   }
 
   /**
    * Reorder menu items (old, keep for backward compatibility)
    */
   async reorderMenuItems(linkUrl: string, items: { id: number, order: number }[]) {
-    return this.put<MenuItem[]>(`/Links/${linkUrl}/MenuItems/reorder`, { items })
+    return this.put<MenuItem[]>(API_ENDPOINTS.LINK_MENU_ITEMS_REORDER(linkUrl), { items })
   }
 
   /**
@@ -130,7 +131,7 @@ export class LinksService extends BaseService {
    * menuId ở đây chính là itemId của item được kéo thả
    */
   async reorderMenuItemsV2(menuId: number, newParentId: number | null, newSortOrder: number) {
-    return this.post<any>(`/Menus/reorder`, {
+    return this.post<unknown>(API_ENDPOINTS.MENU_REORDER, {
       menuId,
       newParentId,
       newSortOrder

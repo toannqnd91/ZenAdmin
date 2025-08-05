@@ -1,5 +1,48 @@
-// Best practice: Sử dụng composable useApiConfig() trực tiếp
-// import { useApiConfig } from '@/composables/useApiConfig'
+// API Endpoints configuration
+export const API_ENDPOINTS = {
+  // File endpoints
+  UPLOAD_FILE: '/File/Upload',
+  UPLOAD_MULTIPLE_FILES: '/File/UploadMultiple',
+  DELETE_FILE: (fileName: string) => `/File/${fileName}`,
+  
+  // Widget endpoints  
+  CAROUSEL_WIDGET: '/CarouselWidget',
+  CAROUSEL_WIDGET_BY_ID: (id: number) => `/CarouselWidget/${id}`,
+  
+  // Auth endpoints
+  LOGIN: '/Identity/login',
+  LOGOUT: '/Identity/logout',
+  REFRESH_TOKEN: '/Identity/refresh',
+  PROFILE: '/Identity/profile',
+  
+  // Content endpoints
+  DASHBOARD_MENU: '/DashboardMenu',
+  DASHBOARD_STATS: '/Dashboard/stats',
+  DASHBOARD_OVERVIEW: '/Dashboard/overview',
+  NEWS_CATEGORIES: '/NewsCategories',
+  NEWS_CATEGORY_BY_ID: (id: number) => `/NewsCategories/${id}`,
+  NEWS: '/News',
+  NEWS_BY_ID: (id: number) => `/News/${id}`,
+  NEWS_CREATE: '/News/create',
+  NEWS_UPDATE: (id: number) => `/News/${id}/update`,
+  PRODUCT_CATEGORIES: '/ProductCategories',
+  PRODUCT_CATEGORY_BY_ID: (id: number) => `/ProductCategories/${id}`,
+  PRODUCTS: '/Products',
+  PRODUCT_BY_ID: (id: number) => `/Product/${id}`,
+  PRODUCT_CREATE: '/Product/create',
+  PRODUCT_UPDATE: (id: number) => `/Product/${id}/update`,
+  
+  // Links endpoints
+  LINKS: '/Links',
+  LINK_BY_URL: (url: string) => `/Links/${url}`,
+  LINK_MENU_ITEMS: (linkUrl: string) => `/Links/${linkUrl}/MenuItems`,
+  LINK_MENU_ITEM_BY_ID: (linkUrl: string, itemId: number) => `/Links/${linkUrl}/MenuItems/${itemId}`,
+  LINK_MENU_ITEMS_REORDER: (linkUrl: string) => `/Links/${linkUrl}/MenuItems/reorder`,
+  
+  // Menu endpoints
+  MENU_CATEGORIES: (menuUrl: string) => `/Menus/${menuUrl}/category`,
+  MENU_REORDER: '/Menus/reorder'
+} as const
 
 // Backward compatibility exports (deprecated)
 export const getApiBaseUrl = () => {
@@ -23,6 +66,12 @@ export const getApiEndpoints = () => {
     news: `${apiBaseUrl}/News`,
     productCategories: `${apiBaseUrl}/ProductCategories`,
     products: `${apiBaseUrl}/Products`,
-    uploadFiles: `${apiBaseUrl}/File/UploadMultiple`
+    // File endpoints
+    uploadFile: `${apiBaseUrl}/File/Upload`,
+    uploadFiles: `${apiBaseUrl}/File/UploadMultiple`,
+    deleteFile: (fileName: string) => `${apiBaseUrl}/File/${fileName}`,
+    // Widget endpoints
+    carouselWidget: `${apiBaseUrl}/CarouselWidget`,
+    carouselWidgetById: (id: number) => `${apiBaseUrl}/CarouselWidget/${id}`
   }
 }

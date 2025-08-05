@@ -1,4 +1,5 @@
 import { BaseService } from './base.service'
+import { API_ENDPOINTS } from '@/utils/api'
 import type { NewsCategory } from '@/types/newsCategory'
 
 export interface News {
@@ -44,7 +45,7 @@ export class NewsService extends BaseService {
    */
   async getCategories() {
     const body = this.createListRequestBody()
-    return this.post<NewsCategory[]>('/NewsCategories', body)
+    return this.post<NewsCategory[]>(API_ENDPOINTS.NEWS_CATEGORIES, body)
   }
 
   /**
@@ -66,7 +67,7 @@ export class NewsService extends BaseService {
     })
     
     // API returns data.items, not data directly
-    const response = await this.post<NewsListResponse>('/News', body)
+    const response = await this.post<NewsListResponse>(API_ENDPOINTS.NEWS, body)
     
     // Transform the response to return items directly but maintain the response structure
     if (response.success && response.data) {
@@ -86,28 +87,28 @@ export class NewsService extends BaseService {
    * Get single news by ID
    */
   async getNewsById(id: number) {
-    return this.get<News>(`/News/${id}`)
+    return this.get<News>(API_ENDPOINTS.NEWS_BY_ID(id))
   }
 
   /**
    * Create new news
    */
   async createNews(data: CreateNewsRequest) {
-    return this.post<boolean>('/News/create', data)
+    return this.post<boolean>(API_ENDPOINTS.NEWS_CREATE, data)
   }
 
   /**
    * Update news
    */
   async updateNews(id: number, data: NewsFormData) {
-    return this.put<boolean>(`/News/${id}/update`, data)
+    return this.put<boolean>(API_ENDPOINTS.NEWS_UPDATE(id), data)
   }
 
   /**
    * Delete news
    */
   async deleteNews(id: number) {
-    return this.delete(`/News/${id}`)
+    return this.delete(API_ENDPOINTS.NEWS_BY_ID(id))
   }
 
   /**
@@ -119,7 +120,7 @@ export class NewsService extends BaseService {
     imageUrl?: string
     icon?: string
   }) {
-    return this.post<NewsCategory>('/NewsCategories', data)
+    return this.post<NewsCategory>(API_ENDPOINTS.NEWS_CATEGORIES, data)
   }
 
   /**
@@ -131,14 +132,14 @@ export class NewsService extends BaseService {
     imageUrl?: string
     icon?: string
   }) {
-    return this.put<NewsCategory>(`/NewsCategories/${id}`, data)
+    return this.put<NewsCategory>(API_ENDPOINTS.NEWS_CATEGORY_BY_ID(id), data)
   }
 
   /**
    * Delete news category
    */
   async deleteCategory(id: number) {
-    return this.delete(`/NewsCategories/${id}`)
+    return this.delete(API_ENDPOINTS.NEWS_CATEGORY_BY_ID(id))
   }
 }
 
