@@ -115,10 +115,40 @@ const toggleExpand = (itemId: number) => {
   }
 }
 
-// Add new link function
-const addNewLink = () => {
-  console.log('Add new link for menu:', menuId)
-  // TODO: Implement add new link functionality
+// Modal state
+const isAddModalOpen = ref(false)
+const newLinkName = ref('')
+const newLinkType = ref('Trang chủ')
+const linkTypeOptions = [
+  { label: 'Trang chủ', value: 'Trang chủ' },
+  { label: 'Danh mục sản phẩm', value: 'Danh mục sản phẩm' },
+  { label: 'Sản phẩm', value: 'Sản phẩm' },
+  { label: 'Tất cả sản phẩm', value: 'Tất cả sản phẩm' },
+  { label: 'Trang nội dung', value: 'Trang nội dung' },
+  { label: 'Danh mục bài viết', value: 'Danh mục bài viết' },
+  { label: 'Trang tìm kiếm', value: 'Trang tìm kiếm' },
+  { label: 'Địa chỉ web', value: 'Địa chỉ web' }
+]
+
+const openAddModal = () => {
+  isAddModalOpen.value = true
+  newLinkName.value = ''
+  newLinkType.value = linkTypeOptions[0]?.value || 'Trang chủ'
+}
+
+// Handler for LinkModal submit
+interface LinkModalPayload {
+  name: string
+  type: string
+}
+const handleAddLinkModal = (payload: LinkModalPayload) => {
+  // TODO: Gọi API thêm liên kết
+  console.log('Adding new link:', {
+    name: payload.name,
+    type: payload.type,
+    menuId
+  })
+  isAddModalOpen.value = false
 }
 
 // Initialize links from API data
@@ -350,31 +380,30 @@ const onDragEnd = async (event: SortableEvent) => {
                   </td>
                   <td class="col-name px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium">
                     <div class="flex items-center">
-                      <!-- Container with indentation for hierarchy and negative margin for parent items -->
                       <div
                         class="flex items-center"
                         :style="{
                           paddingLeft: `${link.level * 20}px`,
-                          marginLeft: link.hasChildren ? '-30px' : '0px'
+                          marginLeft: link.hasChildren ? '-32px' : '0px'
                         }"
                       >
-                        <!-- Expand/Collapse button for items with children -->
+                        <!-- Nút expand/collapse cho item có children -->
                         <button
                           v-if="link.hasChildren"
-                          class="mr-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                          class="mr-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded flex items-center justify-center"
                           @click="toggleExpand(link.id)"
                         >
                           <svg
                             class="w-4 h-4 text-gray-500 transition-transform"
-                            :class="{ 'rotate-90': expandedItems.has(link.id) }"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
+                            :class="{ '-rotate-90': !expandedItems.has(link.id) }"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            viewBox="0 0 24 24"
                           >
-                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
                           </svg>
                         </button>
-                        
-                        <!-- Text name with hierarchy indentation -->
                         <span>{{ link.name }}</span>
                       </div>
                     </div>
@@ -383,7 +412,7 @@ const onDragEnd = async (event: SortableEvent) => {
                     {{ link.url }}
                   </td>
                   <td class="col-action px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div class="flex items-center space-x-2 justify-end">
+                    <div class="flex items-center space-x-4 justify-end">
                       <button
                         title="Chỉnh sửa"
                         class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
@@ -432,7 +461,7 @@ const onDragEnd = async (event: SortableEvent) => {
             <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
               <button
                 class="flex items-center text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 text-sm font-medium"
-                @click="addNewLink"
+                @click="openAddModal"
               >
                 <svg
                   class="w-4 h-4 mr-2"
@@ -455,6 +484,17 @@ const onDragEnd = async (event: SortableEvent) => {
       </div>
     </template>
   </UDashboardPanel>
+
+  <!-- Modal thêm/sửa liên kết dùng chung component -->
+  <LinkModal
+    :open="isAddModalOpen"
+    title="Thêm liên kết"
+    :initial-name="newLinkName"
+    :initial-type="newLinkType"
+    :link-type-options="linkTypeOptions"
+    @update:open="isAddModalOpen = $event"
+    @submit="handleAddLinkModal"
+  />
 </template>
 
 <style scoped>
@@ -506,9 +546,9 @@ const onDragEnd = async (event: SortableEvent) => {
   transition: transform 0.2s ease;
 }
 
-.rotate-90 {
-  transform: rotate(90deg);
-}
+  .rotate-90 {
+    transform: rotate(90deg);
+  }
 
 .transition-colors {
   transition: color 0.2s ease, background-color 0.2s ease;
