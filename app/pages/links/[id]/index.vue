@@ -118,34 +118,28 @@ const toggleExpand = (itemId: number) => {
 // Modal state
 const isAddModalOpen = ref(false)
 const newLinkName = ref('')
-const newLinkType = ref('Trang chủ')
-const linkTypeOptions = [
-  { label: 'Trang chủ', value: 'Trang chủ' },
-  { label: 'Danh mục sản phẩm', value: 'Danh mục sản phẩm' },
-  { label: 'Sản phẩm', value: 'Sản phẩm' },
-  { label: 'Tất cả sản phẩm', value: 'Tất cả sản phẩm' },
-  { label: 'Trang nội dung', value: 'Trang nội dung' },
-  { label: 'Danh mục bài viết', value: 'Danh mục bài viết' },
-  { label: 'Trang tìm kiếm', value: 'Trang tìm kiếm' },
-  { label: 'Địa chỉ web', value: 'Địa chỉ web' }
-]
+const newLinkTypeId = ref<string | number | undefined>(undefined)
 
 const openAddModal = () => {
   isAddModalOpen.value = true
   newLinkName.value = ''
-  newLinkType.value = linkTypeOptions[0]?.value || 'Trang chủ'
+  newLinkTypeId.value = undefined
 }
 
 // Handler for LinkModal submit
 interface LinkModalPayload {
   name: string
-  type: string
+  typeId: number | string
+  typeName: string
+  typeEntity: string | null
 }
 const handleAddLinkModal = (payload: LinkModalPayload) => {
-  // TODO: Gọi API thêm liên kết
+  // TODO: Gọi API thêm liên kết với typeId, typeName, typeEntity
   console.log('Adding new link:', {
     name: payload.name,
-    type: payload.type,
+    typeId: payload.typeId,
+    typeName: payload.typeName,
+    typeEntity: payload.typeEntity,
     menuId
   })
   isAddModalOpen.value = false
@@ -490,8 +484,7 @@ const onDragEnd = async (event: SortableEvent) => {
     :open="isAddModalOpen"
     title="Thêm liên kết"
     :initial-name="newLinkName"
-    :initial-type="newLinkType"
-    :link-type-options="linkTypeOptions"
+    :initial-type-id="newLinkTypeId"
     @update:open="isAddModalOpen = $event"
     @submit="handleAddLinkModal"
   />

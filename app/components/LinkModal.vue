@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, defineProps, defineEmits } from 'vue'
+import { ref, watch, defineProps, defineEmits, onMounted } from 'vue'
+import { menuTypeService, type MenuType } from '@/services/menu-type.service'
 
 const props = defineProps({
   open: Boolean,
@@ -11,22 +12,9 @@ const props = defineProps({
     type: String,
     default: ''
   },
-  initialType: {
-    type: String,
-    default: 'Trang chủ'
-  },
-  linkTypeOptions: {
-    type: Array,
-    default: () => [
-      { label: 'Trang chủ', value: 'Trang chủ' },
-      { label: 'Danh mục sản phẩm', value: 'Danh mục sản phẩm' },
-      { label: 'Sản phẩm', value: 'Sản phẩm' },
-      { label: 'Tất cả sản phẩm', value: 'Tất cả sản phẩm' },
-      { label: 'Trang nội dung', value: 'Trang nội dung' },
-      { label: 'Danh mục bài viết', value: 'Danh mục bài viết' },
-      { label: 'Trang tìm kiếm', value: 'Trang tìm kiếm' },
-      { label: 'Địa chỉ web', value: 'Địa chỉ web' }
-    ]
+  initialTypeId: {
+    type: [Number, String],
+    default: null
   }
 })
 
@@ -34,7 +22,9 @@ const emit = defineEmits(['update:open', 'submit'])
 
 const modalOpen = ref(props.open)
 const linkName = ref(props.initialName)
-const linkType = ref(props.initialType)
+const linkTypeId = ref(props.initialTypeId)
+const menuTypes = ref<MenuType[]>([])
+const loadingMenuTypes = ref(false)
 
 watch(() => props.open, (val) => {
   modalOpen.value = val
@@ -42,19 +32,39 @@ watch(() => props.open, (val) => {
 watch(() => props.initialName, (val) => {
   linkName.value = val
 })
-watch(() => props.initialType, (val) => {
-  linkType.value = val
+watch(() => props.initialTypeId, (val) => {
+  linkTypeId.value = val
 })
+
+const fetchMenuTypes = async () => {
+  loadingMenuTypes.value = true
+  try {
+    menuTypes.value = await menuTypeService.getMenuTypes()
+    // Set default if not set
+    if (!linkTypeId.value && menuTypes.value.length > 0) {
+      linkTypeId.value = menuTypes.value[0].id
+    }
+  } catch (e) {
+    // handle error if needed
+  } finally {
+    loadingMenuTypes.value = false
+  }
+}
+
+onMounted(fetchMenuTypes)
 
 const closeModal = () => {
   emit('update:open', false)
 }
 
 const handleSubmit = () => {
-  if (!linkName.value.trim()) return
+  if (!linkName.value.trim() || !linkTypeId.value) return
+  const selectedType = menuTypes.value.find(t => t.id === Number(linkTypeId.value))
   emit('submit', {
     name: linkName.value,
-    type: linkType.value
+    typeId: linkTypeId.value,
+    typeName: selectedType?.name || '',
+    typeEntity: selectedType?.entity || null
   })
   closeModal()
 }
@@ -80,11 +90,13 @@ const handleSubmit = () => {
           />
         </div>
         <div>
-          <label class="block text-sm font-medium mb-1">Liên kết</label>
+          <label class="block text-sm font-medium mb-1">Loại liên kết</label>
           <USelect
-            v-model="linkType"
-            :items="linkTypeOptions"
+            v-model="linkTypeId"
+            :items="menuTypes.map(t => ({ label: t.name, value: t.id }))"
             class="w-1/2"
+            :loading="loadingMenuTypes"
+            :disabled="loadingMenuTypes"
           />
         </div>
       </div>
@@ -99,7 +111,7 @@ const handleSubmit = () => {
       <UButton
         label="Hoàn thành"
         color="primary"
-        :disabled="!linkName.trim() || !linkType"
+        :disabled="!linkName.trim() || !linkTypeId"
         @click="handleSubmit"
       />
     </template>

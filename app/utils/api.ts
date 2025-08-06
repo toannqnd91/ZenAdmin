@@ -49,7 +49,10 @@ export const API_ENDPOINTS = {
   
   // Menu endpoints
   MENU_CATEGORIES: (menuUrl: string) => `/Menus/${menuUrl}/category`,
-  MENU_REORDER: '/Menus/reorder'
+  MENU_REORDER: '/Menus/reorder',
+
+  // Menu type endpoints
+  MENU_TYPES: '/MenuTypes'
 } as const
 
 // Backward compatibility exports (deprecated)
