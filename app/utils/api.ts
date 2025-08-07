@@ -35,7 +35,7 @@ export const API_ENDPOINTS = {
   NEWS_UPDATE: (id: number) => `/News/${id}/update`,
   PRODUCT_CATEGORIES: '/ProductCategories',
   PRODUCT_CATEGORY_BY_ID: (id: number) => `/ProductCategories/${id}`,
-  PRODUCTS: '/Products',
+  PRODUCTS: '/product/grid',
   PRODUCT_BY_ID: (id: number) => `/Product/${id}`,
   PRODUCT_CREATE: '/Product/create',
   PRODUCT_UPDATE: (id: number) => `/Product/${id}/update`,

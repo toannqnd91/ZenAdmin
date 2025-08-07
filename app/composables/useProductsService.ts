@@ -42,15 +42,27 @@ export const useProductsService = () => {
     try {
       const response = await productService.getProducts(options)
       if (response.success) {
-        products.value = response.data
+        // API trả về response.data.items
+        products.value = response.data?.items || []
+        // Nếu muốn dùng tổng số bản ghi: response.data?.totalRecord
       } else {
         throw new Error(response.message)
       }
     } catch (err) {
-      error.value = err instanceof Error ? err : new Error('Failed to fetch products')
+      let errMsg = ''
+      if (err instanceof Error) {
+        error.value = err
+        errMsg = err.message
+      } else if (typeof err === 'object') {
+        error.value = new Error(JSON.stringify(err))
+        errMsg = JSON.stringify(err)
+      } else {
+        error.value = new Error(String(err))
+        errMsg = String(err)
+      }
       toast.add({
         title: 'Error',
-        description: error.value.message,
+        description: errMsg,
         color: 'error'
       })
     } finally {
