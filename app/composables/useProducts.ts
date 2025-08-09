@@ -4,24 +4,52 @@ import { getApiEndpoints, getImageBaseUrl } from '@/utils/api'
 import type { Row } from '@tanstack/table-core'
 import { getPaginationRowModel } from '@tanstack/table-core'
 
+export interface ProductVariation {
+  id: number
+  name: string
+  normalizedName: string
+  sku: string | null
+  gtin: string | null
+  price: number | null
+  oldPrice: number | null
+  thumbnailImageUrl: string
+  imageUrls: string[]
+  optionCombinations: any[]
+  stockQuantity: number
+}
+
 export interface ProductItem {
   id: number
   name: string
-  price?: number | null
-  sku?: string | null
-  description?: string | null
-  content: string
-  imageUrls: string[]
-  url: string
+  sku: string
+  hasOptions: boolean
+  isVisibleIndividually: boolean
   isFeatured: boolean
-  isInStock: boolean
-  isDeleted: boolean
-  createdAt: string
+  isAllowToOrder: boolean
+  isCallForPricing: boolean
+  stockQuantity: number
+  createdOn: string
+  isPublished: boolean
+  sold: number
+  inventory?: number
+  thumbnailImageUrl: string
+  brand: {
+    id: number
+    name: string
+    slug: string
+  } | null
   categories: Array<{
     id: number
     name: string
-    url: string
+    slug: string
   }>
+  warehouses: Array<{
+    id: number
+    name: string
+    address: string
+    quantity: number
+  }>
+  variations?: ProductVariation[]
 }
 
 export interface ProductApiResponse {

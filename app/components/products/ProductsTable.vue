@@ -87,10 +87,50 @@ const columns: TableColumn<ProductItem>[] = [
     }
   },
   {
+    accessorKey: 'sold',
+    header: 'Đã bán',
+    cell: ({ row }) => row.original.sold
+  },
+  {
+    accessorKey: 'inventory',
+    header: 'Tồn kho',
+    cell: ({ row }) => {
+      const p = row.original
+      // Nếu có variations
+      if (Array.isArray(p.variations) && p.variations.length > 1) {
+        const allQty = p.variations.map(v => v.stockQuantity)
+        const allUnlimited = allQty.every(qty => qty === null || qty === undefined)
+        const allSame = allQty.every(qty => qty === allQty[0])
+        let label = ''
+        let color = ''
+        if (allUnlimited) {
+          label = 'Unlimited'
+        } else if (allSame) {
+          label = `${allQty[0]} in stock`
+        } else {
+          label = 'Mixed'
+          color = 'text-error'
+        }
+        return h('div', {}, [
+          h('span', { class: color }, label),
+          h('div', { class: 'text-xs text-muted' }, `${p.variations.length} variants`)
+        ])
+      }
+      // Không có variations hoặc chỉ 1
+      if (p.stockQuantity === null || p.stockQuantity === undefined) {
+        return h('span', {}, 'Unlimited')
+      }
+      return h('div', {}, [
+        h('span', {}, `${p.stockQuantity} in stock`),
+        h('div', { class: 'text-xs text-muted' }, `${Array.isArray(p.variations) ? p.variations.length : 1} variants`)
+      ])
+    }
+  },
+  {
     accessorKey: 'createdAt',
     header: 'Ngày tạo',
     cell: ({ row }) => {
-      const date = new Date(row.original.createdAt)
+      const date = new Date(row.original.createdOn)
       return date.toLocaleDateString('vi-VN')
     }
   },

@@ -17,7 +17,7 @@ export const useApiConfig = () => {
       refreshToken: `${config.public.apiBaseUrl}/Identity/refresh`,
       newsCategories: `${config.public.apiBaseUrl}/NewsCategories`,
       news: `${config.public.apiBaseUrl}/News`,
-      productCategories: `${config.public.apiBaseUrl}/ProductCategories`,
+      productCategories: `${config.public.apiBaseUrl}/product-categories`,
       products: `${config.public.apiBaseUrl}/Products`,
       uploadFiles: `${config.public.apiBaseUrl}/File/UploadMultiple`
     }

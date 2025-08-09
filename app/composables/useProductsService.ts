@@ -33,6 +33,7 @@ export const useProductsService = () => {
   async function fetchProducts(options?: {
     search?: string
     categoryId?: number
+    hasOptions?: boolean
     pagination?: { start: number, number: number }
     sort?: { field: string, reverse: boolean }
   }) {
@@ -40,7 +41,12 @@ export const useProductsService = () => {
     error.value = null
 
     try {
-      const response = await productService.getProducts(options)
+      // Truyền thêm HasOptions vào QueryObject nếu có
+      const opts = { ...options }
+      if (typeof options?.hasOptions !== 'undefined') {
+        opts.hasOptions = options.hasOptions
+      }
+      const response = await productService.getProducts(opts)
       if (response.success) {
         // API trả về response.data.items
         products.value = response.data?.items || []

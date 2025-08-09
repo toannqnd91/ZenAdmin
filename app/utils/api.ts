@@ -75,7 +75,7 @@ export const getApiEndpoints = () => {
     refreshToken: `${apiBaseUrl}/Identity/refresh`,
     newsCategories: `${apiBaseUrl}/NewsCategories`,
     news: `${apiBaseUrl}/News`,
-    productCategories: `${apiBaseUrl}/ProductCategories`,
+    productCategories: `${apiBaseUrl}/product-categories`,
     products: `${apiBaseUrl}/Products`,
     // File endpoints
     uploadFile: `${apiBaseUrl}/File/Upload`,

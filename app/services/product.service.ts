@@ -46,18 +46,21 @@ export class ProductService extends BaseService {
   async getProducts(options?: {
     search?: string
     categoryId?: number
+    hasOptions?: boolean
     pagination?: { start: number, number: number }
     sort?: { field: string, reverse: boolean }
   }) {
+    const searchObj: Record<string, unknown> = {
+      Name: options?.search ?? null,
+      CategoryId: options?.categoryId ?? null,
+      // Luôn gửi HasOptions; mặc định true nếu không truyền vào để phù hợp yêu cầu
+      HasOptions: typeof options?.hasOptions !== 'undefined' ? options.hasOptions : true
+    }
     const body = this.createListRequestBody({
       pagination: options?.pagination,
-      search: {
-        Name: options?.search || null,
-        CategoryId: options?.categoryId || null
-      },
+      search: searchObj,
       sort: options?.sort
     })
-    
     return this.post<ProductItem[]>(API_ENDPOINTS.PRODUCTS, body)
   }
 
