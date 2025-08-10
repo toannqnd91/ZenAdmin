@@ -21,7 +21,7 @@ const {
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
-        <template #right>
+        <!-- <template #right>
           <UButton
             label="Thêm sản phẩm"
             color="primary"
@@ -29,13 +29,13 @@ const {
             icon="i-lucide-plus"
             @click="navigateTo('/products/create')"
           />
-        </template>
+        </template> -->
       </UDashboardNavbar>
     </template>
 
     <template #body>
       <div class="w-full flex flex-col h-full">
-        <div class="flex-1 min-h-0 p-6">
+        <div class="flex-1 min-h-0">
           <ProductsTable
               v-model:q="q"
               v-model:row-selection="rowSelection"

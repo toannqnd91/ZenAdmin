@@ -105,8 +105,8 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
       <div class="flex items-center gap-3">
         <button
           class="h-9 w-9 inline-flex items-center justify-center rounded-md
-                border border-gray-300 bg-white hover:bg-gray-50
-                focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  border border-gray-300 bg-white hover:bg-gray-50
+                  focus:outline-none focus:ring-2 focus:ring-blue-400"
           style="aspect-ratio: 1 / 1 !important;"
           title="Filter" aria-label="Filter"
         >
@@ -121,7 +121,7 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
           </span>
           <input
             type="text"
-            placeholder="Search Products"
+            placeholder="Tìm kiếm sản phẩm"
             class="h-9 w-full pl-9 pr-3 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:border-gray-400 focus:ring-0 text-sm"
             :value="q"
             @input="$emit('update:q', ($event.target as HTMLInputElement).value)"
@@ -141,8 +141,9 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
     <div class="border-t border-gray-200"></div>
 
     <!-- Selection toolbar -->
-    <div v-if="selectedCount > 0" class="px-6 py-3 border-b border-gray-200">
-      <div class="flex items-center">
+    <div v-if="selectedCount > 0" class="px-6">
+      <div class="flex items-center h-14 border-b border-gray-200">
+        <!-- căn trái để mép checkbox trùng lề tiêu đề -->
         <div class="w-14 h-full flex items-center justify-start">
           <button
             type="button"
@@ -166,10 +167,18 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
           <button type="button"
             class="h-9 inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 text-sm bg-white hover:bg-gray-50">
             Change Status
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16.862 5.487a2.06 2.06 0 0 1 2.915 2.914l-9.193 9.193-3.09.343a.5.5 0 0 1-.553-.553l.343-3.09 9.193-9.193Z"/>
+              <path d="M15.5 7.5l1 1"/>
+            </svg>
           </button>
           <button type="button"
             class="h-9 inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 text-sm bg-white hover:bg-gray-50">
             Archived
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="7" width="18" height="13" rx="2"/>
+              <path d="M16 3v4M8 3v4M3 7h18"/>
+            </svg>
           </button>
         </div>
       </div>
@@ -177,10 +186,10 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
 
     <!-- Table -->
     <div class="px-6" @click="onBodyClick">
-      <table class="w-full table-fixed">
+  <table class="w-full table-fixed text-sm">
         <thead v-show="selectedCount === 0" class="text-gray-500">
-          <tr>
-            <th class="py-3 w-14">
+          <tr class="h-14">
+            <th class="py-0 w-14">
               <div class="w-14 h-full flex items-center justify-start">
                 <button
                   data-role="chk"
@@ -218,7 +227,13 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
         </thead>
 
         <tbody>
-          <tr v-for="p in pageItems" :key="p.id" class="group/row border-t border-gray-200 hover:bg-gray-50">
+          <tr
+            v-for="p in pageItems"
+            :key="p.id"
+            class="group/row border-t border-gray-200 row-band"
+            :class="{ 'is-active': isSelected(p.id) }"
+          >
+            <!-- Row checkbox -->
             <td class="py-4 w-14 align-middle">
               <div class="w-14 h-full flex items-center justify-start">
                 <button
@@ -243,6 +258,7 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
               </div>
             </td>
 
+            <!-- name + thumb -->
             <td class="py-4">
               <div class="flex items-center gap-4">
                 <div class="h-14 w-14 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
@@ -250,18 +266,26 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
                        class="h-full w-full object-cover"
                        @error="(e:any)=> e.target && (e.target.src='/no-image.svg')" />
                 </div>
-                <div class="text-[15px] text-gray-900 font-medium">{{ p.name }}</div>
+                <div class="text-[15px] text-gray-900 font-medium">
+                  {{ p.name }}
+                </div>
               </div>
             </td>
 
+            <!-- status pill -->
             <td class="py-4">
               <span class="inline-flex items-center rounded-full bg-[#dff5c7] text-[#2a7a16] px-3 py-1 text-sm font-medium">
                 {{ p.status || 'Public' }}
               </span>
             </td>
 
+            <!-- source -->
             <td class="py-4 text-gray-700">{{ p.source || 'My product' }}</td>
+
+            <!-- sold -->
             <td class="py-4 text-gray-900">{{ p.sold ?? 0 }}</td>
+
+            <!-- inventory -->
             <td class="py-4">
               <div :class="['text-gray-900', invText(p).danger ? 'text-red-500' : '']">
                 {{ invText(p).line1 }}
@@ -269,6 +293,7 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
               <div class="text-xs text-gray-400">{{ invText(p).variants }}</div>
             </td>
 
+            <!-- actions -->
             <td class="py-4 pr-4">
               <div class="flex justify-end">
                 <button type="button" class="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-gray-100" @click.stop>
@@ -288,7 +313,7 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
     <!-- Footer -->
     <div class="flex items-center justify-between px-6 pb-4">
       <div class="text-sm text-gray-500">{{ selectedCount }} selected.</div>
-      <div class="flex items-center gap-2">
+      <div v-if="filtered.length > pagination.pageSize" class="flex items-center gap-2">
         <button class="px-3 py-1.5 border rounded-md text-sm"
                 :disabled="pagination.pageIndex===0"
                 @click="$emit('update:pagination', { ...pagination, pageIndex: pagination.pageIndex-1 })">Prev</button>
@@ -300,3 +325,22 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Hiệu ứng “đậm ở giữa – mờ dần 2 bên”, giống đoạn bạn tham khảo */
+.row-band:hover,
+.row-band.is-active{
+  /* 270deg: trái -> phải (giữa đậm #f9f8f7) */
+  background-image: linear-gradient(
+    270deg,
+    rgba(255, 255, 255, 0) 0%,
+    #f9f8f7 25%,
+    #f9f8f7 71%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+/* Mượt mà khi vào/ra hover */
+.row-band{
+  transition: background-image .2s ease;
+}
+</style>

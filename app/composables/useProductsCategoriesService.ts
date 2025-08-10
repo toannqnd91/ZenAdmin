@@ -20,7 +20,7 @@ export interface ProductCategoriesApiResponse {
   data: ProductCategory[]
 }
 
-export const useProductsCategoriesService = () => {
+export const useProductsCategoriesService = (options?: { server?: boolean }) => {
   const { accessToken } = useAuthService()
   
   // Fetch data from API using POST with required body
@@ -28,6 +28,7 @@ export const useProductsCategoriesService = () => {
     getApiEndpoints().productCategories,
     {
       method: 'POST',
+      server: options?.server ?? false, // Default to client-side only
       headers: computed(() => ({
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken.value}`

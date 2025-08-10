@@ -1,6 +1,11 @@
 <script setup lang="ts">
-// Get service data
+// Get service data (fetch only on client to avoid SSR fetch error)
 const { data, loading, error } = useProductsCategoriesService()
+
+// Reactive state for table
+const q = ref('')
+const rowSelection = ref<Record<string, boolean>>({})
+const pagination = ref({ pageIndex: 0, pageSize: 10 })
 </script>
 
 <template>
@@ -11,19 +16,19 @@ const { data, loading, error } = useProductsCategoriesService()
           <UDashboardSidebarCollapse />
         </template>
         
-        <template #right>
+        <!-- <template #right>
           <ProductsCategoriesAddModal />
-        </template>
+        </template> -->
       </UDashboardNavbar>
     </template>
 
     <template #body>
       <ProductsCategoriesTable
+        v-model:q="q"
+        v-model:row-selection="rowSelection"
+        v-model:pagination="pagination"
         :data="data"
         :loading="loading"
-        q=""
-        :row-selection="{}"
-        :pagination="{ pageIndex: 0, pageSize: 10 }"
       />
 
       <div v-if="error" class="text-error mt-4">
