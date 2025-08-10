@@ -36,27 +36,27 @@ const emit = defineEmits<{
 const columns: TableColumn[] = [
   {
     key: 'name',
-    label: 'Product name',
+    label: 'Tên sản phẩm',
     class: 'py-3 text-left font-medium'
   },
   {
     key: 'status',
-    label: 'Status',
+    label: 'Trạng thái',
     class: 'py-3 text-left font-medium'
   },
   {
     key: 'source',
-    label: 'Sources',
+    label: 'Nguồn',
     class: 'py-3 text-left font-medium'
   },
   {
     key: 'sold',
-    label: 'Sold',
+    label: 'Đã bán',
     class: 'py-3 text-left font-medium'
   },
   {
     key: 'inventory',
-    label: 'Inventory',
+    label: 'Tồn kho',
     class: 'py-3 text-left font-medium'
   }
 ]
