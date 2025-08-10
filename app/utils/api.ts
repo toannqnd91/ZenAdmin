@@ -24,6 +24,7 @@ export const API_ENDPOINTS = {
   PROFILE: '/Identity/profile',
   
   // Content endpoints
+  COLLECTIONS: '/collections',
   DASHBOARD_MENU: '/DashboardMenu',
   DASHBOARD_STATS: '/Dashboard/stats',
   DASHBOARD_OVERVIEW: '/Dashboard/overview',
