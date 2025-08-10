@@ -56,7 +56,6 @@ const selectAllState   = computed<'none'|'some'|'all'>(() =>
 )
 
 const toggleAllPage = () => {
-  // nếu đang all → bỏ hết; còn lại → chọn hết
   const targetValue = !(selectAllState.value === 'all')
   const next = { ...(props.rowSelection||{}) }
   for (const it of pageItems.value) next[String(it.id)] = targetValue
@@ -89,7 +88,7 @@ const invText = (p: ProductItem) => {
   return { line1:`${p.stockQuantity} in stock`, variants:`${Array.isArray(p.variations)?p.variations.length:1} variants`, danger:false }
 }
 
-/* ---------- keyboard helpers for checkbox buttons ---------- */
+/* ---------- keyboard helpers ---------- */
 const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
   if (e.code === 'Space' || e.key === ' ') {
     e.preventDefault()
@@ -102,13 +101,19 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
   <div class="bg-white border-gray-200">
     <!-- Top bar -->
     <div class="flex items-center justify-between gap-3 px-6 py-5">
-      <h2 class="text-lg font-semibold">
-        Danh sách sản phẩm
-      </h2>
+      <h2 class="text-lg font-semibold">Danh sách sản phẩm</h2>
 
       <div class="flex items-center gap-3">
-        <button class="h-9 w-9 inline-flex items-center justify-center rounded-md border border-gray-300 hover:bg-gray-50">
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4h18L14 14v6l-4-2v-4L3 4z"/></svg>
+        <button
+          class="h-9 w-9 inline-flex items-center justify-center rounded-md
+                border border-gray-300 bg-white hover:bg-gray-50
+                focus:outline-none focus:ring-2 focus:ring-blue-400"
+          style="aspect-ratio: 1 / 1 !important;"
+          title="Filter" aria-label="Filter"
+        >
+          <svg class="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 3h12v4l-4 4v8l-4-2v-6l-4-4V3z"/>
+          </svg>
         </button>
 
         <div class="relative w-full max-w-xs">
@@ -125,10 +130,10 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
         </div>
 
         <button
-          class="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-[#1b64f2] hover:bg-[#155ae0] text-white font-medium"
+          class="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-[#1b64f2] hover:bg-[#155ae0] text-white font-medium whitespace-nowrap"
           @click="navigateTo('/products/create')"
         >
-          New Product
+          Thêm sản phẩm
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
         </button>
       </div>
@@ -136,49 +141,52 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
 
     <div class="border-t border-gray-200"></div>
 
-    <!-- Selection toolbar under title -->
+    <!-- Selection toolbar -->
     <div v-if="selectedCount > 0" class="px-6 py-3 border-b border-gray-200">
-      <div class="flex items-center gap-3">
-        <button
-          type="button"
-          class="h-8 w-8 inline-flex items-center justify-center rounded-md bg-[#2563eb] text-white"
-          aria-label="Toggle all on page"
-          @click="toggleAllPage"
-        >
-          <!-- minus icon -->
-          <svg v-if="selectAllState!=='all'" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
-          <!-- check icon -->
-          <svg v-else class="w-4 h-4" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-        </button>
+      <div class="flex items-center">
+        <div class="w-14 h-full flex items-center justify-center">
+          <button
+            type="button"
+            class="inline-flex items-center justify-center h-5 w-5 rounded-md border focus:outline-none focus:ring-2 focus:ring-offset-1
+                   bg-[#1b64f2] border-[#1b64f2] text-white"
+            aria-label="Toggle all on page"
+            @click="toggleAllPage"
+          >
+            <svg v-if="selectAllState!=='all'" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12h14"/></svg>
+            <svg v-else class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </button>
+        </div>
 
-        <span class="text-lg font-medium">{{ selectedCount }} selected</span>
+        <span class="text-lg font-medium ml-2">{{ selectedCount }} selected</span>
 
-        <button type="button"
-          class="h-9 inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 text-sm bg-white hover:bg-gray-50">
-          Change Status
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-        </button>
+        <div class="flex items-center gap-2 ml-6">
+          <button type="button"
+            class="h-9 inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 text-sm bg-white hover:bg-gray-50">
+            Change Status
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+          </button>
 
-        <button type="button"
-          class="h-9 inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 text-sm bg-white hover:bg-gray-50">
-          Archived
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4"/><path d="M8 8v12h8V8"/></svg>
-        </button>
+          <button type="button"
+            class="h-9 inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 text-sm bg-white hover:bg-gray-50">
+            Archived
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4"/><path d="M8 8v12h8V8"/></svg>
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- Table -->
-    <div class="px-2 sm:px-3" @click="onBodyClick">
+    <div class="px-6" @click="onBodyClick">
       <table class="w-full table-fixed">
         <!-- thead hidden when any selected -->
         <thead v-show="selectedCount === 0" class="text-gray-500">
           <tr>
             <th class="py-3 w-14">
               <div class="w-14 h-full flex items-center justify-center">
-                <!-- Custom checkbox: select-all (tri-state) -->
                 <button
                   data-role="chk"
                   type="button"
@@ -194,12 +202,10 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
                   @keydown="onCheckboxKey($event, toggleAllPage)"
                   :title="selectAllState==='all' ? 'Unselect all' : 'Select all'"
                 >
-                  <!-- Check (chọn hết) -->
                   <svg v-if="selectAllState==='all'" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"
                       stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
-                  <!-- Minus (chọn không hết) -->
                   <svg v-else-if="selectAllState==='some'" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"
                       stroke="currentColor" stroke-width="3" stroke-linecap="round">
                     <path d="M5 12h14"/>
@@ -219,7 +225,7 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
         <tbody>
           <tr v-for="p in pageItems" :key="p.id"
               class="group/row border-t border-gray-200 hover:bg-gray-50">
-            <!-- Row checkbox: only check/empty -->
+            <!-- Row checkbox -->
             <td class="py-4 w-14 align-middle">
               <div class="w-14 h-full flex items-center justify-center">
                 <button
@@ -252,9 +258,7 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
                        class="h-full w-full object-cover"
                        @error="(e:any)=> e.target && (e.target.src='/no-image.svg')" />
                 </div>
-                <div class="text-[15px] text-gray-900 font-medium">
-                  {{ p.name }}
-                </div>
+                <div class="text-[15px] text-gray-900 font-medium">{{ p.name }}</div>
               </div>
             </td>
 
@@ -298,9 +302,7 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
 
     <!-- Footer -->
     <div class="flex items-center justify-between px-6 pb-4">
-      <div class="text-sm text-gray-500">
-        {{ selectedCount }} selected.
-      </div>
+      <div class="text-sm text-gray-500">{{ selectedCount }} selected.</div>
       <div class="flex items-center gap-2">
         <button class="px-3 py-1.5 border rounded-md text-sm"
                 :disabled="pagination.pageIndex===0"
