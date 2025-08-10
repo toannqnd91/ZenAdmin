@@ -23,7 +23,7 @@ const pagination = ref({ pageIndex: 0, pageSize: 10 })
     </template>
 
     <template #body>
-      <ProductsCategoriesTableV2
+      <ProductsCategoriesTable
         v-model:q="q"
         v-model:row-selection="rowSelection"
         v-model:pagination="pagination"

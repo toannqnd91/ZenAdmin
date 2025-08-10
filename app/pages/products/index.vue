@@ -33,7 +33,7 @@ const {
     <template #body>
       <div class="w-full flex flex-col h-full">
         <div class="flex-1 min-h-0">
-          <ProductsTableV2
+          <ProductsTable
             v-model:q="q"
             v-model:row-selection="rowSelection"
             v-model:pagination="pagination"
