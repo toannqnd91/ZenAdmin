@@ -10,7 +10,7 @@ export default defineNuxtConfig({
     enabled: false
   },
 
-  css: ['~/assets/css/main.css'],
+  css: ['~/assets/css/main.css', '~/assets/css/override-products-bg.css'],
 
   colorMode: {
     preference: 'light'

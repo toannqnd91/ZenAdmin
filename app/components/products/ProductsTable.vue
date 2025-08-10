@@ -61,12 +61,12 @@ const columns: TableColumn<ProductItem>[] = [
     cell: ({ row }) => {
       return h('div', { class: 'flex items-center gap-3' }, [
         h('img', {
-          src: props.getFirstImageUrl(row.original.imageUrls) || '/no-avatar.jpg',
+          src: row.original.thumbnailImageUrl || '/no-image.svg',
           alt: row.original.name,
           class: 'w-12 h-12 object-cover flex-shrink-0',
           onError: (e: Event) => {
             const target = e.target as HTMLImageElement
-            target.src = '/no-avatar.jpg'
+            target.src = '/no-image.svg'
           }
         }),
         h('div', undefined, [
@@ -207,52 +207,46 @@ const onTableClick = (event: Event) => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full">
-    <!-- Search & Actions Bar -->
-    <div class="flex flex-wrap items-center justify-between gap-1.5 mb-4">
-      <UInput :model-value="q" placeholder="Tìm kiếm sản phẩm..." icon="i-lucide-search" class="max-w-sm"
-        @update:model-value="emit('update:q', $event)" />
-
-      <div class="flex flex-wrap items-center gap-1.5">
-        <ProductsDeleteModal :count="(table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length">
-          <UButton v-if="(table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length" label="Delete"
-            color="error" variant="subtle" icon="i-lucide-trash">
-            <template #trailing>
-              <UKbd>
-                {{ (table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length }}
-              </UKbd>
-            </template>
-          </UButton>
-        </ProductsDeleteModal>
+  <div class="flex flex-col bg-white">
+    <!-- Header (Title + Actions) -->
+  <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-default/70">
+      <h2 class="text-base font-semibold">Danh sách sản phẩm</h2>
+      <div class="flex items-center gap-2 w-full sm:w-auto sm:justify-end">
+        <UButton icon="i-lucide-filter" variant="soft" color="neutral" class="shrink-0" aria-label="Filter" />
+        <UInput :model-value="q" placeholder="Search Products" icon="i-lucide-search" class="max-w-xs rounded-none bg-transparent"
+          @update:model-value="emit('update:q', $event)" />
+        <UButton label="New Product" icon="i-lucide-plus" color="primary" variant="solid" class="shrink-0"
+          @click="navigateTo('/products/create')" />
       </div>
     </div>
 
-    <!-- Data Table -->
-    <UTable ref="table" :model-value="rowSelection" :pagination="pagination" :pagination-options="{
-      getPaginationRowModel: getPaginationRowModel()
-    }" :data="filtered" :columns="columns" :loading="loading" class="shrink-0 flex-1" :ui="{
-        base: 'table-fixed border-separate border-spacing-0',
-        thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
-        tbody: '[&>tr]:last:[&>td]:border-b-0 [&>tr]:cursor-pointer [&>tr:hover]:bg-gray-50',
-        th: 'py-3 first:rounded-l-lg last:rounded-r-lg border-y border-default first:border-l last:border-r first:w-10',
-        td: 'border-b border-default first:w-10'
-      }" @update:model-value="emit('update:rowSelection', $event)"
-      @update:pagination="emit('update:pagination', $event)"
-      @click="onTableClick"
-    />
+    <!-- Table -->
+    <div class="flex flex-col px-4 pb-3 pt-1">
+    <UTable ref="table" :model-value="rowSelection" :pagination="pagination" :pagination-options="{ getPaginationRowModel: getPaginationRowModel() }"
+        :data="filtered" :columns="columns" :loading="loading" class="shrink-0" :ui="{
+          base: 'table-fixed border-spacing-0 w-full',
+      thead: '[&>tr]:bg-transparent [&>tr]:after:content-none [&>tr]:border-b [&>tr]:border-default/70',
+      tbody: '[&>tr]:cursor-pointer [&>tr:hover]:bg-gray-50 [&>tr:last>td]:border-b-0',
+      th: 'py-3 first:w-10 text-left font-medium text-gray-500',
+      td: 'py-4 first:w-10 align-middle border-b border-default/60'
+        }"
+        @update:model-value="emit('update:rowSelection', $event)"
+        @update:pagination="emit('update:pagination', $event)"
+        @click="onTableClick"
+      />
 
-    <!-- Pagination Info - Pinned to bottom -->
-    <div class="flex items-center justify-between gap-3 border-t border-default pt-4 mt-auto">
-      <div class="text-sm text-muted">
-        {{ (table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length || 0 }} of
-        {{ (table as any)?.tableApi?.getFilteredRowModel().rows.length || 0 }} row(s) selected.
-      </div>
-
-      <div class="flex items-center gap-1.5">
-        <UPagination :default-page="((table as any)?.tableApi?.getState().pagination.pageIndex || 0) + 1"
-          :items-per-page="(table as any)?.tableApi?.getState().pagination.pageSize"
-          :total="(table as any)?.tableApi?.getFilteredRowModel().rows.length"
-          @update:page="(p: number) => (table as any)?.tableApi?.setPageIndex(p - 1)" />
+      <!-- Footer / Pagination Info -->
+  <div class="flex items-center justify-between gap-3 pt-3">
+        <div class="text-sm text-muted">
+          {{ (table as any)?.tableApi?.getFilteredSelectedRowModel().rows.length || 0 }} of
+          {{ (table as any)?.tableApi?.getFilteredRowModel().rows.length || 0 }} row(s) selected.
+        </div>
+        <div class="flex items-center gap-1.5">
+          <UPagination :default-page="((table as any)?.tableApi?.getState().pagination.pageIndex || 0) + 1"
+            :items-per-page="(table as any)?.tableApi?.getState().pagination.pageSize"
+            :total="(table as any)?.tableApi?.getFilteredRowModel().rows.length"
+            @update:page="(p: number) => (table as any)?.tableApi?.setPageIndex(p - 1)" />
+        </div>
       </div>
     </div>
   </div>

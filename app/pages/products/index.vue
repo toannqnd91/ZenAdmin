@@ -34,21 +34,22 @@ const {
     </template>
 
     <template #body>
-      <div class="flex flex-col h-full">
-        <ProductsTable
-          v-model:q="q"
-          v-model:row-selection="rowSelection"
-          v-model:pagination="pagination"
-          :data="products"
-          :loading="loading"
-          :truncate-text="truncateText"
-          :get-first-image-url="getFirstImageUrl"
-          :get-row-items="getRowItems"
-          class="flex-1 min-h-0"
-        />
-
-        <div v-if="error" class="text-error mt-4">
-          {{ error }}
+      <div class="w-full flex flex-col h-full">
+        <div class="flex-1 min-h-0 p-6">
+          <ProductsTable
+              v-model:q="q"
+              v-model:row-selection="rowSelection"
+              v-model:pagination="pagination"
+              :data="products"
+              :loading="loading"
+              :truncate-text="truncateText"
+              :get-first-image-url="getFirstImageUrl"
+              :get-row-items="getRowItems"
+              class="flex-1 min-h-0"
+            />
+          <div v-if="error" class="text-error mt-4">
+            {{ error }}
+          </div>
         </div>
       </div>
     </template>
