@@ -70,6 +70,7 @@ const emit = defineEmits<{
   'update:q': [string]
   'update:rowSelection': [Record<string, boolean>]
   'update:pagination': [{ pageIndex: number, pageSize: number }]
+  'delete': [string[]]
 }>()
 
 /* filter + paging */
@@ -267,12 +268,12 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
             v-for="action in actions"
             :key="action.label"
             type="button"
-            class="h-9 inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 text-sm bg-white hover:bg-gray-50"
+            class="h-8 inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 text-sm bg-white hover:bg-gray-50"
             @click="action.handler(Object.keys(rowSelection).filter(id => rowSelection[id]))"
           >
             {{ action.label }}
             <svg
-              class="w-5 h-5"
+              class="w-4 h-4"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -281,6 +282,26 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
               stroke-linejoin="round"
             >
               <path :d="action.icon" />
+            </svg>
+          </button>
+          
+          <!-- Delete button -->
+          <button
+            type="button"
+            class="h-8 inline-flex items-center gap-2 rounded-md border border-red-300 px-3 text-sm bg-white hover:bg-red-50 text-red-600"
+            @click="emit('delete', Object.keys(rowSelection).filter(id => rowSelection[id]))"
+          >
+            Delete ({{ selectedCount }})
+            <svg
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6Z" />
             </svg>
           </button>
         </div>

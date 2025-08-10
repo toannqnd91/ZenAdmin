@@ -22,6 +22,7 @@ const emit = defineEmits<{
   'update:q': [string]
   'update:rowSelection': [Record<string, boolean>]
   'update:pagination': [{ pageIndex: number, pageSize: number }]
+  'delete': [string[]]
 }>()
 
 // Table configuration
@@ -63,6 +64,7 @@ const handleRowClick = (item: ProductCategory) => {
     @update:q="emit('update:q', $event)"
     @update:row-selection="emit('update:rowSelection', $event)"
     @update:pagination="emit('update:pagination', $event)"
+    @delete="ids => emit('delete', ids)"
   >
     <!-- Custom name column with image -->
     <template #column-name="{ item }">

@@ -16,6 +16,7 @@ const emit = defineEmits<{
   'update:q': [string]
   'update:rowSelection': [Record<string, boolean>]
   'update:pagination': [{ pageIndex: number, pageSize: number }]
+  'delete': [number[]]
 }>()
 
 const columns: TableColumn[] = [
@@ -48,6 +49,12 @@ const tableData = computed(() =>
     isPublished: c.isPublished
   }))
 )
+
+// Handle delete action - convert string IDs back to numbers
+const handleDelete = (selectedIds: string[]) => {
+  const numericIds = selectedIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id))
+  emit('delete', numericIds)
+}
 </script>
 
 <template>
@@ -63,6 +70,7 @@ const tableData = computed(() =>
     @update:q="emit('update:q', $event)"
     @update:row-selection="emit('update:rowSelection', $event)"
     @update:pagination="emit('update:pagination', $event)"
+    @delete="handleDelete"
   >
     <template #column-name="{ item }">
       <div class="flex items-center gap-4">

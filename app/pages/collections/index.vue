@@ -18,6 +18,15 @@ const tablePagination = computed({
     pagination.value.pageSize = val.pageSize
   }
 })
+
+// Handle delete action
+const handleDelete = (selectedIds: number[]) => {
+  console.log('Delete collections with IDs:', selectedIds)
+  // TODO: Implement delete logic
+  // Example: await collectionsService.deleteCollections(selectedIds)
+  // Reset selection after delete
+  rowSelection.value = {}
+}
 </script>
 
 <template>
@@ -39,6 +48,7 @@ const tablePagination = computed({
             v-model:pagination="tablePagination"
             :data="collections"
             :loading="loading"
+            @delete="handleDelete"
           />
           <div v-if="error" class="text-error mt-4">
             {{ error }}
