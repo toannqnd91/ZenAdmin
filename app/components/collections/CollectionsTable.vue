@@ -33,6 +33,11 @@ const columns: TableColumn[] = [
   }
 ]
 
+const addButton = {
+  label: 'Thêm bộ sưu tập',
+  href: '/collections/create'
+}
+
 // Map collections (strongly typed) to records expected by BaseTable
 const tableData = computed(() =>
   props.data.map(c => ({
@@ -48,20 +53,30 @@ const tableData = computed(() =>
 <template>
   <BaseTable
     :columns="columns"
-  :data="tableData"
+    :data="tableData"
     :loading="props.loading"
     :q="props.q"
     :row-selection="props.rowSelection"
     :pagination="props.pagination"
+    :add-button="addButton"
     title="Danh sách bộ sưu tập"
     @update:q="emit('update:q', $event)"
     @update:row-selection="emit('update:rowSelection', $event)"
     @update:pagination="emit('update:pagination', $event)"
   >
     <template #column-name="{ item }">
-      <div class="flex items-center gap-2">
-  <img v-if="item.imageUrl" :src="item.imageUrl as string" class="w-8 h-8 rounded object-cover">
-        <span>{{ item.name }}</span>
+      <div class="flex items-center gap-4">
+        <div class="h-14 w-14 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
+          <img
+            :src="item.imageUrl || '/no-image.svg'"
+            :alt="item.name"
+            class="h-full w-full object-cover"
+            @error="e => { const t = e.target as HTMLImageElement; if (t) t.src = '/no-image.svg' }"
+          >
+        </div>
+        <div class="text-[15px] text-gray-900 font-medium">
+          {{ item.name }}
+        </div>
       </div>
     </template>
     <template #column-description="{ item }">
