@@ -19,7 +19,7 @@ type ProductItem = {
 interface Props {
   data: ProductItem[]
   q: string
-  rowSelection: Record<string, boolean>   // id -> selected
+  rowSelection: Record<string, boolean>
   pagination: { pageIndex: number; pageSize: number }
 }
 
@@ -30,7 +30,7 @@ const emit = defineEmits<{
   'update:pagination':[ { pageIndex:number; pageSize:number } ]
 }>()
 
-/* ---------- filter + paging ---------- */
+/* filter + paging */
 const filtered = computed(() =>
   (props.data||[]).filter(p =>
     (p.name||'').toLowerCase().includes((props.q||'').toLowerCase())
@@ -40,7 +40,7 @@ const start = computed(()=> props.pagination.pageIndex * props.pagination.pageSi
 const end   = computed(()=> start.value + props.pagination.pageSize)
 const pageItems = computed(()=> filtered.value.slice(start.value, end.value))
 
-/* ---------- selection state ---------- */
+/* selection */
 const isSelected = (id: string|number) => !!props.rowSelection?.[String(id)]
 const setRowSelected = (id: string|number, v:boolean) => {
   const next = { ...(props.rowSelection||{}) }
@@ -62,7 +62,7 @@ const toggleAllPage = () => {
   emit('update:rowSelection', next)
 }
 
-/* ---------- navigation by row click ---------- */
+/* navigation */
 const goto = (id: string|number)=> navigateTo(`/products/${id}/update`)
 const onBodyClick = (e: Event)=>{
   const t = e.target as HTMLElement
@@ -74,7 +74,7 @@ const onBodyClick = (e: Event)=>{
   if (item) goto(item.id)
 }
 
-/* ---------- helpers ---------- */
+/* helpers */
 const invText = (p: ProductItem) => {
   if (Array.isArray(p.variations) && p.variations.length>1) {
     const qty = p.variations.map(v=>v.stockQuantity)
@@ -88,7 +88,6 @@ const invText = (p: ProductItem) => {
   return { line1:`${p.stockQuantity} in stock`, variants:`${Array.isArray(p.variations)?p.variations.length:1} variants`, danger:false }
 }
 
-/* ---------- keyboard helpers ---------- */
 const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
   if (e.code === 'Space' || e.key === ' ') {
     e.preventDefault()
@@ -144,7 +143,7 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
     <!-- Selection toolbar -->
     <div v-if="selectedCount > 0" class="px-6 py-3 border-b border-gray-200">
       <div class="flex items-center">
-        <div class="w-14 h-full flex items-center justify-center">
+        <div class="w-14 h-full flex items-center justify-start">
           <button
             type="button"
             class="inline-flex items-center justify-center h-5 w-5 rounded-md border focus:outline-none focus:ring-2 focus:ring-offset-1
@@ -167,13 +166,10 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
           <button type="button"
             class="h-9 inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 text-sm bg-white hover:bg-gray-50">
             Change Status
-            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
           </button>
-
           <button type="button"
             class="h-9 inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 text-sm bg-white hover:bg-gray-50">
             Archived
-            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4"/><path d="M8 8v12h8V8"/></svg>
           </button>
         </div>
       </div>
@@ -182,11 +178,10 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
     <!-- Table -->
     <div class="px-6" @click="onBodyClick">
       <table class="w-full table-fixed">
-        <!-- thead hidden when any selected -->
         <thead v-show="selectedCount === 0" class="text-gray-500">
           <tr>
             <th class="py-3 w-14">
-              <div class="w-14 h-full flex items-center justify-center">
+              <div class="w-14 h-full flex items-center justify-start">
                 <button
                   data-role="chk"
                   type="button"
@@ -223,11 +218,9 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
         </thead>
 
         <tbody>
-          <tr v-for="p in pageItems" :key="p.id"
-              class="group/row border-t border-gray-200 hover:bg-gray-50">
-            <!-- Row checkbox -->
+          <tr v-for="p in pageItems" :key="p.id" class="group/row border-t border-gray-200 hover:bg-gray-50">
             <td class="py-4 w-14 align-middle">
-              <div class="w-14 h-full flex items-center justify-center">
+              <div class="w-14 h-full flex items-center justify-start">
                 <button
                   data-role="chk"
                   type="button"
@@ -250,7 +243,6 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
               </div>
             </td>
 
-            <!-- name + thumb -->
             <td class="py-4">
               <div class="flex items-center gap-4">
                 <div class="h-14 w-14 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
@@ -262,20 +254,14 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
               </div>
             </td>
 
-            <!-- status pill -->
             <td class="py-4">
               <span class="inline-flex items-center rounded-full bg-[#dff5c7] text-[#2a7a16] px-3 py-1 text-sm font-medium">
                 {{ p.status || 'Public' }}
               </span>
             </td>
 
-            <!-- source -->
             <td class="py-4 text-gray-700">{{ p.source || 'My product' }}</td>
-
-            <!-- sold -->
             <td class="py-4 text-gray-900">{{ p.sold ?? 0 }}</td>
-
-            <!-- inventory -->
             <td class="py-4">
               <div :class="['text-gray-900', invText(p).danger ? 'text-red-500' : '']">
                 {{ invText(p).line1 }}
@@ -283,7 +269,6 @@ const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
               <div class="text-xs text-gray-400">{{ invText(p).variants }}</div>
             </td>
 
-            <!-- actions -->
             <td class="py-4 pr-4">
               <div class="flex justify-end">
                 <button type="button" class="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-gray-100" @click.stop>
