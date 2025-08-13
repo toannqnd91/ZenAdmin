@@ -7,6 +7,17 @@ html {
 }
 
 @theme static {
+  --color-zentheme-50: #e6effd;
+  --color-zentheme-100: #c2d7fa;
+  --color-zentheme-200: #9bbcf7;
+  --color-zentheme-300: #6a9cf3;
+  --color-zentheme-400: #3a7bee;
+  --color-zentheme-500: #1b64f2;
+  --color-zentheme-600: #1858d6;
+  --color-zentheme-700: #1447ad;
+  --color-zentheme-800: #113a8a;
+  --color-zentheme-900: #0e2e6c;
+  --color-zentheme-950: #0a1b3a;
   /* --font-sans: 'Public Sans', sans-serif; */
   --font-sans: 'Roboto', system-ui, sans-serif;
 
@@ -21,5 +32,19 @@ html {
   --color-green-800: #016538;
   --color-green-900: #0A5331;
   --color-green-950: #052E16;
+}
+
+:root {
+  --color-zentheme-50: #e6effd;
+  --color-zentheme-100: #c2d7fa;
+  --color-zentheme-200: #9bbcf7;
+  --color-zentheme-300: #6a9cf3;
+  --color-zentheme-400: #3a7bee;
+  --color-zentheme-500: #1b64f2;
+  --color-zentheme-600: #1858d6;
+  --color-zentheme-700: #1447ad;
+  --color-zentheme-800: #113a8a;
+  --color-zentheme-900: #0e2e6c;
+  --color-zentheme-950: #0a1b3a;
 }
 

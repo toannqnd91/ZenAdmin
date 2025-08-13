@@ -11,12 +11,14 @@ const { user: userInfo, logout } = useAuthService()
 
 const showLogoutConfirm = ref(false)
 
+
 function onConfirmLogout() {
   logout()
   showLogoutConfirm.value = false
 }
 
-const colors = ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose']
+
+const colors = (appConfig.ui?.colorPalette as string[]) || ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose']
 const neutrals = ['slate', 'gray', 'zinc', 'neutral', 'stone']
 
 // const user = ref({
@@ -189,5 +191,4 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
       </div>
     </template>
   </UModal>
-  
 </template>

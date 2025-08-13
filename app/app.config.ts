@@ -1,12 +1,16 @@
 export default defineAppConfig({
   ui: {
     colors: {
-      primary: 'green',
-      neutral: 'zinc'
-    }
+      primary: 'zentheme', // đặt màu primary mặc định là zentheme
+      neutral: 'zinc',
+      text: 'zentheme' // màu chữ mặc định dùng ZenTheme
+    },
+    colorPalette: [
+      'red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose', 'zentheme'
+    ]
   },
   colorMode: {
-    preference: 'dark'
+    preference: 'light'
   },
   settings: {
     title: 'Vela',
