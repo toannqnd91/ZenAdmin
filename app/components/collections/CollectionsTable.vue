@@ -77,7 +77,7 @@ const handleDelete = (selectedIds: string[]) => {
   >
     <template #column-name="{ item }">
       <div class="flex items-center gap-4">
-        <div class="h-14 w-14 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
+  <div class="h-11 w-11 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
           <img
             :src="(item as any).imageUrl || '/no-image.svg'"
             :alt="(item as any).name"

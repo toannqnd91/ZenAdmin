@@ -203,8 +203,19 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
           >
         </div>
 
+        <template v-if="addButtonDropdownItems && addButtonDropdownItems.length">
+          <UDropdownMenu :items="addButtonDropdownItems" :popper="{ placement: 'bottom-end' }">
+            <UButton
+              label="Thêm widget"
+              color="primary"
+              variant="solid"
+              icon="i-lucide-plus"
+              class="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-[#1b64f2] hover:bg-[#155ae0] text-white font-medium whitespace-nowrap"
+            />
+          </UDropdownMenu>
+        </template>
         <button
-          v-if="addButton"
+          v-else-if="addButton"
           class="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-[#1b64f2] hover:bg-[#155ae0] text-white font-medium whitespace-nowrap"
           @click="handleAddClick"
         >

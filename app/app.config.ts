@@ -9,14 +9,14 @@ export default defineAppConfig({
     preference: 'dark'
   },
   settings: {
-    title: 'Cơ Khí Tam Long',
-    description: 'Cơ Khí Tam Long - Nơi cung cấp các sản phẩm cơ khí chất lượng cao',
+    title: 'Vela',
+    description: 'Vela - Nơi cung cấp các sản phẩm chất lượng cao',
     favicon: '/favicon.png',
     team: {
-      label: 'Cơ Khí Tam Long',
+      label: 'Vela',
       avatar: {
-        src: 'https://localhost:62939/images/logo.png',
-        alt: 'Cơ Khí Tam Long'
+        src: '',
+        alt: 'Vela'
       }
     }
   }

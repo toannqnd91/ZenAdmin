@@ -59,6 +59,9 @@ const handleRowClick = (item: WidgetInstance) => {
     @update:row-selection="emit('update:rowSelection', $event)"
     @update:pagination="emit('update:pagination', $event)"
   >
+    <template #column-name="{ value }">
+      <span class="font-semibold text-[15px]">{{ value }}</span>
+    </template>
     <template #column-publishStart="{ item }">
       <span>{{ props.formatDate((item as unknown as WidgetInstance).publishStart) }}</span>
     </template>
