@@ -11,6 +11,7 @@ interface Props {
   pagination: { pageIndex: number, pageSize: number }
   getRowItems: (row: any) => unknown[]
   formatDate: (date: string | null) => string
+  addButtonDropdownItems?: any[]
 }
 
 const props = defineProps<Props>()
@@ -36,11 +37,6 @@ const colWidths = [
   '18%'  // publishEnd
 ]
 
-const addButton = {
-  label: 'Thêm widget',
-  href: '/widgets/create'
-}
-
 const handleRowClick = (item: WidgetInstance) => {
   navigateTo(`/widgets/${item.id}/update`)
 }
@@ -56,7 +52,7 @@ const handleRowClick = (item: WidgetInstance) => {
     title="Danh sách widget"
     :columns="columns"
     :col-widths="colWidths"
-    :add-button="addButton"
+    :add-button-dropdown-items="addButtonDropdownItems"
     search-placeholder="Tìm kiếm widget..."
     :row-click-handler="handleRowClick"
     @update:q="emit('update:q', $event)"

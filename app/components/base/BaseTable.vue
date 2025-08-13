@@ -34,6 +34,7 @@ interface Props {
   title: string
   columns: TableColumn[]
   addButton?: AddButton
+  addButtonDropdownItems?: any[]
   actions?: TableAction[]
 
   // Row actions
@@ -495,25 +496,38 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
 
     <!-- Footer -->
     <div class="flex items-center justify-end px-6 pb-4">
-      <div
-        v-if="filtered.length > pagination.pageSize"
-        class="flex items-center gap-2"
-      >
+      <div v-if="filtered.length > pagination.pageSize" class="flex items-center gap-3">
         <button
-          class="px-3 py-1.5 border rounded-md text-sm"
-          :disabled="pagination.pageIndex===0"
-          @click="$emit('update:pagination', { ...pagination, pageIndex: pagination.pageIndex-1 })"
+          v-if="showFilter"
+          class="btn btn-default"
+          @click="$emit('show-filter')"
         >
-          Prev
+          <UIcon name="i-lucide-filter" class="w-5 h-5 mr-2" />
+          Lọc
         </button>
-        <span class="text-sm">Page {{ pagination.pageIndex + 1 }}</span>
-        <button
-          class="px-3 py-1.5 border rounded-md text-sm"
-          :disabled="(pagination.pageIndex + 1) * pagination.pageSize >= filtered.length"
-          @click="$emit('update:pagination', { ...pagination, pageIndex: pagination.pageIndex+1 })"
-        >
-          Next
-        </button>
+
+        <slot name="header-actions" />
+
+        <template v-if="addButtonDropdownItems && addButtonDropdownItems.length">
+          <UDropdownMenu :items="addButtonDropdownItems" :popper="{ placement: 'bottom-end' }">
+            <UButton
+              label="Thêm widget"
+              color="primary"
+              variant="solid"
+              icon="i-lucide-plus"
+              class="ml-2"
+            />
+          </UDropdownMenu>
+        </template>
+        <UButton
+          v-else-if="addButton"
+          :label="addButton.label"
+          color="primary"
+          variant="solid"
+          icon="i-lucide-plus"
+          class="ml-2"
+          @click="handleAddClick"
+        />
       </div>
     </div>
   </div>
