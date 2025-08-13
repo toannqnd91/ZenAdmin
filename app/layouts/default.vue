@@ -106,11 +106,9 @@ provide('refreshDashboard', retryFetchMenu)
       <template #default="{ collapsed }">
         <UDashboardSearchButton :collapsed="collapsed" class="bg-transparent ring-default" />
 
-        <UNavigationMenu
-          :collapsed="collapsed"
+        <CustomNavigationMenu
           :items="links[0] || []"
-          orientation="vertical"
-          tooltip
+          :collapsed="collapsed"
         />
 
         <UNavigationMenu
