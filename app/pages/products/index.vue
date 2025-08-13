@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useProductsService } from '@/composables/useProductsService'
 
+const { isNotificationsSlideoverOpen } = useDashboard()
+
 const {
   q,
   rowSelection,
@@ -18,15 +20,22 @@ const {
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
-        <!-- <template #right>
-          <UButton
-            label="Thêm sản phẩm"
-            color="primary"
-            variant="solid"
-            icon="i-lucide-plus"
-            @click="navigateTo('/products/create')"
-          />
-        </template> -->
+        
+        <template #right>
+          <UColorModeButton />
+          <UTooltip text="Notifications" :shortcuts="['N']">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              square
+              @click="isNotificationsSlideoverOpen = true"
+            >
+              <UChip color="error" inset>
+                <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
+              </UChip>
+            </UButton>
+          </UTooltip>
+        </template>
       </UDashboardNavbar>
     </template>
 
