@@ -218,15 +218,14 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
       </div>
     </div>
 
-    <div class="border-t border-gray-200" />
+    <div v-if="selectedCount === 0" class="border-t border-gray-200" />
 
     <!-- Selection toolbar -->
     <div
       v-if="selectedCount > 0"
-      class="absolute left-0 right-0 bg-white z-10 px-6"
-      style="top: 73px;"
+      class="bg-white border-t border-gray-200 px-6"
     >
-      <div class="flex items-center h-14 border-b border-gray-200">
+      <div class="flex items-center h-14">
         <!-- căn trái để mép checkbox trùng lề tiêu đề -->
         <div class="w-14 h-full flex items-center justify-start">
           <button
@@ -332,7 +331,7 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
           <col class="w-[60px]">
         </colgroup>
         <thead class="text-gray-500">
-          <tr class="h-14" :class="{ invisible: selectedCount > 0 }">
+          <tr class="h-14" :class="{ hidden: selectedCount > 0 }">
             <th class="py-0">
               <div class="w-14 h-full flex items-center justify-start">
                 <button
@@ -487,10 +486,7 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
     </div>
 
     <!-- Footer -->
-    <div class="flex items-center justify-between px-6 pb-4">
-      <div class="text-sm text-gray-500">
-        {{ selectedCount }} selected.
-      </div>
+    <div class="flex items-center justify-end px-6 pb-4">
       <div
         v-if="filtered.length > pagination.pageSize"
         class="flex items-center gap-2"
