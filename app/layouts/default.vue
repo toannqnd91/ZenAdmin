@@ -131,7 +131,7 @@ provide('refreshDashboard', retryFetchMenu)
     <UDashboardSearch :groups="groups" placeholder="Tìm kiếm..." />
 
     <slot />
-
+    
     <NotificationsSlideover />
   </UDashboardGroup>
 </template>
