@@ -210,13 +210,13 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
               color="primary"
               variant="solid"
               icon="i-lucide-plus"
-              class="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-[#1b64f2] hover:bg-[#155ae0] text-white font-medium whitespace-nowrap"
+              class="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-[#1b64f2] hover:bg-[#155ae0] text-white font-medium whitespace-nowrap text-sm"
             />
           </UDropdownMenu>
         </template>
         <button
           v-else-if="addButton"
-          class="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-[#1b64f2] hover:bg-[#155ae0] text-white font-medium whitespace-nowrap"
+          class="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-[#1b64f2] hover:bg-[#155ae0] text-white font-medium whitespace-nowrap text-sm"
           @click="handleAddClick"
         >
           {{ addButton.label }}
@@ -241,7 +241,6 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
       class="bg-white border-t border-gray-200 px-6"
     >
       <div class="flex items-center h-14">
-        <!-- căn trái để mép checkbox trùng lề tiêu đề -->
         <div class="w-14 h-full flex items-center justify-start">
           <button
             type="button"
@@ -403,7 +402,7 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
               {{ column.label }}
             </th>
             <th class="py-3 text-left font-medium pr-4">
-              <!-- Cột actions - không có text nhưng cần chiếm chỗ -->
+              <!-- Cột actions -->
             </th>
           </tr>
         </thead>
@@ -508,44 +507,13 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
     <!-- Footer -->
     <div class="flex items-center justify-end px-6 pb-4">
       <div v-if="filtered.length > pagination.pageSize" class="flex items-center gap-3">
-        <button
-          v-if="showFilter"
-          class="btn btn-default"
-          @click="$emit('show-filter')"
-        >
-          <UIcon name="i-lucide-filter" class="w-5 h-5 mr-2" />
-          Lọc
-        </button>
-
         <slot name="header-actions" />
-
-        <template v-if="addButtonDropdownItems && addButtonDropdownItems.length">
-          <UDropdownMenu :items="addButtonDropdownItems" :popper="{ placement: 'bottom-end' }">
-            <UButton
-              label="Thêm widget"
-              color="primary"
-              variant="solid"
-              icon="i-lucide-plus"
-              class="ml-2"
-            />
-          </UDropdownMenu>
-        </template>
-        <UButton
-          v-else-if="addButton"
-          :label="addButton.label"
-          color="primary"
-          variant="solid"
-          icon="i-lucide-plus"
-          class="ml-2"
-          @click="handleAddClick"
-        />
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* Hiệu ứng "đậm ở giữa – mờ dần 2 bên", giống đoạn bạn tham khảo */
 .row-band:hover,
 .row-band.is-active{
   /* 270deg: trái -> phải (giữa đậm #f9f8f7) */
@@ -557,7 +525,6 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
     rgba(255, 255, 255, 0) 100%
   );
 }
-/* Mượt mà khi vào/ra hover */
 .row-band{
   transition: background-image .2s ease;
 }
