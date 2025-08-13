@@ -29,20 +29,23 @@ interface Props {
   q: string
   rowSelection: Record<string, boolean>
   pagination: { pageIndex: number, pageSize: number }
-  
+
   // Configuration
   title: string
   columns: TableColumn[]
   addButton?: AddButton
   actions?: TableAction[]
-  
+
   // Row actions
   rowClickEnabled?: boolean
   rowClickHandler?: (item: Record<string, unknown>) => void
-  
+
   // Styling
   showFilter?: boolean
   searchPlaceholder?: string
+
+  // Colgroup widths
+  colWidths?: string[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -316,18 +319,23 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
       <table class="w-full table-fixed text-sm">
         <colgroup>
           <col class="w-14">
-          <col
-            v-for="(column, index) in columns"
-            :key="column.key"
-            :class="[
-              index === 0 ? 'min-w-[300px]' : '',
-              index === 1 ? 'w-[150px]' : '',
-              index === 2 ? 'w-[120px]' : '',
-              index === 3 ? 'w-[100px]' : '',
-              index === 4 ? 'w-[120px]' : '',
-              index >= 5 ? 'w-[100px]' : ''
-            ]"
-          >
+          <template v-if="props.colWidths && props.colWidths.length === columns.length">
+            <col v-for="(w, idx) in props.colWidths" :key="'colw'+idx" :style="{ width: w }" />
+          </template>
+          <template v-else>
+            <col
+              v-for="(column, index) in columns"
+              :key="column.key"
+              :class="[
+                index === 0 ? 'min-w-[300px]' : '',
+                index === 1 ? 'w-[150px]' : '',
+                index === 2 ? 'w-[120px]' : '',
+                index === 3 ? 'w-[100px]' : '',
+                index === 4 ? 'w-[120px]' : '',
+                index >= 5 ? 'w-[100px]' : ''
+              ]"
+            >
+          </template>
           <col class="w-[60px]">
         </colgroup>
         <thead class="text-gray-500">
@@ -382,7 +390,7 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
             >
               {{ column.label }}
             </th>
-            <th class="py-3 text-right font-medium pr-4">
+            <th class="py-3 text-left font-medium pr-4">
               <!-- Cột actions - không có text nhưng cần chiếm chỗ -->
             </th>
           </tr>

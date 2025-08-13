@@ -29,6 +29,15 @@ const columns: TableColumn[] = [
   { key: 'displayOrder', label: 'Thứ tự', class: 'py-3 text-left font-medium' }
 ]
 
+const colWidths = [
+  '24%', // name
+  '18%', // widgetType
+  '18%', // widgetZone
+  '14%', // publishStart
+  '14%', // publishEnd
+  '7%'   // displayOrder
+]
+
 const addButton = {
   label: 'Thêm widget',
   href: '/widgets/create'
@@ -48,6 +57,7 @@ const handleRowClick = (item: WidgetInstance) => {
     :loading="loading"
     title="Danh sách widget"
     :columns="columns"
+    :col-widths="colWidths"
     :add-button="addButton"
     search-placeholder="Tìm kiếm widget..."
     :row-click-handler="handleRowClick"
@@ -56,15 +66,15 @@ const handleRowClick = (item: WidgetInstance) => {
     @update:pagination="emit('update:pagination', $event)"
   >
     <template #column-publishStart="{ item }">
-      <span>{{ props.formatDate(item.publishStart) }}</span>
+      <span>{{ props.formatDate((item as unknown as WidgetInstance).publishStart) }}</span>
     </template>
     <template #column-publishEnd="{ item }">
-      <span>{{ props.formatDate(item.publishEnd) }}</span>
+      <span>{{ props.formatDate((item as unknown as WidgetInstance).publishEnd) }}</span>
     </template>
     <template #row-actions="{ item }">
-      <span v-for="action in props.getRowItems({ original: item })" :key="action.label">
+      <span v-for="action in props.getRowItems({ original: item as unknown as WidgetInstance }) as any[]" :key="action.label">
         <button
-          v-if="action.type !== 'label' && action.type !== 'separator'"
+          v-if="action && action.type !== 'label' && action.type !== 'separator'"
           class="inline-flex items-center justify-center w-8 h-8 rounded hover:bg-gray-100 mr-2"
           :title="action.label"
           @click="action.onSelect"
