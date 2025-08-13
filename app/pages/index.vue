@@ -66,7 +66,7 @@ const period = ref<Period>('daily')
     <template #body>
       <!-- Welcome header -->
       <div class="space-y-6">
-  <h2 class="text-2xl font-semibold mb-7">Welcome back, {{ user?.display_name || 'User' }} 🎉</h2>
+        <h2 class="text-2xl font-semibold mb-7">Welcome back, {{ user?.display_name || 'User' }} 🎉</h2>
 
         <!-- Overview Card -->
         <div class="bg-white rounded-md p-6">
