@@ -17,7 +17,7 @@ interface Props {
   pagination: { pageIndex: number, pageSize: number }
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 const emit = defineEmits<{
   'update:q': [string]
   'update:rowSelection': [Record<string, boolean>]
@@ -44,9 +44,20 @@ const addButton = {
   href: '/products-categories/create'
 }
 
-const handleRowClick = (item: ProductCategory) => {
-  navigateTo(`/products-categories/${item.id}/update`)
+const handleRowClick = (item: Record<string, unknown>) => {
+  const categoryItem = item as unknown as ProductCategory
+  navigateTo(`/products-categories/${categoryItem.id}/update`)
 }
+
+// Map to BaseTable format
+const tableData = computed(() =>
+  props.data.map((c: ProductCategory) => ({
+    id: c.id,
+    name: c.name,
+    description: c.description,
+    imageUrl: c.imageUrl
+  }))
+)
 </script>
 
 <template>
@@ -54,7 +65,7 @@ const handleRowClick = (item: ProductCategory) => {
     :q="q"
     :row-selection="rowSelection"
     :pagination="pagination"
-    :data="data"
+    :data="tableData"
     :loading="loading"
     title="Danh mục sản phẩm"
     :columns="columns"
@@ -71,14 +82,14 @@ const handleRowClick = (item: ProductCategory) => {
       <div class="flex items-center gap-4">
         <div class="h-14 w-14 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
           <img
-            :src="item.imageUrl || '/no-image.svg'"
-            :alt="item.name"
+            :src="(item as any).imageUrl || '/no-image.svg'"
+            :alt="(item as any).name"
             class="h-full w-full object-cover"
             @error="(e: any) => e.target && (e.target.src='/no-image.svg')"
           >
         </div>
         <div class="text-[15px] text-gray-900 font-medium">
-          {{ item.name }}
+          {{ (item as any).name }}
         </div>
       </div>
     </template>
@@ -86,7 +97,7 @@ const handleRowClick = (item: ProductCategory) => {
     <!-- Custom description column -->
     <template #column-description="{ item }">
       <div class="text-sm text-gray-500">
-        {{ item.description || 'Không có mô tả' }}
+        {{ (item as any).description || 'Không có mô tả' }}
       </div>
     </template>
   </BaseTable>

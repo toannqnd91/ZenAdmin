@@ -22,15 +22,18 @@ const emit = defineEmits<{
 const columns: TableColumn[] = [
   {
     key: 'name',
-    label: 'Tên bộ sưu tập'
+    label: 'Tên bộ sưu tập',
+    class: 'py-3 text-left font-medium'
   },
   {
     key: 'description',
-    label: 'Mô tả'
+    label: 'Mô tả',
+    class: 'py-3 text-left font-medium'
   },
   {
     key: 'isPublished',
-    label: 'Trạng thái'
+    label: 'Trạng thái',
+    class: 'py-3 text-right font-medium'
   }
 ]
 
@@ -76,22 +79,22 @@ const handleDelete = (selectedIds: string[]) => {
       <div class="flex items-center gap-4">
         <div class="h-14 w-14 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
           <img
-            :src="item.imageUrl || '/no-image.svg'"
-            :alt="item.name"
+            :src="(item as any).imageUrl || '/no-image.svg'"
+            :alt="(item as any).name"
             class="h-full w-full object-cover"
             @error="e => { const t = e.target as HTMLImageElement; if (t) t.src = '/no-image.svg' }"
           >
         </div>
         <div class="text-[15px] text-gray-900 font-medium">
-          {{ item.name }}
+          {{ (item as any).name }}
         </div>
       </div>
     </template>
     <template #column-description="{ item }">
-      <span>{{ item.description || 'Không có mô tả' }}</span>
+      <span>{{ (item as any).description || 'Không có mô tả' }}</span>
     </template>
     <template #column-isPublished="{ item }">
-      <span v-if="item.isPublished" class="text-green-600">Đã xuất bản</span>
+      <span v-if="(item as any).isPublished" class="text-green-600">Đã xuất bản</span>
       <span v-else class="text-gray-400">Nháp</span>
     </template>
   </BaseTable>

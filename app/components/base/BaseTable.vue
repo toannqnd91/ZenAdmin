@@ -149,7 +149,7 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
 </script>
 
 <template>
-  <div class="bg-white border-gray-200">
+  <div class="bg-white border-gray-200 relative">
     <!-- Top bar -->
     <div class="flex items-center justify-between gap-3 px-6 py-5">
       <h2 class="text-lg font-semibold">
@@ -223,7 +223,8 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
     <!-- Selection toolbar -->
     <div
       v-if="selectedCount > 0"
-      class="px-6"
+      class="absolute left-0 right-0 bg-white z-10 px-6"
+      style="top: 73px;"
     >
       <div class="flex items-center h-14 border-b border-gray-200">
         <!-- căn trái để mép checkbox trùng lề tiêu đề -->
@@ -314,12 +315,25 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
       @click="onBodyClick"
     >
       <table class="w-full table-fixed text-sm">
-        <thead
-          v-show="selectedCount === 0"
-          class="text-gray-500"
-        >
-          <tr class="h-14">
-            <th class="py-0 w-14">
+        <colgroup>
+          <col class="w-14">
+          <col
+            v-for="(column, index) in columns"
+            :key="column.key"
+            :class="[
+              index === 0 ? 'min-w-[300px]' : '',
+              index === 1 ? 'w-[150px]' : '',
+              index === 2 ? 'w-[120px]' : '',
+              index === 3 ? 'w-[100px]' : '',
+              index === 4 ? 'w-[120px]' : '',
+              index >= 5 ? 'w-[100px]' : ''
+            ]"
+          >
+          <col class="w-[60px]">
+        </colgroup>
+        <thead class="text-gray-500">
+          <tr class="h-14" :class="{ invisible: selectedCount > 0 }">
+            <th class="py-0">
               <div class="w-14 h-full flex items-center justify-start">
                 <button
                   data-role="chk"
@@ -369,36 +383,38 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
             >
               {{ column.label }}
             </th>
-            <th class="py-3 text-right font-medium pr-4" />
+            <th class="py-3 text-right font-medium pr-4">
+              <!-- Cột actions - không có text nhưng cần chiếm chỗ -->
+            </th>
           </tr>
         </thead>
 
         <tbody>
           <tr
             v-for="item in pageItems"
-            :key="item.id"
+            :key="String(item.id)"
             class="group/row border-t border-gray-200 row-band"
-            :class="{ 'is-active': isSelected(item.id) }"
+            :class="{ 'is-active': isSelected(String(item.id)) }"
           >
             <!-- Row checkbox -->
-            <td class="py-4 w-14 align-middle">
+            <td class="py-4 align-middle">
               <div class="w-14 h-full flex items-center justify-start">
                 <button
                   data-role="chk"
                   type="button"
                   role="checkbox"
-                  :aria-checked="isSelected(item.id) ? 'true' : 'false'"
+                  :aria-checked="isSelected(String(item.id)) ? 'true' : 'false'"
                   :class="[
                     'inline-flex items-center justify-center h-5 w-5 rounded-md border focus:outline-none focus:ring-2 focus:ring-offset-1',
-                    isSelected(item.id)
+                    isSelected(String(item.id))
                       ? 'bg-[#1b64f2] border-[#1b64f2] text-white focus:ring-blue-400'
                       : 'bg-white border-gray-300 text-gray-400 focus:ring-blue-400'
                   ]"
-                  @click="setRowSelected(item.id, !isSelected(item.id))"
-                  @keydown="onCheckboxKey($event, () => setRowSelected(item.id, !isSelected(item.id)))"
+                  @click="setRowSelected(String(item.id), !isSelected(String(item.id)))"
+                  @keydown="onCheckboxKey($event, () => setRowSelected(String(item.id), !isSelected(String(item.id))))"
                 >
                   <svg
-                    v-if="isSelected(item.id)"
+                    v-if="isSelected(String(item.id))"
                     class="h-3.5 w-3.5"
                     viewBox="0 0 24 24"
                     fill="none"
