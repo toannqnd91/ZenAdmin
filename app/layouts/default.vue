@@ -111,7 +111,6 @@ provide('refreshDashboard', retryFetchMenu)
           :items="links[0] || []"
           orientation="vertical"
           tooltip
-          popover
         />
 
         <UNavigationMenu
