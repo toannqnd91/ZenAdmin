@@ -25,17 +25,15 @@ const columns: TableColumn[] = [
   { key: 'widgetType', label: 'Loại widget', class: 'py-3 text-left font-medium' },
   { key: 'widgetZone', label: 'Vị trí', class: 'py-3 text-left font-medium' },
   { key: 'publishStart', label: 'Bắt đầu', class: 'py-3 text-left font-medium' },
-  { key: 'publishEnd', label: 'Kết thúc', class: 'py-3 text-left font-medium' },
-  { key: 'displayOrder', label: 'Thứ tự', class: 'py-3 text-left font-medium' }
+  { key: 'publishEnd', label: 'Kết thúc', class: 'py-3 text-left font-medium' }
 ]
 
 const colWidths = [
-  '24%', // name
+  '28%', // name
   '18%', // widgetType
   '18%', // widgetZone
-  '14%', // publishStart
-  '14%', // publishEnd
-  '7%'   // displayOrder
+  '18%', // publishStart
+  '18%'  // publishEnd
 ]
 
 const addButton = {

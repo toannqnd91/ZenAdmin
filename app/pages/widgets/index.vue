@@ -119,7 +119,7 @@ onMounted(fetchWidgets)
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
-        <!-- <template #right>
+        <template #right>
           <UDropdownMenu
             :items="widgetTypeMenu"
             :popper="{ placement: 'bottom-end' }"
@@ -131,7 +131,7 @@ onMounted(fetchWidgets)
               icon="i-lucide-plus"
             />
           </UDropdownMenu>
-        </template> -->
+        </template>
       </UDashboardNavbar>
     </template>
     <template #body>
