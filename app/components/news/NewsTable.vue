@@ -63,6 +63,7 @@ const handleRowClick = (item: NewsItem) => {
     :loading="loading"
     title="Danh sách tin tức"
     :columns="columns"
+    :add-button="{ label: 'Thêm tin tức', href: '/news/create' }"
     search-placeholder="Tìm kiếm tin tức..."
     :row-click-handler="handleRowClick"
     @update:q="emit('update:q', $event)"
@@ -73,7 +74,7 @@ const handleRowClick = (item: NewsItem) => {
     <!-- Custom title column with image and desc -->
     <template #column-title="{ item }">
       <div class="flex items-center gap-4">
-        <div class="h-11 w-11 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
+  <div class="h-11 w-11 min-w-[44px] min-h-[44px] aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
           <img
             :src="fileService.getFileUrl(item.imageUrl) || '/no-image.svg'"
             :alt="item.title"

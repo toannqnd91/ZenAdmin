@@ -80,15 +80,6 @@ function handleRowClick(row: NewsItem) {
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
-        <template #right>
-          <UButton
-            label="Thêm tin tức"
-            color="primary"
-            variant="solid"
-            icon="i-lucide-plus"
-            @click="navigateTo('/news/create')"
-          />
-        </template>
       </UDashboardNavbar>
     </template>
 

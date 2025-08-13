@@ -119,7 +119,7 @@ onMounted(fetchWidgets)
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
-        <template #right>
+        <!-- <template #right>
           <UDropdownMenu
             :items="widgetTypeMenu"
             :popper="{ placement: 'bottom-end' }"
@@ -131,7 +131,7 @@ onMounted(fetchWidgets)
               icon="i-lucide-plus"
             />
           </UDropdownMenu>
-        </template>
+        </template> -->
       </UDashboardNavbar>
     </template>
     <template #body>
@@ -144,7 +144,6 @@ onMounted(fetchWidgets)
           :loading="loading"
           :get-row-items="getRowItems"
           :format-date="formatDate"
-          class="flex-1 min-h-0"
         />
         <div v-if="error" class="text-error mt-4">
           {{ error }}

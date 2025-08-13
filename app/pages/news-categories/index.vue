@@ -19,10 +19,6 @@ const {
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
-        
-        <template #right>
-          <NewsCategoriesAddModal />
-        </template>
       </UDashboardNavbar>
     </template>
 
@@ -35,7 +31,6 @@ const {
           :data="categories"
           :loading="loading"
           :get-row-items="getRowItems"
-          class="flex-1 min-h-0"
         />
 
         <div v-if="error" class="text-error mt-4">
