@@ -33,7 +33,7 @@ const columns: TableColumn[] = [
   {
     key: 'isPublished',
     label: 'Trạng thái',
-    class: 'py-3 text-right font-medium'
+    class: 'py-3 text-left font-medium'
   }
 ]
 

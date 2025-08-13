@@ -103,7 +103,6 @@ function handleRowClick(row: NewsItem) {
           :truncate-text="truncateText"
           :get-row-items="getRowItems"
           :on-row-click="handleRowClick"
-          class="flex-1 min-h-0"
         />
 
         <div v-if="error" class="text-error mt-4">

@@ -104,7 +104,7 @@ const invText = (p: ProductItem) => {
     <!-- Custom name column with image -->
     <template #column-name="{ item }">
       <div class="flex items-center gap-4">
-        <div class="h-14 w-14 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
+        <div class="h-11 w-11 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
           <img
             :src="item.thumbnailImageUrl || '/no-image.svg'"
             :alt="item.name"
