@@ -3,12 +3,12 @@ import type { TableColumn } from '@/components/base/BaseTable.vue'
 import BaseTable from '@/components/base/BaseTable.vue'
 import type { WidgetInstance } from '@/composables/useWidgets'
 
+
 interface Props {
   data: WidgetInstance[]
   loading: boolean
   q: string
   rowSelection: Record<string, boolean>
-  pagination: { pageIndex: number, pageSize: number }
   getRowItems: (row: any) => unknown[]
   formatDate: (date: string | null) => string
   addButtonDropdownItems?: any[]
@@ -18,7 +18,6 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   'update:q': [string]
   'update:rowSelection': [Record<string, boolean>]
-  'update:pagination': [{ pageIndex: number, pageSize: number }]
 }>()
 
 const columns: TableColumn[] = [
@@ -46,7 +45,7 @@ const handleRowClick = (item: WidgetInstance) => {
   <BaseTable
     :q="q"
     :row-selection="rowSelection"
-    :pagination="pagination"
+    
     :data="data"
     :loading="loading"
     title="Danh sách widget"
@@ -55,9 +54,8 @@ const handleRowClick = (item: WidgetInstance) => {
     :add-button-dropdown-items="addButtonDropdownItems"
     search-placeholder="Tìm kiếm widget..."
     :row-click-handler="handleRowClick"
-    @update:q="emit('update:q', $event)"
-    @update:row-selection="emit('update:rowSelection', $event)"
-    @update:pagination="emit('update:pagination', $event)"
+  @update:q="emit('update:q', $event)"
+  @update:row-selection="emit('update:rowSelection', $event)"
   >
     <template #column-name="{ value }">
       <span class="font-semibold text-[15px]">{{ value }}</span>

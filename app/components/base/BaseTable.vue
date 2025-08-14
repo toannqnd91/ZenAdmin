@@ -28,7 +28,6 @@ interface Props {
   loading?: boolean
   q: string
   rowSelection: Record<string, boolean>
-  pagination: { pageIndex: number, pageSize: number }
 
   // Configuration
   title: string
@@ -88,9 +87,10 @@ const filtered = computed(() =>
   })
 )
 
-const start = computed(() => props.pagination.pageIndex * props.pagination.pageSize)
-const end = computed(() => start.value + props.pagination.pageSize)
-const pageItems = computed(() => filtered.value.slice(start.value, end.value))
+// const start = computed(() => props.pagination.pageIndex * props.pagination.pageSize)
+// const end = computed(() => start.value + props.pagination.pageSize)
+// const pageItems = computed(() => filtered.value.slice(start.value, end.value))
+const pageItems = filtered // Hiển thị tất cả rows
 
 /* selection */
 const isSelected = (id: string | number) => !!props.rowSelection?.[String(id)]
@@ -506,9 +506,7 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
 
     <!-- Footer -->
     <div class="flex items-center justify-end px-6 pb-4">
-      <div v-if="filtered.length > pagination.pageSize" class="flex items-center gap-3">
-        <slot name="header-actions" />
-      </div>
+      <slot name="header-actions" />
     </div>
   </div>
 </template>

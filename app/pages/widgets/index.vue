@@ -14,10 +14,7 @@ const {
 } = useWidgets()
 
 const rowSelection = ref({})
-const pagination = ref({
-  pageIndex: 0,
-  pageSize: 10
-})
+
 
 const widgetTypes = [
   { label: 'Carousel Widget', value: 'carousel' },
@@ -139,7 +136,6 @@ onMounted(fetchWidgets)
         <WidgetsTable
           v-model:q="q"
           v-model:row-selection="rowSelection"
-          v-model:pagination="pagination"
           :data="filteredWidgets"
           :loading="loading"
           :get-row-items="getRowItems"
