@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { VueDraggable } from 'vue-draggable-plus'
+import type { SortableEvent } from 'sortablejs'
 
 export interface TableColumn {
   key: string
@@ -33,7 +35,7 @@ interface Props {
   title: string
   columns: TableColumn[]
   addButton?: AddButton
-  addButtonDropdownItems?: any[]
+  addButtonDropdownItems?: unknown[]
   actions?: TableAction[]
 
   // Row actions
@@ -46,6 +48,10 @@ interface Props {
 
   // Colgroup widths
   colWidths?: string[]
+  // Dragging
+  draggable?: boolean
+  dragHandleClass?: string
+  dragAnimation?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -74,6 +80,7 @@ const emit = defineEmits<{
   'update:rowSelection': [Record<string, boolean>]
   'update:pagination': [{ pageIndex: number, pageSize: number }]
   'delete': [string[]]
+  'reorder': [Array<Record<string, unknown>>]
 }>()
 
 /* filter + paging */
@@ -92,6 +99,20 @@ const filtered = computed(() =>
 // const pageItems = computed(() => filtered.value.slice(start.value, end.value))
 const pageItems = filtered // Hiển thị tất cả rows
 
+// Draggable items local copy when dragging is enabled. We keep a local mutable copy
+const draggableItems = ref<Record<string, unknown>[]>([])
+if (props.draggable) {
+  // initialize
+  draggableItems.value = (pageItems.value || []).slice()
+}
+
+watch(filtered, (v) => {
+  if (props.draggable) {
+    // sync when source data changes
+    draggableItems.value = (v || []).slice()
+  }
+})
+
 /* selection */
 const isSelected = (id: string | number) => !!props.rowSelection?.[String(id)]
 const setRowSelected = (id: string | number, v: boolean) => {
@@ -101,8 +122,8 @@ const setRowSelected = (id: string | number, v: boolean) => {
 }
 const selectedCount = computed(() => Object.values(props.rowSelection || {}).filter(Boolean).length)
 
-const pageAllSelected = computed(() => pageItems.value.length > 0 && pageItems.value.every(it => isSelected(it.id)))
-const pageSomeSelected = computed(() => pageItems.value.some(it => isSelected(it.id)))
+const pageAllSelected = computed(() => ((pageItems.value as unknown) as Record<string, unknown>[]).length > 0 && ((pageItems.value as unknown) as Record<string, unknown>[]).every(it => isSelected((it as any).id)))
+const pageSomeSelected = computed(() => ((pageItems.value as unknown) as Record<string, unknown>[]).some(it => isSelected((it as any).id)))
 const selectAllState = computed<'none' | 'some' | 'all'>(() =>
   pageAllSelected.value ? 'all' : (pageSomeSelected.value ? 'some' : 'none')
 )
@@ -117,14 +138,35 @@ const toggleAllPage = () => {
 /* navigation */
 const onBodyClick = (e: Event) => {
   if (!props.rowClickEnabled || !props.rowClickHandler) return
-  
+
   const t = e.target as HTMLElement
   if (t.closest('[data-role="chk"]') || t.closest('button') || t.closest('[role="button"]')) return
   const tr = t.closest('tbody tr') as HTMLTableRowElement | null
   if (!tr) return
   const idx = Array.from(tr.parentElement!.children).indexOf(tr)
-  const item = pageItems.value[idx]
+  // choose the currently rendered array
+  const itemsArray = props.draggable ? draggableItems.value : pageItems.value
+  const item = itemsArray[idx]
   if (item && props.rowClickHandler) props.rowClickHandler(item)
+}
+
+const isDragging = ref(false)
+
+const onDragStart = () => {
+  isDragging.value = true
+  // Debug
+  console.debug('[BaseTable] onDragStart')
+}
+
+const onDragEnd = (event: SortableEvent) => {
+  isDragging.value = false
+  // Only emit reorder if the index changed
+  if (event.oldIndex !== undefined && event.newIndex !== undefined && event.oldIndex !== event.newIndex) {
+    // Debug
+    console.debug('[BaseTable] onDragEnd', { oldIndex: event.oldIndex, newIndex: event.newIndex })
+    // Emit the new order (array of items)
+    emit('reorder', draggableItems.value.slice())
+  }
 }
 
 const onCheckboxKey = (e: KeyboardEvent, handler: () => void) => {
@@ -407,7 +449,7 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
           </tr>
         </thead>
 
-        <tbody>
+        <tbody v-if="!props.draggable">
           <tr
             v-for="item in pageItems"
             :key="String(item.id)"
@@ -499,6 +541,111 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
             </td>
           </tr>
         </tbody>
+
+        <VueDraggable
+          v-if="props.draggable"
+          v-model="draggableItems"
+          tag="tbody"
+          :handle="'.' + (props.dragHandleClass || 'drag-handle')"
+          :ghost-class="'ghost'"
+          :chosen-class="'chosen'"
+          :drag-class="'drag'"
+          :animation="props.dragAnimation || 300"
+          class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700"
+          @start="onDragStart"
+          @end="onDragEnd"
+        >
+          <tr
+            v-for="item in draggableItems"
+            :key="String(item.id)"
+            class="group/row border-t border-gray-200 row-band"
+            :class="{ 'is-active': isSelected(String(item.id)), 'opacity-60': isDragging }"
+          >
+            <!-- Row checkbox -->
+            <td class="py-4 align-middle">
+              <div class="w-14 h-full flex items-center justify-start">
+                <button
+                  data-role="chk"
+                  type="button"
+                  role="checkbox"
+                  :aria-checked="isSelected(String(item.id)) ? 'true' : 'false'"
+                  :class="[
+                    'inline-flex items-center justify-center h-5 w-5 rounded-md border focus:outline-none focus:ring-2 focus:ring-offset-1',
+                    isSelected(String(item.id))
+                      ? 'bg-[#1b64f2] border-[#1b64f2] text-white focus:ring-blue-400'
+                      : 'bg-white border-gray-300 text-gray-400 focus:ring-blue-400'
+                  ]"
+                  @click="setRowSelected(String(item.id), !isSelected(String(item.id)))"
+                  @keydown="onCheckboxKey($event, () => setRowSelected(String(item.id), !isSelected(String(item.id))))"
+                >
+                  <svg
+                    v-if="isSelected(String(item.id))"
+                    class="h-3.5 w-3.5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </button>
+              </div>
+            </td>
+
+            <!-- Dynamic columns -->
+            <td
+              v-for="column in columns"
+              :key="column.key"
+              class="py-4"
+            >
+              <slot
+                :name="`column-${column.key}`"
+                :item="item"
+                :value="getColumnValue(item, column)"
+              >
+                <!-- Default rendering -->
+                <template v-if="column.render">
+                  <component
+                    :is="column.render(item)"
+                  />
+                </template>
+                <template v-else>
+                  {{ getColumnValue(item, column) }}
+                </template>
+              </slot>
+            </td>
+
+            <!-- actions -->
+            <td class="py-4 pr-4">
+              <div class="flex justify-end">
+                <slot
+                  name="row-actions"
+                  :item="item"
+                >
+                  <button
+                    type="button"
+                    class="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-gray-100"
+                    @click.stop
+                  >
+                    <svg
+                      class="w-5 h-5 text-gray-700"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <circle cx="12" cy="6" r="1" />
+                      <circle cx="12" cy="12" r="1" />
+                      <circle cx="12" cy="18" r="1" />
+                    </svg>
+                  </button>
+                </slot>
+              </div>
+            </td>
+          </tr>
+        </VueDraggable>
       </table>
 
       <div class="h-6 border-t border-gray-200" />
@@ -525,5 +672,43 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
 }
 .row-band{
   transition: background-image .2s ease;
+}
+
+/* Vue Draggable Plus CSS Classes (copied from links page for consistent visuals) */
+.ghost {
+  opacity: 0.5;
+  background: #f3f4f6;
+  transform: rotate(2deg);
+}
+
+.chosen {
+  opacity: 0.8;
+  background: #e5e7eb;
+}
+
+.drag {
+  opacity: 0.9;
+  background: #ddd6fe;
+  transform: rotate(-2deg);
+  transition: all 0.3s ease;
+}
+
+/* Smooth animations and sortable classes */
+tbody tr {
+  transition: all 0.3s ease;
+}
+
+tbody tr.sortable-ghost {
+  opacity: 0.4;
+  background: #f3f4f6;
+}
+
+tbody tr.sortable-chosen {
+  background: #e5e7eb;
+}
+
+tbody tr.sortable-drag {
+  background: #ddd6fe;
+  transform: rotate(1deg);
 }
 </style>

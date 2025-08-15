@@ -18,6 +18,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   'update:q': [string]
   'update:rowSelection': [Record<string, boolean>]
+  'reorder': [Array<Record<string, unknown>>]
 }>()
 
 const columns: TableColumn[] = [
@@ -36,9 +37,7 @@ const colWidths = [
   '18%'  // publishEnd
 ]
 
-const handleRowClick = (item: WidgetInstance) => {
-  navigateTo(`/widgets/${item.id}/update`)
-}
+// Row click navigation removed — clicking a row will no longer navigate
 </script>
 
 <template>
@@ -46,19 +45,39 @@ const handleRowClick = (item: WidgetInstance) => {
     :q="q"
     :row-selection="rowSelection"
     
-    :data="data"
+    :data="data as unknown as Record<string, unknown>[]"
     :loading="loading"
     title="Danh sách widget"
     :columns="columns"
     :col-widths="colWidths"
     :add-button-dropdown-items="addButtonDropdownItems"
     search-placeholder="Tìm kiếm widget..."
-    :row-click-handler="handleRowClick"
+  :draggable="true"
+  drag-handle-class="drag-handle"
+  :drag-animation="200"
   @update:q="emit('update:q', $event)"
   @update:row-selection="emit('update:rowSelection', $event)"
+  @reorder="(newOrder) => emit('reorder', newOrder)"
   >
     <template #column-name="{ value }">
-      <span class="font-semibold text-[15px]">{{ value }}</span>
+      <div class="flex items-center">
+        <div class="drag-handle mr-3 cursor-move" title="Kéo để di chuyển">
+          <svg
+            class="w-4 h-4 text-gray-400"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <circle cx="5" cy="5" r="2" />
+            <circle cx="5" cy="10" r="2" />
+            <circle cx="5" cy="15" r="2" />
+            <circle cx="10" cy="5" r="2" />
+            <circle cx="10" cy="10" r="2" />
+            <circle cx="10" cy="15" r="2" />
+          </svg>
+        </div>
+        <span class="font-semibold text-[15px]">{{ value }}</span>
+      </div>
     </template>
     <template #column-publishStart="{ item }">
       <span>{{ props.formatDate((item as unknown as WidgetInstance).publishStart) }}</span>

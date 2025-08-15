@@ -13,8 +13,20 @@ const {
   formatDate
 } = useWidgets()
 
-const rowSelection = ref({})
+// Handle reorder emitted by WidgetsTable
+function handleReorder(newOrder: any[]) {
+  // Attempt to update local widgets order in-place
+  // If filteredWidgets is computed from widgets composable, we need to update source by fetching again
+  // For now, call fetchWidgets to re-sync from server after UI reorder
+  // Optionally, you can persist order to API here.
+  fetchWidgets()
+}
 
+const rowSelection = ref({})
+const pagination = ref({
+  pageIndex: 0,
+  pageSize: 10
+})
 
 const widgetTypes = [
   { label: 'Carousel Widget', value: 'carousel' },
@@ -116,7 +128,7 @@ onMounted(fetchWidgets)
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
-        <!-- <template #right>
+        <template #right>
           <UDropdownMenu
             :items="widgetTypeMenu"
             :popper="{ placement: 'bottom-end' }"
@@ -128,7 +140,7 @@ onMounted(fetchWidgets)
               icon="i-lucide-plus"
             />
           </UDropdownMenu>
-        </template> -->
+        </template>
       </UDashboardNavbar>
     </template>
     <template #body>
@@ -136,11 +148,12 @@ onMounted(fetchWidgets)
         <WidgetsTable
           v-model:q="q"
           v-model:row-selection="rowSelection"
+          v-model:pagination="pagination"
           :data="filteredWidgets"
           :loading="loading"
           :get-row-items="getRowItems"
           :format-date="formatDate"
-          :add-button-dropdown-items="widgetTypeMenu"
+          @reorder="(newOrder) => handleReorder(newOrder)"
         />
         <div v-if="error" class="text-error mt-4">
           {{ error }}
