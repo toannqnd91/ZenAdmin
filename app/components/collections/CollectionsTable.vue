@@ -37,6 +37,13 @@ const columns: TableColumn[] = [
   }
 ]
 
+// Cấu hình chiều rộng các cột tương tự như WidgetsTable
+const colWidths = [
+  '28%', // name
+  '54%', // description
+  '10%'  // isPublished
+]
+
 const addButton = {
   label: 'Thêm bộ sưu tập',
   href: '/collections/create'
@@ -63,6 +70,7 @@ const handleDelete = (selectedIds: string[]) => {
 <template>
   <BaseTable
     :columns="columns"
+    :col-widths="colWidths"
     :data="tableData"
     :loading="props.loading"
     :q="props.q"
@@ -91,7 +99,7 @@ const handleDelete = (selectedIds: string[]) => {
       </div>
     </template>
     <template #column-description="{ item }">
-      <span>{{ (item as any).description || 'Không có mô tả' }}</span>
+      <span>{{ stripHtmlAndLimitWords((item as any).description, 25) || 'Không có mô tả' }}</span>
     </template>
     <template #column-isPublished="{ item }">
       <span v-if="(item as any).isPublished" class="text-green-600">Đã xuất bản</span>
@@ -99,3 +107,15 @@ const handleDelete = (selectedIds: string[]) => {
     </template>
   </BaseTable>
 </template>
+
+<script lang="ts">
+// Hàm loại bỏ thẻ HTML và giới hạn số từ
+function stripHtmlAndLimitWords(html: string, maxWords = 30): string {
+  if (!html) return ''
+  // Loại bỏ thẻ HTML
+  const text = html.replace(/<[^>]*>/g, ' ')
+  // Cắt và ghép lại tối đa maxWords từ
+  const words = text.split(/\s+/).filter(Boolean)
+  return words.slice(0, maxWords).join(' ') + (words.length > maxWords ? '...' : '')
+}
+</script>

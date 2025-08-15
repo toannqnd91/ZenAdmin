@@ -42,6 +42,10 @@ const handleDelete = (selectedIds: number[]) => {
     <template #body>
       <div class="w-full flex flex-col h-full">
         <div class="flex-1 min-h-0">
+          <!-- Plain text description, max 30 words -->
+          <div class="mb-4 text-gray-600 text-sm">
+            Quản lý bộ sưu tập sản phẩm của bạn. Thêm, chỉnh sửa hoặc xóa các bộ sưu tập một cách dễ dàng và nhanh chóng.
+          </div>
           <CollectionsTable
             v-model:q="q"
             v-model:row-selection="rowSelection"

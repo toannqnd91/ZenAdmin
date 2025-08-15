@@ -275,7 +275,7 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
           </button>
         </div>
 
-        <span class="text-lg font-medium ml-2">{{ selectedCount }} selected</span>
+        <span class="text-sm font-medium ml-0">{{ selectedCount }} đã chọn</span>
 
         <div class="flex items-center gap-2 ml-6">
           <button
