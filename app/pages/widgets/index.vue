@@ -129,17 +129,7 @@ onMounted(fetchWidgets)
           <UDashboardSidebarCollapse />
         </template>
         <template #right>
-          <UDropdownMenu
-            :items="widgetTypeMenu"
-            :popper="{ placement: 'bottom-end' }"
-          >
-            <UButton
-              label="Thêm widget"
-              color="primary"
-              variant="solid"
-              icon="i-lucide-plus"
-            />
-          </UDropdownMenu>
+          <!-- Add widget button moved into the table topbar -->
         </template>
       </UDashboardNavbar>
     </template>
@@ -151,6 +141,7 @@ onMounted(fetchWidgets)
           v-model:pagination="pagination"
           :data="filteredWidgets"
           :loading="loading"
+          :add-button-dropdown-items="widgetTypeMenu"
           :get-row-items="getRowItems"
           :format-date="formatDate"
           @reorder="(newOrder) => handleReorder(newOrder)"
