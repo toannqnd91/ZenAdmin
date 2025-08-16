@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 
+import { useBrandsService } from '@/composables/useBrandsService'
+
 definePageMeta({
   layout: 'default'
 })
@@ -8,6 +10,7 @@ definePageMeta({
 useHead({
   title: 'New product - Cơ Khí Tam Long'
 })
+
 
 const {
   formData,
@@ -20,13 +23,37 @@ const {
   submitForm
 } = useProductForm()
 
-// Local UI-only state to match the screenshot
+// Multi-category select logic
+const isDropdownOpen = ref(false)
+const searchTerm = ref('')
+const filteredCategories = computed(() => {
+  const cats = categories?.value || []
+  if (!searchTerm.value) return cats
+  return cats.filter((cat: any) => cat.name.toLowerCase().includes(searchTerm.value.toLowerCase()))
+})
+const selectedCategories = computed(() => {
+  const cats = categories?.value || []
+  return cats.filter((cat: any) => formData.value.categoryIds.includes(cat.id))
+})
+function toggleCategory(id: number) {
+  const idx = formData.value.categoryIds.indexOf(id)
+  if (idx === -1) {
+    formData.value.categoryIds.push(id)
+  } else {
+    formData.value.categoryIds.splice(idx, 1)
+  }
+}
+function removeCategory(id: number) {
+  const idx = formData.value.categoryIds.indexOf(id)
+  if (idx !== -1) {
+    formData.value.categoryIds.splice(idx, 1)
+  }
+}
+
+const { data: brands, loading: brandsLoading, error: brandsError } = useBrandsService()
 const trademark = ref<string>('')
 const status = ref<'Public' | 'Draft'>('Public')
 const pageTemplate = ref<string>('Default product')
-
-const addCompareAtPrice = ref<boolean>(false)
-
 const markAsSoldOut = ref<boolean>(false)
 const uniqueSkuPerVariant = ref<boolean>(false)
 const membersOnly = ref<boolean>(false)
@@ -51,14 +78,7 @@ const _onSubmit = async () => {
   if (ok) navigateTo('/products')
 }
 
-// Simple helper to set single category id (instead of old multi-select)
-const selectedCategoryId = computed({
-  get: () => formData.value.categoryIds[0] || '',
-  set: (val: string | number) => {
-    const n = typeof val === 'string' ? Number(val) : val
-    formData.value.categoryIds = Number.isFinite(n) && n > 0 ? [n] : []
-  }
-})
+// Removed unused selectedCategoryId
 
 // Keep formData.isInStock in sync with "Mark as sold out"
 watch(markAsSoldOut, (v) => {
@@ -128,11 +148,9 @@ const marginDisplay = computed(() => {
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
                 <form class="space-y-4" @submit.prevent="submitForm">
                   <!-- Product name -->
+
                   <div>
-                    <label
-                      for="name"
-                      class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                    >
+                    <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Tên sản phẩm
                     </label>
                     <input
@@ -147,8 +165,6 @@ const marginDisplay = computed(() => {
                       {{ errors.name }}
                     </p>
                   </div>
-
-                  <!-- Trademark -->
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Thương hiệu
@@ -156,41 +172,110 @@ const marginDisplay = computed(() => {
                     <select
                       v-model="trademark"
                       class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white pr-[34px]"
-                      style="appearance: none; background-image: url('data:image/svg+xml;utf8,<svg fill=\'none\' stroke=\'%236B7280\' stroke-width=\'2\' viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' d=\'M19 9l-7 7-7-7\'/></svg>'); background-repeat: no-repeat; background-position: right 10px center; background-size: 18px 18px;"
+                      style="appearance: none; background-image: url(&quot;data:image/svg+xml;utf8,<svg fill='none' stroke='%236B7280' stroke-width='2' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'><path stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/></svg>&quot;); background-repeat: no-repeat; background-position: right 10px center; background-size: 18px 18px;"
                     >
                       <option value="" disabled>
                         Chọn thương hiệu
                       </option>
-                      <option value="brand-a">
-                        Thương hiệu A
-                      </option>
-                      <option value="brand-b">
-                        Thương hiệu B
+                      <option v-for="b in brands" :key="b.id" :value="b.id">
+                        {{ b.name }}
                       </option>
                     </select>
+                    <div v-if="brandsLoading" class="text-xs text-gray-400 mt-1">
+                      Đang tải danh sách thương hiệu...
+                    </div>
+                    <div v-if="brandsError" class="text-xs text-red-500 mt-1">
+                      Lỗi tải thương hiệu: {{ brandsError }}
+                    </div>
                   </div>
+
+                  <!-- Trademark -->
+                  <!-- Xoá select thương hiệu tĩnh, chỉ giữ select động phía trên -->
 
                   <!-- Category (single select) -->
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Danh mục
                     </label>
-                    <select
-                      v-model="selectedCategoryId"
-                      class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white pr-[34px]"
-                      style="appearance: none; background-image: url('data:image/svg+xml;utf8,<svg fill=\'none\' stroke=\'%236B7280\' stroke-width=\'2\' viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' d=\'M19 9l-7 7-7-7\'/></svg>'); background-repeat: no-repeat; background-position: right 10px center; background-size: 18px 18px;"
-                    >
-                      <option value="">
-                        Chọn danh mục
-                      </option>
-                      <option
-                        v-for="c in categories"
-                        :key="c.id"
-                        :value="c.id"
+                    <div class="relative dropdown-container mb-2">
+                      <button
+                        type="button"
+                        class="w-full px-3 h-9 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-left flex items-center justify-between"
+                        @click="isDropdownOpen = !isDropdownOpen"
                       >
-                        {{ c.name }}
-                      </option>
-                    </select>
+                        <span class="text-gray-500">
+                          {{ (selectedCategories && selectedCategories.length > 0) ? `Đã chọn ${selectedCategories.length} danh mục` : 'Chọn danh mục' }}
+                        </span>
+                        <svg
+                          class="w-4 h-4 transform transition-transform"
+                          :class="{ 'rotate-180': isDropdownOpen }"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </button>
+                      <div
+                        v-if="isDropdownOpen"
+                        class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md"
+                      >
+                        <div class="border-b border-gray-200 dark:border-gray-700">
+                          <input
+                            v-model="searchTerm"
+                            type="text"
+                            placeholder="Tìm kiếm"
+                            class="w-full px-3 h-[36px] text-sm rounded-md border-0 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          >
+                        </div>
+                        <div class="max-h-40 overflow-y-auto">
+                          <div v-if="!filteredCategories || filteredCategories.length === 0" class="p-3 text-sm text-gray-500">
+                            {{ searchTerm ? 'Không tìm thấy danh mục' : 'Đang tải danh mục...' }}
+                          </div>
+                          <template v-if="filteredCategories && filteredCategories.length">
+                            <label
+                              v-for="category in filteredCategories"
+                              :key="category.id"
+                              class="flex items-center space-x-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                :checked="formData.categoryIds.includes(category.id)"
+                                @change="toggleCategory(category.id)"
+                              >
+                              <span class="text-sm text-gray-700 dark:text-gray-300">{{ category.name }}</span>
+                            </label>
+                          </template>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-if="selectedCategories && selectedCategories.length > 0" class="flex flex-wrap gap-1 mt-2">
+                      <span
+                        v-for="category in selectedCategories"
+                        :key="category.id"
+                        class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200"
+                      >
+                        {{ category.name }}
+                        <button
+                          type="button"
+                          class="ml-1 inline-flex items-center justify-center w-3 h-3 rounded-full text-primary-600 hover:bg-primary-200 hover:text-primary-800 focus:outline-none"
+                          @click="removeCategory(category.id)"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    </div>
+                    <p v-if="errors.categoryIds" class="mt-1 text-sm text-red-600">
+                      {{ errors.categoryIds }}
+                    </p>
+                    <p class="mt-1 text-xs text-gray-500">
+                      Chọn một hoặc nhiều danh mục cho sản phẩm
+                    </p>
                   </div>
 
                   <!-- Description (rich text) -->
