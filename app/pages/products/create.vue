@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 
 import { useBrandsService } from '@/composables/useBrandsService'
 
@@ -23,19 +23,18 @@ const {
   submitForm
 } = useProductForm()
 
-// Multi-category select logic
-import { onMounted, onBeforeUnmount } from 'vue'
 const isDropdownOpen = ref(false)
 const searchTerm = ref('')
 const dropdownRef = ref<HTMLElement | null>(null)
-const filteredCategories = computed(() => {
-  const cats = categories?.value || []
+type Category = { id: number; name: string }
+const filteredCategories = computed((): Category[] => {
+  const cats = (categories?.value as unknown as Category[]) || []
   if (!searchTerm.value) return cats
-  return cats.filter((cat: any) => cat.name.toLowerCase().includes(searchTerm.value.toLowerCase()))
+  return cats.filter((cat: Category) => cat.name.toLowerCase().includes(searchTerm.value.toLowerCase()))
 })
-const selectedCategories = computed(() => {
-  const cats = categories?.value || []
-  return cats.filter((cat: any) => formData.value.categoryIds.includes(cat.id))
+const selectedCategories = computed((): Category[] => {
+  const cats = (categories?.value as unknown as Category[]) || []
+  return cats.filter((cat: Category) => formData.value.categoryIds.includes(cat.id))
 })
 function toggleCategory(id: number) {
   const idx = formData.value.categoryIds.indexOf(id)
@@ -126,6 +125,46 @@ const marginDisplay = computed(() => {
   const margin = ((price - cost) / price) * 100
   return margin ? margin.toFixed(0) : ''
 })
+
+// Tags input logic
+const tagInput = ref<string>('')
+if (!('tags' in formData.value)) {
+  ;(formData.value as unknown as { tags: string[] }).tags = []
+}
+const getTags = () => (formData.value as unknown as { tags: string[] }).tags
+const commitTag = () => {
+  const raw = tagInput.value.trim()
+  if (!raw) return
+  const value = raw.replace(/[,]+$/g, '').trim()
+  if (!value) return
+  const list = getTags()
+  if (!list.includes(value)) list.push(value)
+  tagInput.value = ''
+}
+const onTagKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault()
+    commitTag()
+  } else if (e.key === 'Backspace' && tagInput.value === '') {
+    const list = getTags()
+    if (list.length) list.pop()
+  }
+}
+const onTagPaste = (e: ClipboardEvent) => {
+  const text = e.clipboardData?.getData('text') || ''
+  if (!text) return
+  const parts = text.split(/[\,\n\t]/).map(s => s.trim()).filter(Boolean)
+  if (!parts.length) return
+  e.preventDefault()
+  const list = getTags()
+  for (const p of parts) {
+    if (!list.includes(p)) list.push(p)
+  }
+}
+const removeTag = (idx: number) => {
+  const list = getTags()
+  if (idx >= 0 && idx < list.length) list.splice(idx, 1)
+}
 </script>
 
 <template>
@@ -188,7 +227,6 @@ const marginDisplay = computed(() => {
                     <select
                       v-model="trademark"
                       class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white pr-[34px] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      style="appearance: none; background-image: url(&quot;data:image/svg+xml;utf8,<svg fill='none' stroke='%236B7280' stroke-width='2' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'><path stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/></svg>&quot;); background-repeat: no-repeat; background-position: right 10px center; background-size: 18px 18px;"
                     >
                       <option value="" disabled>
                         Chọn thương hiệu
@@ -213,7 +251,7 @@ const marginDisplay = computed(() => {
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Danh mục
                     </label>
-                    <div class="relative dropdown-container mb-2" ref="dropdownRef">
+                    <div ref="dropdownRef" class="relative dropdown-container mb-2">
                       <button
                         type="button"
                         class="w-full px-3 h-9 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-left flex items-center justify-between"
@@ -541,7 +579,6 @@ const marginDisplay = computed(() => {
                     <select
                       v-model="status"
                       class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white pr-[34px]"
-                      style="appearance: none; background-image: url('data:image/svg+xml;utf8,<svg fill=\'none\' stroke=\'%236B7280\' stroke-width=\'2\' viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' d=\'M19 9l-7 7-7-7\'/></svg>'); background-repeat: no-repeat; background-position: right 10px center; background-size: 18px 18px;"
                     >
                       <option value="Public">
                         Công khai
@@ -558,7 +595,6 @@ const marginDisplay = computed(() => {
                     <select
                       v-model="pageTemplate"
                       class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white pr-[34px]"
-                      style="appearance: none; background-image: url('data:image/svg+xml;utf8,<svg fill=\'none\' stroke=\'%236B7280\' stroke-width=\'2\' viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' d=\'M19 9l-7 7-7-7\'/></svg>'); background-repeat: no-repeat; background-position: right 10px center; background-size: 18px 18px;"
                     >
                       <option value="Default product">
                         Sản phẩm mặc định
@@ -634,15 +670,52 @@ const marginDisplay = computed(() => {
                     <div class="relative">
                       <input type="text" class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pl-10" placeholder="">
                       <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"
+                          />
                         </svg>
                       </span>
                     </div>
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
-                    <input type="text" class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500" placeholder="">
+                    <div class="w-full">
+                      <input
+                        v-model="tagInput"
+                        type="text"
+                        placeholder="Nhập tag rồi nhấn Enter hoặc dấu phẩy"
+                        class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        @keydown="onTagKeydown"
+                        @blur="commitTag"
+                        @paste="onTagPaste"
+                      >
+                      <div v-if="(formData.tags || []).length" class="flex flex-wrap gap-2 mt-2">
+                        <span
+                          v-for="(tag, idx) in (formData.tags || [])"
+                          :key="`${tag}-${idx}`"
+                          class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-normal bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+                        >
+                          {{ tag }}
+                          <button
+                            type="button"
+                            class="inline-flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
+                            @click="removeTag(idx)"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
