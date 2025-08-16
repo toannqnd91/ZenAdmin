@@ -70,21 +70,6 @@ watch(markAsSoldOut, (v) => {
       <UDashboardNavbar>
         <template #leading>
           <div class="flex items-center gap-3">
-            <NuxtLink to="/products" class="inline-flex items-center text-gray-600 hover:text-gray-800">
-              <svg
-                class="w-5 h-5 mr-2"
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M10 19l-7-7 7-7"
-                />
-              </svg>
-            </NuxtLink>
             <UDashboardSidebarCollapse />
             <div>
               <div class="text-lg font-semibold">
@@ -145,7 +130,7 @@ watch(markAsSoldOut, (v) => {
                       class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     >
                       <option value="" disabled>
-                        Trademark
+                        Brand
                       </option>
                       <option value="brand-a">
                         Brand A
@@ -210,20 +195,21 @@ watch(markAsSoldOut, (v) => {
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     URL
                   </label>
-                  <div class="flex gap-2 items-center">
-                    <div class="flex-1 flex items-center gap-1">
-                      <span class="text-sm text-gray-500 select-none">
-                        test.mehub.space/
-                      </span>
-                      <input
-                        :value="slug"
-                        readonly
-                        class="flex-1 px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white"
-                      >
+                  <div class="flex flex-col gap-3">
+                    <div class="flex items-center w-full rounded-md border border-gray-300 bg-gray-50 px-4 py-2">
+                      <span class="text-gray-400 select-none mr-1">web.vnnsoft.com/</span>
+                      <span class="text-gray-900 flex-1">{{ slug }}</span>
+                      <button type="button" class="ml-2 text-gray-400 hover:text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16h8M8 12h8m-8-4h8M4 6h16M4 18h16" />
+                        </svg>
+                      </button>
                     </div>
                     <UButton
                       label="Shorten URL"
+                      icon="i-lucide-zap"
                       variant="soft"
+                      class="w-fit mt-1"
                     />
                   </div>
                 </div>
@@ -234,14 +220,9 @@ watch(markAsSoldOut, (v) => {
             <UPageCard title="Selling price" variant="soft" class="overflow-hidden bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
                 <div class="space-y-3">
-                  <div class="flex items-start gap-4">
-                    <div class="w-64">
-                      <label
-                        for="price"
-                        class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                      >
-                        $
-                      </label>
+                  <div class="flex items-center gap-4">
+                    <div class="flex items-center w-48">
+                      <span class="text-gray-500 text-base mr-2">$</span>
                       <input
                         id="price"
                         v-model.number="formData.price"
@@ -249,17 +230,33 @@ watch(markAsSoldOut, (v) => {
                         min="0"
                         step="0.01"
                         placeholder="0.00"
-                        class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500"
+                        class="w-full px-3 h-9 text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500"
                       >
                     </div>
-                    <div class="text-xs text-gray-600 dark:text-gray-400 pt-2">
+                    <div class="text-base text-gray-900">
                       Estimated you'll make $0.00 per sale!
-                      <a href="#" class="text-primary-600 hover:underline">Learn more</a>
+                      <a href="#" class="text-primary-600 hover:underline ml-1">Learn more</a>
                     </div>
                   </div>
-                  <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <label class="inline-flex items-center gap-2 text-base text-gray-900 mt-2">
                     <input v-model="addCompareAtPrice" type="checkbox">
                     Add compare-at price
+                    <span class="ml-1" title="Compare-at price is the original price before discount.">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4 text-gray-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z"
+                        />
+                      </svg>
+                    </span>
                   </label>
                 </div>
               </div>
@@ -303,49 +300,7 @@ watch(markAsSoldOut, (v) => {
               </div>
             </UPageCard>
 
-            <!-- Inventory and variants (moved left) -->
-            <UPageCard title="Inventory and variants" variant="soft" class="overflow-hidden bg-white rounded-lg">
-              <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
-                <div class="space-y-4">
-                  <div class="grid grid-cols-3 text-sm text-gray-500">
-                    <div class="col-span-1">
-                      Variant
-                    </div>
-                    <div class="text-center">
-                      In stock
-                    </div>
-                    <div class="text-center">
-                      Sold
-                    </div>
-                  </div>
-                  <div class="grid grid-cols-3 items-center text-sm text-gray-800 dark:text-gray-200 border-t pt-3">
-                    <div class="col-span-1">
-                      {{ formData.name || 'New product' }}
-                    </div>
-                    <div class="text-center text-primary-600">
-                      <NuxtLink to="#">Unlimited</NuxtLink>
-                    </div>
-                    <div class="text-center">
-                      0
-                    </div>
-                  </div>
-                  <div class="space-y-2 pt-2">
-                    <label class="flex items-center gap-2 text-sm">
-                      <input v-model="markAsSoldOut" type="checkbox">
-                      Mark as sold out
-                    </label>
-                    <label class="flex items-center gap-2 text-sm">
-                      <input v-model="uniqueSkuPerVariant" type="checkbox">
-                      Each variant has a unique SKU or UPC code
-                    </label>
-                    <label class="flex items-center gap-2 text-sm">
-                      <input v-model="membersOnly" type="checkbox">
-                      Make this a members-only product
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </UPageCard>
+            <!-- Inventory and variants was moved to full-width below -->
           </div>
 
           <!-- Right column -->
@@ -414,6 +369,63 @@ watch(markAsSoldOut, (v) => {
               </div>
             </UPageCard>
           </div>
+        </div>
+
+        <!-- Inventory and variants (full-width) -->
+        <div class="mt-6">
+          <UPageCard variant="soft" class="overflow-hidden bg-white rounded-lg">
+            <div class="flex items-center justify-between ">
+              <div class="font-semibold text-base">
+                Inventory and variants
+              </div>
+              <UButton
+                label="Edit variants"
+                variant="solid"
+                icon="i-lucide-edit-2"
+                class="w-fit"
+              />
+            </div>
+            <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
+              <div class="space-y-4">
+                <div class="grid grid-cols-3 text-sm text-gray-500">
+                  <div class="col-span-1">
+                    Variant
+                  </div>
+                  <div class="text-center">
+                    In stock
+                  </div>
+                  <div class="text-center">
+                    Sold
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 items-center text-sm text-gray-800 dark:text-gray-200 border-t pt-3">
+                  <div class="col-span-1">
+                    {{ formData.name || 'New product' }}
+                  </div>
+                  <div class="text-center text-primary-600">
+                    <NuxtLink to="#">Unlimited</NuxtLink>
+                  </div>
+                  <div class="text-center">
+                    0
+                  </div>
+                </div>
+                <div class="space-y-2 pt-2">
+                  <label class="flex items-center gap-2 text-sm">
+                    <input v-model="markAsSoldOut" type="checkbox">
+                    Mark as sold out
+                  </label>
+                  <label class="flex items-center gap-2 text-sm">
+                    <input v-model="uniqueSkuPerVariant" type="checkbox">
+                    Each variant has a unique SKU or UPC code
+                  </label>
+                  <label class="flex items-center gap-2 text-sm">
+                    <input v-model="membersOnly" type="checkbox">
+                    Make this a members-only product
+                  </label>
+                </div>
+              </div>
+            </div>
+          </UPageCard>
         </div>
       </div>
     </template>
