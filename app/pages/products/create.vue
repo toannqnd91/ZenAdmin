@@ -24,7 +24,9 @@ const {
 const trademark = ref<string>('')
 const status = ref<'Public' | 'Draft'>('Public')
 const pageTemplate = ref<string>('Default product')
+
 const addCompareAtPrice = ref<boolean>(false)
+
 const markAsSoldOut = ref<boolean>(false)
 const uniqueSkuPerVariant = ref<boolean>(false)
 const membersOnly = ref<boolean>(false)
@@ -62,6 +64,32 @@ const selectedCategoryId = computed({
 watch(markAsSoldOut, (v) => {
   formData.value.isInStock = !v
 })
+
+// Ensure price-related fields exist on formData
+if (!('compareAtPrice' in formData.value)) {
+  formData.value.compareAtPrice = 0
+}
+if (!('importPrice' in formData.value)) {
+  formData.value.importPrice = 0
+}
+if (!('chargeTax' in formData.value)) {
+  formData.value.chargeTax = false
+}
+
+// Computed for profit and margin
+const profitDisplay = computed(() => {
+  const price = Number(formData.value.price) || 0
+  const cost = Number(formData.value.importPrice) || 0
+  if (!price || !cost) return ''
+  return (price - cost).toLocaleString('vi-VN')
+})
+const marginDisplay = computed(() => {
+  const price = Number(formData.value.price) || 0
+  const cost = Number(formData.value.importPrice) || 0
+  if (!price || !cost) return ''
+  const margin = ((price - cost) / price) * 100
+  return margin ? margin.toFixed(0) : ''
+})
 </script>
 
 <template>
@@ -73,15 +101,15 @@ watch(markAsSoldOut, (v) => {
             <UDashboardSidebarCollapse />
             <div>
               <div class="text-lg font-semibold">
-                New product
+                Thêm sản phẩm mới
               </div>
             </div>
           </div>
         </template>
         <template #right>
           <div class="flex items-center gap-3">
-            <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">Public</span>
-            <UButton label="Preview" variant="ghost" icon="i-lucide-external-link" />
+            <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">Công khai</span>
+            <UButton label="Xem trước" variant="ghost" icon="i-lucide-external-link" />
             <UDropdownMenu :items="[]">
               <UButton icon="i-lucide-more-vertical" variant="ghost" />
             </UDropdownMenu>
@@ -96,7 +124,7 @@ watch(markAsSoldOut, (v) => {
         <div class="flex flex-col lg:flex-row gap-6">
           <!-- Left column -->
           <div class="flex-1 space-y-6">
-            <UPageCard title="Product details" variant="soft" class="overflow-hidden bg-white rounded-lg">
+            <UPageCard title="Thông tin sản phẩm" variant="soft" class="overflow-hidden bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
                 <form class="space-y-4" @submit.prevent="submitForm">
                   <!-- Product name -->
@@ -105,13 +133,13 @@ watch(markAsSoldOut, (v) => {
                       for="name"
                       class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                     >
-                      Product name
+                      Tên sản phẩm
                     </label>
                     <input
                       id="name"
                       v-model="formData.name"
                       type="text"
-                      placeholder="New product"
+                      placeholder="Nhập tên sản phẩm"
                       :class="{ 'border-red-500': errors.name }"
                       class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
@@ -123,20 +151,21 @@ watch(markAsSoldOut, (v) => {
                   <!-- Trademark -->
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Trademark
+                      Thương hiệu
                     </label>
                     <select
                       v-model="trademark"
-                      class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white pr-[34px]"
+                      style="appearance: none; background-image: url('data:image/svg+xml;utf8,<svg fill=\'none\' stroke=\'%236B7280\' stroke-width=\'2\' viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' d=\'M19 9l-7 7-7-7\'/></svg>'); background-repeat: no-repeat; background-position: right 10px center; background-size: 18px 18px;"
                     >
                       <option value="" disabled>
-                        Brand
+                        Chọn thương hiệu
                       </option>
                       <option value="brand-a">
-                        Brand A
+                        Thương hiệu A
                       </option>
                       <option value="brand-b">
-                        Brand B
+                        Thương hiệu B
                       </option>
                     </select>
                   </div>
@@ -144,14 +173,15 @@ watch(markAsSoldOut, (v) => {
                   <!-- Category (single select) -->
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Category
+                      Danh mục
                     </label>
                     <select
                       v-model="selectedCategoryId"
-                      class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white pr-[34px]"
+                      style="appearance: none; background-image: url('data:image/svg+xml;utf8,<svg fill=\'none\' stroke=\'%236B7280\' stroke-width=\'2\' viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' d=\'M19 9l-7 7-7-7\'/></svg>'); background-repeat: no-repeat; background-position: right 10px center; background-size: 18px 18px;"
                     >
                       <option value="">
-                        Category
+                        Chọn danh mục
                       </option>
                       <option
                         v-for="c in categories"
@@ -166,12 +196,12 @@ watch(markAsSoldOut, (v) => {
                   <!-- Description (rich text) -->
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Description
+                      Mô tả
                     </label>
                     <div class="rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden bg-white dark:bg-gray-800">
                       <TinyMCESelfHost
                         v-model="formData.content"
-                        placeholder="Description"
+                        placeholder="Nhập mô tả sản phẩm"
                         :height="300"
                       />
                     </div>
@@ -182,31 +212,42 @@ watch(markAsSoldOut, (v) => {
 
                   <!-- Additional sections link -->
                   <div>
-                    <NuxtLink to="#" class="text-sm text-primary-600 hover:underline">Edit additional sections</NuxtLink>
+                    <NuxtLink to="#" class="text-sm text-primary-600 hover:underline">Chỉnh sửa các phần bổ sung</NuxtLink>
                   </div>
                 </form>
               </div>
             </UPageCard>
 
             <!-- Product Links -->
-            <UPageCard title="Product Links" variant="soft" class="overflow-hidden bg-white rounded-lg">
+            <UPageCard title="Liên kết sản phẩm" variant="soft" class="overflow-hidden bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
                 <div class="space-y-3">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    URL
+                    Đường dẫn
                   </label>
                   <div class="flex flex-col gap-3">
-                    <div class="flex items-center w-full rounded-md border border-gray-300 bg-gray-50 px-4 py-2">
+                    <div class="flex items-center w-full rounded-md border border-gray-300 bg-gray-50 px-4" style="height:36px;">
                       <span class="text-gray-400 select-none mr-1">web.vnnsoft.com/</span>
                       <span class="text-gray-900 flex-1">{{ slug }}</span>
                       <button type="button" class="ml-2 text-gray-400 hover:text-gray-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16h8M8 12h8m-8-4h8M4 6h16M4 18h16" />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M8 16h8M8 12h8m-8-4h8M4 6h16M4 18h16"
+                          />
                         </svg>
                       </button>
                     </div>
                     <UButton
-                      label="Shorten URL"
+                      label="Rút gọn link"
                       icon="i-lucide-zap"
                       variant="soft"
                       class="w-fit mt-1"
@@ -217,12 +258,13 @@ watch(markAsSoldOut, (v) => {
             </UPageCard>
 
             <!-- Selling price -->
-            <UPageCard title="Selling price" variant="soft" class="overflow-hidden bg-white rounded-lg">
+            <UPageCard title="Giá bán" variant="soft" class="overflow-hidden bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
-                <div class="space-y-3">
-                  <div class="flex items-center gap-4">
-                    <div class="flex items-center w-48">
-                      <span class="text-gray-500 text-base mr-2">$</span>
+                <!-- Top row: Price & Compare-at price -->
+                <div class="flex flex-col md:flex-row gap-4">
+                  <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Giá bán</label>
+                    <div class="relative">
                       <input
                         id="price"
                         v-model.number="formData.price"
@@ -230,40 +272,122 @@ watch(markAsSoldOut, (v) => {
                         min="0"
                         step="0.01"
                         placeholder="0.00"
-                        class="w-full px-3 h-9 text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500"
+                        class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pr-12"
                       >
-                    </div>
-                    <div class="text-base text-gray-900">
-                      Estimated you'll make $0.00 per sale!
-                      <a href="#" class="text-primary-600 hover:underline ml-1">Learn more</a>
+                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-base pointer-events-none">đ</span>
                     </div>
                   </div>
-                  <label class="inline-flex items-center gap-2 text-base text-gray-900 mt-2">
-                    <input v-model="addCompareAtPrice" type="checkbox">
-                    Add compare-at price
-                    <span class="ml-1" title="Compare-at price is the original price before discount.">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4 text-gray-400"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
+                  <div class="flex-1">
+                    <div class="flex items-center justify-between">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Giá so sánh</label>
+                      <span class="ml-1" title="Giá so sánh là giá gốc trước khi giảm giá.">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-4 w-4 text-gray-400 inline"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z"
+                          />
+                        </svg>
+                      </span>
+                    </div>
+                    <div class="relative">
+                      <input
+                        id="compareAtPrice"
+                        v-model.number="formData.compareAtPrice"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pr-12"
                       >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z"
-                        />
-                      </svg>
-                    </span>
-                  </label>
+                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-base pointer-events-none">đ</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- Charge tax -->
+                <div class="flex items-center mt-4">
+                  <input
+                    id="chargeTax"
+                    v-model="formData.chargeTax"
+                    type="checkbox"
+                    class="mr-2"
+                  >
+                  <label for="chargeTax" class="text-base text-gray-900 select-none">Tính thuế cho sản phẩm này</label>
+                </div>
+                <!-- Divider -->
+                <div class="my-4 border-t border-gray-200" />
+                <!-- Bottom row: Cost, Profit, Margin -->
+                <div class="flex flex-col md:flex-row gap-4">
+                  <div class="flex-1">
+                    <div class="flex items-center justify-between">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Giá nhập</label>
+                      <span class="ml-1" title="Giá nhập là giá bạn mua vào.">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-4 w-4 text-gray-400 inline"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z"
+                          />
+                        </svg>
+                      </span>
+                    </div>
+                    <div class="relative">
+                      <input
+                        id="importPrice"
+                        v-model.number="formData.importPrice"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pr-12"
+                      >
+                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-base pointer-events-none">đ</span>
+                    </div>
+                  </div>
+                  <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Lợi nhuận</label>
+                    <div class="relative">
+                      <input
+                        id="profit"
+                        :value="profitDisplay"
+                        readonly
+                        class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pr-12"
+                      >
+                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-base pointer-events-none">đ</span>
+                    </div>
+                  </div>
+                  <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tỉ suất lợi nhuận</label>
+                    <div class="relative">
+                      <input
+                        id="margin"
+                        :value="marginDisplay"
+                        readonly
+                        class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pr-8"
+                      >
+                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-base pointer-events-none">%</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </UPageCard>
               
             <!-- Photography and design (moved left) -->
-            <UPageCard title="Photography and design" variant="soft" class="overflow-hidden bg-white rounded-lg">
+            <UPageCard title="Hình ảnh & Thiết kế" variant="soft" class="overflow-hidden bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
                 <div class="space-y-4">
                   <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-white dark:bg-gray-800 text-center">
@@ -277,9 +401,9 @@ watch(markAsSoldOut, (v) => {
                       @change="handleImageUpload"
                     >
                     <div class="flex flex-col items-center gap-2">
-                      <UButton label="Upload" />
+                      <UButton label="Tải lên" />
                       <div class="text-sm text-gray-500">
-                        or drop here
+                        hoặc kéo thả tại đây
                       </div>
                     </div>
                   </div>
@@ -306,35 +430,37 @@ watch(markAsSoldOut, (v) => {
           <!-- Right column -->
           <div class="w-full lg:w-80 space-y-6">
             <!-- Settings -->
-            <UPageCard title="Settings" variant="soft" class="overflow-hidden bg-white rounded-lg">
+            <UPageCard title="Cài đặt" variant="soft" class="overflow-hidden bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
                 <div class="space-y-4">
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Status
+                      Trạng thái
                     </label>
                     <select
                       v-model="status"
-                      class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white pr-[34px]"
+                      style="appearance: none; background-image: url('data:image/svg+xml;utf8,<svg fill=\'none\' stroke=\'%236B7280\' stroke-width=\'2\' viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' d=\'M19 9l-7 7-7-7\'/></svg>'); background-repeat: no-repeat; background-position: right 10px center; background-size: 18px 18px;"
                     >
                       <option value="Public">
-                        Public
+                        Công khai
                       </option>
                       <option value="Draft">
-                        Draft
+                        Nháp
                       </option>
                     </select>
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Product page template
+                      Giao diện trang sản phẩm
                     </label>
                     <select
                       v-model="pageTemplate"
-                      class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white pr-[34px]"
+                      style="appearance: none; background-image: url('data:image/svg+xml;utf8,<svg fill=\'none\' stroke=\'%236B7280\' stroke-width=\'2\' viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' d=\'M19 9l-7 7-7-7\'/></svg>'); background-repeat: no-repeat; background-position: right 10px center; background-size: 18px 18px;"
                     >
                       <option value="Default product">
-                        Default product
+                        Sản phẩm mặc định
                       </option>
                     </select>
                   </div>
@@ -343,27 +469,79 @@ watch(markAsSoldOut, (v) => {
             </UPageCard>
 
             <!-- Publishing -->
-            <UPageCard title="Publishing" variant="soft" class="overflow-hidden bg-white rounded-lg">
+            <UPageCard title="Kênh bán" variant="soft" class="overflow-hidden bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
                 <div class="space-y-3">
                   <div class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Sale Channel
+                    Kênh bán
                   </div>
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                      <div class="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600">
-                        🏬
-                      </div>
+                      <UAvatar size="xl" class="bg-gray-200 dark:bg-gray-700 text-gray-600" :alt="'Cửa hàng trực tuyến'">
+                        <UIcon name="i-heroicons-building-storefront-20-solid" class="w-6 h-6" />
+                      </UAvatar>
                       <div class="text-sm text-gray-800 dark:text-gray-200">
-                        Online Store
-                        <span class="text-gray-500">sold</span>
+                        Cửa hàng trực tuyến
+                        <span class="text-gray-500">đã bán</span>
                       </div>
                     </div>
                     <UButton
-                      label="Manage"
+                      label="Quản lý"
                       variant="ghost"
                       icon="i-lucide-external-link"
                     />
+                  </div>
+                </div>
+              </div>
+            </UPageCard>
+
+            <!-- Product organization -->
+            <UPageCard variant="soft" class="overflow-hidden bg-white rounded-lg">
+              <template #title>
+                <div class="flex items-center gap-1">
+                  Tổ chức sản phẩm
+                  <span title="Thông tin về cách tổ chức sản phẩm">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-4 w-4 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z"
+                      />
+                    </svg>
+                  </span>
+                </div>
+              </template>
+              <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Loại</label>
+                    <input type="text" class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500" placeholder="">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nhà cung cấp</label>
+                    <input type="text" class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500" placeholder="">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Bộ sưu tập</label>
+                    <div class="relative">
+                      <input type="text" class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pl-10" placeholder="">
+                      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+                    <input type="text" class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500" placeholder="">
                   </div>
                 </div>
               </div>
@@ -376,10 +554,10 @@ watch(markAsSoldOut, (v) => {
           <UPageCard variant="soft" class="overflow-hidden bg-white rounded-lg">
             <div class="flex items-center justify-between ">
               <div class="font-semibold text-base">
-                Inventory and variants
+                Tồn kho & Biến thể
               </div>
               <UButton
-                label="Edit variants"
+                label="Chỉnh sửa biến thể"
                 variant="solid"
                 icon="i-lucide-edit-2"
                 class="w-fit"
@@ -389,18 +567,18 @@ watch(markAsSoldOut, (v) => {
               <div class="space-y-4">
                 <div class="grid grid-cols-3 text-sm text-gray-500">
                   <div class="col-span-1">
-                    Variant
+                    Biến thể
                   </div>
                   <div class="text-center">
-                    In stock
+                    Tồn kho
                   </div>
                   <div class="text-center">
-                    Sold
+                    Đã bán
                   </div>
                 </div>
                 <div class="grid grid-cols-3 items-center text-sm text-gray-800 dark:text-gray-200 border-t pt-3">
                   <div class="col-span-1">
-                    {{ formData.name || 'New product' }}
+                    {{ formData.name || 'Sản phẩm mới' }}
                   </div>
                   <div class="text-center text-primary-600">
                     <NuxtLink to="#">Unlimited</NuxtLink>
@@ -412,15 +590,15 @@ watch(markAsSoldOut, (v) => {
                 <div class="space-y-2 pt-2">
                   <label class="flex items-center gap-2 text-sm">
                     <input v-model="markAsSoldOut" type="checkbox">
-                    Mark as sold out
+                    Đánh dấu hết hàng
                   </label>
                   <label class="flex items-center gap-2 text-sm">
                     <input v-model="uniqueSkuPerVariant" type="checkbox">
-                    Each variant has a unique SKU or UPC code
+                    Mỗi biến thể có một mã SKU hoặc mã vạch riêng
                   </label>
                   <label class="flex items-center gap-2 text-sm">
                     <input v-model="membersOnly" type="checkbox">
-                    Make this a members-only product
+                    Chỉ dành cho thành viên
                   </label>
                 </div>
               </div>

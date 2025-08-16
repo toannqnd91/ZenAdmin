@@ -5,6 +5,9 @@ import { useProductsCategoriesService } from '@/composables/useProductsCategorie
 export interface ProductFormData {
   name: string
   price: number | null
+  compareAtPrice: number | null
+  importPrice: number | null
+  chargeTax: boolean
   sku: string
   description: string
   content: string
@@ -20,6 +23,9 @@ export const useProductForm = () => {
   const formData = ref<ProductFormData>({
     name: '',
     price: null,
+    compareAtPrice: null,
+    importPrice: null,
+    chargeTax: false,
     sku: '',
     description: '',
     content: '',
