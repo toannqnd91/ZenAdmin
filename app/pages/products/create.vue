@@ -24,8 +24,10 @@ const {
 } = useProductForm()
 
 // Multi-category select logic
+import { onMounted, onBeforeUnmount } from 'vue'
 const isDropdownOpen = ref(false)
 const searchTerm = ref('')
+const dropdownRef = ref<HTMLElement | null>(null)
 const filteredCategories = computed(() => {
   const cats = categories?.value || []
   if (!searchTerm.value) return cats
@@ -49,6 +51,20 @@ function removeCategory(id: number) {
     formData.value.categoryIds.splice(idx, 1)
   }
 }
+
+function handleClickOutside(event: MouseEvent) {
+  if (!isDropdownOpen.value) return
+  const dropdown = dropdownRef.value
+  if (dropdown && !dropdown.contains(event.target as Node)) {
+    isDropdownOpen.value = false
+  }
+}
+onMounted(() => {
+  document.addEventListener('mousedown', handleClickOutside)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', handleClickOutside)
+})
 
 const { data: brands, loading: brandsLoading, error: brandsError } = useBrandsService()
 const trademark = ref<string>('')
@@ -171,7 +187,7 @@ const marginDisplay = computed(() => {
                     </label>
                     <select
                       v-model="trademark"
-                      class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white pr-[34px]"
+                      class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white pr-[34px] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       style="appearance: none; background-image: url(&quot;data:image/svg+xml;utf8,<svg fill='none' stroke='%236B7280' stroke-width='2' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'><path stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/></svg>&quot;); background-repeat: no-repeat; background-position: right 10px center; background-size: 18px 18px;"
                     >
                       <option value="" disabled>
@@ -197,7 +213,7 @@ const marginDisplay = computed(() => {
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Danh mục
                     </label>
-                    <div class="relative dropdown-container mb-2">
+                    <div class="relative dropdown-container mb-2" ref="dropdownRef">
                       <button
                         type="button"
                         class="w-full px-3 h-9 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-left flex items-center justify-between"
