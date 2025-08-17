@@ -1,4 +1,5 @@
 import { BaseService } from './base.service'
+import { API_ENDPOINTS } from '@/utils/api'
 
 export interface Supplier {
   id: number
@@ -39,7 +40,7 @@ export class SupplierService extends BaseService {
       search: searchObj,
       sort: options?.sort
     })
-    return this.post<SuppliersApiResponse>('https://velavn.com/api/v1/Suppliers', body)
+    return this.post<SuppliersApiResponse>(API_ENDPOINTS.SUPPLIERS, body)
   }
 }
 

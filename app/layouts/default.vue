@@ -15,7 +15,9 @@ watch(userRoles, (val) => {
 const route = useRoute()
 const toast = useToast()
 
+
 const open = ref(false)
+const sidebarCollapsed = computed(() => open.value === false)
 
 // Use dashboard composable with service integration
 const {
@@ -83,10 +85,11 @@ onMounted(async () => {
   })
 })
 
-// Provide loading state for child components
+// Provide loading state and sidebar collapsed state for child components
 provide('dashboardLoading', menuLoading)
 provide('dashboardError', menuError)
 provide('refreshDashboard', retryFetchMenu)
+provide('sidebarCollapsed', sidebarCollapsed)
 </script>
 
 <template>
@@ -128,7 +131,7 @@ provide('refreshDashboard', retryFetchMenu)
     <UDashboardSearch :groups="groups" placeholder="Tìm kiếm..." />
 
     <slot />
-    
+
     <NotificationsSlideover />
   </UDashboardGroup>
 </template>

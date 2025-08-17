@@ -41,6 +41,9 @@ export const API_ENDPOINTS = {
   PRODUCT_CREATE: '/Product/create',
   PRODUCT_UPDATE: (id: number) => `/Product/${id}/update`,
 
+  // Supplier endpoints
+  SUPPLIERS: '/Suppliers',
+
   // Pages endpoints
   PAGES: '/pages',
   

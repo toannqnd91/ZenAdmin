@@ -4,20 +4,16 @@ import type { NewsItem } from '@/composables/useNews'
 
 const {
   q,
-  news: newsData,
   filteredNews,
   loading,
   error,
   truncateContent,
-  formatDate,
-  createNews,
-  updateNews,
   deleteNews
 } = await useNewsService()
 
 // For compatibility with existing NewsTable component
 // Transform service data to match NewsTable expected format
-const news = computed(() => 
+const news = computed(() =>
   filteredNews.value.map(item => ({
     id: item.id,
     title: item.title,
@@ -40,7 +36,7 @@ function truncateText(text: string | null | undefined, wordLimit: number = 20): 
   return truncateContent(text || '', wordLimit * 5) // Adjust word count to character count
 }
 
-function getRowItems(row: any) {
+function getRowItems(row: { original: { id: number } }) {
   return [
     {
       type: 'label',
@@ -68,8 +64,8 @@ function getRowItems(row: any) {
 }
 
 // Handle row click to navigate to update page
-function handleRowClick(row: NewsItem) {
-  navigateTo(`/news/${row.id}/update`)
+function handleRowClick(item: { id: number }) {
+  navigateTo(`/news/${item.id}/update`)
 }
 </script>
 
