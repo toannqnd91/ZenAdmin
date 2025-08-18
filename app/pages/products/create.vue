@@ -351,6 +351,39 @@ const totalVariantStock = computed(() => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (Array.isArray(list) ? list : []).reduce((sum, v) => sum + (Number((v as any)?.stock) || 0), 0)
 })
+
+// ----- Variant selection state (for checkboxes) -----
+// Keep it local; persistence/integration can be added later
+const selectedVariantKeys = ref<string[]>([])
+const isAllVariantsChecked = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const list = variants.value as unknown as any[]
+  if (!Array.isArray(list) || list.length === 0) return false
+  return selectedVariantKeys.value.length > 0 && selectedVariantKeys.value.length === list.length
+})
+const onToggleAllVariants = (checked: boolean) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const list = variants.value as unknown as any[]
+  if (checked) {
+    const keys: string[] = []
+    if (Array.isArray(list)) {
+      for (const v of list) {
+        const k = String((v && (v as { key?: unknown }).key) ?? '')
+        if (k) keys.push(k)
+      }
+    }
+    selectedVariantKeys.value = keys
+  } else {
+    selectedVariantKeys.value = []
+  }
+}
+const onToggleVariant = (key: string, checked: boolean) => {
+  const arr = [...selectedVariantKeys.value]
+  const idx = arr.indexOf(key)
+  if (checked && idx === -1) arr.push(key)
+  if (!checked && idx !== -1) arr.splice(idx, 1)
+  selectedVariantKeys.value = arr
+}
 </script>
 
 <template>
@@ -807,7 +840,10 @@ const totalVariantStock = computed(() => {
                 <!-- Header row with bulk check and count -->
 
                 <div class="flex items-center gap-2 py-2 border-y border-gray-200">
-                  <CustomCheckbox />
+                  <CustomCheckbox
+                    :model-value="isAllVariantsChecked"
+                    @update:model-value="onToggleAllVariants($event)"
+                  />
                   <span class="font-medium">{{ variants.length }} phiên bản</span>
                 </div>
 
@@ -816,7 +852,10 @@ const totalVariantStock = computed(() => {
                   <div v-for="(v, vi) in variants" :key="v.key || vi"
                     class="flex items-center justify-between py-4 border-b border-gray-100">
                     <div class="flex items-center gap-3">
-                      <CustomCheckbox />
+                      <CustomCheckbox
+                        :model-value="selectedVariantKeys.includes(v.key)"
+                        @update:model-value="onToggleVariant(v.key, $event)"
+                      />
                       <div class="text-gray-900">{{ v.name }}</div>
                     </div>
                     <div class="text-right">
@@ -977,8 +1016,7 @@ const totalVariantStock = computed(() => {
               </div>
             </UPageCard>
           </div>
-        </div>
-
+  </div>
       </div>
     </template>
   </UDashboardPanel>
