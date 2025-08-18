@@ -748,7 +748,7 @@ const totalVariantStock = computed(() => {
                 </div>
                 <div v-for="(attr, idx) in attributes" :key="idx" class="grid grid-cols-2 gap-4 items-center mb-2">
                   <input v-model="attr.name" type="text"
-                    class="w-full px-3 h-10 text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500"
+                    class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500"
                     placeholder="Tên thuộc tính">
                   <div class="flex items-center gap-2">
                     <div class="flex flex-wrap gap-1 flex-1">
@@ -759,7 +759,7 @@ const totalVariantStock = computed(() => {
                           @click="removeAttrValue(idx, vIdx)">×</button>
                       </span>
                       <input v-model="attr.input" type="text"
-                        class="border-none outline-none flex-1 min-w-[80px] bg-transparent text-gray-700"
+                        class="border-none outline-none flex-1 min-w-[80px] h-[36px] bg-transparent text-gray-700"
                         placeholder="Nhập ký tự và ấn enter" @keydown.enter.prevent="addAttrValue(idx)">
                     </div>
                     <button type="button" class="text-gray-400 hover:text-red-500" @click="removeAttribute(idx)">
@@ -805,8 +805,9 @@ const totalVariantStock = computed(() => {
                 </div>
 
                 <!-- Header row with bulk check and count -->
+
                 <div class="flex items-center gap-2 py-2 border-y border-gray-200">
-                  <input type="checkbox">
+                  <CustomCheckbox />
                   <span class="font-medium">{{ variants.length }} phiên bản</span>
                 </div>
 
@@ -815,7 +816,7 @@ const totalVariantStock = computed(() => {
                   <div v-for="(v, vi) in variants" :key="v.key || vi"
                     class="flex items-center justify-between py-4 border-b border-gray-100">
                     <div class="flex items-center gap-3">
-                      <input type="checkbox">
+                      <CustomCheckbox />
                       <div class="text-gray-900">{{ v.name }}</div>
                     </div>
                     <div class="text-right">
