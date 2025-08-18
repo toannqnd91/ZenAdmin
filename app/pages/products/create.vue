@@ -1,7 +1,50 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-
+import { ref, computed, watch } from 'vue'
+import type { Ref, ComputedRef } from 'vue'
 import { useBrandsService } from '@/composables/useBrandsService'
+import { useSuppliersService } from '@/composables/useSuppliersService'
+import { useCollectionsService } from '@/composables/useCollectionsService'
+import { useProductForm } from '@/composables/useProductForm'
+import type { ProductFormData as BaseProductFormData } from '@/composables/useProductForm'
+import type { ProductCategory } from '@/composables/useProductsCategoriesService'
+
+// Extend formData type locally to include supplierId, collectionIds and optional tags
+type ExtendedProductFormData = BaseProductFormData & {
+  supplierId: number | null
+  collectionIds: number[]
+  tags?: string[]
+}
+
+const productForm = useProductForm()
+const formData = productForm.formData as Ref<ExtendedProductFormData>
+const errors = productForm.errors as Ref<Record<string, string>>
+const categories = productForm.categories as Ref<ProductCategory[] | undefined>
+const isUploadingImage = productForm.isUploadingImage as Ref<boolean>
+const imagePreviews = productForm.imagePreviews as Ref<string[]>
+const handleImageUpload = productForm.handleImageUpload as (e: Event) => Promise<void> | void
+const removeImage = productForm.removeImage as (index: number) => void
+const submitForm = productForm.submitForm as () => Promise<boolean | undefined>
+const selectedCategories = productForm.selectedCategories as ComputedRef<ProductCategory[]>
+const removeCategory = productForm.removeCategory as (id: number) => void
+
+// Defaults for optional fields
+formData.value.supplierId ??= null
+formData.value.collectionIds ??= []
+
+// Suppliers and collections for dropdowns
+const { data: suppliers, loading: suppliersLoading } = useSuppliersService()
+const { collections, loading: collectionsLoading } = useCollectionsService()
+
+// v-models for dropdowns
+const selectedSupplier = ref<number | null>(formData.value.supplierId ?? null)
+const selectedCollections = ref<number[]>(formData.value.collectionIds ?? [])
+
+watch(selectedSupplier, (val) => {
+  formData.value.supplierId = val
+})
+watch(selectedCollections, (val) => {
+  formData.value.collectionIds = val
+})
 
 definePageMeta({
   layout: 'default'
@@ -11,58 +54,10 @@ useHead({
   title: 'New product - Cơ Khí Tam Long'
 })
 
-
-const {
-  formData,
-  errors,
-  categories,
-  isUploadingImage,
-  imagePreviews,
-  handleImageUpload,
-  removeImage,
-  submitForm
-} = useProductForm()
-
-const isDropdownOpen = ref(false)
-const searchTerm = ref('')
-const dropdownRef = ref<HTMLElement | null>(null)
-type Category = { id: number; name: string }
-const filteredCategories = computed((): Category[] => {
-  const cats = (categories?.value as unknown as Category[]) || []
-  if (!searchTerm.value) return cats
-  return cats.filter((cat: Category) => cat.name.toLowerCase().includes(searchTerm.value.toLowerCase()))
-})
-const selectedCategories = computed((): Category[] => {
-  const cats = (categories?.value as unknown as Category[]) || []
-  return cats.filter((cat: Category) => formData.value.categoryIds.includes(cat.id))
-})
-function toggleCategory(id: number) {
-  const idx = formData.value.categoryIds.indexOf(id)
-  if (idx === -1) {
-    formData.value.categoryIds.push(id)
-  } else {
-    formData.value.categoryIds.splice(idx, 1)
-  }
-}
-function removeCategory(id: number) {
-  const idx = formData.value.categoryIds.indexOf(id)
-  if (idx !== -1) {
-    formData.value.categoryIds.splice(idx, 1)
-  }
-}
-
-function handleClickOutside(event: MouseEvent) {
-  if (!isDropdownOpen.value) return
-  const dropdown = dropdownRef.value
-  if (dropdown && !dropdown.contains(event.target as Node)) {
-    isDropdownOpen.value = false
-  }
-}
-onMounted(() => {
-  document.addEventListener('mousedown', handleClickOutside)
-})
-onBeforeUnmount(() => {
-  document.removeEventListener('mousedown', handleClickOutside)
+// Options for category dropdown styled like "Bộ sưu tập"
+const categoryOptions = computed(() => {
+  const cats = (categories.value ?? []) as ProductCategory[]
+  return cats.map(c => ({ id: c.id, label: c.name }))
 })
 
 const { data: brands, loading: brandsLoading, error: brandsError } = useBrandsService()
@@ -101,15 +96,9 @@ watch(markAsSoldOut, (v) => {
 })
 
 // Ensure price-related fields exist on formData
-if (!('compareAtPrice' in formData.value)) {
-  formData.value.compareAtPrice = 0
-}
-if (!('importPrice' in formData.value)) {
-  formData.value.importPrice = 0
-}
-if (!('chargeTax' in formData.value)) {
-  formData.value.chargeTax = false
-}
+formData.value.compareAtPrice ??= 0
+formData.value.importPrice ??= 0
+formData.value.chargeTax ??= false
 
 // Computed for profit and margin
 const profitDisplay = computed(() => {
@@ -153,7 +142,7 @@ const onTagKeydown = (e: KeyboardEvent) => {
 const onTagPaste = (e: ClipboardEvent) => {
   const text = e.clipboardData?.getData('text') || ''
   if (!text) return
-  const parts = text.split(/[\,\n\t]/).map(s => s.trim()).filter(Boolean)
+  const parts = text.split(/[\n\t,]/).map(s => s.trim()).filter(Boolean)
   if (!parts.length) return
   e.preventDefault()
   const list = getTags()
@@ -165,6 +154,9 @@ const removeTag = (idx: number) => {
   const list = getTags()
   if (idx >= 0 && idx < list.length) list.splice(idx, 1)
 }
+
+// Expose tags list for template without typing issues
+const tagsList = computed(() => getTags())
 </script>
 
 <template>
@@ -224,20 +216,14 @@ const removeTag = (idx: number) => {
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Thương hiệu
                     </label>
-                    <select
+                    <BaseDropdownSelect
                       v-model="trademark"
-                      class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white pr-[34px] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      <option value="" disabled>
-                        Chọn thương hiệu
-                      </option>
-                      <option v-for="b in brands" :key="b.id" :value="b.id">
-                        {{ b.name }}
-                      </option>
-                    </select>
-                    <div v-if="brandsLoading" class="text-xs text-gray-400 mt-1">
-                      Đang tải danh sách thương hiệu...
-                    </div>
+                      :options="(brands || []).map(b => ({ id: b.id, label: b.name }))"
+                      :loading="brandsLoading"
+                      placeholder="Chọn thương hiệu"
+                      add-new-label="Thêm thương hiệu"
+                      class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
                     <div v-if="brandsError" class="text-xs text-red-500 mt-1">
                       Lỗi tải thương hiệu: {{ brandsError }}
                     </div>
@@ -251,63 +237,14 @@ const removeTag = (idx: number) => {
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Danh mục
                     </label>
-                    <div ref="dropdownRef" class="relative dropdown-container mb-2">
-                      <button
-                        type="button"
-                        class="w-full px-3 h-9 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-left flex items-center justify-between"
-                        @click="isDropdownOpen = !isDropdownOpen"
-                      >
-                        <span class="text-gray-500">
-                          {{ (selectedCategories && selectedCategories.length > 0) ? `Đã chọn ${selectedCategories.length} danh mục` : 'Chọn danh mục' }}
-                        </span>
-                        <svg
-                          class="w-4 h-4 transform transition-transform"
-                          :class="{ 'rotate-180': isDropdownOpen }"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
-                      </button>
-                      <div
-                        v-if="isDropdownOpen"
-                        class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md"
-                      >
-                        <div class="border-b border-gray-200 dark:border-gray-700">
-                          <input
-                            v-model="searchTerm"
-                            type="text"
-                            placeholder="Tìm kiếm"
-                            class="w-full px-3 h-[36px] text-sm rounded-md border-0 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          >
-                        </div>
-                        <div class="max-h-40 overflow-y-auto">
-                          <div v-if="!filteredCategories || filteredCategories.length === 0" class="p-3 text-sm text-gray-500">
-                            {{ searchTerm ? 'Không tìm thấy danh mục' : 'Đang tải danh mục...' }}
-                          </div>
-                          <template v-if="filteredCategories && filteredCategories.length">
-                            <label
-                              v-for="category in filteredCategories"
-                              :key="category.id"
-                              class="flex items-center space-x-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                :checked="formData.categoryIds.includes(category.id)"
-                                @change="toggleCategory(category.id)"
-                              >
-                              <span class="text-sm text-gray-700 dark:text-gray-300">{{ category.name }}</span>
-                            </label>
-                          </template>
-                        </div>
-                      </div>
-                    </div>
+                    <BaseDropdownSelect
+                      v-model="formData.categoryIds"
+                      :options="categoryOptions"
+                      placeholder="Chọn danh mục"
+                      add-new-label="Thêm danh mục"
+                      multiple
+                      class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
                     <div v-if="selectedCategories && selectedCategories.length > 0" class="flex flex-wrap gap-1 mt-2">
                       <span
                         v-for="category in selectedCategories"
@@ -663,29 +600,26 @@ const removeTag = (idx: number) => {
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nhà cung cấp</label>
-                    <input type="text" class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500" placeholder="">
+                    <BaseDropdownSelect
+                      v-model="selectedSupplier"
+                      :options="(suppliers || []).map(s => ({ id: s.id, label: s.name }))"
+                      :loading="suppliersLoading"
+                      placeholder="Chọn nhà cung cấp"
+                      add-new-label="Thêm nhà cung cấp"
+                      class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Bộ sưu tập</label>
-                    <div class="relative">
-                      <input type="text" class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pl-10" placeholder="">
-                      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          class="h-5 w-5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"
-                          />
-                        </svg>
-                      </span>
-                    </div>
+                    <BaseDropdownSelect
+                      v-model="selectedCollections"
+                      :options="(collections || []).map(c => ({ id: c.id, label: c.name }))"
+                      :loading="collectionsLoading"
+                      placeholder="Chọn bộ sưu tập"
+                      add-new-label="Thêm bộ sưu tập"
+                      multiple
+                      class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
@@ -699,9 +633,9 @@ const removeTag = (idx: number) => {
                         @blur="commitTag"
                         @paste="onTagPaste"
                       >
-                      <div v-if="(formData.tags || []).length" class="flex flex-wrap gap-2 mt-2">
+                      <div v-if="tagsList.length" class="flex flex-wrap gap-2 mt-2">
                         <span
-                          v-for="(tag, idx) in (formData.tags || [])"
+                          v-for="(tag, idx) in tagsList"
                           :key="`${tag}-${idx}`"
                           class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-normal bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
                         >
