@@ -74,9 +74,10 @@ export const useProductForm = () => {
     isUploadingImage.value = true
     try {
       const files = Array.from(input.files)
-      // Upload all images
-      const uploadResults = await Promise.all(files.map(file => fileService.uploadFile(file)))
-      const urls = uploadResults.map(res => res.data?.fileName || '').filter(Boolean)
+      // Upload all images in one request
+      const uploadResults = await fileService.uploadMultipleFiles(files)
+      // uploadResults is an array of FileUploadResponse
+      const urls = (Array.isArray(uploadResults) ? uploadResults : []).map(res => res.data?.fileName || res.fileName || '').filter(Boolean)
       formData.value.imageUrls.push(...urls)
       imagePreviews.value.push(...urls.map(fileService.getFileUrl))
     } finally {

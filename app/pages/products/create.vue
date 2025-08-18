@@ -191,7 +191,7 @@ const tagsList = computed(() => getTags())
         <div class="flex flex-col lg:flex-row gap-6">
           <!-- Left column -->
           <div class="flex-1 space-y-6">
-            <UPageCard title="Thông tin sản phẩm" variant="soft" class="overflow-hidden bg-white rounded-lg">
+            <UPageCard title="Thông tin sản phẩm" variant="soft" class="bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
                 <form class="space-y-4" @submit.prevent="submitForm">
                   <!-- Product name -->
@@ -295,7 +295,7 @@ const tagsList = computed(() => getTags())
             </UPageCard>
 
             <!-- Product Links -->
-            <UPageCard title="Liên kết sản phẩm" variant="soft" class="overflow-hidden bg-white rounded-lg">
+            <UPageCard title="Liên kết sản phẩm" variant="soft" class="bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
                 <div class="space-y-3">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -334,7 +334,7 @@ const tagsList = computed(() => getTags())
             </UPageCard>
 
             <!-- Selling price -->
-            <UPageCard title="Giá bán" variant="soft" class="overflow-hidden bg-white rounded-lg">
+            <UPageCard title="Giá bán" variant="soft" class="bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
                 <!-- Top row: Price & Compare-at price -->
                 <div class="flex flex-col md:flex-row gap-4">
@@ -463,37 +463,65 @@ const tagsList = computed(() => getTags())
             </UPageCard>
               
             <!-- Photography and design (moved left) -->
-            <UPageCard title="Hình ảnh & Thiết kế" variant="soft" class="overflow-hidden bg-white rounded-lg">
+            <UPageCard title="Hình ảnh & Thiết kế" variant="soft" class="bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
                 <div class="space-y-4">
-                  <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-white dark:bg-gray-800 text-center">
+                  <div>
                     <input
                       ref="fileInput"
                       type="file"
                       class="hidden"
-                      accept="image/*"
+                      accept="image/*,video/*,model/*"
                       multiple
                       :disabled="isUploadingImage"
                       @change="handleImageUpload"
                     >
-                    <div class="flex flex-col items-center gap-2">
-                      <UButton label="Tải lên" />
-                      <div class="text-sm text-gray-500">
-                        hoặc kéo thả tại đây
+                    <div v-if="!imagePreviews.length" class="border border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center text-center min-h-[120px] bg-white">
+                      <div class="flex items-center justify-center gap-2 mb-2">
+                        <UButton label="Upload new" size="sm" @click="$refs.fileInput && ($refs.fileInput as HTMLInputElement).click()" />
+                        <button type="button" class="ml-2 text-gray-700 hover:underline text-sm font-medium">
+                          Select existing
+                        </button>
+                      </div>
+                      <div class="text-gray-500 text-sm">
+                        Accepts images, videos, or 3D models
                       </div>
                     </div>
-                  </div>
-                  <div v-if="imagePreviews.length" class="flex flex-wrap gap-2">
-                    <div v-for="(img, idx) in imagePreviews" :key="idx" class="relative group">
-                      <img :src="img" class="w-24 h-24 object-cover rounded border">
-                      <UButton
-                        icon="i-lucide-x"
-                        size="xs"
-                        color="error"
-                        variant="soft"
-                        class="absolute top-1 right-1 opacity-80 group-hover:opacity-100"
-                        @click="removeImage(idx)"
-                      />
+                    <div v-else class="grid grid-cols-5 gap-3">
+                      <template v-for="(img, idx) in imagePreviews" :key="idx">
+                        <div
+                          :class="[
+                            'relative flex items-center justify-center border border-gray-300 rounded-xl bg-white overflow-hidden',
+                            idx === 0 ? 'row-span-2 col-span-2 h-48 w-full' : 'h-24 w-full'
+                          ]"
+                        >
+                          <img v-if="!isUploadingImage" :src="img" class="object-cover w-full h-full" />
+                          <div v-else class="flex flex-col items-center justify-center w-full h-full">
+                            <svg class="animate-spin h-8 w-8 text-gray-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                            </svg>
+                            <span class="text-gray-500 text-sm mt-2">Uploading...</span>
+                          </div>
+                          <button
+                            v-if="!isUploadingImage"
+                            type="button"
+                            class="absolute top-1 right-1 bg-white rounded-full p-1 shadow hover:bg-gray-100"
+                            @click="removeImage(idx)"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </template>
+                      <!-- Nút thêm ảnh -->
+                      <div
+                        class="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-xl bg-white cursor-pointer h-24"
+                        @click="$refs.fileInput && ($refs.fileInput as HTMLInputElement).click()"
+                      >
+                        <span class="text-2xl text-gray-400">+</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -506,7 +534,7 @@ const tagsList = computed(() => getTags())
           <!-- Right column -->
           <div class="w-full lg:w-80 space-y-6">
             <!-- Settings -->
-            <UPageCard title="Cài đặt" variant="soft" class="overflow-hidden bg-white rounded-lg">
+            <UPageCard title="Cài đặt" variant="soft" class="bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
                 <div class="space-y-4">
                   <div>
@@ -543,7 +571,7 @@ const tagsList = computed(() => getTags())
             </UPageCard>
 
             <!-- Publishing -->
-            <UPageCard title="Kênh bán" variant="soft" class="overflow-hidden bg-white rounded-lg">
+            <UPageCard title="Kênh bán" variant="soft" class="bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
                 <div class="space-y-3">
                   <div class="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -570,7 +598,7 @@ const tagsList = computed(() => getTags())
             </UPageCard>
 
             <!-- Product organization -->
-            <UPageCard variant="soft" class="overflow-hidden bg-white rounded-lg">
+            <UPageCard variant="soft" class="bg-white rounded-lg">
               <template #title>
                 <div class="flex items-center gap-1">
                   Tổ chức sản phẩm
@@ -616,6 +644,10 @@ const tagsList = computed(() => getTags())
                       :options="(collections || []).map(c => ({ id: c.id, label: c.name }))"
                       :loading="collectionsLoading"
                       placeholder="Chọn bộ sưu tập"
+                      multiple-display="labels"
+                      selected-count-text="Đã chọn"
+                      selected-count-suffix="giá trị"
+                      :count-when-at-least="2"
                       add-new-label="Thêm bộ sưu tập"
                       multiple
                       class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -659,7 +691,7 @@ const tagsList = computed(() => getTags())
 
         <!-- Inventory and variants (full-width) -->
         <div class="mt-6">
-          <UPageCard variant="soft" class="overflow-hidden bg-white rounded-lg">
+          <UPageCard variant="soft" class="bg-white rounded-lg">
             <div class="flex items-center justify-between ">
               <div class="font-semibold text-base">
                 Tồn kho & Biến thể
