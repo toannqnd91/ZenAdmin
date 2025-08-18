@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /* eslint-disable */
 import { ref, computed, watch, nextTick } from 'vue'
+import CustomCheckbox from '@/components/CustomCheckbox.vue'
 
 interface Option {
     id: string | number
@@ -133,7 +134,12 @@ watch(isOpen, (open) => {
                     class="px-3 py-2 flex items-center gap-2 cursor-pointer hover:bg-gray-100"
                     @click="toggleOption(opt.id)"
                 >
-                    <input v-if="props.multiple" type="checkbox" :checked="isSelected(opt.id)" @change.stop="toggleOption(opt.id)">
+                    <CustomCheckbox
+                        v-if="props.multiple"
+                        :model-value="isSelected(opt.id)"
+                        @update:model-value="toggleOption(opt.id)"
+                        class="mr-2"
+                    />
                     <span v-else-if="isSelected(opt.id)" class="text-blue-600">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />

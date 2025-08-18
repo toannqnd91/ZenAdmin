@@ -259,14 +259,21 @@ const onDragEnd = () => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const attributes = ref([] as any[])
 const showAttributesEditor = ref(false)
+const ATTRIBUTE_SUGGESTIONS = ['Màu sắc', 'Kích thước', 'Chất liệu']
+const getNextSuggestedAttrName = () => {
+  // Return the first suggestion not already used
+  const used = attributes.value.map(a => (a.name || '').trim())
+  return ATTRIBUTE_SUGGESTIONS.find(s => !used.includes(s)) || ''
+}
 const startAttributes = () => {
   showAttributesEditor.value = true
   if (!attributes.value.length) {
-    attributes.value.push({ name: '', values: [], input: '' })
+    attributes.value.push({ name: getNextSuggestedAttrName(), values: [], input: '' })
   }
 }
 const addAttribute = () => {
-  attributes.value.push({ name: '', values: [], input: '' })
+  if (attributes.value.length >= 3) return
+  attributes.value.push({ name: getNextSuggestedAttrName(), values: [], input: '' })
 }
 const removeAttribute = (idx: number) => {
   attributes.value.splice(idx, 1)
@@ -449,9 +456,6 @@ const onToggleVariant = (key: string, checked: boolean) => {
                       Lỗi tải thương hiệu: {{ brandsError }}
                     </div>
                   </div>
-
-                  <!-- Trademark -->
-                  <!-- Xoá select thương hiệu tĩnh, chỉ giữ select động phía trên -->
 
                   <!-- Category (single select) -->
                   <div>
@@ -804,8 +808,12 @@ const onToggleVariant = (key: string, checked: boolean) => {
                     </button>
                   </div>
                 </div>
-                <button type="button" class="flex items-center text-primary-600 hover:underline mt-2"
-                  @click="addAttribute">
+                <button
+                  type="button"
+                  class="flex items-center text-primary-600 hover:underline mt-2 disabled:opacity-50 disabled:pointer-events-none"
+                  :disabled="attributes.length >= 3"
+                  @click="addAttribute"
+                >
                   <span class="text-xl mr-1">+</span> Thêm thuộc tính khác
                 </button>
               </div>
@@ -842,9 +850,34 @@ const onToggleVariant = (key: string, checked: boolean) => {
                 <div class="flex items-center gap-2 py-2 border-y border-gray-200">
                   <CustomCheckbox
                     :model-value="isAllVariantsChecked"
+                    :indeterminate="selectedVariantKeys.length > 0 && selectedVariantKeys.length < variants.length"
                     @update:model-value="onToggleAllVariants($event)"
                   />
-                  <span class="font-medium">{{ variants.length }} phiên bản</span>
+                  <span class="font-medium flex items-center gap-1">
+                    <template v-if="selectedVariantKeys.length === 0">
+                      {{ variants.length }} phiên bản
+                    </template>
+                    <template v-else>
+                      Đã chọn {{ selectedVariantKeys.length }} phiên bản
+                    </template>
+                  </span>
+                  <div v-if="selectedVariantKeys.length > 0" class="ml-auto">
+                    <UDropdownMenu :items="[
+                      { label: 'Chỉnh sửa giá', value: 'edit-price' },
+                      { label: 'Chỉnh sửa tồn kho', value: 'edit-stock' },
+                      { label: 'Chỉnh sửa SKU', value: 'edit-sku' },
+                      { label: 'Chỉnh sửa giá vốn', value: 'edit-cost' },
+                      { label: 'Xoá phiên bản', value: 'delete' },
+                      { label: 'Chỉnh sửa hàng loạt', value: 'bulk-edit' }
+                    ]">
+                      <UButton variant="soft" size="sm" class="flex items-center gap-1">
+                        Chỉnh sửa
+                        <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </UButton>
+                    </UDropdownMenu>
+                  </div>
                 </div>
 
                 <!-- Variants list -->
@@ -997,7 +1030,7 @@ const onToggleVariant = (key: string, checked: boolean) => {
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
                     <div class="w-full">
                       <input v-model="tagInput" type="text" placeholder="Nhập tag rồi nhấn Enter hoặc dấu phẩy"
-                        class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                         @keydown="onTagKeydown" @blur="commitTag" @paste="onTagPaste">
                       <div v-if="tagsList.length" class="flex flex-wrap gap-2 mt-2">
                         <span v-for="(tag, idx) in tagsList" :key="`${tag}-${idx}`"
