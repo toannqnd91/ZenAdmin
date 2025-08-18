@@ -75,11 +75,13 @@ export const useProductForm = () => {
     try {
       const files = Array.from(input.files)
       // Upload all images in one request
-      const uploadResults = await fileService.uploadMultipleFiles(files)
-      // uploadResults is an array of FileUploadResponse
-      const urls = (Array.isArray(uploadResults) ? uploadResults : []).map(res => res.data?.fileName || res.fileName || '').filter(Boolean)
+      const uploadResponse = await fileService.uploadMultipleFiles(files)
+      // API trả về { data: [ { fileName, ... } ] }
+      const uploaded = Array.isArray(uploadResponse?.data) ? uploadResponse.data : []
+      const urls: string[] = uploaded.map(f => f.fileName).filter((f): f is string => !!f)
       formData.value.imageUrls.push(...urls)
-      imagePreviews.value.push(...urls.map(fileService.getFileUrl))
+      // Hiển thị đúng preview cho các ảnh vừa upload
+      imagePreviews.value.push(...urls.map(url => fileService.getFileUrl(url)))
     } finally {
       isUploadingImage.value = false
     }
@@ -109,15 +111,15 @@ export const useProductForm = () => {
       // Call API
       await productService.createProduct({
         ...formData.value,
-        url: null,
         price: formData.value.price || 0,
         categoryIds: formData.value.categoryIds,
         imageUrls: formData.value.imageUrls
       })
       // Success
       return true
-    } catch (e: any) {
-      errors.value.form = e.message || 'Đã có lỗi xảy ra'
+    } catch (e) {
+      const err = e as Error
+      errors.value.form = err.message || 'Đã có lỗi xảy ra'
       return false
     } finally {
       isSubmitting.value = false
