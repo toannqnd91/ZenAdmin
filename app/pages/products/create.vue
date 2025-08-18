@@ -25,6 +25,9 @@ type ExtendedProductFormData = BaseProductFormData & {
   barcode?: string
 }
 
+// Local helper types (avoid DOM Attr name clash)
+// Note: Avoid complex TS types in SFC to prevent parser hiccups.
+
 const productForm = useProductForm()
 const formData = productForm.formData as Ref<ExtendedProductFormData>
 const errors = productForm.errors as Ref<Record<string, string>>
@@ -285,9 +288,73 @@ const removeAttrValue = (attrIdx: number, valIdx: number) => {
   if (!attr) return
   attr.values.splice(valIdx, 1)
 }
+
+// ----- Variants computed from attributes -----
+const activeAttributes = computed(() => {
+  const list = (attributes.value as unknown[]).map((raw) => {
+    const a = raw as Record<string, unknown>
+    const name = String((a && a.name) ?? '').trim()
+    const values = Array.isArray(a && (a as { values?: unknown[] }).values)
+      ? ((a as { values?: unknown[] }).values ?? []).filter(Boolean).map(v => String(v))
+      : []
+    return { name, values }
+  })
+  return list.filter(a => a.name && a.values.length > 0)
+})
+
+const variants = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const attrs = activeAttributes.value as unknown as any[]
+  if (!Array.isArray(attrs) || attrs.length === 0) return []
+  // Build lists of values
+  const lists = attrs.map((a) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vs = (a && (a as any).values) as unknown
+    return Array.isArray(vs) ? vs : []
+  }) as unknown as unknown[]
+  // Cartesian product
+  let product: string[][] = []
+  for (const listAny of lists) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const list = (listAny as any[]).map(v => String(v))
+    if (product.length === 0) {
+      product = list.map(v => [v])
+    } else {
+      const next: string[][] = []
+      for (const combo of product) {
+        for (const v of list) next.push([...combo, String(v)])
+      }
+      product = next
+    }
+  }
+  // Map to rows
+  return product.map((vals) => {
+    const options: Record<string, string> = {}
+    for (let i = 0; i < attrs.length; i += 1) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const a = attrs[i] as any
+      const name = String((a && a.name) || '')
+      if (name) options[name] = String(vals[i] || '')
+    }
+    return {
+      key: vals.join(' / '),
+      name: vals.join(' / '),
+      options,
+      price: Number(formData.value.price) || 0,
+      stock: 0
+    }
+  })
+})
+
+const totalVariantStock = computed(() => {
+  const list = variants.value as unknown as Array<{ stock?: number }>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (Array.isArray(list) ? list : []).reduce((sum, v) => sum + (Number((v as any)?.stock) || 0), 0)
+})
 </script>
 
 <template>
+  <!-- eslint-disable vue/max-attributes-per-line, vue/html-closing-bracket-newline, vue/singleline-html-element-content-newline, vue/html-indent, vue/first-attribute-linebreak -->
   <UDashboardPanel id="add-product">
     <template #header>
       <UDashboardNavbar>
@@ -402,31 +469,7 @@ const removeAttrValue = (attrIdx: number, valIdx: number) => {
                 </form>
               </div>
             </UPageCard>
-            <!-- Product Links -->
-            <UPageCard title="Liên kết sản phẩm" variant="soft" class="bg-white rounded-lg">
-              <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
-                <div class="space-y-3">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Đường dẫn
-                  </label>
-                  <div class="flex flex-col gap-3">
-                    <div class="flex items-center w-full rounded-md border border-gray-300 bg-gray-50 px-4"
-                      style="height:36px;">
-                      <span class="text-gray-400 select-none mr-1">web.vnnsoft.com/</span>
-                      <span class="text-gray-900 flex-1">{{ slug }}</span>
-                      <button type="button" class="ml-2 text-gray-400 hover:text-gray-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                          stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M8 16h8M8 12h8m-8-4h8M4 6h16M4 18h16" />
-                        </svg>
-                      </button>
-                    </div>
-                    <UButton label="Rút gọn link" icon="i-lucide-zap" variant="soft" class="w-fit mt-1" />
-                  </div>
-                </div>
-              </div>
-            </UPageCard>
+
             <!-- Selling price -->
             <UPageCard title="Giá bán" variant="soft" class="bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
@@ -524,6 +567,7 @@ const removeAttrValue = (attrIdx: number, valIdx: number) => {
                 </div>
               </div>
             </UPageCard>
+
             <UPageCard title="Tồn kho" variant="soft" class="bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
                 <div class="space-y-4">
@@ -733,6 +777,83 @@ const removeAttrValue = (attrIdx: number, valIdx: number) => {
                 </button>
               </div>
             </UPageCard>
+
+            <!-- Variants generated from attributes (moved below Attributes section) -->
+            <UPageCard v-if="variants && variants.length" title="Phiên bản" variant="soft" class="bg-white rounded-lg">
+              <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
+                <!-- Warehouse select -->
+                <div class="mb-3">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Kho hàng</label>
+                  <select class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900">
+                    <option>Cửa hàng chính</option>
+                  </select>
+                </div>
+
+                <!-- Filters by attribute names -->
+                <div class="flex flex-wrap items-center gap-3 mb-3">
+                  <span class="text-sm text-gray-700">Bộ lọc:</span>
+                  <template v-for="(a, i) in activeAttributes" :key="i">
+                    <button type="button"
+                      class="inline-flex items-center gap-1 text-sm text-primary-600 bg-primary-50 px-2 py-1 rounded-md hover:underline">
+                      {{ a.name }}
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        class="h-4 w-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9l6 6 6-6" />
+                      </svg>
+                    </button>
+                  </template>
+                </div>
+
+                <!-- Header row with bulk check and count -->
+                <div class="flex items-center gap-2 py-2 border-y border-gray-200">
+                  <input type="checkbox">
+                  <span class="font-medium">{{ variants.length }} phiên bản</span>
+                </div>
+
+                <!-- Variants list -->
+                <div>
+                  <div v-for="(v, vi) in variants" :key="v.key || vi"
+                    class="flex items-center justify-between py-4 border-b border-gray-100">
+                    <div class="flex items-center gap-3">
+                      <input type="checkbox">
+                      <div class="text-gray-900">{{ v.name }}</div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-gray-900">Giá bán: {{ (v.price || 0).toLocaleString('vi-VN') }}đ</div>
+                      <div class="text-gray-500 text-sm">Có thể bán {{ v.stock || 0 }} tại 1 kho</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Footer summary -->
+                <div class="flex items-center justify-between py-3">
+                  <div class="text-gray-700">Tổng tồn kho</div>
+                  <div class="text-gray-900 font-medium">Có thể bán: {{ totalVariantStock }}</div>
+                </div>
+              </div>
+            </UPageCard>
+
+            <!-- Product Links -->
+            <UPageCard title="Liên kết sản phẩm" variant="soft" class="bg-white rounded-lg">
+              <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
+                <div class="space-y-3">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Đường dẫn
+                  </label>
+                  <div class="flex flex-col gap-3">
+                    <div class="flex items-center w-full rounded-md border border-gray-300 bg-gray-50 px-4"
+                      style="height:36px;">
+                      <span class="text-gray-400 select-none mr-1">web.vnnsoft.com/</span>
+                      <span class="text-gray-900 flex-1">{{ slug }}</span>
+                      <button type="button" class="ml-2 text-gray-400 hover:text-gray-600">
+                        <UIcon name="i-lucide-link-2" class="h-5 w-5" />
+                      </button>
+                    </div>
+                    <UButton label="Rút gọn link" icon="i-lucide-zap" variant="soft" class="w-fit mt-1" />
+                  </div>
+                </div>
+              </div>
+            </UPageCard>
           </div>
 
           <!-- Right column -->
@@ -857,66 +978,6 @@ const removeAttrValue = (attrIdx: number, valIdx: number) => {
           </div>
         </div>
 
-        <!-- Inventory and variants (full-width) -->
-        <div class="mt-6">
-          <UPageCard variant="soft" class="bg-white rounded-lg">
-            <div class="flex items-center justify-between ">
-              <div class="font-semibold text-base">
-                Tồn kho & Biến thể
-              </div>
-              <UButton label="Chỉnh sửa biến thể" variant="solid" icon="i-lucide-edit-2" class="w-fit" />
-            </div>
-            <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
-              <div class="space-y-4">
-                <div class="grid grid-cols-3 text-sm text-gray-500">
-                  <div class="col-span-1">
-                    Biến thể
-                  </div>
-                  <div class="text-center">
-                    Tồn kho
-                  </div>
-                  <div class="text-center">
-                    Đã bán
-                  </div>
-                </div>
-                <div class="grid grid-cols-3 items-center text-sm text-gray-800 dark:text-gray-200 border-t pt-3">
-                  <div class="col-span-1">
-                    {{ formData.name || 'Sản phẩm mới' }}
-                  </div>
-                  <div class="text-center text-primary-600">
-                    <NuxtLink to="#">Unlimited</NuxtLink>
-                  </div>
-                  <div class="text-center">
-                    0
-                  </div>
-                </div>
-                <div class="space-y-2 pt-2">
-                  <CustomCheckbox :model-value="!!formData.manageInventory"
-                    @update:model-value="formData.manageInventory = $event">
-                    <span class="text-gray-900">Quản lý số lượng tồn kho</span>
-                  </CustomCheckbox>
-                  <CustomCheckbox class="items-start" :model-value="!!formData.allowNegativeStock"
-                    @update:model-value="formData.allowNegativeStock = $event">
-                    <span class="text-gray-900">
-                      Cho phép bán khi hết hàng
-                      <div class="text-gray-500 text-xs">
-                        Nhân viên vẫn có thể bán khi tồn kho bằng 0 hoặc âm. (Không ảnh hưởng đến POS)
-                      </div>
-                    </span>
-                  </CustomCheckbox>
-                  <CustomCheckbox :model-value="!!formData.hasSkuOrBarcode"
-                    @update:model-value="formData.hasSkuOrBarcode = $event">
-                    <span class="text-gray-900">Sản phẩm có mã SKU hoặc mã vạch</span>
-                  </CustomCheckbox>
-                  <CustomCheckbox class="mr-2" :model-value="!!formData.chargeTax"
-                    @update:model-value="formData.chargeTax = $event">
-                    <span class="text-base text-gray-900 select-none">Tính thuế cho sản phẩm này</span>
-                  </CustomCheckbox>
-                </div>
-              </div>
-            </div>
-          </UPageCard>
-        </div>
       </div>
     </template>
   </UDashboardPanel>
