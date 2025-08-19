@@ -8,6 +8,7 @@ import { useProductForm } from '@/composables/useProductForm'
 import type { ProductFormData as BaseProductFormData } from '@/composables/useProductForm'
 import type { ProductCategory } from '@/composables/useProductsCategoriesService'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
+import { productService } from '@/services/product.service'
 
 // Extend formData type locally to include supplierId, collectionIds and optional tags
 type ExtendedProductFormData = BaseProductFormData & {
@@ -123,20 +124,36 @@ formData.value.hasSkuOrBarcode ??= false
 formData.value.sku ??= ''
 formData.value.barcode ??= ''
 
-// Warehouses list (can be replaced with a service later)
-const warehouses = ref([
-  { id: 101, name: 'Kho Nam Định' },
-  { id: 102, name: 'Kho Ninh Bình' }
-])
-// Ensure stocks object has keys for all warehouses
-for (const w of warehouses.value) {
-  if (formData.value.warehouseStocks?.[w.id] === undefined) {
-    formData.value.warehouseStocks = {
-      ...(formData.value.warehouseStocks || {}),
-      [w.id]: 0
+// Warehouses from API
+const warehouses = ref<{ id: number, name: string }[]>([])
+const warehousesLoading = ref(false)
+
+const fetchWarehouses = async () => {
+  warehousesLoading.value = true
+  try {
+    const res = await productService.getWarehouses()
+    if (res?.success && Array.isArray(res.data)) {
+      warehouses.value = res.data
+      // Ensure stocks object has keys for all warehouses
+      for (const w of warehouses.value) {
+        if (formData.value.warehouseStocks?.[w.id] === undefined) {
+          formData.value.warehouseStocks = {
+            ...(formData.value.warehouseStocks || {}),
+            [w.id]: 0
+          }
+        }
+      }
     }
+  } catch {
+    // Optionally handle error
+  } finally {
+    warehousesLoading.value = false
   }
 }
+
+onMounted(() => {
+  fetchWarehouses()
+})
 
 // Computed for profit and margin
 const profitDisplay = computed(() => {

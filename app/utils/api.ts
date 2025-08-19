@@ -1,5 +1,7 @@
 // API Endpoints configuration
 export const API_ENDPOINTS = {
+  // Warehouse endpoints
+  WAREHOUSES: '/Warehouse',
   // File endpoints
   UPLOAD_FILE: '/File/Upload',
   UPLOAD_MULTIPLE_FILES: '/File/UploadMultiple',

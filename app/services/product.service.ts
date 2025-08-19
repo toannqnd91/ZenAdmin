@@ -2,6 +2,12 @@ import { BaseService } from './base.service'
 import { API_ENDPOINTS } from '@/utils/api'
 import type { ProductItem } from '@/composables/useProducts'
 
+
+export interface WarehouseItem {
+  id: number
+  name: string
+}
+
 export interface ProductCategory {
   id: number
   name: string
@@ -40,6 +46,13 @@ export interface UpdateProductCategoryRequest extends Partial<CreateProductCateg
 }
 
 export class ProductService extends BaseService {
+  /**
+   * Lấy danh sách kho
+   */
+  async getWarehouses() {
+    return this.get<WarehouseItem[]>(API_ENDPOINTS.WAREHOUSES)
+  }
+
   /**
    * Get all products
    */
