@@ -98,8 +98,36 @@ const slug = computed(() => {
 
 // Keep submit wrapper for header buttons if needed
 const _onSubmit = async () => {
-  const ok = await submitForm()
-  if (ok) navigateTo('/products')
+  try {
+    const ok = await submitForm()
+    if (ok) {
+      navigateTo('/products')
+    }
+  } catch (err) {
+    // Nếu submitForm ném lỗi, in chi tiết
+    let message = 'Đã xảy ra lỗi khi lưu sản phẩm.'
+    if (err && typeof err === 'object') {
+      if ('message' in err && typeof err.message === 'string') {
+        message = err.message
+      } else if ('response' in err && err.response?.data) {
+        // Axios style error
+        if (typeof err.response.data === 'string') {
+          message = err.response.data
+        } else if (typeof err.response.data.message === 'string') {
+          message = err.response.data.message
+        } else if (typeof err.response.data.error === 'string') {
+          message = err.response.data.error
+        } else {
+          message = JSON.stringify(err.response.data)
+        }
+      } else {
+        message = JSON.stringify(err)
+      }
+    }
+    // Hiển thị lỗi, có thể thay alert bằng UI toast nếu có
+    // eslint-disable-next-line no-alert
+    alert(message)
+  }
 }
 
 // Removed unused selectedCategoryId
@@ -431,9 +459,9 @@ const onToggleVariant = (key: string, checked: boolean) => {
               class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">Công
               khai</span>
             <UButton label="Xem trước" variant="ghost" icon="i-lucide-external-link" />
-            <UDropdownMenu :items="[]">
+            <!-- <UDropdownMenu :items="[]">
               <UButton icon="i-lucide-more-vertical" variant="ghost" />
-            </UDropdownMenu>
+            </UDropdownMenu> -->
           </div>
         </template>
       </UDashboardNavbar>
@@ -669,7 +697,7 @@ const onToggleVariant = (key: string, checked: boolean) => {
                   </div>
 
                   <!-- Continue selling when out of stock -->
-                  <div>
+                  <div v-if="formData.manageInventory">
                     <CustomCheckbox class="items-start" :model-value="!!formData.allowNegativeStock"
                       @update:model-value="formData.allowNegativeStock = $event">
                       <span class="text-gray-900">
@@ -825,12 +853,9 @@ const onToggleVariant = (key: string, checked: boolean) => {
                     </button>
                   </div>
                 </div>
-                <button
-                  type="button"
+                <button type="button"
                   class="flex items-center text-primary-600 hover:underline mt-2 disabled:opacity-50 disabled:pointer-events-none"
-                  :disabled="attributes.length >= 3"
-                  @click="addAttribute"
-                >
+                  :disabled="attributes.length >= 3" @click="addAttribute">
                   <span class="text-xl mr-1">+</span> Thêm thuộc tính khác
                 </button>
               </div>
@@ -842,8 +867,11 @@ const onToggleVariant = (key: string, checked: boolean) => {
                 <!-- Warehouse select -->
                 <div class="mb-3">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Kho hàng</label>
-                  <select class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900">
-                    <option>Cửa hàng chính</option>
+                  <select v-model="formData.warehouseId"
+                    class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900"
+                    :disabled="warehousesLoading">
+                    <option v-if="warehousesLoading" disabled>Đang tải kho...</option>
+                    <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
                   </select>
                 </div>
 
@@ -865,11 +893,9 @@ const onToggleVariant = (key: string, checked: boolean) => {
                 <!-- Header row with bulk check and count -->
 
                 <div class="flex items-center gap-2 py-2 border-y border-gray-200">
-                  <CustomCheckbox
-                    :model-value="isAllVariantsChecked"
+                  <CustomCheckbox :model-value="isAllVariantsChecked"
                     :indeterminate="selectedVariantKeys.length > 0 && selectedVariantKeys.length < variants.length"
-                    @update:model-value="onToggleAllVariants($event)"
-                  />
+                    @update:model-value="onToggleAllVariants($event)" />
                   <span class="font-medium flex items-center gap-1">
                     <template v-if="selectedVariantKeys.length === 0">
                       {{ variants.length }} phiên bản
@@ -902,10 +928,8 @@ const onToggleVariant = (key: string, checked: boolean) => {
                   <div v-for="(v, vi) in variants" :key="v.key || vi"
                     class="flex items-center justify-between py-4 border-b border-gray-100">
                     <div class="flex items-center gap-3">
-                      <CustomCheckbox
-                        :model-value="selectedVariantKeys.includes(v.key)"
-                        @update:model-value="onToggleVariant(v.key, $event)"
-                      />
+                      <CustomCheckbox :model-value="selectedVariantKeys.includes(v.key)"
+                        @update:model-value="onToggleVariant(v.key, $event)" />
                       <div class="text-gray-900">{{ v.name }}</div>
                     </div>
                     <div class="text-right">
@@ -944,6 +968,12 @@ const onToggleVariant = (key: string, checked: boolean) => {
                 </div>
               </div>
             </UPageCard>
+
+            <!-- Nút Thêm sản phẩm ở cuối trang -->
+            <div class="w-full flex justify-end mt-8 mb-8">
+              <UButton label="Thêm sản phẩm" color="primary" size="lg" :loading="productForm.isSubmitting?.value"
+                class="px-8 py-2 text-lg font-semibold rounded-md shadow" @click="_onSubmit" />
+            </div>
           </div>
 
           <!-- Right column -->
@@ -1066,8 +1096,10 @@ const onToggleVariant = (key: string, checked: boolean) => {
               </div>
             </UPageCard>
           </div>
-  </div>
+        </div>
       </div>
     </template>
+
+
   </UDashboardPanel>
 </template>
