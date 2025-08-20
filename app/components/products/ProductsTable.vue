@@ -91,6 +91,23 @@ const onImgError = (e: Event) => {
 }
 const invSafe = (raw: Record<string, unknown>) => invText(raw as unknown as ProductItem)
 
+// Handle BaseTable row action events
+const onRowCopyId = (id: string | number) => {
+  try {
+    navigator.clipboard.writeText(String(id))
+  } catch (e) {
+    void e
+  }
+  emit('copy-id', id)
+}
+const onRowEdit = (id: string | number) => {
+  emit('edit', id)
+  navigateTo(`/products/${id}/update`)
+}
+const onRowDelete = (id: string | number) => {
+  emit('delete', id)
+}
+
 /* helpers */
 const invText = (p: ProductItem) => {
   if (Array.isArray(p.variations) && p.variations.length > 1) {
@@ -118,6 +135,9 @@ const invText = (p: ProductItem) => {
     :add-button="addButton"
     :row-click-handler="handleRowClick"
     search-placeholder="Tìm kiếm sản phẩm"
+    @row-copy-id="onRowCopyId"
+    @row-edit="onRowEdit"
+    @row-delete="onRowDelete"
     @update:q="emit('update:q', $event)"
     @update:row-selection="emit('update:rowSelection', $event)"
     @update:pagination="emit('update:pagination', $event)"

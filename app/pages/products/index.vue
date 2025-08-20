@@ -9,8 +9,25 @@ const {
   pagination,
   products,
   loading,
-  error
+  error,
+  deleteProduct
 } = useProductsService()
+
+const onRowCopyId = (id: string | number) => {
+  try {
+    navigator.clipboard.writeText(String(id))
+  } catch (e) {
+    void e
+  }
+}
+const onRowEdit = (id: string | number) => {
+  navigateTo(`/products/${id}/update`)
+}
+const onRowDelete = (id: string | number) => {
+  if (confirm('Xoá sản phẩm này?')) {
+    deleteProduct(Number(id))
+  }
+}
 </script>
 
 <template>
@@ -48,6 +65,9 @@ const {
             v-model:pagination="pagination"
             :data="products"
             :loading="loading"
+            @copy-id="onRowCopyId"
+            @edit="onRowEdit"
+            @delete="onRowDelete"
           />
           <div v-if="error" class="text-error mt-4">
             {{ error }}
