@@ -1,6 +1,9 @@
 import { ref, computed } from 'vue'
 import { productService, fileService } from '@/services'
+import type { ApiResponse } from '@/types/common'
 import { useProductsCategoriesService } from '@/composables/useProductsCategoriesService'
+import type { ProductCategory as ProductCategoryType } from '@/composables/useProductsCategoriesService'
+import type { CreateProductRequest } from '@/services/product.service'
 
 export interface ProductFormData {
   name: string
@@ -16,6 +19,14 @@ export interface ProductFormData {
   url: string
   isFeatured: boolean
   isInStock: boolean
+  // Optional extended fields (not strictly typed here to keep composable generic)
+  // supplierId?: number | null
+  // brandId?: number | null
+  // warehouseId?: number | null
+  // manageInventory?: boolean
+  // allowNegativeStock?: boolean
+  // warehouseStocks?: Record<number, number>
+  // barcode?: string
 }
 
 export const useProductForm = () => {
@@ -42,22 +53,13 @@ export const useProductForm = () => {
 
   // Categories
   const { data: categories, loading: loadingCategories } = useProductsCategoriesService()
-  // Dropdown state for category selection
-  const isDropdownOpen = ref(false)
-  const searchTerm = ref('')
-  // Filtered categories for search
-  const filteredCategories = computed(() => {
-    if (!categories.value) return []
-    if (!searchTerm.value) return categories.value
-    return categories.value.filter((cat: any) =>
-      cat.name.toLowerCase().includes(searchTerm.value.toLowerCase())
-    )
-  })
+
   // Selected categories as objects (for tag display)
   const selectedCategories = computed(() => {
     if (!categories.value) return []
-    return categories.value.filter((cat: any) => formData.value.categoryIds.includes(cat.id))
+    return (categories.value as ProductCategoryType[]).filter(cat => formData.value.categoryIds.includes(cat.id))
   })
+
   // Remove category from selection
   const removeCategory = (id: number) => {
     const idx = formData.value.categoryIds.indexOf(id)
@@ -80,8 +82,8 @@ export const useProductForm = () => {
       const uploaded = Array.isArray(uploadResponse?.data) ? uploadResponse.data : []
       const urls: string[] = uploaded.map(f => f.fileName).filter((f): f is string => !!f)
       formData.value.imageUrls.push(...urls)
-      // Hiển thị đúng preview cho các ảnh vừa upload
-      imagePreviews.value.push(...urls.map(url => fileService.getFileUrl(url)))
+      // Also preview them immediately
+      imagePreviews.value.push(...urls)
     } finally {
       isUploadingImage.value = false
     }
@@ -92,15 +94,8 @@ export const useProductForm = () => {
     imagePreviews.value.splice(index, 1)
   }
 
-  // Category selection
-  const toggleCategory = (id: number) => {
-    const idx = formData.value.categoryIds.indexOf(id)
-    if (idx === -1) formData.value.categoryIds.push(id)
-    else formData.value.categoryIds.splice(idx, 1)
-  }
-
-  // Submit
-  const submitForm = async () => {
+  // Submit with optional extras for options/variations
+  const submitForm = async (extras?: { options?: unknown[], variations?: unknown[] }) => {
     errors.value = {}
     isSubmitting.value = true
     try {
@@ -118,9 +113,7 @@ export const useProductForm = () => {
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-') || 'new-product'
 
-
-
-      // ==== PAYLOAD GỬI LÊN BACKEND ==============================================
+      // ==== PAYLOAD GỬI LÊN BACKEND (bổ sung tại đây nếu cần) ===================
       const payload: Record<string, unknown> = {
         id: 0,
         name: formData.value.name,
@@ -137,19 +130,27 @@ export const useProductForm = () => {
         shortDescription: formData.value.description || '',
         description: formData.value.content || '',
         // IDs from extended form if any
-        supplierId: (formData.value as any).supplierId ?? null,
-        brandId: (formData.value as any).brandId ?? null,
+        supplierId: (formData.value as unknown as Record<string, unknown>)['supplierId'] ?? null,
+        brandId: (formData.value as unknown as Record<string, unknown>)['brandId'] ?? null,
         // SKU/Barcode if available
-        sku: formData.value.sku || (formData.value as any).sku || '',
-        gtin: (formData.value as any).barcode || '',
+        sku: formData.value.sku || (formData.value as unknown as Record<string, unknown>)['sku'] || '',
+        gtin: (formData.value as unknown as Record<string, unknown>)['barcode'] || '',
         // Images (backend may accept imageUrls directly)
-        imageUrls: formData.value.imageUrls || []
+        imageUrls: formData.value.imageUrls || [],
+        // Extras from UI mapping
+        options: extras?.options || [],
+        variations: extras?.variations || []
         // === Thêm field mới ở đây ===
       }
       // ==== HẾT PHẦN PAYLOAD =====================================================
 
+      // Inventory flags if present on extended form
+      const manageInventory = (formData.value as unknown as Record<string, unknown>)['manageInventory']
+      const allowNegativeStock = (formData.value as unknown as Record<string, unknown>)['allowNegativeStock']
+      if (typeof manageInventory === 'boolean') payload.stockTrackingIsEnabled = manageInventory
+      if (typeof allowNegativeStock === 'boolean') payload.isAllowToOrder = allowNegativeStock
+
       // Log payload to console
-      // eslint-disable-next-line no-console
       console.log('Product payload:', JSON.stringify(payload, null, 2))
 
       // Write payload to file for user inspection (Node.js/SSR only)
@@ -158,15 +159,9 @@ export const useProductForm = () => {
         fs.writeFileSync('create-product.json', JSON.stringify(payload, null, 2), 'utf-8')
       }
 
-      // Inventory flags if present on extended form
-      const manageInventory = (formData.value as any).manageInventory
-      const allowNegativeStock = (formData.value as any).allowNegativeStock
-      if (typeof manageInventory === 'boolean') payload.stockTrackingIsEnabled = manageInventory
-      if (typeof allowNegativeStock === 'boolean') payload.isAllowToOrder = allowNegativeStock
-
-      const res = await productService.createProduct(payload as any)
-      if (res && typeof res === 'object' && 'success' in res && (res as any).success === false) {
-        const msg = (res as any).message || 'Đã có lỗi xảy ra'
+      const res: ApiResponse<unknown> = await productService.createProduct(payload as unknown as CreateProductRequest)
+      if (!res.success) {
+        const msg = res.message || 'Đã có lỗi xảy ra'
         throw new Error(msg)
       }
       return true
@@ -181,12 +176,7 @@ export const useProductForm = () => {
     errors,
     categories,
     loadingCategories,
-    // Dropdown state and logic
-    isDropdownOpen,
-    searchTerm,
-    filteredCategories,
     selectedCategories,
-    toggleCategory,
     removeCategory,
     isUploadingImage,
     imagePreviews,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import type { Ref, ComputedRef } from 'vue'
 import { useBrandsService } from '@/composables/useBrandsService'
 import { useSuppliersService } from '@/composables/useSuppliersService'
@@ -37,7 +37,7 @@ const isUploadingImage = productForm.isUploadingImage as Ref<boolean>
 const imagePreviews = productForm.imagePreviews as Ref<string[]>
 const handleImageUpload = productForm.handleImageUpload as (e: Event) => Promise<void> | void
 const removeImage = productForm.removeImage as (index: number) => void
-const submitForm = productForm.submitForm as () => Promise<boolean | undefined>
+const submitForm = productForm.submitForm as (extras?: { options?: unknown[], variations?: unknown[] }) => Promise<boolean | undefined>
 const selectedCategories = productForm.selectedCategories as ComputedRef<ProductCategory[]>
 const removeCategory = productForm.removeCategory as (id: number) => void
 
@@ -99,7 +99,51 @@ const slug = computed(() => {
 // Keep submit wrapper for header buttons if needed
 const _onSubmit = async () => {
   try {
-    const ok = await submitForm()
+    // Build options from activeAttributes
+    const attrs = (activeAttributes.value as Array<{ name: string, values: string[] }>) || []
+    const options = attrs.map((a: { name: string, values: string[] }) => ({
+      name: a.name,
+      displayType: 'text',
+      values: (a.values || []).map(v => ({ key: v, display: null }))
+    }))
+
+    // Map variants into requested schema
+    const variations = (variants.value || []).map((v) => {
+      const vRec = (v || {}) as { name?: string, options?: Record<string, string>, price?: number }
+      const name = String(vRec.name || '')
+      const opts = (vRec.options || {}) as Record<string, string>
+      const optionNames = attrs.map(a => a.name)
+      const optionCombinations = optionNames.map((n: string, idx: number) => ({
+        ProductId: 0,
+        OptionId: idx + 1,
+        Option: null,
+        Value: String(opts[n] ?? ''),
+        SortIndex: idx,
+        Id: 0
+      }))
+
+      // Inventory per selected warehouse
+      const warehouseId = formData.value.warehouseId || (warehouses.value[0]?.id ?? 1)
+      const quantity = Number((formData.value.warehouseStocks && formData.value.warehouseStocks[warehouseId]) ?? 0)
+      return {
+        name,
+        normalizedName: name,
+        sku: null,
+        gtin: null,
+        price: Number(v?.price) || Number(formData.value.price) || 0,
+        oldPrice: Number(formData.value.compareAtPrice) || Number(v?.price) || 0,
+        thumbnailImage: null,
+        thumbnailImageUrl: Array.isArray(formData.value.imageUrls) && formData.value.imageUrls.length ? formData.value.imageUrls[0] : null,
+        newImages: [],
+        imageUrls: Array.isArray(formData.value.imageUrls) ? formData.value.imageUrls : [],
+        OptionCombinations: optionCombinations,
+        inventory: [
+          { warehouseId, quantity }
+        ]
+      }
+    })
+
+    const ok = await submitForm({ options, variations })
     if (ok) {
       // navigateTo('/products')
       // alert('Sản phẩm đã được tạo thành công.')
@@ -109,21 +153,23 @@ const _onSubmit = async () => {
     // Nếu submitForm ném lỗi, in chi tiết
     let message = 'Đã xảy ra lỗi khi lưu sản phẩm.'
     if (err && typeof err === 'object') {
-      if ('message' in err && typeof err.message === 'string') {
-        message = err.message
-      } else if ('response' in err && err.response?.data) {
+      const e = err as Record<string, unknown>
+      if ('message' in e && typeof e.message === 'string') {
+        message = e.message
+      } else if (typeof (e as { [k: string]: unknown } & { response?: { data?: unknown } }).response?.data !== 'undefined') {
         // Axios style error
-        if (typeof err.response.data === 'string') {
-          message = err.response.data
-        } else if (typeof err.response.data.message === 'string') {
-          message = err.response.data.message
-        } else if (typeof err.response.data.error === 'string') {
-          message = err.response.data.error
+        const data = (e as { response?: { data?: unknown } }).response?.data
+        if (typeof data === 'string') {
+          message = data
+        } else if (data && typeof (data as Record<string, unknown>).message === 'string') {
+          message = String((data as Record<string, unknown>).message)
+        } else if (data && typeof (data as Record<string, unknown>).error === 'string') {
+          message = String((data as Record<string, unknown>).error)
         } else {
-          message = JSON.stringify(err.response.data)
+          message = JSON.stringify(data ?? {})
         }
       } else {
-        message = JSON.stringify(err)
+        message = JSON.stringify(e)
       }
     }
     // Hiển thị lỗi, có thể thay alert bằng UI toast nếu có
@@ -476,7 +522,7 @@ const onToggleVariant = (key: string, checked: boolean) => {
           <div class="flex-1 space-y-6">
             <UPageCard title="Thông tin sản phẩm" variant="soft" class="bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
-                <form class="space-y-4" @submit.prevent="submitForm">
+                <form class="space-y-4" @submit.prevent="_onSubmit">
                   <!-- Product name -->
 
                   <div>
