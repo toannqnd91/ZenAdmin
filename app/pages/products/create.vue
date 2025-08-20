@@ -1,548 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import type { Ref, ComputedRef } from 'vue'
-import { useBrandsService } from '@/composables/useBrandsService'
-import { useSuppliersService } from '@/composables/useSuppliersService'
-import { useCollectionsService } from '@/composables/useCollectionsService'
-import { useProductForm } from '@/composables/useProductForm'
-import type { ProductFormData as BaseProductFormData } from '@/composables/useProductForm'
-import type { ProductCategory } from '@/composables/useProductsCategoriesService'
+import { reactive } from 'vue'
+import { useCreateProductPage } from '@/composables/useCreateProductPage'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
-import { productService } from '@/services/product.service'
-import { useApiConfig } from '@/composables/useApiConfig'
 
-// Image preview URL helper — exposed to template
-const { imageBaseUrl } = useApiConfig()
-function getPreviewUrl(img: string): string {
-  if (!img) return ''
-  if (/^https?:\/\//.test(img)) return img
-  const filename = String(img).split('/').pop() || ''
-  return `${imageBaseUrl}/image/${filename}`
-}
+definePageMeta({ layout: 'default' })
+useHead({ title: 'New product - Cơ Khí Tam Long' })
 
-// Extend formData type locally to include supplierId, collectionIds and optional tags
-type ExtendedProductFormData = BaseProductFormData & {
-  supplierId: number | null
-  collectionIds: number[]
-  tags?: string[]
-  // Inventory fields
-  warehouseId?: number | null
-  manageInventory?: boolean
-  allowNegativeStock?: boolean
-  manageByBatch?: boolean
-  warehouseStocks?: Record<number, number>
-  hasSkuOrBarcode?: boolean
-  sku?: string
-  barcode?: string
-}
-
-// Local helper types (avoid DOM Attr name clash)
-// Note: Avoid complex TS types in SFC to prevent parser hiccups.
-
-const productForm = useProductForm()
-const formData = productForm.formData as Ref<ExtendedProductFormData>
-const errors = productForm.errors as Ref<Record<string, string>>
-const categories = productForm.categories as Ref<ProductCategory[] | undefined>
-const isUploadingImage = productForm.isUploadingImage as Ref<boolean>
-const imagePreviews = productForm.imagePreviews as Ref<string[]>
-const handleImageUpload = productForm.handleImageUpload as (e: Event) => Promise<void> | void
-const removeImage = productForm.removeImage as (index: number) => void
-const submitForm = productForm.submitForm as (extras?: { options?: unknown[], variations?: unknown[] }) => Promise<boolean | undefined>
-const selectedCategories = productForm.selectedCategories as ComputedRef<ProductCategory[]>
-const removeCategory = productForm.removeCategory as (id: number) => void
-
-// Defaults for optional fields
-formData.value.supplierId ??= null
-formData.value.collectionIds ??= []
-
-// Suppliers and collections for dropdowns
-const { data: suppliers, loading: suppliersLoading } = useSuppliersService()
-const { collections, loading: collectionsLoading } = useCollectionsService()
-
-// v-models for dropdowns
-const selectedSupplier = ref<number | null>(formData.value.supplierId ?? null)
-const selectedCollections = ref<number[]>(formData.value.collectionIds ?? [])
-
-watch(selectedSupplier, (val) => {
-  formData.value.supplierId = val
-})
-watch(selectedCollections, (val) => {
-  formData.value.collectionIds = val
-})
-
-definePageMeta({
-  layout: 'default'
-})
-
-useHead({
-  title: 'New product - Cơ Khí Tam Long'
-})
-
-// Options for category dropdown styled like "Bộ sưu tập"
-const categoryOptions = computed(() => {
-  const cats = (categories.value ?? []) as ProductCategory[]
-  return cats.map(c => ({ id: c.id, label: c.name }))
-})
-
-const { data: brands, loading: brandsLoading, error: brandsError } = useBrandsService()
-const trademark = ref<string>('')
-const status = ref<'Public' | 'Draft'>('Public')
-const pageTemplate = ref<string>('Default product')
-const markAsSoldOut = ref<boolean>(false)
-// const uniqueSkuPerVariant = ref<boolean>(false)
-// const membersOnly = ref<boolean>(false)
-
-// Derive a simple slug from product name
-const slug = computed(() => {
-  const s = (formData.value.name || 'new-product')
-    .toLowerCase()
-    .normalize('NFD').replace(/\p{Diacritic}/gu, '')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-  return s || 'new-product'
-})
-
-// const _previewUrl = computed(() => `test.mehub.space/${slug.value}`)
-
-// Keep submit wrapper for header buttons if needed
-const _onSubmit = async () => {
-  const { imageBaseUrl } = useApiConfig()
-  try {
-    // Build options from activeAttributes
-    const attrs = (activeAttributes.value as Array<{ name: string, values: string[] }>) || []
-    const options = attrs.map((a: { name: string, values: string[] }) => ({
-      name: a.name,
-      displayType: 'text',
-      values: (a.values || []).map(v => ({ key: v, display: null }))
-    }))
-
-    // Helper to normalize a filename or url to {imageBaseUrl}/image/{filename}
-    const normalizeImageUrl = (url: string) => {
-      if (!url) return ''
-      if (url.startsWith('http://') || url.startsWith('https://')) return url
-      // Remove any leading /image/ if present
-      const fname = url.replace(/^\/image\//, '')
-      return `${imageBaseUrl}/image/${fname}`
-    }
-
-    // Map variants into requested schema
-    const variations = (variants.value || []).map((v) => {
-      const vRec = (v || {}) as { name?: string, options?: Record<string, string>, price?: number }
-      const name = String(vRec.name || '')
-      const opts = (vRec.options || {}) as Record<string, string>
-      const optionNames = attrs.map(a => a.name)
-      const optionCombinations = optionNames.map((n: string, idx: number) => {
-        // New payload shape: { OptionName, Value, SortIndex, (optional) Id }
-        const combo: Record<string, unknown> = {
-          OptionName: n,
-          Value: String(opts[n] ?? ''),
-          SortIndex: idx
-        }
-        // include Id if available in existing variant data (fallback to 0)
-        combo.Id = 0
-        return combo
-      })
-
-      // Inventory for all warehouses with quantities
-      const stocks = (formData.value.warehouseStocks || {}) as Record<number, number>
-      const inventory = Object.keys(stocks).map(idStr => ({
-        warehouseId: Number(idStr),
-        quantity: Number((stocks as Record<string, number>)[idStr] || 0)
-      }))
-
-      // Normalize all image URLs for this variant
-      const imageUrls = Array.isArray(formData.value.imageUrls)
-        ? formData.value.imageUrls.map(normalizeImageUrl)
-        : []
-      return {
-        name,
-        normalizedName: name,
-        sku: null,
-        gtin: null,
-        // costPrice: variant-level cost or product importPrice fallback
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        costPrice: Number((v as any)?.costPrice) || Number(formData.value.importPrice) || 0,
-        price: Number(v?.price) || Number(formData.value.price) || 0,
-        oldPrice: Number(formData.value.compareAtPrice) || Number(v?.price) || 0,
-        thumbnailImage: null,
-        thumbnailImageUrl: imageUrls.length ? imageUrls[0] : null,
-        newImages: [],
-        imageUrls,
-        OptionCombinations: optionCombinations,
-        inventory
-      }
-    })
-
-    // Normalize main product imageUrls as well
-    formData.value.imageUrls = Array.isArray(formData.value.imageUrls)
-      ? formData.value.imageUrls.map(normalizeImageUrl)
-      : []
-
-    const ok = await submitForm({ options, variations })
-    if (ok) {
-      // navigateTo('/products')
-      // alert('Sản phẩm đã được tạo thành công.')
-      console.log('Sản phẩm đã được tạo thành công.')
-    }
-  } catch (err) {
-    // Nếu submitForm ném lỗi, in chi tiết
-    let message = 'Đã xảy ra lỗi khi lưu sản phẩm.'
-    if (err && typeof err === 'object') {
-      const e = err as Record<string, unknown>
-      if ('message' in e && typeof e.message === 'string') {
-        message = e.message
-      } else if (typeof (e as { [k: string]: unknown } & { response?: { data?: unknown } }).response?.data !== 'undefined') {
-        // Axios style error
-        const data = (e as { response?: { data?: unknown } }).response?.data
-        if (typeof data === 'string') {
-          message = data
-        } else if (data && typeof (data as Record<string, unknown>).message === 'string') {
-          message = String((data as Record<string, unknown>).message)
-        } else if (data && typeof (data as Record<string, unknown>).error === 'string') {
-          message = String((data as Record<string, unknown>).error)
-        } else {
-          message = JSON.stringify(data ?? {})
-        }
-      } else {
-        message = JSON.stringify(e)
-      }
-    }
-    // Hiển thị lỗi, có thể thay alert bằng UI toast nếu có
-    alert(message)
-  }
-}
-
-// Removed unused selectedCategoryId
-
-// Keep formData.isInStock in sync with "Mark as sold out"
-watch(markAsSoldOut, (v) => {
-  formData.value.isInStock = !v
-})
-
-// Ensure price-related fields exist on formData
-formData.value.compareAtPrice ??= 0
-formData.value.importPrice ??= 0
-formData.value.chargeTax ??= false
-
-// Inventory defaults
-formData.value.warehouseId ??= 1
-formData.value.manageInventory ??= false
-formData.value.allowNegativeStock ??= false
-formData.value.manageByBatch ??= false
-formData.value.warehouseStocks ??= { 1: 0 }
-formData.value.hasSkuOrBarcode ??= false
-formData.value.sku ??= ''
-formData.value.barcode ??= ''
-
-// Warehouses from API
-const warehouses = ref<{ id: number, name: string }[]>([])
-const warehousesLoading = ref(false)
-
-const fetchWarehouses = async () => {
-  warehousesLoading.value = true
-  try {
-    const res = await productService.getWarehouses()
-    if (res?.success && Array.isArray(res.data)) {
-      warehouses.value = res.data
-      // Ensure stocks object has keys for all warehouses
-      for (const w of warehouses.value) {
-        if (formData.value.warehouseStocks?.[w.id] === undefined) {
-          formData.value.warehouseStocks = {
-            ...(formData.value.warehouseStocks || {}),
-            [w.id]: 0
-          }
-        }
-      }
-    }
-  } catch {
-    // Optionally handle error
-  } finally {
-    warehousesLoading.value = false
-  }
-}
-
-onMounted(() => {
-  fetchWarehouses()
-})
-
-// Computed for profit and margin
-const profitDisplay = computed(() => {
-  const price = Number(formData.value.price) || 0
-  const cost = Number(formData.value.importPrice) || 0
-  if (!price || !cost) return ''
-  return (price - cost).toLocaleString('vi-VN')
-})
-const marginDisplay = computed(() => {
-  const price = Number(formData.value.price) || 0
-  const cost = Number(formData.value.importPrice) || 0
-  if (!price || !cost) return ''
-  const margin = ((price - cost) / price) * 100
-  return margin ? margin.toFixed(0) : ''
-})
-
-// Tags input logic
-const tagInput = ref<string>('')
-if (!('tags' in formData.value)) {
-  ; (formData.value as unknown as { tags: string[] }).tags = []
-}
-const getTags = () => (formData.value as unknown as { tags: string[] }).tags
-const commitTag = () => {
-  const raw = tagInput.value.trim()
-  if (!raw) return
-  const value = raw.replace(/[,]+$/g, '').trim()
-  if (!value) return
-  const list = getTags()
-  if (!list.includes(value)) list.push(value)
-  tagInput.value = ''
-}
-const onTagKeydown = (e: KeyboardEvent) => {
-  if (e.key === 'Enter' || e.key === ',') {
-    e.preventDefault()
-    commitTag()
-  } else if (e.key === 'Backspace' && tagInput.value === '') {
-    const list = getTags()
-    if (list.length) list.pop()
-  }
-}
-const onTagPaste = (e: ClipboardEvent) => {
-  const text = e.clipboardData?.getData('text') || ''
-  if (!text) return
-  const parts = text.split(/[\n\t,]/).map(s => s.trim()).filter(Boolean)
-  if (!parts.length) return
-  e.preventDefault()
-  const list = getTags()
-  for (const p of parts) {
-    if (!list.includes(p)) list.push(p)
-  }
-}
-const removeTag = (idx: number) => {
-  const list = getTags()
-  if (idx >= 0 && idx < list.length) list.splice(idx, 1)
-}
-
-// Expose tags list for template without typing issues
-const tagsList = computed(() => getTags())
-
-// Drag & drop reordering for image previews
-const dragSrcIndex = ref<number | null>(null)
-
-const onDragStart = (e: DragEvent, idx: number) => {
-  if (isUploadingImage.value) {
-    e.preventDefault()
-    return
-  }
-  dragSrcIndex.value = idx
-  try {
-    e.dataTransfer?.setData('text/plain', String(idx))
-    e.dataTransfer!.effectAllowed = 'move'
-  } catch {
-    // ignore for browsers that restrict setData in some contexts
-  }
-}
-
-const onDragOver = (e: DragEvent) => {
-  e.preventDefault()
-  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
-}
-
-const onDrop = (e: DragEvent, idx: number) => {
-  e.preventDefault()
-  const srcRaw = dragSrcIndex.value ?? Number(e.dataTransfer?.getData('text/plain'))
-  const srcIdx = Number(srcRaw)
-  const toIdx = Number(idx)
-  if (isNaN(srcIdx) || srcIdx === toIdx) {
-    dragSrcIndex.value = null
-    return
-  }
-
-  const previews = imagePreviews.value || []
-  const urls = formData.value.imageUrls || []
-  if (srcIdx < 0 || srcIdx >= previews.length || toIdx < 0 || toIdx > previews.length) {
-    dragSrcIndex.value = null
-    return
-  }
-
-  // Move preview (assert non-null because we've validated indices above)
-  const p = previews.splice(srcIdx, 1)[0] as string
-  previews.splice(toIdx, 0, p)
-
-  // Move url in the same way
-  const u = urls.splice(srcIdx, 1)[0] as string
-  urls.splice(toIdx, 0, u)
-
-  // Ensure reactivity by assigning new arrays
-  imagePreviews.value = [...previews]
-  formData.value.imageUrls = [...urls]
-
-  dragSrcIndex.value = null
-}
-
-const onDragEnd = () => {
-  dragSrcIndex.value = null
-}
-
-// ----- Attribute logic -----
-// Keep typing minimal to avoid SFC parser hiccups
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const attributes = ref([] as any[])
-const showAttributesEditor = ref(false)
-const ATTRIBUTE_SUGGESTIONS = ['Màu sắc', 'Kích thước', 'Chất liệu']
-const getNextSuggestedAttrName = () => {
-  // Return the first suggestion not already used
-  const used = attributes.value.map(a => (a.name || '').trim())
-  return ATTRIBUTE_SUGGESTIONS.find(s => !used.includes(s)) || ''
-}
-const startAttributes = () => {
-  showAttributesEditor.value = true
-  if (!attributes.value.length) {
-    attributes.value.push({ name: getNextSuggestedAttrName(), values: [], input: '' })
-  }
-}
-const addAttribute = () => {
-  if (attributes.value.length >= 3) return
-  attributes.value.push({ name: getNextSuggestedAttrName(), values: [], input: '' })
-}
-const removeAttribute = (idx: number) => {
-  attributes.value.splice(idx, 1)
-  if (attributes.value.length === 0) {
-    showAttributesEditor.value = false
-  }
-}
-const addAttrValue = (attrIdx: number) => {
-  const attr = attributes.value[attrIdx]
-  if (!attr) return
-  const val = (attr.input || '').trim()
-  if (val && !attr.values.includes(val)) {
-    attr.values.push(val)
-  }
-  attr.input = ''
-}
-const removeAttrValue = (attrIdx: number, valIdx: number) => {
-  const attr = attributes.value[attrIdx]
-  if (!attr) return
-  attr.values.splice(valIdx, 1)
-}
-
-// ----- Variants computed from attributes -----
-const activeAttributes = computed(() => {
-  const list = (attributes.value as unknown[]).map((raw) => {
-    const a = raw as Record<string, unknown>
-    const name = String((a && a.name) ?? '').trim()
-    const values = Array.isArray(a && (a as { values?: unknown[] }).values)
-      ? ((a as { values?: unknown[] }).values ?? []).filter(Boolean).map(v => String(v))
-      : []
-    return { name, values }
-  })
-  return list.filter(a => a.name && a.values.length > 0)
-})
-
-const variants = computed(() => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const attrs = activeAttributes.value as unknown as any[]
-  if (!Array.isArray(attrs) || attrs.length === 0) return []
-  // Build lists of values
-  const lists = attrs.map((a) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const vs = (a && (a as any).values) as unknown
-    return Array.isArray(vs) ? vs : []
-  }) as unknown as unknown[]
-  // Cartesian product
-  let product: string[][] = []
-  for (const listAny of lists) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const list = (listAny as any[]).map(v => String(v))
-    if (product.length === 0) {
-      product = list.map(v => [v])
-    } else {
-      const next: string[][] = []
-      for (const combo of product) {
-        for (const v of list) next.push([...combo, String(v)])
-      }
-      product = next
-    }
-  }
-  // Map to rows
-  return product.map((vals) => {
-    const options: Record<string, string> = {}
-    for (let i = 0; i < attrs.length; i += 1) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const a = attrs[i] as any
-      const name = String((a && a.name) || '')
-      if (name) options[name] = String(vals[i] || '')
-    }
-    return {
-      key: vals.join(' / '),
-      name: vals.join(' / '),
-      options,
-      price: Number(formData.value.price) || 0,
-      stock: 0
-    }
-  })
-})
-
-const totalVariantStock = computed(() => {
-  // Sum quantities across all variants and all warehouses.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const list = variants.value as unknown as any[]
-  if (!Array.isArray(list) || list.length === 0) return 0
-
-  // Helper to sum inventory array (items with { warehouseId, quantity })
-  const sumInventoryArray = (inv: unknown) => {
-    if (!Array.isArray(inv)) return 0
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (inv as any[]).reduce((s: number, it: any) => s + (Number(it?.quantity) || 0), 0)
-  }
-
-  // Global warehouse stocks fallback (product-level): { [id]: qty }
-  const globalStocks = formData.value.warehouseStocks || {}
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const globalSum = Object.keys(globalStocks).reduce((s, k) => s + (Number((globalStocks as any)[k]) || 0), 0)
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return list.reduce((total: number, v: any) => {
-    // If variant object already contains inventory array, use it
-    if (Array.isArray(v?.inventory)) {
-      return total + sumInventoryArray(v.inventory)
-    }
-    // Otherwise fall back to product-level warehouse stocks
-    return total + globalSum
-  }, 0)
-})
-
-// ----- Variant selection state (for checkboxes) -----
-// Keep it local; persistence/integration can be added later
-const selectedVariantKeys = ref<string[]>([])
-const isAllVariantsChecked = computed(() => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const list = variants.value as unknown as any[]
-  if (!Array.isArray(list) || list.length === 0) return false
-  return selectedVariantKeys.value.length > 0 && selectedVariantKeys.value.length === list.length
-})
-const onToggleAllVariants = (checked: boolean) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const list = variants.value as unknown as any[]
-  if (checked) {
-    const keys: string[] = []
-    if (Array.isArray(list)) {
-      for (const v of list) {
-        const k = String((v && (v as { key?: unknown }).key) ?? '')
-        if (k) keys.push(k)
-      }
-    }
-    selectedVariantKeys.value = keys
-  } else {
-    selectedVariantKeys.value = []
-  }
-}
-const onToggleVariant = (key: string, checked: boolean) => {
-  const arr = [...selectedVariantKeys.value]
-  const idx = arr.indexOf(key)
-  if (checked && idx === -1) arr.push(key)
-  if (!checked && idx !== -1) arr.splice(idx, 1)
-  selectedVariantKeys.value = arr
-}
+const page = reactive(useCreateProductPage())
 </script>
 
 <template>
@@ -582,30 +46,30 @@ const onToggleVariant = (key: string, checked: boolean) => {
           <div class="flex-1 space-y-6">
             <UPageCard title="Thông tin sản phẩm" variant="soft" class="bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
-                <form class="space-y-4" @submit.prevent="_onSubmit">
+                <form class="space-y-4" @submit.prevent="page.actions._onSubmit">
                   <!-- Product name -->
 
                   <div>
                     <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Tên sản phẩm
                     </label>
-                    <input id="name" v-model="formData.name" type="text" placeholder="Nhập tên sản phẩm"
-                      :class="{ 'border-red-500': errors.name }"
+                    <input id="name" v-model="page.state.formData.name" type="text" placeholder="Nhập tên sản phẩm"
+                      :class="{ 'border-red-500': page.state.errors.name }"
                       class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500">
-                    <p v-if="errors.name" class="mt-1 text-sm text-red-600">
-                      {{ errors.name }}
+                    <p v-if="page.state.errors.name" class="mt-1 text-sm text-red-600">
+                      {{ page.state.errors.name }}
                     </p>
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Thương hiệu
                     </label>
-                    <BaseDropdownSelect v-model="trademark"
-                      :options="(brands || []).map(b => ({ id: b.id, label: b.name }))" :loading="brandsLoading"
+                    <BaseDropdownSelect v-model="page.state.trademark"
+                      :options="(page.state.brands || []).map(b => ({ id: b.id, label: b.name }))" :loading="page.state.brandsLoading"
                       placeholder="Chọn thương hiệu" add-new-label="Thêm thương hiệu"
                       class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500" />
-                    <div v-if="brandsError" class="text-xs text-red-500 mt-1">
-                      Lỗi tải thương hiệu: {{ brandsError }}
+                    <div v-if="page.state.brandsError" class="text-xs text-red-500 mt-1">
+                      Lỗi tải thương hiệu: {{ page.state.brandsError }}
                     </div>
                   </div>
 
@@ -614,22 +78,22 @@ const onToggleVariant = (key: string, checked: boolean) => {
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Danh mục
                     </label>
-                    <BaseDropdownSelect v-model="formData.categoryIds" :options="categoryOptions"
+                    <BaseDropdownSelect v-model="page.state.formData.categoryIds" :options="page.state.categoryOptions"
                       placeholder="Chọn danh mục" add-new-label="Thêm danh mục" multiple
                       class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500" />
-                    <div v-if="selectedCategories && selectedCategories.length > 0" class="flex flex-wrap gap-1 mt-2">
-                      <span v-for="category in selectedCategories" :key="category.id"
+                    <div v-if="page.state.selectedCategories && page.state.selectedCategories.length > 0" class="flex flex-wrap gap-1 mt-2">
+                      <span v-for="category in page.state.selectedCategories" :key="category.id"
                         class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200">
                         {{ category.name }}
                         <button type="button"
                           class="ml-1 inline-flex items-center justify-center w-3 h-3 rounded-full text-primary-600 hover:bg-primary-200 hover:text-primary-800 focus:outline-none"
-                          @click="removeCategory(category.id)">
+                          @click="page.actions.removeCategory(category.id)">
                           ×
                         </button>
                       </span>
                     </div>
-                    <p v-if="errors.categoryIds" class="mt-1 text-sm text-red-600">
-                      {{ errors.categoryIds }}
+                    <p v-if="page.state.errors.categoryIds" class="mt-1 text-sm text-red-600">
+                      {{ page.state.errors.categoryIds }}
                     </p>
                     <p class="mt-1 text-xs text-gray-500">
                       Chọn một hoặc nhiều danh mục cho sản phẩm
@@ -643,10 +107,10 @@ const onToggleVariant = (key: string, checked: boolean) => {
                     </label>
                     <div
                       class="rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden bg-white dark:bg-gray-800">
-                      <TinyMCESelfHost v-model="formData.content" placeholder="Nhập mô tả sản phẩm" :height="300" />
+                      <TinyMCESelfHost v-model="page.state.formData.content" placeholder="Nhập mô tả sản phẩm" :height="300" />
                     </div>
-                    <p v-if="errors.content" class="mt-1 text-sm text-red-600">
-                      {{ errors.content }}
+                    <p v-if="page.state.errors.content" class="mt-1 text-sm text-red-600">
+                      {{ page.state.errors.content }}
                     </p>
                   </div>
 
@@ -667,7 +131,7 @@ const onToggleVariant = (key: string, checked: boolean) => {
                   <div class="flex-1">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Giá bán</label>
                     <div class="relative">
-                      <input id="price" v-model.number="formData.price" type="number" min="0" step="0.01"
+                      <input id="price" v-model.number="page.state.formData.price" type="number" min="0" step="0.01"
                         placeholder="0.00"
                         class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pr-12">
                       <span
@@ -686,7 +150,7 @@ const onToggleVariant = (key: string, checked: boolean) => {
                       </span>
                     </div>
                     <div class="relative">
-                      <input id="compareAtPrice" v-model.number="formData.compareAtPrice" type="number" min="0"
+                      <input id="compareAtPrice" v-model.number="page.state.formData.compareAtPrice" type="number" min="0"
                         step="0.01" placeholder="0.00"
                         class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pr-12">
                       <span
@@ -696,8 +160,8 @@ const onToggleVariant = (key: string, checked: boolean) => {
                 </div>
                 <!-- Charge tax -->
                 <div class="flex items-center mt-4">
-                  <CustomCheckbox class="mr-2" :model-value="!!formData.chargeTax"
-                    @update:model-value="formData.chargeTax = $event">
+                  <CustomCheckbox class="mr-2" :model-value="!!page.state.formData.chargeTax"
+                    @update:model-value="page.state.formData.chargeTax = $event">
                     <span class="text-base text-gray-900 select-none">Tính thuế cho sản phẩm này</span>
                   </CustomCheckbox>
                 </div>
@@ -717,7 +181,7 @@ const onToggleVariant = (key: string, checked: boolean) => {
                       </span>
                     </div>
                     <div class="relative">
-                      <input id="importPrice" v-model.number="formData.importPrice" type="number" min="0" step="0.01"
+                      <input id="importPrice" v-model.number="page.state.formData.importPrice" type="number" min="0" step="0.01"
                         placeholder="0.00"
                         class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pr-12">
                       <span
@@ -738,7 +202,7 @@ const onToggleVariant = (key: string, checked: boolean) => {
                       </div>
                     </div>
                     <div class="relative">
-                      <input id="profit" :value="profitDisplay" readonly
+                      <input id="profit" :value="page.inventory.profitDisplay" readonly
                         class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pr-12">
                       <span
                         class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-base pointer-events-none">đ</span>
@@ -747,7 +211,7 @@ const onToggleVariant = (key: string, checked: boolean) => {
                   <div class="flex-1">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tỉ suất lợi nhuận</label>
                     <div class="relative">
-                      <input id="margin" :value="marginDisplay" readonly
+                      <input id="margin" :value="page.inventory.marginDisplay" readonly
                         class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pr-8">
                       <span
                         class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-base pointer-events-none">%</span>
@@ -762,8 +226,8 @@ const onToggleVariant = (key: string, checked: boolean) => {
                 <div class="space-y-4">
                   <!-- Track quantity -->
                   <div class="pt-1">
-                    <CustomCheckbox :model-value="!!formData.manageInventory"
-                      @update:model-value="formData.manageInventory = $event">
+                    <CustomCheckbox :model-value="!!page.state.formData.manageInventory"
+                      @update:model-value="page.state.formData.manageInventory = $event">
                       <span class="text-gray-900">Quản lý số lượng tồn kho</span>
                     </CustomCheckbox>
                   </div>
@@ -779,21 +243,21 @@ const onToggleVariant = (key: string, checked: boolean) => {
                       </NuxtLink>
                     </div>
                     <div class="border-t border-gray-200 pb-[5px]" />
-                    <div v-for="w in warehouses" :key="w.id" class="grid grid-cols-2 gap-2 py-1">
+                    <div v-for="w in page.inventory.warehouses" :key="w.id" class="grid grid-cols-2 gap-2 py-1">
                       <div class="text-gray-800 flex items-center h-9">
                         {{ w.name }}
                       </div>
                       <div class="text-right flex items-center justify-end h-9">
-                        <template v-if="formData.manageInventory">
-                          <input :value="(formData.warehouseStocks && formData.warehouseStocks[w.id]) ?? 0"
+                        <template v-if="page.state.formData.manageInventory">
+                          <input :value="(page.state.formData.warehouseStocks && page.state.formData.warehouseStocks[w.id]) ?? 0"
                             type="number" min="0"
                             class="w-24 px-3 h-9 text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 text-right appearance-none no-spinner"
                             :placeholder="'Nhập số lượng'" @input="(e: Event) => {
                               const v = Number((e.target as HTMLInputElement).value || 0)
                               const id = w.id
-                              const next = { ...(formData.warehouseStocks || {}) }
+                              const next = { ...(page.state.formData.warehouseStocks || {}) }
                               next[id] = v
-                              formData.warehouseStocks = next
+                              page.state.formData.warehouseStocks = next
                             }">
                         </template>
                         <template v-else>
@@ -804,12 +268,12 @@ const onToggleVariant = (key: string, checked: boolean) => {
                   </div>
 
                   <!-- Continue selling when out of stock -->
-                  <div v-if="formData.manageInventory">
-                    <CustomCheckbox class="items-start" :model-value="!!formData.allowNegativeStock"
-                      @update:model-value="formData.allowNegativeStock = $event">
+                  <div v-if="page.state.formData.manageInventory">
+                    <CustomCheckbox class="items-start" :model-value="!!page.state.formData.allowNegativeStock"
+                      @update:model-value="page.state.formData.allowNegativeStock = $event">
                       <span class="text-gray-900">
                         Cho phép bán khi hết hàng
-                        <div v-if="formData.allowNegativeStock" class="text-gray-500 text-xs">
+                        <div v-if="page.state.formData.allowNegativeStock" class="text-gray-500 text-xs">
                           Nhân viên vẫn có thể bán khi tồn kho bằng 0 hoặc âm. (Không ảnh hưởng đến POS)
                         </div>
                       </span>
@@ -818,21 +282,21 @@ const onToggleVariant = (key: string, checked: boolean) => {
 
                   <!-- SKU / Barcode toggle and fields -->
                   <div class="space-y-2">
-                    <CustomCheckbox :model-value="!!formData.hasSkuOrBarcode"
-                      @update:model-value="formData.hasSkuOrBarcode = $event">
+                    <CustomCheckbox :model-value="!!page.state.formData.hasSkuOrBarcode"
+                      @update:model-value="page.state.formData.hasSkuOrBarcode = $event">
                       <span class="text-gray-900">Sản phẩm có mã SKU hoặc mã vạch</span>
                     </CustomCheckbox>
-                    <div v-if="formData.hasSkuOrBarcode" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div v-if="page.state.formData.hasSkuOrBarcode" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Mã SKU (Stock Keeping Unit)</label>
-                        <input v-model="formData.sku" type="text"
+                        <input v-model="page.state.formData.sku" type="text"
                           class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500"
                           placeholder="Nhập mã SKU">
                       </div>
                       <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Mã vạch (ISBN, UPC, GTIN,
                           ...)</label>
-                        <input v-model="formData.barcode" type="text"
+                        <input v-model="page.state.formData.barcode" type="text"
                           class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500"
                           placeholder="Nhập mã vạch">
                       </div>
@@ -848,8 +312,8 @@ const onToggleVariant = (key: string, checked: boolean) => {
                 <div class="space-y-4">
                   <div>
                     <input ref="fileInput" type="file" class="hidden" accept="image/*,video/*,model/*" multiple
-                      :disabled="isUploadingImage" @change="handleImageUpload">
-                    <div v-if="!imagePreviews.length"
+                      :disabled="page.media.isUploadingImage" @change="page.media.handleImageUpload">
+                    <div v-if="!page.media.imagePreviews.length"
                       class="border border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center text-center min-h-[120px] bg-white">
                       <div class="flex items-center justify-center gap-2 mb-2">
                         <UButton label="Upload new" size="sm"
@@ -863,20 +327,20 @@ const onToggleVariant = (key: string, checked: boolean) => {
                       </div>
                     </div>
                     <div v-else class="grid grid-cols-5 gap-3">
-                      <template v-for="(img, idx) in imagePreviews" :key="idx">
+                      <template v-for="(img, idx) in page.media.imagePreviews" :key="idx">
                         <div :class="[
                           'relative flex items-center justify-center border border-gray-300 rounded-md bg-white overflow-hidden',
                           idx === 0 ? 'row-span-2 col-span-2 h-52 w-full' : 'h-24 w-full'
-                        ]" draggable="true" @dragstart="(e) => onDragStart(e, idx)" @dragover.prevent="onDragOver"
-                          @drop="(e) => onDrop(e, idx)" @dragend="onDragEnd">
-                          <img v-if="!isUploadingImage" :src="getPreviewUrl(img)" class="object-cover w-full h-full">
+                        ]" draggable="true" @dragstart="(e) => page.media.onDragStart(e, idx)" @dragover.prevent="page.media.onDragOver"
+                          @drop="(e) => page.media.onDrop(e, idx)" @dragend="page.media.onDragEnd">
+                          <img v-if="!page.media.isUploadingImage" :src="page.media.getPreviewUrl(img)" class="object-cover w-full h-full">
 
                           <!-- Overlay 'Ảnh đại diện' cho ảnh đầu tiên -->
-                          <div v-if="!isUploadingImage && idx === 0"
+                          <div v-if="!page.media.isUploadingImage && idx === 0"
                             class="absolute bottom-0 left-0 w-full bg-black bg-opacity-60 text-white text-base font-semibold text-center py-1 select-none rounded-b-md">
                             Ảnh đại diện
                           </div>
-                          <div v-else-if="isUploadingImage"
+                          <div v-else-if="page.media.isUploadingImage"
                             class="flex flex-col items-center justify-center w-full h-full">
                             <svg class="animate-spin h-8 w-8 text-gray-400 mx-auto" xmlns="http://www.w3.org/2000/svg"
                               fill="none" viewBox="0 0 24 24">
@@ -886,9 +350,9 @@ const onToggleVariant = (key: string, checked: boolean) => {
                             </svg>
                             <span class="text-gray-500 text-sm mt-2">Uploading...</span>
                           </div>
-                          <button v-if="!isUploadingImage" type="button"
+                          <button v-if="!page.media.isUploadingImage" type="button"
                             class="absolute top-1 right-1 bg-white rounded-full p-1 shadow hover:bg-gray-100"
-                            @click="removeImage(idx)">
+                            @click="page.media.removeImage(idx)">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none"
                               viewBox="0 0 24 24" stroke="currentColor">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -901,7 +365,7 @@ const onToggleVariant = (key: string, checked: boolean) => {
                       <div
                         class="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-xl bg-white cursor-pointer h-24"
                         @click="$refs.fileInput && ($refs.fileInput as HTMLInputElement).click()"
-                        @dragover.prevent="onDragOver" @drop="(e) => onDrop(e, imagePreviews.length)">
+                        @dragover.prevent="page.media.onDragOver" @drop="(e) => page.media.onDrop(e, page.media.imagePreviews.length)">
                         <span class="text-2xl text-gray-400">+</span>
                       </div>
                     </div>
@@ -916,12 +380,12 @@ const onToggleVariant = (key: string, checked: boolean) => {
                 <div class="font-semibold text-base">
                   Thuộc tính
                 </div>
-                <button v-if="!showAttributesEditor" type="button" class="text-primary-600 hover:underline"
-                  @click="startAttributes">
+                <button v-if="!page.variants.showAttributesEditor" type="button" class="text-primary-600 hover:underline"
+                  @click="page.variants.startAttributes">
                   Thêm thuộc tính
                 </button>
               </div>
-              <div v-if="!showAttributesEditor"
+              <div v-if="!page.variants.showAttributesEditor"
                 class="-mx-6 px-6 pt-2 pb-4 border-t-1 border-gray-200 dark:border-gray-700 flex flex-col justify-center min-h-[64px]">
                 <p class="text-gray-600 w-full">
                   Sản phẩm có nhiều thuộc tính khác nhau. Ví dụ: kích thước, màu sắc.
@@ -936,7 +400,7 @@ const onToggleVariant = (key: string, checked: boolean) => {
                     Giá trị
                   </div>
                 </div>
-                <div v-for="(attr, idx) in attributes" :key="idx" class="grid grid-cols-2 gap-4 items-center mb-2">
+                <div v-for="(attr, idx) in page.variants.attributes" :key="idx" class="grid grid-cols-2 gap-4 items-center mb-2">
                   <input v-model="attr.name" type="text"
                     class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500"
                     placeholder="Tên thuộc tính">
@@ -946,13 +410,13 @@ const onToggleVariant = (key: string, checked: boolean) => {
                         class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-sm">
                         {{ val }}
                         <button type="button" class="ml-1 text-blue-400 hover:text-blue-700"
-                          @click="removeAttrValue(idx, vIdx)">×</button>
+                          @click="page.variants.removeAttrValue(idx, vIdx)">×</button>
                       </span>
                       <input v-model="attr.input" type="text"
                         class="border-none outline-none flex-1 min-w-[80px] h-[36px] bg-transparent text-gray-700"
-                        placeholder="Nhập ký tự và ấn enter" @keydown.enter.prevent="addAttrValue(idx)">
+                        placeholder="Nhập ký tự và ấn enter" @keydown.enter.prevent="page.variants.addAttrValue(idx)">
                     </div>
-                    <button type="button" class="text-gray-400 hover:text-red-500" @click="removeAttribute(idx)">
+                    <button type="button" class="text-gray-400 hover:text-red-500" @click="page.variants.removeAttribute(idx)">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -963,30 +427,30 @@ const onToggleVariant = (key: string, checked: boolean) => {
                 </div>
                 <button type="button"
                   class="flex items-center text-primary-600 hover:underline mt-2 disabled:opacity-50 disabled:pointer-events-none"
-                  :disabled="attributes.length >= 3" @click="addAttribute">
+                  :disabled="page.variants.attributes.length >= 3" @click="page.variants.addAttribute">
                   <span class="text-xl mr-1">+</span> Thêm thuộc tính khác
                 </button>
               </div>
             </UPageCard>
 
             <!-- Variants generated from attributes (moved below Attributes section) -->
-            <UPageCard v-if="variants && variants.length" title="Phiên bản" variant="soft" class="bg-white rounded-lg">
+            <UPageCard v-if="page.variants.variants && page.variants.variants.length" title="Phiên bản" variant="soft" class="bg-white rounded-lg">
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
                 <!-- Warehouse select -->
                 <div class="mb-3">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Kho hàng</label>
-                  <select v-model="formData.warehouseId"
+                  <select v-model="page.state.formData.warehouseId"
                     class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900"
-                    :disabled="warehousesLoading">
-                    <option v-if="warehousesLoading" disabled>Đang tải kho...</option>
-                    <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
+                    :disabled="page.inventory.warehousesLoading">
+                    <option v-if="page.inventory.warehousesLoading" disabled>Đang tải kho...</option>
+                    <option v-for="w in page.inventory.warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
                   </select>
                 </div>
 
                 <!-- Filters by attribute names -->
                 <div class="flex flex-wrap items-center gap-3 mb-3">
                   <span class="text-sm text-gray-700">Bộ lọc:</span>
-                  <template v-for="(a, i) in activeAttributes" :key="i">
+                  <template v-for="(a, i) in page.variants.activeAttributes" :key="i">
                     <button type="button"
                       class="inline-flex items-center gap-1 text-sm text-primary-600 bg-primary-50 px-2 py-1 rounded-md hover:underline">
                       {{ a.name }}
@@ -1001,18 +465,18 @@ const onToggleVariant = (key: string, checked: boolean) => {
                 <!-- Header row with bulk check and count -->
 
                 <div class="flex items-center gap-2 py-2 border-y border-gray-200">
-                  <CustomCheckbox :model-value="isAllVariantsChecked"
-                    :indeterminate="selectedVariantKeys.length > 0 && selectedVariantKeys.length < variants.length"
-                    @update:model-value="onToggleAllVariants($event)" />
+                  <CustomCheckbox :model-value="page.variants.isAllVariantsChecked"
+                    :indeterminate="page.variants.selectedVariantKeys.length > 0 && page.variants.selectedVariantKeys.length < page.variants.variants.length"
+                    @update:model-value="page.variants.onToggleAllVariants($event)" />
                   <span class="font-medium flex items-center gap-1">
-                    <template v-if="selectedVariantKeys.length === 0">
-                      {{ variants.length }} phiên bản
+                    <template v-if="page.variants.selectedVariantKeys.length === 0">
+                      {{ page.variants.variants.length }} phiên bản
                     </template>
                     <template v-else>
-                      Đã chọn {{ selectedVariantKeys.length }} phiên bản
+                      Đã chọn {{ page.variants.selectedVariantKeys.length }} phiên bản
                     </template>
                   </span>
-                  <div v-if="selectedVariantKeys.length > 0" class="ml-auto">
+                  <div v-if="page.variants.selectedVariantKeys.length > 0" class="ml-auto">
                     <UDropdownMenu :items="[
                       { label: 'Chỉnh sửa giá', value: 'edit-price' },
                       { label: 'Chỉnh sửa tồn kho', value: 'edit-stock' },
@@ -1033,11 +497,11 @@ const onToggleVariant = (key: string, checked: boolean) => {
 
                 <!-- Variants list -->
                 <div>
-                  <div v-for="(v, vi) in variants" :key="v.key || vi"
+                  <div v-for="(v, vi) in page.variants.variants" :key="v.key || vi"
                     class="flex items-center justify-between py-4 border-b border-gray-100">
                     <div class="flex items-center gap-3">
-                      <CustomCheckbox :model-value="selectedVariantKeys.includes(v.key)"
-                        @update:model-value="onToggleVariant(v.key, $event)" />
+                      <CustomCheckbox :model-value="page.variants.selectedVariantKeys.includes(v.key)"
+                        @update:model-value="page.variants.onToggleVariant(v.key, $event)" />
                       <div class="text-gray-900">{{ v.name }}</div>
                     </div>
                     <div class="text-right">
@@ -1050,7 +514,7 @@ const onToggleVariant = (key: string, checked: boolean) => {
                 <!-- Footer summary -->
                 <div class="flex items-center justify-between py-3">
                   <div class="text-gray-700">Tổng tồn kho</div>
-                  <div class="text-gray-900 font-medium">Có thể bán: {{ totalVariantStock }}</div>
+                  <div class="text-gray-900 font-medium">Có thể bán: {{ page.variants.totalVariantStock }}</div>
                 </div>
               </div>
             </UPageCard>
@@ -1066,7 +530,7 @@ const onToggleVariant = (key: string, checked: boolean) => {
                     <div class="flex items-center w-full rounded-md border border-gray-300 bg-gray-50 px-4"
                       style="height:36px;">
                       <span class="text-gray-400 select-none mr-1">web.vnnsoft.com/</span>
-                      <span class="text-gray-900 flex-1">{{ slug }}</span>
+                      <span class="text-gray-900 flex-1">{{ page.state.slug }}</span>
                       <button type="button" class="ml-2 text-gray-400 hover:text-gray-600">
                         <UIcon name="i-lucide-link-2" class="h-5 w-5" />
                       </button>
@@ -1079,8 +543,8 @@ const onToggleVariant = (key: string, checked: boolean) => {
 
             <!-- Nút Thêm sản phẩm ở cuối trang -->
             <div class="w-full flex justify-end mt-8 mb-8">
-              <UButton label="Thêm sản phẩm" color="primary" size="lg" :loading="productForm.isSubmitting?.value"
-                class="px-8 py-2 text-lg font-semibold rounded-md shadow" @click="_onSubmit" />
+              <UButton label="Thêm sản phẩm" color="primary" size="lg" :loading="page.state.productForm.isSubmitting"
+                class="px-8 py-2 text-lg font-semibold rounded-md shadow" @click="page.actions._onSubmit" />
             </div>
           </div>
 
@@ -1094,7 +558,7 @@ const onToggleVariant = (key: string, checked: boolean) => {
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Trạng thái
                     </label>
-                    <select v-model="status"
+                    <select v-model="page.state.status"
                       class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white pr-[34px]">
                       <option value="Public">
                         Công khai
@@ -1108,7 +572,7 @@ const onToggleVariant = (key: string, checked: boolean) => {
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Giao diện trang sản phẩm
                     </label>
-                    <select v-model="pageTemplate"
+                    <select v-model="page.state.pageTemplate"
                       class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white pr-[34px]">
                       <option value="Default product">
                         Sản phẩm mặc định
@@ -1167,16 +631,16 @@ const onToggleVariant = (key: string, checked: boolean) => {
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nhà cung cấp</label>
-                    <BaseDropdownSelect v-model="selectedSupplier"
-                      :options="(suppliers || []).map(s => ({ id: s.id, label: s.name }))" :loading="suppliersLoading"
+                    <BaseDropdownSelect v-model="page.state.selectedSupplier"
+                      :options="(page.state.suppliers || []).map(s => ({ id: s.id, label: s.name }))" :loading="page.state.suppliersLoading"
                       placeholder="Chọn nhà cung cấp" add-new-label="Thêm nhà cung cấp"
                       class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500" />
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Bộ sưu tập</label>
-                    <BaseDropdownSelect v-model="selectedCollections"
-                      :options="(collections || []).map(c => ({ id: c.id, label: c.name }))"
-                      :loading="collectionsLoading" placeholder="Chọn bộ sưu tập" multiple-display="labels"
+                    <BaseDropdownSelect v-model="page.state.selectedCollections"
+                      :options="(page.state.collections || []).map(c => ({ id: c.id, label: c.name }))"
+                      :loading="page.state.collectionsLoading" placeholder="Chọn bộ sưu tập" multiple-display="labels"
                       selected-count-text="Đã chọn" selected-count-suffix="giá trị" :count-when-at-least="2"
                       add-new-label="Thêm bộ sưu tập" multiple
                       class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500" />
@@ -1184,16 +648,16 @@ const onToggleVariant = (key: string, checked: boolean) => {
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
                     <div class="w-full">
-                      <input v-model="tagInput" type="text" placeholder="Nhập tag rồi nhấn Enter hoặc dấu phẩy"
+                      <input v-model="page.state.tagInput" type="text" placeholder="Nhập tag rồi nhấn Enter hoặc dấu phẩy"
                         class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        @keydown="onTagKeydown" @blur="commitTag" @paste="onTagPaste">
-                      <div v-if="tagsList.length" class="flex flex-wrap gap-2 mt-2">
-                        <span v-for="(tag, idx) in tagsList" :key="`${tag}-${idx}`"
+                        @keydown="page.tags.onTagKeydown" @blur="page.tags.commitTag" @paste="page.tags.onTagPaste">
+                      <div v-if="page.state.tagsList.length" class="flex flex-wrap gap-2 mt-2">
+                        <span v-for="(tag, idx) in page.state.tagsList" :key="`${tag}-${idx}`"
                           class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-normal bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
                           {{ tag }}
                           <button type="button"
                             class="inline-flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
-                            @click="removeTag(idx)">
+                            @click="page.tags.removeTag(idx)">
                             ×
                           </button>
                         </span>
