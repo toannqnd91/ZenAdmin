@@ -101,7 +101,9 @@ const _onSubmit = async () => {
   try {
     const ok = await submitForm()
     if (ok) {
-      navigateTo('/products')
+      // navigateTo('/products')
+      // alert('Sản phẩm đã được tạo thành công.')
+      console.log('Sản phẩm đã được tạo thành công.')
     }
   } catch (err) {
     // Nếu submitForm ném lỗi, in chi tiết
@@ -125,7 +127,6 @@ const _onSubmit = async () => {
       }
     }
     // Hiển thị lỗi, có thể thay alert bằng UI toast nếu có
-    // eslint-disable-next-line no-alert
     alert(message)
   }
 }
@@ -1099,7 +1100,5 @@ const onToggleVariant = (key: string, checked: boolean) => {
         </div>
       </div>
     </template>
-
-
   </UDashboardPanel>
 </template>

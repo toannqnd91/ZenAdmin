@@ -107,20 +107,69 @@ export const useProductForm = () => {
       // Validate
       if (!formData.value.name) errors.value.name = 'Tên sản phẩm là bắt buộc'
       if (!formData.value.content) errors.value.content = 'Nội dung là bắt buộc'
-      if (Object.keys(errors.value).length) return
-      // Call API
-      await productService.createProduct({
-        ...formData.value,
-        price: formData.value.price || 0,
-        categoryIds: formData.value.categoryIds,
-        imageUrls: formData.value.imageUrls
-      })
-      // Success
+      if (Object.keys(errors.value).length) throw new Error('Vui lòng kiểm tra lại thông tin bắt buộc')
+
+      // Build slug similar to page slug
+      const slug = (formData.value.name || 'new-product')
+        .toLowerCase()
+        .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-') || 'new-product'
+
+
+
+      // ==== PAYLOAD GỬI LÊN BACKEND ==============================================
+      const payload: Record<string, unknown> = {
+        id: 0,
+        name: formData.value.name,
+        slug,
+        price: Number(formData.value.price) || 0,
+        oldPrice: Number(formData.value.compareAtPrice) || 0,
+        isCallForPricing: false,
+        isAllowToOrder: false,
+        isPublished: true,
+        isFeatured: !!formData.value.isFeatured,
+        stockTrackingIsEnabled: false,
+        categoryIds: formData.value.categoryIds || [],
+        // Map descriptions
+        shortDescription: formData.value.description || '',
+        description: formData.value.content || '',
+        // IDs from extended form if any
+        supplierId: (formData.value as any).supplierId ?? null,
+        brandId: (formData.value as any).brandId ?? null,
+        // SKU/Barcode if available
+        sku: formData.value.sku || (formData.value as any).sku || '',
+        gtin: (formData.value as any).barcode || '',
+        // Images (backend may accept imageUrls directly)
+        imageUrls: formData.value.imageUrls || []
+        // === Thêm field mới ở đây ===
+      }
+      // ==== HẾT PHẦN PAYLOAD =====================================================
+
+      // Log payload to console
+      // eslint-disable-next-line no-console
+      console.log('Product payload:', JSON.stringify(payload, null, 2))
+
+      // Write payload to file for user inspection (Node.js/SSR only)
+      if (typeof window === 'undefined') {
+        const fs = await import('fs')
+        fs.writeFileSync('create-product.json', JSON.stringify(payload, null, 2), 'utf-8')
+      }
+
+      // Inventory flags if present on extended form
+      const manageInventory = (formData.value as any).manageInventory
+      const allowNegativeStock = (formData.value as any).allowNegativeStock
+      if (typeof manageInventory === 'boolean') payload.stockTrackingIsEnabled = manageInventory
+      if (typeof allowNegativeStock === 'boolean') payload.isAllowToOrder = allowNegativeStock
+
+      const res = await productService.createProduct(payload as any)
+      if (res && typeof res === 'object' && 'success' in res && (res as any).success === false) {
+        const msg = (res as any).message || 'Đã có lỗi xảy ra'
+        throw new Error(msg)
+      }
       return true
-    } catch (e) {
-      const err = e as Error
-      errors.value.form = err.message || 'Đã có lỗi xảy ra'
-      return false
     } finally {
       isSubmitting.value = false
     }
