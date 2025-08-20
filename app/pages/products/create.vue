@@ -133,14 +133,17 @@ const _onSubmit = async () => {
       const name = String(vRec.name || '')
       const opts = (vRec.options || {}) as Record<string, string>
       const optionNames = attrs.map(a => a.name)
-      const optionCombinations = optionNames.map((n: string, idx: number) => ({
-        ProductId: 0,
-        OptionId: idx + 1,
-        Option: null,
-        Value: String(opts[n] ?? ''),
-        SortIndex: idx,
-        Id: 0
-      }))
+      const optionCombinations = optionNames.map((n: string, idx: number) => {
+        // New payload shape: { OptionName, Value, SortIndex, (optional) Id }
+        const combo: Record<string, unknown> = {
+          OptionName: n,
+          Value: String(opts[n] ?? ''),
+          SortIndex: idx
+        }
+        // include Id if available in existing variant data (fallback to 0)
+        combo.Id = 0
+        return combo
+      })
 
       // Inventory for all warehouses with quantities
       const stocks = (formData.value.warehouseStocks || {}) as Record<number, number>
@@ -158,6 +161,9 @@ const _onSubmit = async () => {
         normalizedName: name,
         sku: null,
         gtin: null,
+        // costPrice: variant-level cost or product importPrice fallback
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        costPrice: Number((v as any)?.costPrice) || Number(formData.value.importPrice) || 0,
         price: Number(v?.price) || Number(formData.value.price) || 0,
         oldPrice: Number(formData.value.compareAtPrice) || Number(v?.price) || 0,
         thumbnailImage: null,
