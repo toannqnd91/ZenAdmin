@@ -161,8 +161,8 @@ export const useProductsService = () => {
         // Remove from local state
         products.value = products.value.filter(p => p.id !== id)
         toast.add({
-          title: 'Success',
-          description: 'Product deleted successfully'
+          title: 'Thông báo',
+          description: 'Xoá sản phẩm thành công!'
         })
       } else {
         throw new Error(response.message)

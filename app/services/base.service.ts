@@ -89,7 +89,19 @@ export abstract class BaseService {
         throw new Error(`API Error ${response.status} ${response.statusText}${msg ? `: ${msg}` : ''}`)
       }
 
-      const data = await response.json()
+      // Handle empty response body (e.g. for DELETE)
+      let data: unknown
+      const contentLength = response.headers.get('content-length')
+      if (contentLength === '0') {
+        data = { success: true }
+      } else {
+        const text = await response.text()
+        if (!text) {
+          data = { success: true }
+        } else {
+          data = JSON.parse(text)
+        }
+      }
       console.log('API Success Response:', data)
       return data as ApiResponse<T>
     } catch (error) {
