@@ -9,6 +9,16 @@ import type { ProductFormData as BaseProductFormData } from '@/composables/usePr
 import type { ProductCategory } from '@/composables/useProductsCategoriesService'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
 import { productService } from '@/services/product.service'
+import { useApiConfig } from '@/composables/useApiConfig'
+
+// Image preview URL helper — exposed to template
+const { imageBaseUrl } = useApiConfig()
+function getPreviewUrl(img: string): string {
+  if (!img) return ''
+  if (/^https?:\/\//.test(img)) return img
+  const filename = String(img).split('/').pop() || ''
+  return `${imageBaseUrl}/image/${filename}`
+}
 
 // Extend formData type locally to include supplierId, collectionIds and optional tags
 type ExtendedProductFormData = BaseProductFormData & {
@@ -98,6 +108,7 @@ const slug = computed(() => {
 
 // Keep submit wrapper for header buttons if needed
 const _onSubmit = async () => {
+  const { imageBaseUrl } = useApiConfig()
   try {
     // Build options from activeAttributes
     const attrs = (activeAttributes.value as Array<{ name: string, values: string[] }>) || []
@@ -106,6 +117,15 @@ const _onSubmit = async () => {
       displayType: 'text',
       values: (a.values || []).map(v => ({ key: v, display: null }))
     }))
+
+    // Helper to normalize a filename or url to {imageBaseUrl}/image/{filename}
+    const normalizeImageUrl = (url: string) => {
+      if (!url) return ''
+      if (url.startsWith('http://') || url.startsWith('https://')) return url
+      // Remove any leading /image/ if present
+      const fname = url.replace(/^\/image\//, '')
+      return `${imageBaseUrl}/image/${fname}`
+    }
 
     // Map variants into requested schema
     const variations = (variants.value || []).map((v) => {
@@ -122,9 +142,17 @@ const _onSubmit = async () => {
         Id: 0
       }))
 
-      // Inventory per selected warehouse
-      const warehouseId = formData.value.warehouseId || (warehouses.value[0]?.id ?? 1)
-      const quantity = Number((formData.value.warehouseStocks && formData.value.warehouseStocks[warehouseId]) ?? 0)
+      // Inventory for all warehouses with quantities
+      const stocks = (formData.value.warehouseStocks || {}) as Record<number, number>
+      const inventory = Object.keys(stocks).map(idStr => ({
+        warehouseId: Number(idStr),
+        quantity: Number((stocks as Record<string, number>)[idStr] || 0)
+      }))
+
+      // Normalize all image URLs for this variant
+      const imageUrls = Array.isArray(formData.value.imageUrls)
+        ? formData.value.imageUrls.map(normalizeImageUrl)
+        : []
       return {
         name,
         normalizedName: name,
@@ -133,15 +161,18 @@ const _onSubmit = async () => {
         price: Number(v?.price) || Number(formData.value.price) || 0,
         oldPrice: Number(formData.value.compareAtPrice) || Number(v?.price) || 0,
         thumbnailImage: null,
-        thumbnailImageUrl: Array.isArray(formData.value.imageUrls) && formData.value.imageUrls.length ? formData.value.imageUrls[0] : null,
+        thumbnailImageUrl: imageUrls.length ? imageUrls[0] : null,
         newImages: [],
-        imageUrls: Array.isArray(formData.value.imageUrls) ? formData.value.imageUrls : [],
+        imageUrls,
         OptionCombinations: optionCombinations,
-        inventory: [
-          { warehouseId, quantity }
-        ]
+        inventory
       }
     })
+
+    // Normalize main product imageUrls as well
+    formData.value.imageUrls = Array.isArray(formData.value.imageUrls)
+      ? formData.value.imageUrls.map(normalizeImageUrl)
+      : []
 
     const ok = await submitForm({ options, variations })
     if (ok) {
@@ -446,9 +477,32 @@ const variants = computed(() => {
 })
 
 const totalVariantStock = computed(() => {
-  const list = variants.value as unknown as Array<{ stock?: number }>
+  // Sum quantities across all variants and all warehouses.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (Array.isArray(list) ? list : []).reduce((sum, v) => sum + (Number((v as any)?.stock) || 0), 0)
+  const list = variants.value as unknown as any[]
+  if (!Array.isArray(list) || list.length === 0) return 0
+
+  // Helper to sum inventory array (items with { warehouseId, quantity })
+  const sumInventoryArray = (inv: unknown) => {
+    if (!Array.isArray(inv)) return 0
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (inv as any[]).reduce((s: number, it: any) => s + (Number(it?.quantity) || 0), 0)
+  }
+
+  // Global warehouse stocks fallback (product-level): { [id]: qty }
+  const globalStocks = formData.value.warehouseStocks || {}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const globalSum = Object.keys(globalStocks).reduce((s, k) => s + (Number((globalStocks as any)[k]) || 0), 0)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return list.reduce((total: number, v: any) => {
+    // If variant object already contains inventory array, use it
+    if (Array.isArray(v?.inventory)) {
+      return total + sumInventoryArray(v.inventory)
+    }
+    // Otherwise fall back to product-level warehouse stocks
+    return total + globalSum
+  }, 0)
 })
 
 // ----- Variant selection state (for checkboxes) -----
@@ -809,7 +863,8 @@ const onToggleVariant = (key: string, checked: boolean) => {
                           idx === 0 ? 'row-span-2 col-span-2 h-52 w-full' : 'h-24 w-full'
                         ]" draggable="true" @dragstart="(e) => onDragStart(e, idx)" @dragover.prevent="onDragOver"
                           @drop="(e) => onDrop(e, idx)" @dragend="onDragEnd">
-                          <img v-if="!isUploadingImage" :src="img" class="object-cover w-full h-full">
+                          <img v-if="!isUploadingImage" :src="getPreviewUrl(img)" class="object-cover w-full h-full">
+
                           <!-- Overlay 'Ảnh đại diện' cho ảnh đầu tiên -->
                           <div v-if="!isUploadingImage && idx === 0"
                             class="absolute bottom-0 left-0 w-full bg-black bg-opacity-60 text-white text-base font-semibold text-center py-1 select-none rounded-b-md">
