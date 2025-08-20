@@ -81,6 +81,9 @@ const emit = defineEmits<{
   'update:pagination': [{ pageIndex: number, pageSize: number }]
   'delete': [string[]]
   'reorder': [Array<Record<string, unknown>>]
+  'row-copy-id': [string | number]
+  'row-edit': [string | number]
+  'row-delete': [string | number]
 }>()
 
 /* filter + paging */
@@ -122,8 +125,9 @@ const setRowSelected = (id: string | number, v: boolean) => {
 }
 const selectedCount = computed(() => Object.values(props.rowSelection || {}).filter(Boolean).length)
 
-const pageAllSelected = computed(() => ((pageItems.value as unknown) as Record<string, unknown>[]).length > 0 && ((pageItems.value as unknown) as Record<string, unknown>[]).every(it => isSelected((it as any).id)))
-const pageSomeSelected = computed(() => ((pageItems.value as unknown) as Record<string, unknown>[]).some(it => isSelected((it as any).id)))
+type LooseRow = Record<string, unknown> & { id?: string | number }
+const pageAllSelected = computed(() => ((pageItems.value as unknown) as LooseRow[]).length > 0 && ((pageItems.value as unknown) as LooseRow[]).every(it => isSelected(String(it.id))))
+const pageSomeSelected = computed(() => ((pageItems.value as unknown) as LooseRow[]).some(it => isSelected(String(it.id))))
 const selectAllState = computed<'none' | 'some' | 'all'>(() =>
   pageAllSelected.value ? 'all' : (pageSomeSelected.value ? 'some' : 'none')
 )
@@ -192,6 +196,34 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
   }
   return item[column.key]
 }
+
+/* Row action menu helpers */
+const rowMenuOpenId = ref<string | null>(null)
+const toggleRowMenu = (id: string | number) => {
+  const key = String(id)
+  rowMenuOpenId.value = rowMenuOpenId.value === key ? null : key
+}
+const isRowMenuOpen = (id: string | number) => rowMenuOpenId.value === String(id)
+const onRowCopyId = (item: Record<string, unknown>) => {
+  const id = (item as LooseRow).id as string | number
+  try {
+    navigator.clipboard.writeText(String(id))
+  } catch (e) {
+    void e
+  }
+  emit('row-copy-id', id)
+  rowMenuOpenId.value = null
+}
+const onRowEdit = (item: Record<string, unknown>) => {
+  const id = (item as LooseRow).id as string | number
+  emit('row-edit', id)
+  rowMenuOpenId.value = null
+}
+const onRowDelete = (item: Record<string, unknown>) => {
+  const id = (item as LooseRow).id as string | number
+  emit('row-delete', id)
+  rowMenuOpenId.value = null
+}
 </script>
 
 <template>
@@ -246,7 +278,7 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
         </div>
 
         <template v-if="addButtonDropdownItems && addButtonDropdownItems.length">
-          <UDropdownMenu :items="addButtonDropdownItems" :popper="{ placement: 'bottom-end' }">
+          <UDropdownMenu :items="(addButtonDropdownItems as any)" :popper="{ placement: 'bottom-end' }">
             <UButton
               label="Thêm widget"
               color="primary"
@@ -373,7 +405,7 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
         <colgroup>
           <col class="w-14">
           <template v-if="props.colWidths && props.colWidths.length === columns.length">
-            <col v-for="(w, idx) in props.colWidths" :key="'colw'+idx" :style="{ width: w }" />
+            <col v-for="(w, idx) in props.colWidths" :key="'colw'+idx" :style="{ width: w }">
           </template>
           <template v-else>
             <col
@@ -515,27 +547,51 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
             <!-- actions -->
             <td class="py-4 pr-4">
               <div class="flex justify-end">
-                <slot
-                  name="row-actions"
-                  :item="item"
-                >
-                  <button
-                    type="button"
-                    class="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-gray-100"
-                    @click.stop
-                  >
-                    <svg
-                      class="w-5 h-5 text-gray-700"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
+                <slot name="row-actions" :item="item">
+                  <div class="relative inline-block text-left">
+                    <button
+                      type="button"
+                      class="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-gray-100"
+                      @click.stop="toggleRowMenu(item.id as string | number)"
                     >
-                      <circle cx="12" cy="6" r="1" />
-                      <circle cx="12" cy="12" r="1" />
-                      <circle cx="12" cy="18" r="1" />
-                    </svg>
-                  </button>
+                      <svg
+                        class="w-5 h-5 text-gray-700"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <circle cx="12" cy="6" r="1" />
+                        <circle cx="12" cy="12" r="1" />
+                        <circle cx="12" cy="18" r="1" />
+                      </svg>
+                    </button>
+                    <div
+                      v-if="isRowMenuOpen(item.id as string | number)"
+                      class="origin-top-right absolute right-0 mt-2 w-40 rounded-md shadow-lg bg-white z-50 ring-black ring-opacity-5"
+                    >
+                      <div class="py-1">
+                        <button
+                          class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          @click.stop="onRowCopyId(item)"
+                        >
+                          Copy ID
+                        </button>
+                        <button
+                          class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          @click.stop="onRowEdit(item)"
+                        >
+                          Sửa
+                        </button>
+                        <button
+                          class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                          @click.stop="onRowDelete(item)"
+                        >
+                          Xoá
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </slot>
               </div>
             </td>
@@ -620,27 +676,51 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
             <!-- actions -->
             <td class="py-4 pr-4">
               <div class="flex justify-end">
-                <slot
-                  name="row-actions"
-                  :item="item"
-                >
-                  <button
-                    type="button"
-                    class="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-gray-100"
-                    @click.stop
-                  >
-                    <svg
-                      class="w-5 h-5 text-gray-700"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
+                <slot name="row-actions" :item="item">
+                  <div class="relative inline-block text-left">
+                    <button
+                      type="button"
+                      class="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-gray-100"
+                      @click.stop="toggleRowMenu(item.id as string | number)"
                     >
-                      <circle cx="12" cy="6" r="1" />
-                      <circle cx="12" cy="12" r="1" />
-                      <circle cx="12" cy="18" r="1" />
-                    </svg>
-                  </button>
+                      <svg
+                        class="w-5 h-5 text-gray-700"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <circle cx="12" cy="6" r="1" />
+                        <circle cx="12" cy="12" r="1" />
+                        <circle cx="12" cy="18" r="1" />
+                      </svg>
+                    </button>
+                    <div
+                      v-if="isRowMenuOpen(item.id as string | number)"
+                      class="origin-top-right absolute right-0 mt-2 w-40 rounded-md shadow-lg bg-white z-50 ring-1 ring-black ring-opacity-5"
+                    >
+                      <div class="py-1">
+                        <button
+                          class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          @click.stop="onRowCopyId(item)"
+                        >
+                          Copy ID
+                        </button>
+                        <button
+                          class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          @click.stop="onRowEdit(item)"
+                        >
+                          Sửa
+                        </button>
+                        <button
+                          class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                          @click.stop="onRowDelete(item)"
+                        >
+                          Xoá
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </slot>
               </div>
             </td>

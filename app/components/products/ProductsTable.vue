@@ -17,6 +17,14 @@ type ProductItem = {
   createdOn?: string | Date
 }
 
+type LooseItem = Record<string, unknown> & {
+  id?: string | number
+  name?: string
+  thumbnailImageUrl?: string | null
+  variations?: Array<{ stockQuantity?: number | null }>
+  stockQuantity?: number | null
+}
+
 interface Props {
   data: ProductItem[]
   loading?: boolean
@@ -27,9 +35,10 @@ interface Props {
 
 defineProps<Props>()
 const emit = defineEmits<{
-  'update:q': [string]
-  'update:rowSelection': [Record<string, boolean>]
-  'update:pagination': [{ pageIndex: number, pageSize: number }]
+  (e: 'update:q', value: string): void
+  (e: 'update:rowSelection', value: Record<string, boolean>): void
+  (e: 'update:pagination', value: { pageIndex: number, pageSize: number }): void
+  (e: 'copy-id' | 'edit' | 'delete', id: string | number): void
 }>()
 
 // Table configuration
@@ -66,9 +75,21 @@ const addButton = {
   href: '/products/create'
 }
 
-const handleRowClick = (item: ProductItem) => {
-  navigateTo(`/products/${item.id}/update`)
+const handleRowClick = (item: Record<string, unknown>) => {
+  const id = (item as LooseItem).id
+  navigateTo(`/products/${id}/update`)
 }
+
+// showMenuFor removed; use onToggleMenu helper
+
+// Safe template helpers used in name/inventory columns
+const getThumbnail = (raw: Record<string, unknown>) => ((raw as LooseItem).thumbnailImageUrl as string) || '/no-image.svg'
+const getItemName = (raw: Record<string, unknown>) => String((raw as LooseItem).name ?? '')
+const onImgError = (e: Event) => {
+  const t = e.target as HTMLImageElement | null
+  if (t) t.src = '/no-image.svg'
+}
+const invSafe = (raw: Record<string, unknown>) => invText(raw as unknown as ProductItem)
 
 /* helpers */
 const invText = (p: ProductItem) => {
@@ -106,14 +127,14 @@ const invText = (p: ProductItem) => {
       <div class="flex items-center gap-4">
         <div class="h-11 w-11 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
           <img
-            :src="item.thumbnailImageUrl || '/no-image.svg'"
-            :alt="item.name"
+            :src="getThumbnail(item)"
+            :alt="getItemName(item)"
             class="h-full w-full object-cover"
-            @error="(e: any) => e.target && (e.target.src='/no-image.svg')"
+            @error="onImgError"
           >
         </div>
         <div class="text-[15px] text-gray-900 font-medium">
-          {{ item.name }}
+          {{ getItemName(item) }}
         </div>
       </div>
     </template>
@@ -141,12 +162,14 @@ const invText = (p: ProductItem) => {
 
     <!-- Custom inventory column -->
     <template #column-inventory="{ item }">
-      <div :class="['text-gray-900', invText(item).danger ? 'text-red-500' : '']">
-        {{ invText(item).line1 }}
+      <div :class="['text-gray-900', invSafe(item).danger ? 'text-red-500' : '']">
+        {{ invSafe(item).line1 }}
       </div>
       <div class="text-xs text-gray-400">
-        {{ invText(item).variants }}
+        {{ invSafe(item).variants }}
       </div>
     </template>
+
+  <!-- no custom actions; use BaseTable built-in actions -->
   </BaseTable>
 </template>
