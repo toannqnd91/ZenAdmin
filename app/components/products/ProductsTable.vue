@@ -31,9 +31,10 @@ interface Props {
   q: string
   rowSelection: Record<string, boolean>
   pagination: { pageIndex: number, pageSize: number }
+  totalPages?: number
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 const emit = defineEmits<{
   (e: 'update:q', value: string): void
   (e: 'update:rowSelection', value: Record<string, boolean>): void
@@ -144,6 +145,7 @@ const invText = (p: ProductItem) => {
     :columns="columns"
     :add-button="addButton"
     :row-click-handler="handleRowClick"
+  :total-pages="props.totalPages"
     search-placeholder="Tìm kiếm sản phẩm"
     @row-copy-id="onRowCopyId"
     @row-edit="onRowEdit"

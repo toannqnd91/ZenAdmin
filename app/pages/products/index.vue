@@ -10,7 +10,8 @@ const {
   products,
   loading,
   error,
-  deleteProduct
+  deleteProduct,
+  totalPages
 } = useProductsService()
 
 const onRowCopyId = (id: string | number) => {
@@ -65,6 +66,7 @@ const onRowDelete = (id: string | number) => {
             v-model:pagination="pagination"
             :data="products"
             :loading="loading"
+            :total-pages="totalPages"
             @copy-id="onRowCopyId"
             @edit="onRowEdit"
             @delete="onRowDelete"

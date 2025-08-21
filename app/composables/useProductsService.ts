@@ -21,10 +21,12 @@ export const useProductsService = () => {
   const products = ref<ProductItem[]>([])
   const loading = ref(false)
   const error = ref<Error | null>(null)
+  const totalRecords = ref(0)
+  const totalPages = ref(0)
 
   // Computed
   const filtered = computed(() =>
-    products.value.filter(item => 
+    products.value.filter(item =>
       item.name.toLowerCase().includes(q.value.toLowerCase())
     )
   )
@@ -46,19 +48,14 @@ export const useProductsService = () => {
       if (typeof options?.hasOptions !== 'undefined') {
         opts.hasOptions = options.hasOptions
       }
-  // Always send sort by Id descending (newest first)
-  opts.sort = { field: 'Id', reverse: true }
-  const response = await productService.getProducts(opts)
+      // Always send sort by Id descending (newest first)
+      opts.sort = { field: 'Id', reverse: true }
+      const response = await productService.getProducts(opts)
       if (response.success) {
-        // API trả về response.data.items hoặc response.data là mảng
-        if (Array.isArray(response.data)) {
-          products.value = response.data
-        } else if (response.data?.items) {
-          products.value = response.data.items
-        } else {
-          products.value = []
-        }
-        // Nếu muốn dùng tổng số bản ghi: response.data?.totalRecord
+        // API trả về response.data.items
+        products.value = (response.data?.items as ProductItem[]) || []
+        totalRecords.value = Number(response.data?.totalRecord || 0)
+        totalPages.value = Number(response.data?.numberOfPages || 0)
       } else {
         throw new Error(response.message)
       }
@@ -192,10 +189,10 @@ export const useProductsService = () => {
     return words.slice(0, wordLimit).join(' ') + '...'
   }
 
-  function getFirstImageUrl(imageUrls: string[]): string | undefined {
-    if (!imageUrls || imageUrls.length === 0) return undefined
+  function getFirstImageUrl(imageUrls: string[]): string | null {
+    if (!imageUrls || imageUrls.length === 0) return null
     const firstImage = imageUrls[0]
-    return firstImage ? fileService.getFileUrl(firstImage || undefined) : undefined
+    return fileService.getFileUrl(firstImage)
   }
 
   function getRowItems(row: Row<ProductItem>) {
@@ -240,8 +237,8 @@ export const useProductsService = () => {
     ]
   }
 
-  // Watch search query and refetch
-  watchEffect(() => {
+  // Watch search query and pagination and refetch
+  watch([q, pagination], () => {
     const searchValue = unref(q)
     fetchProducts({
       search: searchValue,
@@ -250,7 +247,7 @@ export const useProductsService = () => {
         number: pagination.value.pageSize
       }
     })
-  })
+  }, { deep: true })
 
   // Initial fetch
   onMounted(() => {
@@ -267,6 +264,8 @@ export const useProductsService = () => {
     q,
     rowSelection,
     pagination,
+  totalRecords: computed(() => totalRecords.value),
+  totalPages: computed(() => totalPages.value),
     products: computed(() => products.value),
     filtered,
     loading: readonly(loading),

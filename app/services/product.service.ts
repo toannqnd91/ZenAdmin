@@ -2,7 +2,6 @@ import { BaseService } from './base.service'
 import { API_ENDPOINTS } from '@/utils/api'
 import type { ProductItem } from '@/composables/useProducts'
 
-
 export interface WarehouseItem {
   id: number
   name: string
@@ -74,7 +73,7 @@ export class ProductService extends BaseService {
       search: searchObj,
       sort: options?.sort
     })
-    return this.post<ProductItem[]>(API_ENDPOINTS.PRODUCTS, body)
+  return this.post<{ items: ProductItem[], totalRecord: number, numberOfPages: number }>(API_ENDPOINTS.PRODUCTS, body)
   }
 
   /**

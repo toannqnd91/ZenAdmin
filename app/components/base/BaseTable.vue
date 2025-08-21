@@ -30,6 +30,7 @@ interface Props {
   loading?: boolean
   q: string
   rowSelection: Record<string, boolean>
+  pagination: { pageIndex: number, pageSize: number }
 
   // Configuration
   title: string
@@ -37,6 +38,10 @@ interface Props {
   addButton?: AddButton
   addButtonDropdownItems?: unknown[]
   actions?: TableAction[]
+
+  // Server pagination totals (optional)
+  totalRecords?: number
+  totalPages?: number
 
   // Row actions
   rowClickEnabled?: boolean
@@ -97,10 +102,24 @@ const filtered = computed(() =>
   })
 )
 
-// const start = computed(() => props.pagination.pageIndex * props.pagination.pageSize)
-// const end = computed(() => start.value + props.pagination.pageSize)
-// const pageItems = computed(() => filtered.value.slice(start.value, end.value))
-const pageItems = filtered // Hiển thị tất cả rows
+// Server-side paging: data already corresponds to current page; still allow client filtering within current page
+const pageItems = filtered
+
+// Pagination footer helpers
+const currentPage = computed(() => (props.pagination?.pageIndex ?? 0) + 1)
+const totalPages = computed(() => props.totalPages ?? 1)
+const canPrev = computed(() => (props.pagination?.pageIndex ?? 0) > 0)
+const canNext = computed(() => currentPage.value < totalPages.value)
+const goPrev = () => {
+  if (!canPrev.value) return
+  const next = { pageIndex: (props.pagination.pageIndex || 0) - 1, pageSize: props.pagination.pageSize }
+  emit('update:pagination', next)
+}
+const goNext = () => {
+  if (!canNext.value) return
+  const next = { pageIndex: (props.pagination.pageIndex || 0) + 1, pageSize: props.pagination.pageSize }
+  emit('update:pagination', next)
+}
 
 // Draggable items local copy when dragging is enabled. We keep a local mutable copy
 const draggableItems = ref<Record<string, unknown>[]>([])
@@ -732,8 +751,29 @@ const onRowDelete = (item: Record<string, unknown>) => {
     </div>
 
     <!-- Footer -->
-    <div class="flex items-center justify-end px-6 pb-4">
+    <div class="flex items-center justify-between px-6 pb-4">
       <slot name="header-actions" />
+      <div class="flex items-center gap-3 text-sm text-gray-600">
+        <span>Trang {{ currentPage }} / {{ totalPages }}</span>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="h-8 px-3 inline-flex items-center rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
+            :disabled="!canPrev"
+            @click="goPrev"
+          >
+            Trước
+          </button>
+          <button
+            type="button"
+            class="h-8 px-3 inline-flex items-center rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
+            :disabled="!canNext"
+            @click="goNext"
+          >
+            Sau
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
