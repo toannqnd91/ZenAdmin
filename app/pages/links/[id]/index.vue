@@ -238,18 +238,20 @@ const onDragEnd = async (event: SortableEvent) => {
           newIndex: event.newIndex
         })
         
-        // Tính newSortOrder trong nhóm cha mới
+        // Tính lại toàn bộ thứ tự trong nhóm cha mới (gửi full danh sách cùng cấp)
         const siblings = currentLinks.value.filter(l => (l.parentId ?? null) === newParentId)
-        const newSortOrder = siblings.findIndex(l => l.id === draggedLink.id)
-        
-        console.log('Calling reorder API with:', {
-          menuId: draggedLink.id, // menuId chính là itemId
-          newParentId,
-          newSortOrder,
+        const items = siblings.map((l, idx) => ({
+          menuId: l.id,
+          parentId: newParentId ?? null,
+          sortOrder: idx
+        }))
+
+        console.log('Calling reorder API with full sibling list:', {
+          items,
           siblingCount: siblings.length
         })
-        
-        await linksService.reorderMenuItemsV2(draggedLink.id, newParentId, newSortOrder)
+
+        await linksService.reorderMenuItemsV2(items)
         console.log('Successfully saved new order to API')
         
         // Refresh để cập nhật hierarchy từ server

@@ -127,15 +127,19 @@ export class LinksService extends BaseService {
 
   /**
    * Reorder menu items (new API)
-   * POST /Menus/reorder { menuId, newParentId, newSortOrder }
-   * menuId ở đây chính là itemId của item được kéo thả
+   * POST /Menus/reorder
+   * Body: { items: [{ menuId, parentId, sortOrder }] }
+   * - parentId: 0 for root-level
    */
-  async reorderMenuItemsV2(menuId: number, newParentId: number | null, newSortOrder: number) {
-    return this.post<unknown>(API_ENDPOINTS.MENU_REORDER, {
-      menuId,
-      newParentId,
-      newSortOrder
-    })
+  async reorderMenuItemsV2(items: Array<{ menuId: number, parentId: number | null, sortOrder: number }>) {
+    const payload = {
+      items: items.map(it => ({
+        menuId: Number(it.menuId),
+        parentId: it.parentId == null ? 0 : Number(it.parentId),
+        sortOrder: Number(it.sortOrder)
+      }))
+    }
+    return this.post<unknown>(API_ENDPOINTS.MENU_REORDER, payload)
   }
 
   /**
