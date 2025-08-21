@@ -95,7 +95,7 @@ export const useProductForm = () => {
   }
 
   // Submit with optional extras for options/variations
-  const submitForm = async (extras?: { options?: unknown[], variations?: unknown[] }) => {
+  const submitForm = async (extras?: { options?: unknown[], variations?: unknown[], productImages?: { caption: string, mediaUrl: string }[] }) => {
     errors.value = {}
     isSubmitting.value = true
     try {
@@ -114,7 +114,7 @@ export const useProductForm = () => {
         .replace(/-+/g, '-') || 'new-product'
 
       // ==== PAYLOAD GỬI LÊN BACKEND (bổ sung tại đây nếu cần) ===================
-      const payload: Record<string, unknown> = {
+  const payload: Record<string, unknown> = {
         id: 0,
         name: formData.value.name,
         slug,
@@ -136,10 +136,12 @@ export const useProductForm = () => {
         sku: formData.value.sku || (formData.value as unknown as Record<string, unknown>)['sku'] || '',
         gtin: (formData.value as unknown as Record<string, unknown>)['barcode'] || '',
         // Images (backend may accept imageUrls directly)
-        imageUrls: formData.value.imageUrls || [],
+  // Only include imageUrls if not using productImages
+  ...(extras?.productImages ? {} : { imageUrls: formData.value.imageUrls || [] }),
         // Extras from UI mapping
-        options: extras?.options || [],
-        variations: extras?.variations || []
+  options: extras?.options || [],
+  variations: extras?.variations || [],
+  ...(extras?.productImages ? { productImages: extras.productImages } : {})
         // === Thêm field mới ở đây ===
       }
       // ==== HẾT PHẦN PAYLOAD =====================================================
@@ -149,6 +151,11 @@ export const useProductForm = () => {
       const allowNegativeStock = (formData.value as unknown as Record<string, unknown>)['allowNegativeStock']
       if (typeof manageInventory === 'boolean') payload.stockTrackingIsEnabled = manageInventory
       if (typeof allowNegativeStock === 'boolean') payload.isAllowToOrder = allowNegativeStock
+
+      // Remove imageUrls if productImages is present
+      if (extras?.productImages && 'imageUrls' in payload) {
+        delete payload.imageUrls
+      }
 
       // Log payload to console
       console.log('Product payload:', JSON.stringify(payload, null, 2))

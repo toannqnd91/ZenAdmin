@@ -83,7 +83,17 @@ const handleRowClick = (item: Record<string, unknown>) => {
 // showMenuFor removed; use onToggleMenu helper
 
 // Safe template helpers used in name/inventory columns
-const getThumbnail = (raw: Record<string, unknown>) => ((raw as LooseItem).thumbnailImageUrl as string) || '/no-image.svg'
+const config = useRuntimeConfig()
+const imageBaseUrl = config.public?.imageBaseUrl || ''
+const getThumbnail = (raw: Record<string, unknown>) => {
+  const url = (raw as LooseItem).thumbnailImageUrl as string
+  if (!url) return '/no-image.svg'
+  // If url looks like a filename (no slash), prepend imageBaseUrl
+  if (!url.includes('/') && imageBaseUrl) {
+    return `${imageBaseUrl}/image/${url}`
+  }
+  return url
+}
 const getItemName = (raw: Record<string, unknown>) => String((raw as LooseItem).name ?? '')
 const onImgError = (e: Event) => {
   const t = e.target as HTMLImageElement | null

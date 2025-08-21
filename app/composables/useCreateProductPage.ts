@@ -120,9 +120,7 @@ export function useCreateProductPage() {
           quantity: Number((stocks as Record<string, number>)[idStr] || 0)
         }))
 
-        const imageUrls = Array.isArray(formData.value.imageUrls)
-          ? formData.value.imageUrls.map(normalizeImageUrl)
-          : []
+        // No imageUrls in variant payload
         return {
           name,
           normalizedName: name,
@@ -133,19 +131,26 @@ export function useCreateProductPage() {
           price: Number(v?.price) || Number(formData.value.price) || 0,
           oldPrice: Number(formData.value.compareAtPrice) || Number(v?.price) || 0,
           thumbnailImage: null,
-          thumbnailImageUrl: imageUrls.length ? imageUrls[0] : null,
+          thumbnailImageUrl: null,
           newImages: [],
-          imageUrls,
           OptionCombinations: optionCombinations,
           inventory
         }
       })
 
-      formData.value.imageUrls = Array.isArray(formData.value.imageUrls)
-        ? formData.value.imageUrls.map(normalizeImageUrl)
-        : []
+      // Build productImages array from imagePreviews, only filename for mediaUrl
+      const productImages = (imagePreviews.value || []).map((img) => ({
+        caption: 'Image Caption',
+        mediaUrl: typeof img === 'string' ? img.split('/').pop() || img : img
+      }))
 
-      const ok = await submitForm({ options, variations })
+      // Remove imageUrls from formData before submit
+      if ('imageUrls' in formData.value) {
+        delete (formData.value as any).imageUrls
+      }
+
+      // Patch submitForm to accept productImages at root
+      const ok = await submitForm({ options, variations, productImages })
       if (ok) {
         console.log('Sản phẩm đã được tạo thành công.')
       }
