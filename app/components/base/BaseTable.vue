@@ -30,7 +30,7 @@ interface Props {
   loading?: boolean
   q: string
   rowSelection: Record<string, boolean>
-  pagination: { pageIndex: number, pageSize: number }
+  pagination?: { pageIndex: number, pageSize: number }
 
   // Configuration
   title: string
@@ -64,6 +64,9 @@ const props = withDefaults(defineProps<Props>(), {
   rowClickEnabled: true,
   showFilter: true,
   searchPlaceholder: 'Tìm kiếm...',
+  pagination: () => ({ pageIndex: 0, pageSize: 15 }),
+  totalRecords: 0,
+  totalPages: 1,
   actions: () => [
     {
       label: 'Change Status',
@@ -108,6 +111,7 @@ const pageItems = filtered
 // Pagination footer helpers
 const currentPage = computed(() => (props.pagination?.pageIndex ?? 0) + 1)
 const totalPages = computed(() => props.totalPages ?? 1)
+const totalRecords = computed(() => props.totalRecords ?? 0)
 const canPrev = computed(() => (props.pagination?.pageIndex ?? 0) > 0)
 const canNext = computed(() => currentPage.value < totalPages.value)
 const goPrev = () => {
@@ -120,6 +124,37 @@ const goNext = () => {
   const next = { pageIndex: (props.pagination.pageIndex || 0) + 1, pageSize: props.pagination.pageSize }
   emit('update:pagination', next)
 }
+
+// Build a compact page list with ellipses: e.g., 1 … 4 5 6 … 12
+const maxButtons = 5
+const pageList = computed<(number | string)[]>(() => {
+  const total = Math.max(1, totalPages.value)
+  const cur = Math.min(Math.max(1, currentPage.value), total)
+  const pages: (number | string)[] = []
+  const add = (p: number | string) => pages.includes(p) || pages.push(p)
+  if (total <= maxButtons + 2) {
+    for (let i = 1; i <= total; i++) add(i)
+    return pages
+  }
+  const range = Math.floor(maxButtons / 2)
+  const start = Math.max(2, cur - range)
+  const end = Math.min(total - 1, cur + range)
+  add(1)
+  if (start > 2) add('…')
+  for (let i = start; i <= end; i++) add(i)
+  if (end < total - 1) add('…')
+  add(total)
+  return pages
+})
+
+const gotoPage = (p: number) => {
+  const clamped = Math.min(Math.max(1, p), totalPages.value)
+  const next = { pageIndex: clamped - 1, pageSize: props.pagination.pageSize }
+  emit('update:pagination', next)
+}
+
+const rangeFrom = computed(() => (currentPage.value - 1) * props.pagination.pageSize + (pageItems.value.length ? 1 : 0))
+const rangeTo = computed(() => (currentPage.value - 1) * props.pagination.pageSize + pageItems.value.length)
 
 // Draggable items local copy when dragging is enabled. We keep a local mutable copy
 const draggableItems = ref<Record<string, unknown>[]>([])
@@ -753,26 +788,59 @@ const onRowDelete = (item: Record<string, unknown>) => {
     <!-- Footer -->
     <div class="flex items-center justify-between px-6 pb-4">
       <slot name="header-actions" />
-      <div class="flex items-center gap-3 text-sm text-gray-600">
-        <span>Trang {{ currentPage }} / {{ totalPages }}</span>
-        <div class="flex items-center gap-2">
+      <div class="flex items-center gap-4 text-sm text-gray-600">
+        <span v-if="totalRecords">Hiển thị {{ rangeFrom }}–{{ rangeTo }} trên {{ totalRecords }}</span>
+        <nav class="flex items-center gap-1" aria-label="Pagination">
           <button
             type="button"
-            class="h-8 px-3 inline-flex items-center rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
+            class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
             :disabled="!canPrev"
+            aria-label="Trang trước"
             @click="goPrev"
           >
-            Trước
+            <svg
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+          <button
+            v-for="p in pageList"
+            :key="`p-${p}`"
+            type="button"
+            :disabled="p==='…'"
+            :class="[
+              'h-8 min-w-8 px-2 inline-flex items-center justify-center rounded-md border text-sm',
+              p===currentPage
+                ? 'bg-[#1b64f2] border-[#1b64f2] text-white'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+            ]"
+            @click="p!=='…' && gotoPage(p as number)"
+          >
+            {{ p }}
           </button>
           <button
             type="button"
-            class="h-8 px-3 inline-flex items-center rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
+            class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
             :disabled="!canNext"
+            aria-label="Trang sau"
             @click="goNext"
           >
-            Sau
+            <svg
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M9 18l6-6-6-6" />
+            </svg>
           </button>
-        </div>
+        </nav>
       </div>
     </div>
   </div>

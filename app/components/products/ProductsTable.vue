@@ -32,6 +32,7 @@ interface Props {
   rowSelection: Record<string, boolean>
   pagination: { pageIndex: number, pageSize: number }
   totalPages?: number
+  totalRecords?: number
 }
 
 const props = defineProps<Props>()
@@ -145,7 +146,8 @@ const invText = (p: ProductItem) => {
     :columns="columns"
     :add-button="addButton"
     :row-click-handler="handleRowClick"
-  :total-pages="props.totalPages"
+    :total-pages="props.totalPages"
+    :total-records="props.totalRecords"
     search-placeholder="Tìm kiếm sản phẩm"
     @row-copy-id="onRowCopyId"
     @row-edit="onRowEdit"

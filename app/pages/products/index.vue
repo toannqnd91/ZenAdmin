@@ -11,7 +11,8 @@ const {
   loading,
   error,
   deleteProduct,
-  totalPages
+  totalPages,
+  totalRecords
 } = useProductsService()
 
 const onRowCopyId = (id: string | number) => {
@@ -67,6 +68,7 @@ const onRowDelete = (id: string | number) => {
             :data="products"
             :loading="loading"
             :total-pages="totalPages"
+            :total-records="totalRecords"
             @copy-id="onRowCopyId"
             @edit="onRowEdit"
             @delete="onRowDelete"

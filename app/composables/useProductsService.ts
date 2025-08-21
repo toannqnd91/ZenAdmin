@@ -1,6 +1,5 @@
 import { ref, computed, watch } from 'vue'
-import { productService } from '@/services'
-import { fileService } from '@/services'
+import { productService, fileService } from '@/services'
 import type { ProductItem } from '@/composables/useProducts'
 import type { Row } from '@tanstack/table-core'
 import { getPaginationRowModel } from '@tanstack/table-core'
@@ -264,8 +263,8 @@ export const useProductsService = () => {
     q,
     rowSelection,
     pagination,
-  totalRecords: computed(() => totalRecords.value),
-  totalPages: computed(() => totalPages.value),
+    totalRecords: computed(() => totalRecords.value),
+    totalPages: computed(() => totalPages.value),
     products: computed(() => products.value),
     filtered,
     loading: readonly(loading),
