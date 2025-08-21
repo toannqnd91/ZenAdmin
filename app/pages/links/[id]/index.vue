@@ -54,8 +54,9 @@ if (!currentMenu.value) {
   })
 }
 
+const appConfig = useAppConfig()
 useHead({
-  title: `${currentMenu.value.title} - Cơ Khí Tam Long`
+  title: `${currentMenu.value.title} - ${appConfig.settings.title}`
 })
 
 // Fetch menu data from API

@@ -3,8 +3,10 @@ import { reactive } from 'vue'
 import { useCreateProductPage } from '@/composables/useCreateProductPage'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
 
+
 definePageMeta({ layout: 'default' })
-useHead({ title: 'New product - Cơ Khí Tam Long' })
+const appConfig = useAppConfig()
+useHead({ title: `New product - ${appConfig.settings.title}` })
 
 const page = reactive(useCreateProductPage())
 </script>
