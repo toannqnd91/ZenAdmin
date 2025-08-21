@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onBeforeUnmount } from 'vue'
 import { linksService } from '@/services'
 import type { MenuItem } from '@/services'
 import { VueDraggable } from 'vue-draggable-plus'
@@ -161,6 +162,37 @@ watch(expandedItems, () => {
 
 // Drag & drop state - sử dụng Vue Draggable Plus
 const isDragging = ref(false)
+const dragState = reactive({
+  linkId: null as number | null,
+  startX: 0,
+  initialLevel: 0,
+  previewLevel: null as number | null
+})
+
+// Helper to get clientX from various pointer events
+const getClientX = (evt: MouseEvent | TouchEvent | PointerEvent): number => {
+  if ('clientX' in evt && typeof evt.clientX === 'number') return evt.clientX
+  const touch = (evt as TouchEvent).touches?.[0] || (evt as TouchEvent).changedTouches?.[0]
+  return touch?.clientX ?? 0
+}
+
+const onPointerMove = (e: MouseEvent | TouchEvent | PointerEvent) => {
+  if (!isDragging.value || !dragState.linkId) return
+  const idx = currentLinks.value.findIndex(l => l.id === dragState.linkId)
+  if (idx < 0) return
+  const clientX = getClientX(e)
+  // Initialize startX on first move to make horizontal delta stable
+  if (dragState.startX === 0) {
+    dragState.startX = clientX
+  }
+  const deltaX = clientX - dragState.startX
+  const step = 12 // px per indent level (more sensitive)
+  const desiredDelta = Math.round(deltaX / step)
+  const prevItem = currentLinks.value[idx - 1]
+  const maxLevel = prevItem ? prevItem.level + 1 : 0
+  const desiredLevel = Math.max(0, Math.min(maxLevel, dragState.initialLevel + desiredDelta))
+  dragState.previewLevel = desiredLevel
+}
 
 const editLink = (link: LinkItem) => {
   console.log('Edit link:', link)
@@ -179,43 +211,29 @@ const deleteLink = async (link: LinkItem) => {
   }
 }
 
-// Hàm helper để xác định parentId và level mới dựa trên vị trí drop
-const determineNewHierarchy = (targetIndex: number, links: LinkItem[]) => {
-  // Nếu drop ở đầu danh sách
-  if (targetIndex === 0) {
-    return { newParentId: null, newLevel: 0 }
-  }
-  
-  // Lấy item trước vị trí drop
-  const prevItem = links[targetIndex - 1]
-  if (!prevItem) {
-    return { newParentId: null, newLevel: 0 }
-  }
-  
-  // Nếu item trước có children và đang expanded
-  if (prevItem.hasChildren && expandedItems.value.has(prevItem.id)) {
-    // Kiểm tra xem item sau có phải là con của prevItem không
-    const nextItem = links[targetIndex]
-    if (nextItem && nextItem.parentId === prevItem.id) {
-      // Drop vào giữa các con của prevItem
-      return { newParentId: prevItem.id, newLevel: prevItem.level + 1 }
-    } else {
-      // Drop sau prevItem và các con của nó - cùng level với prevItem
-      return { newParentId: prevItem.parentId ?? null, newLevel: prevItem.level }
-    }
-  } else {
-    // Item trước không có children hoặc đang collapsed - cùng level
-    return { newParentId: prevItem.parentId ?? null, newLevel: prevItem.level }
-  }
-}
+// Removed legacy determineNewHierarchy (now computed from drag preview)
 
 // Handle drag & drop events với Vue Draggable Plus
-const onDragStart = () => {
+const onDragStart = (event: SortableEvent) => {
   isDragging.value = true
+  const oldIdx = typeof event.oldIndex === 'number' ? event.oldIndex : -1
+  const item = currentLinks.value[oldIdx]
+  dragState.linkId = item?.id ?? null
+  dragState.initialLevel = item?.level ?? 0
+  const origEvtAny = (event as unknown as { originalEvent?: MouseEvent | TouchEvent | PointerEvent }).originalEvent
+  // Capture initial pointer X if available; otherwise it will be initialized on first move
+  dragState.startX = origEvtAny ? getClientX(origEvtAny) : 0
+  dragState.previewLevel = null
+  window.addEventListener('mousemove', onPointerMove)
+  window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('touchmove', onPointerMove, { passive: true })
 }
 
 const onDragEnd = async (event: SortableEvent) => {
   isDragging.value = false
+  window.removeEventListener('mousemove', onPointerMove)
+  window.removeEventListener('pointermove', onPointerMove)
+  window.removeEventListener('touchmove', onPointerMove)
   
   // Kiểm tra nếu có thay đổi vị trí
   if (event.oldIndex !== undefined && event.newIndex !== undefined && event.oldIndex !== event.newIndex) {
@@ -223,13 +241,30 @@ const onDragEnd = async (event: SortableEvent) => {
     
     if (draggedLink) {
       try {
-        // Xác định hierarchy mới dựa trên vị trí mới
-        const { newParentId, newLevel } = determineNewHierarchy(event.newIndex, currentLinks.value)
+        // Tính level mục tiêu: ưu tiên theo kéo ngang (previewLevel)
+        const idx = event.newIndex
+        const prevItem = currentLinks.value[idx - 1]
+        const maxLevel = prevItem ? prevItem.level + 1 : 0
+        const targetLevel = Math.max(0, Math.min(maxLevel, dragState.previewLevel ?? draggedLink.level))
+
+        // Tìm parent theo level mục tiêu: parent là item gần nhất phía trên có level = targetLevel - 1
+        let newParentId: number | null = null
+        if (targetLevel > 0) {
+          for (let i = idx - 1; i >= 0; i -= 1) {
+            const cand = currentLinks.value[i]
+            if (!cand) continue
+            if (cand.level === targetLevel - 1) {
+              newParentId = cand.id
+              break
+            }
+          }
+        }
+        const newLevel = targetLevel
         
         // Cập nhật thông tin hierarchy cho draggedLink
         draggedLink.parentId = newParentId ?? undefined
         draggedLink.level = newLevel
-        
+
         console.log('Hierarchy change:', {
           item: draggedLink.name,
           newParentId,
@@ -237,13 +272,13 @@ const onDragEnd = async (event: SortableEvent) => {
           oldIndex: event.oldIndex,
           newIndex: event.newIndex
         })
-        
+
         // Tính lại toàn bộ thứ tự trong nhóm cha mới (gửi full danh sách cùng cấp)
         const siblings = currentLinks.value.filter(l => (l.parentId ?? null) === newParentId)
-        const items = siblings.map((l, idx) => ({
+        const items = siblings.map((l, sIdx) => ({
           menuId: l.id,
           parentId: newParentId ?? null,
-          sortOrder: idx
+          sortOrder: sIdx
         }))
 
         console.log('Calling reorder API with full sibling list:', {
@@ -263,7 +298,17 @@ const onDragEnd = async (event: SortableEvent) => {
       }
     }
   }
+  // Reset drag state
+  dragState.linkId = null
+  dragState.previewLevel = null
+  dragState.startX = 0
 }
+
+onBeforeUnmount(() => {
+  window.removeEventListener('mousemove', onPointerMove)
+  window.removeEventListener('pointermove', onPointerMove)
+  window.removeEventListener('touchmove', onPointerMove)
+})
 </script>
 
 <template>
@@ -346,9 +391,12 @@ const onDragEnd = async (event: SortableEvent) => {
                 ghost-class="ghost"
                 chosen-class="chosen"
                 drag-class="drag"
-                :animation="300"
-                easing="cubic-bezier(1, 0, 0, 1)"
+                :animation="180"
+                easing="ease-in-out"
                 class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700"
+                :fallback-on-body="true"
+                :force-fallback="true"
+                :fallback-tolerance="3"
                 @start="onDragStart"
                 @end="onDragEnd"
               >
@@ -377,9 +425,9 @@ const onDragEnd = async (event: SortableEvent) => {
                   <td class="col-name px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium">
                     <div class="flex items-center">
                       <div
-                        class="flex items-center"
+                        class="flex items-center indent-smooth"
                         :style="{
-                          paddingLeft: `${link.level * 20}px`,
+                          paddingLeft: `${((isDragging && dragState.linkId === link.id && dragState.previewLevel !== null) ? dragState.previewLevel : link.level) * 20}px`,
                           marginLeft: link.hasChildren ? '-32px' : '0px'
                         }"
                       >
@@ -519,22 +567,22 @@ const onDragEnd = async (event: SortableEvent) => {
 }
 
 /* Vue Draggable Plus CSS Classes */
+/* Drag/ghost/chosen: very light blue, not purple */
 .ghost {
-  opacity: 0.5;
-  background: #f3f4f6;
-  transform: rotate(2deg);
+  opacity: 0.6;
+  background: rgba(59, 130, 246, 0.10); /* blue-500, 10% */
+  box-shadow: 0 4px 10px rgba(0,0,0,0.06);
 }
 
 .chosen {
-  opacity: 0.8;
-  background: #e5e7eb;
+  opacity: 0.95;
+  background: rgba(59, 130, 246, 0.13); /* blue-500, 13% */
 }
 
 .drag {
-  opacity: 0.9;
-  background: #ddd6fe;
-  transform: rotate(-2deg);
-  transition: all 0.3s ease;
+  opacity: 0.98;
+  background: rgba(59, 130, 246, 0.16); /* blue-500, 16% */
+  transition: background-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
 }
 
 .transition-transform {
@@ -551,20 +599,24 @@ const onDragEnd = async (event: SortableEvent) => {
 
 /* Smooth animations */
 tbody tr {
-  transition: all 0.3s ease;
+  transition: background-color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
 
 tbody tr.sortable-ghost {
-  opacity: 0.4;
-  background: #f3f4f6;
+  opacity: 0.5;
+  background: rgba(59, 130, 246, 0.10);
 }
 
 tbody tr.sortable-chosen {
-  background: #e5e7eb;
+  background: rgba(59, 130, 246, 0.13);
 }
 
 tbody tr.sortable-drag {
-  background: #ddd6fe;
-  transform: rotate(1deg);
+  background: rgba(59, 130, 246, 0.16);
+}
+
+/* Smooth indent transition */
+.indent-smooth {
+  transition: padding-left 0.15s ease;
 }
 </style>
