@@ -14,7 +14,7 @@ export const useProductsService = () => {
   const rowSelection = ref({})
   const pagination = ref({
     pageIndex: 0,
-    pageSize: 10
+    pageSize: 15
   })
 
   // Data state
@@ -46,10 +46,18 @@ export const useProductsService = () => {
       if (typeof options?.hasOptions !== 'undefined') {
         opts.hasOptions = options.hasOptions
       }
-      const response = await productService.getProducts(opts)
+  // Always send sort by Id descending (newest first)
+  opts.sort = { field: 'Id', reverse: true }
+  const response = await productService.getProducts(opts)
       if (response.success) {
-        // API trả về response.data.items
-        products.value = response.data?.items || []
+        // API trả về response.data.items hoặc response.data là mảng
+        if (Array.isArray(response.data)) {
+          products.value = response.data
+        } else if (response.data?.items) {
+          products.value = response.data.items
+        } else {
+          products.value = []
+        }
         // Nếu muốn dùng tổng số bản ghi: response.data?.totalRecord
       } else {
         throw new Error(response.message)
@@ -187,7 +195,7 @@ export const useProductsService = () => {
   function getFirstImageUrl(imageUrls: string[]): string | undefined {
     if (!imageUrls || imageUrls.length === 0) return undefined
     const firstImage = imageUrls[0]
-    return firstImage ? fileService.getFileUrl(firstImage) : undefined
+    return firstImage ? fileService.getFileUrl(firstImage || undefined) : undefined
   }
 
   function getRowItems(row: Row<ProductItem>) {
@@ -235,20 +243,23 @@ export const useProductsService = () => {
   // Watch search query and refetch
   watchEffect(() => {
     const searchValue = unref(q)
-    if (searchValue !== '') {
-      fetchProducts({
-        search: searchValue,
-        pagination: {
-          start: pagination.value.pageIndex * pagination.value.pageSize,
-          number: pagination.value.pageSize
-        }
-      })
-    }
+    fetchProducts({
+      search: searchValue,
+      pagination: {
+        start: pagination.value.pageIndex * pagination.value.pageSize,
+        number: pagination.value.pageSize
+      }
+    })
   })
 
   // Initial fetch
   onMounted(() => {
-    fetchProducts()
+    fetchProducts({
+      pagination: {
+        start: pagination.value.pageIndex * pagination.value.pageSize,
+        number: pagination.value.pageSize
+      }
+    })
   })
 
   return {
