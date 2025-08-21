@@ -788,13 +788,13 @@ const onRowDelete = (item: Record<string, unknown>) => {
     <!-- Footer -->
     <div class="flex items-center justify-between px-6 pb-4">
       <slot name="header-actions" />
-      <div class="flex items-center gap-4 text-sm text-gray-600">
+      <div class="flex w-full items-center justify-between text-sm text-gray-600">
         <span v-if="totalRecords">Hiển thị {{ rangeFrom }}–{{ rangeTo }} trên {{ totalRecords }}</span>
-        <nav class="flex items-center gap-1" aria-label="Pagination">
+        <nav class="flex items-center gap-1 ml-auto" aria-label="Pagination">
           <button
+            v-if="canPrev"
             type="button"
-            class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
-            :disabled="!canPrev"
+            class="h-8 w-8 inline-flex items-center justify-center rounded-full bg-white hover:bg-gray-50 disabled:opacity-50"
             aria-label="Trang trước"
             @click="goPrev"
           >
@@ -814,7 +814,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
             type="button"
             :disabled="p==='…'"
             :class="[
-              'h-8 min-w-8 px-2 inline-flex items-center justify-center rounded-md border text-sm',
+              'h-8 min-w-8 px-2 inline-flex items-center justify-center rounded-full border text-sm',
               p===currentPage
                 ? 'bg-[#1b64f2] border-[#1b64f2] text-white'
                 : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -824,9 +824,9 @@ const onRowDelete = (item: Record<string, unknown>) => {
             {{ p }}
           </button>
           <button
+            v-if="canNext"
             type="button"
-            class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
-            :disabled="!canNext"
+            class="h-8 w-8 inline-flex items-center justify-center rounded-full bg-white hover:bg-gray-50 disabled:opacity-50"
             aria-label="Trang sau"
             @click="goNext"
           >
