@@ -8,7 +8,11 @@ const {
   loading,
   error,
   truncateContent,
-  deleteNews
+  deleteNews,
+  deleteNewsMulti,
+  pagination,
+  totalPages,
+  totalRecords
 } = await useNewsService()
 
 // For compatibility with existing NewsTable component
@@ -27,10 +31,7 @@ const news = computed(() =>
 )
 
 const rowSelection = ref({})
-const pagination = ref({
-  pageIndex: 0,
-  pageSize: 10
-})
+// pagination now provided by composable
 
 function truncateText(text: string | null | undefined, wordLimit: number = 20): string {
   return truncateContent(text || '', wordLimit * 5) // Adjust word count to character count
@@ -64,8 +65,27 @@ function getRowItems(row: { original: { id: number } }) {
 }
 
 // Handle row click to navigate to update page
-function handleRowClick(item: { id: number }) {
+function handleRowClick(item: { id: number | string }) {
   navigateTo(`/news/${item.id}/update`)
+}
+
+function onRowEdit(id: string | number) {
+  navigateTo(`/news/${id}/update`)
+}
+async function onRowDelete(id: string | number) {
+  if (confirm('Xoá tin tức này?')) {
+    await deleteNews(Number(id))
+    await fetchNews()
+  }
+}
+
+async function onRowMultiDelete(ids: (string | number)[]) {
+  if (!ids.length) return
+  if (confirm(`Xoá ${ids.length} tin tức đã chọn?`)) {
+    await deleteNewsMulti(ids.map(Number))
+    await fetchNews()
+    rowSelection.value = {} // Uncheck all after delete
+  }
 }
 </script>
 
@@ -87,9 +107,14 @@ function handleRowClick(item: { id: number }) {
           v-model:pagination="pagination"
           :data="news"
           :loading="loading"
+          :total-pages="totalPages"
+          :total-records="totalRecords"
           :truncate-text="truncateText"
           :get-row-items="getRowItems"
           :on-row-click="handleRowClick"
+          @edit="onRowEdit"
+          @delete="onRowDelete"
+          @delete-multi="onRowMultiDelete"
         />
 
         <div v-if="error" class="text-error mt-4">

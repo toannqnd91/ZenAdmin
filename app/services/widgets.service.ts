@@ -1,28 +1,33 @@
 import { BaseService } from './base.service'
 import { API_ENDPOINTS } from '@/utils/api'
+
+
 import type { ApiResponse } from '@/types/common'
-
-
-export interface SimpleNewsWidgetData {
-  id: number;
-  name: string;
-  widgetZoneId: number;
-  publishStart: string;
-  publishEnd: string;
-  displayOrder: number;
-  news: Array<{
+  export interface SimpleNewsWidgetData {
     id: number;
     name: string;
-    isPublished: boolean;
-  }>;
-}
+    widgetZoneId: number;
+    publishStart: string;
+    publishEnd: string;
+    displayOrder: number;
+    news: Array<{
+      id: number;
+      name: string;
+      isPublished: boolean;
+    }>;
+// removed leftover closing brace
+  }
 
 export interface SimpleNewsWidgetResponse {
-  code: string;
-  success: boolean;
-  message: string;
-  data: SimpleNewsWidgetData;
-}
+  // removed old invalid interface
+  // removed orphaned interface declaration
+// removed orphaned interface declaration
+    code: string;
+    success: boolean;
+    message: string;
+    data: SimpleNewsWidgetData;
+  }
+// removed leftover closing brace
 
 export interface WidgetInstance {
   id: number
@@ -113,16 +118,40 @@ export interface CreateWidgetApiResponse {
 export class WidgetsService extends BaseService {
   /**
    * Create custom data widget
-   */
-  async createCustomDataWidget(data: any) {
-    return this.post(API_ENDPOINTS.CUSTOM_DATA_WIDGETS, data)
+  import { BaseService } from './base.service'
+  import { API_ENDPOINTS } from '@/utils/api'
+  import type { ApiResponse } from '@/types/common'
+
+  export interface SimpleNewsWidgetData {
+    id: number;
+    name: string;
+    widgetZoneId: number;
+    publishStart: string;
+    publishEnd: string;
+    displayOrder: number;
+    news: Array<{
+      id: number;
+      name: string;
+      isPublished: boolean;
+    }>;
   }
 
-  /**
-   * Get all widgets
+  export interface SimpleNewsWidgetResponse {
+    code: string;
+    success: boolean;
+    message: string;
+    data: SimpleNewsWidgetData;
+  }
    */
   async getWidgets() {
     return this.get<WidgetInstance[]>(API_ENDPOINTS.WIDGET_INSTANCES)
+  }
+
+  /**
+   * Reorder widget instances
+   */
+  async reorderWidgets(items: { id: number, displayOrder: number }[]) {
+    return this.post(API_ENDPOINTS.WIDGET_INSTANCES_REORDER, { items })
   }
 
   /**

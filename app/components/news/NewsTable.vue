@@ -16,19 +16,24 @@ interface NewsItem {
 
 interface Props {
   data: NewsItem[]
-  loading: boolean
+  loading?: boolean
   q: string
   rowSelection: Record<string, boolean>
   pagination: { pageIndex: number, pageSize: number }
+  totalPages?: number
+  totalRecords?: number
   truncateText: (text: string, wordLimit?: number) => string
   onRowClick?: (item: NewsItem) => void
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
-  'update:q': [string]
-  'update:rowSelection': [Record<string, boolean>]
-  'update:pagination': [{ pageIndex: number, pageSize: number }]
+  (e: 'update:q', value: string): void
+  (e: 'update:rowSelection', value: Record<string, boolean>): void
+  (e: 'update:pagination', value: { pageIndex: number, pageSize: number }): void
+  (e: 'edit', id: string | number): void
+  (e: 'delete', id: string | number): void
+  (e: 'delete-multi', ids: (string | number)[]): void
 }>()
 
 const columns: TableColumn[] = [
@@ -66,9 +71,14 @@ const handleRowClick = (item: NewsItem) => {
     :add-button="{ label: 'Thêm tin tức', href: '/news/create' }"
     search-placeholder="Tìm kiếm tin tức..."
     :row-click-handler="handleRowClick"
+    :total-pages="props.totalPages"
+    :total-records="props.totalRecords"
     @update:q="emit('update:q', $event)"
     @update:row-selection="emit('update:rowSelection', $event)"
     @update:pagination="emit('update:pagination', $event)"
+  @row-edit="emit('edit', $event)"
+  @row-delete="emit('delete', $event)"
+  @delete="emit('delete-multi', $event)"
     class=""
   >
     <!-- Custom title column with image and desc -->

@@ -10,16 +10,35 @@ const {
   filteredWidgets,
   fetchWidgets,
   deleteWidget,
-  formatDate
+  formatDate,
+  reorderWidgets,
+  widgets
 } = useWidgets()
 
 // Handle reorder emitted by WidgetsTable
-function handleReorder(newOrder: any[]) {
-  // Attempt to update local widgets order in-place
-  // If filteredWidgets is computed from widgets composable, we need to update source by fetching again
-  // For now, call fetchWidgets to re-sync from server after UI reorder
-  // Optionally, you can persist order to API here.
-  fetchWidgets()
+interface ReorderItem { id: number;[k: string]: unknown }
+async function handleReorder(newOrder: unknown) {
+  const arr = (Array.isArray(newOrder) ? newOrder : []) as ReorderItem[]
+  // newOrder is array of items after drag (from BaseTable draggableItems)
+  // Map to WidgetInstance preserving current displayOrder order
+  const mapped = arr.map((it, idx: number) => {
+    const found = widgets.value.find(w => w.id === it.id)
+    if (found) return { ...found, displayOrder: idx }
+    // Fallback: create minimal object if not found
+    return {
+      id: Number(it.id),
+      name: 'Widget ' + it.id,
+      widgetType: 'unknown',
+      widgetZone: 'unknown',
+      createdOn: new Date().toISOString(),
+      editUrl: '',
+      publishStart: null,
+      publishEnd: null,
+      displayOrder: idx
+    } as WidgetInstance
+  }) as WidgetInstance[]
+  await reorderWidgets(mapped as WidgetInstance[])
+  await fetchWidgets()
 }
 
 const rowSelection = ref({})
@@ -109,7 +128,7 @@ function normalizeWidgetType(widgetType: string): string {
 function getRowItems(row: { original: WidgetInstance }) {
   const widget = row.original
   const normalizedType = normalizeWidgetType(widget.widgetType)
-  
+
   return [
     { type: 'label', label: 'Actions' },
     { label: 'Edit', icon: 'i-lucide-edit', onSelect: () => navigateTo(`/widgets/${widget.id}/${normalizedType}`) },
@@ -135,17 +154,9 @@ onMounted(fetchWidgets)
     </template>
     <template #body>
       <div class="flex flex-col h-full">
-        <WidgetsTable
-          v-model:q="q"
-          v-model:row-selection="rowSelection"
-          v-model:pagination="pagination"
-          :data="filteredWidgets"
-          :loading="loading"
-          :add-button-dropdown-items="widgetTypeMenu"
-          :get-row-items="getRowItems"
-          :format-date="formatDate"
-          @reorder="(newOrder) => handleReorder(newOrder)"
-        />
+        <WidgetsTable v-model:q="q" v-model:row-selection="rowSelection" v-model:pagination="pagination"
+          :data="filteredWidgets" :loading="loading" :add-button-dropdown-items="widgetTypeMenu"
+          :get-row-items="getRowItems" :format-date="formatDate" @reorder="(newOrder) => handleReorder(newOrder)" />
         <div v-if="error" class="text-error mt-4">
           {{ error }}
         </div>
@@ -153,3 +164,23 @@ onMounted(fetchWidgets)
     </template>
   </UDashboardPanel>
 </template>
+
+<style scoped>
+/* Drag visuals aligned with links page */
+.ghost {
+  opacity: 0.6;
+  background: rgba(59, 130, 246, .10);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+
+.chosen {
+  opacity: .95;
+  background: rgba(59, 130, 246, .13);
+}
+
+.drag {
+  opacity: .98;
+  background: rgba(59, 130, 246, .16);
+  transition: background-color .15s ease, opacity .15s ease, box-shadow .15s ease;
+}
+</style>

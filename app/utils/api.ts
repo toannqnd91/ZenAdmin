@@ -13,6 +13,7 @@ export const API_ENDPOINTS = {
   NEWS_WIDGET: '/NewsWidget',
   NEWS_WIDGET_BY_ID: (id: number) => `/NewsWidget/${id}`,
   WIDGET_INSTANCES: '/widget-instances',
+  WIDGET_INSTANCES_REORDER: '/widget-instances/reorder',
   WIDGET_ZONES: '/widget-zones',
   CUSTOM_DATA_WIDGETS: '/custom-data-widgets',
   CUSTOM_DATA_WIDGET_BY_ID: (id: number) => `/custom-data-widgets/${id}`,
@@ -36,6 +37,10 @@ export const API_ENDPOINTS = {
   NEWS_BY_ID: (id: number) => `/News/${id}`,
   NEWS_CREATE: '/News/create',
   NEWS_UPDATE: (id: number) => `/News/${id}/update`,
+  NEWS_DELETE: (id: number) => `/News/${id}/delete`,
+  NEWS_DELETE_MULTI: '/News/delete-multiple',
+
+  // Product endpoints
   PRODUCT_CATEGORIES: '/ProductCategories',
   PRODUCT_CATEGORY_BY_ID: (id: number) => `/ProductCategories/${id}`,
   PRODUCTS: '/product/grid',

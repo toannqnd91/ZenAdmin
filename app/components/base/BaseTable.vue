@@ -344,7 +344,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
         </template>
         <button
           v-else-if="addButton"
-          class="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-[#1b64f2] hover:bg-[#155ae0] text-white font-medium whitespace-nowrap text-sm"
+                    class="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-primary-600 hover:bg-primary-700 text-white font-medium whitespace-nowrap text-sm"
           @click="handleAddClick"
         >
           {{ addButton.label }}
@@ -431,7 +431,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
           <button
             type="button"
             class="h-8 inline-flex items-center gap-2 rounded-md border border-red-300 px-3 text-sm bg-white hover:bg-red-50 text-red-600"
-            @click="emit('delete', Object.keys(rowSelection).filter(id => rowSelection[id]))"
+            @click="() => { emit('delete', Object.keys(rowSelection).filter(id => rowSelection[id])); emit('update:rowSelection', {}); }"
           >
             Delete ({{ selectedCount }})
             <svg
@@ -816,7 +816,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
             :class="[
               'h-8 min-w-8 px-2 inline-flex items-center justify-center rounded-full border text-sm',
               p===currentPage
-                ? 'bg-[#1b64f2] border-[#1b64f2] text-white'
+                ? 'bg-primary-600 border-primary-600 text-white hover:bg-primary-700'
                 : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
             ]"
             @click="p!=='…' && gotoPage(p as number)"

@@ -5,6 +5,8 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
+    "debug": "node --inspect-brk ./node_modules/nuxi/bin/nuxi.mjs dev",
+    "dev:inspect": "cross-env NODE_OPTIONS=\"--inspect --enable-source-maps\" nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
@@ -30,7 +32,8 @@
     "@nuxt/eslint": "^1.5.2",
     "eslint": "^9.31.0",
     "typescript": "^5.8.3",
-    "vue-tsc": "^3.0.1"
+    "vue-tsc": "^3.0.1",
+    "cross-env": "^7.0.3"
   },
   "resolutions": {
     "unimport": "4.1.1"
