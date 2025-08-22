@@ -14,8 +14,7 @@ const {
   deleteProductsMulti,
   fetchProducts,
   totalPages,
-  totalRecords,
-  toast
+  totalRecords
 } = useProductsService()
 
 const onRowCopyId = (id: string | number) => {
@@ -29,19 +28,30 @@ const onRowEdit = (id: string | number) => {
   navigateTo(`/products/${id}/update`)
 }
 async function onRowDelete(id: string | number) {
-  if (confirm('Xoá sản phẩm này?')) {
+  if (!confirm('Xoá sản phẩm này?')) return
+  try {
     await deleteProduct(Number(id))
     await fetchProducts()
+    // chỉ clear selection khi đã xác nhận và xóa thành công
     rowSelection.value = {}
+  } catch (e) {
+    // đơn giản: log và thông báo người dùng
+    console.error(e)
+    alert('Xoá thất bại, vui lòng thử lại')
   }
 }
 
 async function onRowMultiDelete(ids: (string | number)[]) {
   if (!ids.length) return
-  if (confirm(`Xoá ${ids.length} sản phẩm đã chọn?`)) {
+  if (!confirm(`Xoá ${ids.length} sản phẩm đã chọn?`)) return
+  try {
     await deleteProductsMulti(ids.map(Number))
     await fetchProducts()
+    // chỉ clear selection khi đã xác nhận và xóa thành công
     rowSelection.value = {}
+  } catch (e) {
+    console.error(e)
+    alert('Xoá nhiều sản phẩm thất bại, vui lòng thử lại')
   }
 }
 </script>
