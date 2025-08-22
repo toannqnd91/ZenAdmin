@@ -11,8 +11,11 @@ const {
   loading,
   error,
   deleteProduct,
+  deleteProductsMulti,
+  fetchProducts,
   totalPages,
-  totalRecords
+  totalRecords,
+  toast
 } = useProductsService()
 
 const onRowCopyId = (id: string | number) => {
@@ -25,9 +28,20 @@ const onRowCopyId = (id: string | number) => {
 const onRowEdit = (id: string | number) => {
   navigateTo(`/products/${id}/update`)
 }
-const onRowDelete = (id: string | number) => {
+async function onRowDelete(id: string | number) {
   if (confirm('Xoá sản phẩm này?')) {
-    deleteProduct(Number(id))
+    await deleteProduct(Number(id))
+    await fetchProducts()
+    rowSelection.value = {}
+  }
+}
+
+async function onRowMultiDelete(ids: (string | number)[]) {
+  if (!ids.length) return
+  if (confirm(`Xoá ${ids.length} sản phẩm đã chọn?`)) {
+    await deleteProductsMulti(ids.map(Number))
+    await fetchProducts()
+    rowSelection.value = {}
   }
 }
 </script>
@@ -72,6 +86,7 @@ const onRowDelete = (id: string | number) => {
             @copy-id="onRowCopyId"
             @edit="onRowEdit"
             @delete="onRowDelete"
+            @delete-multi="onRowMultiDelete"
           />
           <div v-if="error" class="text-error mt-4">
             {{ error }}

@@ -41,6 +41,7 @@ const emit = defineEmits<{
   (e: 'update:rowSelection', value: Record<string, boolean>): void
   (e: 'update:pagination', value: { pageIndex: number, pageSize: number }): void
   (e: 'copy-id' | 'edit' | 'delete', id: string | number): void
+  (e: 'delete-multi', ids: (string | number)[]): void
 }>()
 
 // Table configuration
@@ -155,6 +156,7 @@ const invText = (p: ProductItem) => {
     @update:q="emit('update:q', $event)"
     @update:row-selection="emit('update:rowSelection', $event)"
     @update:pagination="emit('update:pagination', $event)"
+    @delete="emit('delete-multi', $event)"
   >
     <!-- Custom name column with image -->
     <template #column-name="{ item }">

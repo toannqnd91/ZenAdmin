@@ -68,11 +68,11 @@ export class ProductService extends BaseService {
       // Luôn gửi HasOptions; mặc định true nếu không truyền vào để phù hợp yêu cầu
       HasOptions: typeof options?.hasOptions !== 'undefined' ? options.hasOptions : true
     }
-    const body = this.createListRequestBody({
-      pagination: options?.pagination,
-      search: searchObj,
-      sort: options?.sort
-    })
+  const body = this.createListRequestBody({
+    pagination: options?.pagination,
+    search: searchObj,
+    sort: options?.sort
+  })
   return this.post<{ items: ProductItem[], totalRecord: number, numberOfPages: number }>(API_ENDPOINTS.PRODUCTS, body)
   }
 
@@ -102,6 +102,13 @@ export class ProductService extends BaseService {
    */
   async deleteProduct(id: number) {
     return this.delete(API_ENDPOINTS.PRODUCT_BY_ID(id))
+  }
+
+  /**
+   * Batch delete products
+   */
+  async deleteProductsMulti(ids: number[]) {
+    return this.post(API_ENDPOINTS.PRODUCT_DELETE_MULTI, ids)
   }
 
   /**

@@ -47,6 +47,7 @@ export const API_ENDPOINTS = {
   PRODUCT_BY_ID: (id: number) => `/Product/${id}`,
   PRODUCT_CREATE: '/Product',
   PRODUCT_UPDATE: (id: number) => `/Product/${id}/update`,
+  PRODUCT_DELETE_MULTI: '/Product/delete-multiple',
 
   // Supplier endpoints
   SUPPLIERS: '/Suppliers',
