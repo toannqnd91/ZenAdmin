@@ -3,7 +3,6 @@ import { reactive } from 'vue'
 import { useCreateProductPage } from '@/composables/useCreateProductPage'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
 
-
 definePageMeta({ layout: 'default' })
 const appConfig = useAppConfig()
 useHead({ title: `New product - ${appConfig.settings.title}` })
@@ -499,16 +498,58 @@ const page = reactive(useCreateProductPage())
 
                 <!-- Variants list -->
                 <div>
-                  <div v-for="(v, vi) in page.variants.variants" :key="v.key || vi"
-                    class="flex items-center justify-between py-4 border-b border-gray-100">
+                  <div
+                    v-for="(v, vi) in page.variants.variants"
+                    :key="v.key || vi"
+                    class="flex items-center justify-between py-4 border-b border-gray-100"
+                  >
                     <div class="flex items-center gap-3">
-                      <CustomCheckbox :model-value="page.variants.selectedVariantKeys.includes(v.key)"
-                        @update:model-value="page.variants.onToggleVariant(v.key, $event)" />
+                      <CustomCheckbox
+                        :model-value="page.variants.selectedVariantKeys.includes(v.key)"
+                        @update:model-value="page.variants.onToggleVariant(v.key, $event)"
+                      />
                       <div class="text-gray-900">{{ v.name }}</div>
                     </div>
-                    <div class="text-right">
-                      <div class="text-gray-900">Giá bán: {{ (v.price || 0).toLocaleString('vi-VN') }}đ</div>
-                      <div class="text-gray-500 text-sm">Có thể bán {{ v.stock || 0 }} tại 1 kho</div>
+                    <div class="text-right text-sm leading-5">
+                      <div>
+                        <span class="text-gray-600">Giá bán:</span>
+                        <span
+                          v-if="!page.variants.isEditingPrice(v.key)"
+                          class="ml-1 text-gray-900 font-medium underline cursor-pointer"
+                          @click="page.variants.startEditPrice(v.key); $nextTick(() => priceInputs[vi]?.focus())"
+                        >{{ (v.price || 0).toLocaleString('vi-VN') }}đ</span>
+            <template v-else-if="page.variants.isEditingPrice(v.key)">
+                          <input
+                            ref="el => priceInputs[vi] = el as HTMLInputElement"
+                            type="number"
+                            min="0"
+                            class="w-24 px-1 py-0.5 border border-gray-300 rounded text-right text-gray-900"
+                            :value="v.price"
+              @blur="page.variants.commitPrice(v.key, Number(($event.target as HTMLInputElement).value || 0))"
+              @keydown.enter.prevent="page.variants.commitPrice(v.key, Number(($event.target as HTMLInputElement).value || 0))"
+                          >
+                        </template>
+                      </div>
+                      <div class="mt-1">
+                        <span class="text-gray-500">Có thể bán</span>
+                        <span
+                          v-if="!page.variants.isEditingStock(v.key)"
+                          class="mx-1 underline cursor-pointer text-gray-700"
+                          @click="page.variants.startEditStock(v.key); $nextTick(() => stockInputs[vi]?.focus())"
+                        >{{ v.stock || 0 }}</span>
+            <template v-else-if="page.variants.isEditingStock(v.key)">
+                          <input
+                            ref="el => stockInputs[vi] = el as HTMLInputElement"
+                            type="number"
+                            min="0"
+                            class="w-20 px-1 py-0.5 border border-gray-300 rounded text-right text-gray-900"
+                            :value="v.stock"
+              @blur="page.variants.commitStock(v.key, page.state.formData.warehouseId || 0, Number(($event.target as HTMLInputElement).value || 0))"
+              @keydown.enter.prevent="page.variants.commitStock(v.key, page.state.formData.warehouseId || 0, Number(($event.target as HTMLInputElement).value || 0))"
+                          >
+                        </template>
+                        <span class="text-gray-500">tại {{ page.inventory.warehouses.find(w => w.id === page.state.formData.warehouseId)?.name || 'kho' }}</span>
+                      </div>
                     </div>
                   </div>
                 </div>

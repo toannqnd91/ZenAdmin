@@ -40,7 +40,7 @@ export function useCreateProductPage() {
   const imagePreviews = productForm.imagePreviews as Ref<string[]>
   const handleImageUpload = productForm.handleImageUpload as (e: Event) => Promise<void> | void
   const removeImage = productForm.removeImage as (index: number) => void
-  const submitForm = productForm.submitForm as (extras?: { options?: unknown[], variations?: unknown[] }) => Promise<boolean | undefined>
+  const submitForm = productForm.submitForm as (extras?: { options?: unknown[], variations?: unknown[], productImages?: { caption: string, mediaUrl: string }[] }) => Promise<boolean | undefined>
   const selectedCategories = productForm.selectedCategories as ComputedRef<ProductCategory[]>
   const removeCategory = productForm.removeCategory as (id: number) => void
 
@@ -83,7 +83,7 @@ export function useCreateProductPage() {
   })
 
   const _onSubmit = async () => {
-    const { imageBaseUrl } = useApiConfig()
+  const { imageBaseUrl: _imageBaseUrl } = useApiConfig()
     try {
       const attrs = (activeAttributes.value as Array<{ name: string, values: string[] }>) || []
       const options = attrs.map((a: { name: string, values: string[] }) => ({
@@ -92,12 +92,12 @@ export function useCreateProductPage() {
         values: (a.values || []).map(v => ({ key: v, display: null }))
       }))
 
-      const normalizeImageUrl = (url: string) => {
-        if (!url) return ''
-        if (url.startsWith('http://') || url.startsWith('https://')) return url
-        const fname = url.replace(/^\/image\//, '')
-        return `${imageBaseUrl}/image/${fname}`
-      }
+  // const normalizeImageUrl = (url: string) => {
+  //   if (!url) return ''
+  //   if (url.startsWith('http://') || url.startsWith('https://')) return url
+  //   const fname = url.replace(/^\/image\//, '')
+  //   return `${imageBaseUrl}/image/${fname}`
+  // }
 
       const variations = (variants.value || []).map((v) => {
         const vRec = (v || {}) as { name?: string, options?: Record<string, string>, price?: number }
@@ -139,7 +139,7 @@ export function useCreateProductPage() {
       })
 
       // Build productImages array from imagePreviews, only filename for mediaUrl
-      const productImages = (imagePreviews.value || []).map((img) => ({
+  const productImages = (imagePreviews.value || []).map(img => ({
         caption: 'Image Caption',
         mediaUrl: typeof img === 'string' ? img.split('/').pop() || img : img
       }))
@@ -211,6 +211,15 @@ export function useCreateProductPage() {
               ...(formData.value.warehouseStocks || {}),
               [w.id]: 0
             }
+          }
+        }
+        // Auto-select first warehouse if none selected or current invalid
+        if (warehouses.value.length) {
+          const currentId = formData.value.warehouseId
+          const exists = currentId && warehouses.value.some(w => w.id === currentId)
+          if (!exists) {
+            const first = warehouses.value[0]
+            if (first && typeof first.id === 'number') formData.value.warehouseId = first.id
           }
         }
       }
@@ -375,6 +384,9 @@ export function useCreateProductPage() {
     return list.filter(a => a.name && a.values.length > 0)
   })
 
+  // Store per-variant data (price + per-warehouse stocks)
+  const variantData = ref<Record<string, { price: number, stocks: Record<number, number>, customPrice?: boolean }>>({})
+
   const variants = computed(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const attrs = activeAttributes.value as unknown as any[]
@@ -398,7 +410,9 @@ export function useCreateProductPage() {
         product = next
       }
     }
-    return product.map((vals) => {
+    const wid = formData.value.warehouseId || 0
+    const keys: string[] = []
+    const list = product.map((vals) => {
       const options: Record<string, string> = {}
       for (let i = 0; i < attrs.length; i += 1) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -406,34 +420,39 @@ export function useCreateProductPage() {
         const name = String((a && a.name) || '')
         if (name) options[name] = String(vals[i] || '')
       }
+      const key = vals.join(' / ')
+      keys.push(key)
+      if (!variantData.value[key]) {
+        variantData.value[key] = {
+          price: Number(formData.value.price) || 0,
+          // seed stocks with global warehouseStocks if any
+          stocks: { ...(formData.value.warehouseStocks || {}) }
+        }
+      }
+      const entry = variantData.value[key]
+      if (entry.stocks[wid] === undefined) entry.stocks[wid] = 0
       return {
-        key: vals.join(' / '),
-        name: vals.join(' / '),
+        key,
+        name: key,
         options,
-        price: Number(formData.value.price) || 0,
-        stock: 0
+        price: entry.price,
+        stock: entry.stocks[wid]
       }
     })
+    // Cleanup removed variant keys
+    if (Object.keys(variantData.value).length) {
+      const next: Record<string, { price: number, stocks: Record<number, number> }> = {}
+      for (const k of keys) if (variantData.value[k]) next[k] = variantData.value[k]
+      variantData.value = next
+    }
+    return list
   })
 
   const totalVariantStock = computed(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const list = variants.value as unknown as any[]
-    if (!Array.isArray(list) || list.length === 0) return 0
-    const sumInventoryArray = (inv: unknown) => {
-      if (!Array.isArray(inv)) return 0
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (inv as any[]).reduce((s: number, it: any) => s + (Number(it?.quantity) || 0), 0)
-    }
-    const globalStocks = formData.value.warehouseStocks || {}
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const globalSum = Object.keys(globalStocks).reduce((s, k) => s + (Number((globalStocks as any)[k]) || 0), 0)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return list.reduce((total: number, v: any) => {
-      if (Array.isArray(v?.inventory)) {
-        return total + sumInventoryArray(v.inventory)
-      }
-      return total + globalSum
+    const wid = formData.value.warehouseId || 0
+    return Object.keys(variantData.value).reduce((sum, k) => {
+      const entry = variantData.value[k]
+      return sum + (entry && entry.stocks ? (entry.stocks[wid] || 0) : 0)
     }, 0)
   })
 
@@ -467,6 +486,45 @@ export function useCreateProductPage() {
     if (!checked && idx !== -1) arr.splice(idx, 1)
     selectedVariantKeys.value = arr
   }
+
+  const updateVariantPrice = (key: string, price: number) => {
+    if (!variantData.value[key]) variantData.value[key] = { price: Number(formData.value.price) || 0, stocks: { ...(formData.value.warehouseStocks || {}) } }
+    variantData.value[key].price = Number(price) || 0
+    variantData.value[key].customPrice = true
+  }
+  const updateVariantStock = (key: string, warehouseId: number, qty: number) => {
+    if (!variantData.value[key]) variantData.value[key] = { price: Number(formData.value.price) || 0, stocks: { ...(formData.value.warehouseStocks || {}) } }
+    variantData.value[key].stocks[warehouseId] = Math.max(0, Number(qty) || 0)
+  }
+
+  // Editing state for inline edits
+  const editingPriceKeys = ref(new Set<string>())
+  const editingStockKeys = ref(new Set<string>())
+  const startEditPrice = (key: string) => {
+    editingPriceKeys.value.add(key)
+  }
+  const startEditStock = (key: string) => {
+    editingStockKeys.value.add(key)
+  }
+  const isEditingPrice = (key: string) => editingPriceKeys.value.has(key)
+  const isEditingStock = (key: string) => editingStockKeys.value.has(key)
+  const commitPrice = (key: string, value: number) => {
+    updateVariantPrice(key, value)
+    editingPriceKeys.value.delete(key)
+  }
+  const commitStock = (key: string, wid: number, value: number) => {
+    updateVariantStock(key, wid, value)
+    editingStockKeys.value.delete(key)
+  }
+
+  // Keep variant prices in sync with global price unless customized
+  watch(() => formData.value.price, (newPrice) => {
+    const base = Number(newPrice) || 0
+    for (const k of Object.keys(variantData.value)) {
+      const entry = variantData.value[k]
+      if (entry && !entry.customPrice) entry.price = base
+    }
+  })
 
   return {
     state: {
@@ -530,7 +588,15 @@ export function useCreateProductPage() {
       isAllVariantsChecked,
       selectedVariantKeys,
       onToggleAllVariants,
-      onToggleVariant
+      onToggleVariant,
+  updateVariantPrice,
+  updateVariantStock,
+  startEditPrice,
+  startEditStock,
+  isEditingPrice,
+  isEditingStock,
+  commitPrice,
+  commitStock
     },
     actions: {
       removeCategory,
