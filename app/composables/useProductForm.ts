@@ -88,9 +88,19 @@ export const useProductForm = () => {
       const urls: string[] = uploaded
         .map((f) => f.fileName)
         .filter((f): f is string => !!f);
+      // Guard: when editing an existing product imageUrls might be undefined
+      if (!Array.isArray(formData.value.imageUrls)) {
+        formData.value.imageUrls = [];
+      }
       formData.value.imageUrls.push(...urls);
       // Also preview them immediately
       imagePreviews.value.push(...urls);
+      // Clear the input so selecting the same file again triggers change
+      try {
+        input.value = "";
+      } catch (_e) {
+        // some browsers may restrict setting value; ignore
+      }
     } finally {
       isUploadingImage.value = false;
     }
