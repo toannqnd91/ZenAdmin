@@ -6,6 +6,7 @@ import type { ProductCategory as ProductCategoryType } from "@/composables/usePr
 import type { CreateProductRequest } from "@/services/product.service";
 
 export interface ProductFormData {
+  id?: number; // when present (>0) triggers update instead of create
   name: string;
   price: number | null;
   compareAtPrice: number | null;
@@ -32,6 +33,7 @@ export interface ProductFormData {
 export const useProductForm = () => {
   // Form data
   const formData = ref<ProductFormData>({
+  id: 0,
     name: "",
     price: null,
     compareAtPrice: null,
@@ -139,8 +141,9 @@ export const useProductForm = () => {
           .replace(/-+/g, "-") || "new-product";
 
       // ==== PAYLOAD GỬI LÊN BACKEND (bổ sung tại đây nếu cần) ===================
+      const isUpdate = !!formData.value.id && formData.value.id > 0;
       const payload: Record<string, unknown> = {
-        id: 0,
+        id: formData.value.id || 0,
         name: formData.value.name,
         slug,
         price: Number(formData.value.price) || 0,
@@ -215,9 +218,19 @@ export const useProductForm = () => {
         );
       }
 
-      const res: ApiResponse<unknown> = await productService.createProduct(
-        payload as unknown as CreateProductRequest
-      );
+      let res: ApiResponse<unknown>;
+      if (isUpdate) {
+        // Update: send to update endpoint
+        res = await productService.updateProduct({
+          ...(payload as unknown as CreateProductRequest),
+          id: formData.value.id || 0,
+        });
+      } else {
+        // Create
+        res = await productService.createProduct(
+          payload as unknown as CreateProductRequest
+        );
+      }
       if (!res.success) {
         const msg = res.message || "Đã có lỗi xảy ra";
         throw new Error(msg);

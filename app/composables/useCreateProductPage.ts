@@ -66,7 +66,8 @@ export function useCreateProductPage() {
   })
 
   const { data: brands, loading: brandsLoading, error: brandsError } = useBrandsService()
-  const trademark = ref<string>('')
+  // Brand selection: store id, not just name
+  const trademark = ref<number | null>(null)
   const status = ref<'Public' | 'Draft'>('Public')
   const pageTemplate = ref<string>('Default product')
   const markAsSoldOut = ref<boolean>(false)
@@ -83,7 +84,13 @@ export function useCreateProductPage() {
   })
 
   const _onSubmit = async () => {
-  const { imageBaseUrl: _imageBaseUrl } = useApiConfig()
+    const { imageBaseUrl: _imageBaseUrl } = useApiConfig()
+    // Sync brandId to formData before submit
+    if ('brandId' in formData.value) {
+      formData.value.brandId = trademark.value || null
+    } else {
+      (formData.value as any).brandId = trademark.value || null
+    }
     try {
       const attrs = (activeAttributes.value as Array<{ name: string, values: string[] }>) || []
       const options = attrs.map((a: { name: string, values: string[] }) => ({
@@ -99,7 +106,8 @@ export function useCreateProductPage() {
   //   return `${imageBaseUrl}/image/${fname}`
   // }
 
-      const variations = (variants.value || []).map((v) => {
+  const validWarehouseIds = warehouses.value.map(w => w.id)
+  const variations = (variants.value || []).map((v) => {
         const vRec = (v || {}) as { name?: string, options?: Record<string, string>, price?: number }
         const name = String(vRec.name || '')
         const opts = (vRec.options || {}) as Record<string, string>
@@ -114,10 +122,13 @@ export function useCreateProductPage() {
           return combo
         })
 
-        const stocks = (formData.value.warehouseStocks || {}) as Record<number, number>
-        const inventory = Object.keys(stocks).map(idStr => ({
-          warehouseId: Number(idStr),
-          quantity: Number((stocks as Record<string, number>)[idStr] || 0)
+        // Build inventory from variantData entry (per warehouse) falling back to base stocks
+        const key = name
+        const vData = variantData.value[key]
+        const baseStocks = (formData.value.warehouseStocks || {}) as Record<number, number>
+        const inventory = validWarehouseIds.map(wid => ({
+          warehouseId: wid,
+          quantity: vData && vData.stocks && typeof vData.stocks[wid] === 'number' ? vData.stocks[wid] : (baseStocks[wid] || 0)
         }))
 
         // No imageUrls in variant payload
@@ -146,11 +157,12 @@ export function useCreateProductPage() {
 
       // Remove imageUrls from formData before submit
       if ('imageUrls' in formData.value) {
-        delete (formData.value as any).imageUrls
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (formData.value as any).imageUrls
       }
 
       // Patch submitForm to accept productImages at root
-      const ok = await submitForm({ options, variations, productImages })
+  const ok = await submitForm({ options, variations, productImages })
       if (ok) {
         console.log('Sản phẩm đã được tạo thành công.')
       }
@@ -187,11 +199,13 @@ export function useCreateProductPage() {
   formData.value.importPrice ??= 0
   formData.value.chargeTax ??= false
 
-  formData.value.warehouseId ??= 1
+  // Do not force a default warehouse id; will select first real warehouse after fetch
+  if (formData.value.warehouseId === undefined) formData.value.warehouseId = null
   formData.value.manageInventory ??= false
   formData.value.allowNegativeStock ??= false
   formData.value.manageByBatch ??= false
-  formData.value.warehouseStocks ??= { 1: 0 }
+  // Start with empty stocks; will add real warehouse ids after fetch
+  formData.value.warehouseStocks ??= {}
   formData.value.hasSkuOrBarcode ??= false
   formData.value.sku ??= ''
   formData.value.barcode ??= ''
@@ -412,7 +426,7 @@ export function useCreateProductPage() {
         product = next
       }
     }
-    const wid = formData.value.warehouseId || 0
+    const wid = (formData.value.warehouseId && warehouses.value.some(w => w.id === formData.value.warehouseId)) ? formData.value.warehouseId : 0
     const keys: string[] = []
     const list = product.map((vals) => {
       const options: Record<string, string> = {}
@@ -425,17 +439,19 @@ export function useCreateProductPage() {
       const key = vals.join(' / ')
       keys.push(key)
       if (!variantData.value[key]) {
-        variantData.value[key] = { prices: {}, stocks: { ...(formData.value.warehouseStocks || {}) } }
+        const initialStocks: Record<number, number> = {}
+        for (const w of warehouses.value) initialStocks[w.id] = (formData.value.warehouseStocks || {})[w.id] || 0
+        variantData.value[key] = { prices: {}, stocks: initialStocks }
       }
       const entry = variantData.value[key]
-      if (!entry.prices[wid]) entry.prices[wid] = { value: Number(formData.value.price) || 0, custom: false }
-      if (entry.stocks[wid] === undefined) entry.stocks[wid] = 0
+      if (wid && !entry.prices[wid]) entry.prices[wid] = { value: Number(formData.value.price) || 0, custom: false }
+      if (wid && entry.stocks[wid] === undefined) entry.stocks[wid] = 0
       return {
         key,
         name: key,
         options,
-        price: entry.prices[wid].value,
-        stock: entry.stocks[wid]
+        price: wid && entry.prices[wid] ? entry.prices[wid].value : Number(formData.value.price) || 0,
+        stock: wid && entry.stocks[wid] !== undefined ? entry.stocks[wid] : 0
       }
     })
     // Cleanup removed variant keys
@@ -488,8 +504,11 @@ export function useCreateProductPage() {
 
   // Helpers for ensuring data
   const ensureVariantWarehouse = (key: string, warehouseId: number) => {
+    if (!warehouseId) return
     if (!variantData.value[key]) {
-      variantData.value[key] = { prices: {}, stocks: { ...(formData.value.warehouseStocks || {}) } }
+      const initial: Record<number, number> = {}
+      for (const w of warehouses.value) initial[w.id] = (formData.value.warehouseStocks || {})[w.id] || 0
+      variantData.value[key] = { prices: {}, stocks: initial }
     }
     const rec = variantData.value[key]
     if (!rec.prices[warehouseId]) rec.prices[warehouseId] = { value: Number(formData.value.price) || 0, custom: false }
@@ -512,7 +531,7 @@ export function useCreateProductPage() {
   }
   const updateVariantStock = (key: string, warehouseId: number, qty: number) => {
     ensureVariantWarehouse(key, warehouseId)
-  variantData.value[key]!.stocks[warehouseId] = Math.max(0, Number(qty) || 0)
+    variantData.value[key]!.stocks[warehouseId] = Math.max(0, Number(qty) || 0)
   }
 
   // Editing state for inline edits
@@ -613,15 +632,16 @@ export function useCreateProductPage() {
       isAllVariantsChecked,
       selectedVariantKeys,
       onToggleAllVariants,
-  onToggleVariant,
-  updateVariantPrice,
-  updateVariantStock,
-  startEditPrice,
-  startEditStock,
-  isEditingPrice,
-  isEditingStock,
-  commitPrice,
-  commitStock
+      onToggleVariant,
+      updateVariantPrice,
+      updateVariantStock,
+      startEditPrice,
+      startEditStock,
+      isEditingPrice,
+      isEditingStock,
+      commitPrice,
+      commitStock,
+      variantData
     },
     actions: {
       removeCategory,
