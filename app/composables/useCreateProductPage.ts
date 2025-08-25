@@ -8,6 +8,7 @@ import type { ProductFormData as BaseProductFormData } from '@/composables/usePr
 import type { ProductCategory } from '@/composables/useProductsCategoriesService'
 import { productService } from '@/services/product.service'
 import { useApiConfig } from '@/composables/useApiConfig'
+import appSettings from '@/app.settings'
 
 type ExtendedProductFormData = BaseProductFormData & {
   supplierId: number | null
@@ -518,16 +519,15 @@ export function useCreateProductPage() {
     ensureVariantWarehouse(key, warehouseId)
     const p = Number(price) || 0
     variantData.value[key]!.prices[warehouseId] = { value: p, custom: true }
-    // Propagate to other warehouses where price is 0/undefined (initial fill), keep custom=false
     const rec = variantData.value[key]!
     const warehouseIds = warehouses.value.map(w => w.id)
-    for (const wid of warehouseIds) {
-      if (wid === warehouseId) continue
-      const existing = rec.prices[wid]
-      if (!existing || !existing.value) {
-        rec.prices[wid] = { value: p, custom: false }
+    if (!appSettings.variantPricePerWarehouse) {
+      // Đồng bộ giá giữa các kho: sửa 1 kho thì các kho khác cũng đổi
+      for (const wid of warehouseIds) {
+        rec.prices[wid] = { value: p, custom: wid === warehouseId }
       }
     }
+    // Nếu cho phép giá khác nhau: chỉ sửa kho hiện tại (đã làm ở trên)
   }
   const updateVariantStock = (key: string, warehouseId: number, qty: number) => {
     ensureVariantWarehouse(key, warehouseId)
