@@ -525,8 +525,8 @@ const page = reactive(useCreateProductPage())
                             min="0"
                             class="w-24 px-1 py-0.5 border border-gray-300 rounded text-right text-gray-900"
                             :value="v.price"
-              @blur="page.variants.commitPrice(v.key, Number(($event.target as HTMLInputElement).value || 0))"
-              @keydown.enter.prevent="page.variants.commitPrice(v.key, Number(($event.target as HTMLInputElement).value || 0))"
+                            @blur="page.variants.commitPrice(v.key, page.state.formData.warehouseId || 0, Number(($event.target as HTMLInputElement).value || 0))"
+                            @keydown.enter.prevent="page.variants.commitPrice(v.key, page.state.formData.warehouseId || 0, Number(($event.target as HTMLInputElement).value || 0))"
                           >
                         </template>
                       </div>
@@ -544,8 +544,8 @@ const page = reactive(useCreateProductPage())
                             min="0"
                             class="w-20 px-1 py-0.5 border border-gray-300 rounded text-right text-gray-900"
                             :value="v.stock"
-              @blur="page.variants.commitStock(v.key, page.state.formData.warehouseId || 0, Number(($event.target as HTMLInputElement).value || 0))"
-              @keydown.enter.prevent="page.variants.commitStock(v.key, page.state.formData.warehouseId || 0, Number(($event.target as HTMLInputElement).value || 0))"
+                            @blur="page.variants.commitStock(v.key, page.state.formData.warehouseId || 0, Number(($event.target as HTMLInputElement).value || 0))"
+                            @keydown.enter.prevent="page.variants.commitStock(v.key, page.state.formData.warehouseId || 0, Number(($event.target as HTMLInputElement).value || 0))"
                           >
                         </template>
                         <span class="text-gray-500">tại {{ page.inventory.warehouses.find(w => w.id === page.state.formData.warehouseId)?.name || 'kho' }}</span>

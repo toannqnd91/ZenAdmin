@@ -384,8 +384,10 @@ export function useCreateProductPage() {
     return list.filter(a => a.name && a.values.length > 0)
   })
 
-  // Store per-variant data (price + per-warehouse stocks)
-  const variantData = ref<Record<string, { price: number, stocks: Record<number, number>, customPrice?: boolean }>>({})
+  // Store per-variant data: per-warehouse price (with custom flag) + per-warehouse stock
+  interface VariantWarehousePrice { value: number; custom: boolean }
+  interface VariantRecord { prices: Record<number, VariantWarehousePrice>; stocks: Record<number, number> }
+  const variantData = ref<Record<string, VariantRecord>>({})
 
   const variants = computed(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -423,25 +425,22 @@ export function useCreateProductPage() {
       const key = vals.join(' / ')
       keys.push(key)
       if (!variantData.value[key]) {
-        variantData.value[key] = {
-          price: Number(formData.value.price) || 0,
-          // seed stocks with global warehouseStocks if any
-          stocks: { ...(formData.value.warehouseStocks || {}) }
-        }
+        variantData.value[key] = { prices: {}, stocks: { ...(formData.value.warehouseStocks || {}) } }
       }
       const entry = variantData.value[key]
+      if (!entry.prices[wid]) entry.prices[wid] = { value: Number(formData.value.price) || 0, custom: false }
       if (entry.stocks[wid] === undefined) entry.stocks[wid] = 0
       return {
         key,
         name: key,
         options,
-        price: entry.price,
+        price: entry.prices[wid].value,
         stock: entry.stocks[wid]
       }
     })
     // Cleanup removed variant keys
     if (Object.keys(variantData.value).length) {
-      const next: Record<string, { price: number, stocks: Record<number, number> }> = {}
+      const next: Record<string, VariantRecord> = {}
       for (const k of keys) if (variantData.value[k]) next[k] = variantData.value[k]
       variantData.value = next
     }
@@ -487,14 +486,33 @@ export function useCreateProductPage() {
     selectedVariantKeys.value = arr
   }
 
-  const updateVariantPrice = (key: string, price: number) => {
-    if (!variantData.value[key]) variantData.value[key] = { price: Number(formData.value.price) || 0, stocks: { ...(formData.value.warehouseStocks || {}) } }
-    variantData.value[key].price = Number(price) || 0
-    variantData.value[key].customPrice = true
+  // Helpers for ensuring data
+  const ensureVariantWarehouse = (key: string, warehouseId: number) => {
+    if (!variantData.value[key]) {
+      variantData.value[key] = { prices: {}, stocks: { ...(formData.value.warehouseStocks || {}) } }
+    }
+    const rec = variantData.value[key]
+    if (!rec.prices[warehouseId]) rec.prices[warehouseId] = { value: Number(formData.value.price) || 0, custom: false }
+    if (rec.stocks[warehouseId] === undefined) rec.stocks[warehouseId] = 0
+  }
+  const updateVariantPrice = (key: string, warehouseId: number, price: number) => {
+    ensureVariantWarehouse(key, warehouseId)
+    const p = Number(price) || 0
+    variantData.value[key]!.prices[warehouseId] = { value: p, custom: true }
+    // Propagate to other warehouses where price is 0/undefined (initial fill), keep custom=false
+    const rec = variantData.value[key]!
+    const warehouseIds = warehouses.value.map(w => w.id)
+    for (const wid of warehouseIds) {
+      if (wid === warehouseId) continue
+      const existing = rec.prices[wid]
+      if (!existing || !existing.value) {
+        rec.prices[wid] = { value: p, custom: false }
+      }
+    }
   }
   const updateVariantStock = (key: string, warehouseId: number, qty: number) => {
-    if (!variantData.value[key]) variantData.value[key] = { price: Number(formData.value.price) || 0, stocks: { ...(formData.value.warehouseStocks || {}) } }
-    variantData.value[key].stocks[warehouseId] = Math.max(0, Number(qty) || 0)
+    ensureVariantWarehouse(key, warehouseId)
+  variantData.value[key]!.stocks[warehouseId] = Math.max(0, Number(qty) || 0)
   }
 
   // Editing state for inline edits
@@ -508,21 +526,28 @@ export function useCreateProductPage() {
   }
   const isEditingPrice = (key: string) => editingPriceKeys.value.has(key)
   const isEditingStock = (key: string) => editingStockKeys.value.has(key)
-  const commitPrice = (key: string, value: number) => {
-    updateVariantPrice(key, value)
+  const commitPrice = (key: string, warehouseId: number, value: number) => {
+    updateVariantPrice(key, warehouseId, value)
     editingPriceKeys.value.delete(key)
   }
-  const commitStock = (key: string, wid: number, value: number) => {
-    updateVariantStock(key, wid, value)
+  const commitStock = (key: string, warehouseId: number, value: number) => {
+    updateVariantStock(key, warehouseId, value)
     editingStockKeys.value.delete(key)
   }
 
-  // Keep variant prices in sync with global price unless customized
+  // When global price changes last, force override ALL variant prices (latest wins)
   watch(() => formData.value.price, (newPrice) => {
     const base = Number(newPrice) || 0
     for (const k of Object.keys(variantData.value)) {
-      const entry = variantData.value[k]
-      if (entry && !entry.customPrice) entry.price = base
+      const rec = variantData.value[k]
+      if (!rec) continue
+      for (const widStr of Object.keys(rec.prices)) {
+        const p = rec.prices[Number(widStr)]
+        if (p) {
+          p.value = base
+          p.custom = false // reset custom so future global changes continue to apply
+        }
+      }
     }
   })
 
@@ -588,7 +613,7 @@ export function useCreateProductPage() {
       isAllVariantsChecked,
       selectedVariantKeys,
       onToggleAllVariants,
-      onToggleVariant,
+  onToggleVariant,
   updateVariantPrice,
   updateVariantStock,
   startEditPrice,
