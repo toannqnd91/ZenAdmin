@@ -141,7 +141,20 @@ export const useProductForm = () => {
           .replace(/-+/g, "-") || "new-product";
 
       // ==== PAYLOAD GỬI LÊN BACKEND (bổ sung tại đây nếu cần) ===================
+      // ==== PAYLOAD SENT TO BACKEND (supplement here if needed)
       const isUpdate = !!formData.value.id && formData.value.id > 0;
+
+      // collectionIds: array of selected collection ids, or null if none
+      // collectionIds: mảng các id bộ sưu tập đã chọn, hoặc null nếu không chọn cái nào
+      let collectionIds: number[] | null = null
+      if ('selectedCollections' in formData.value && Array.isArray((formData.value as any).selectedCollections)) {
+        const arr = (formData.value as any).selectedCollections as number[]
+        collectionIds = arr.length ? arr : null
+      } else if ('collectionIds' in formData.value && Array.isArray((formData.value as any).collectionIds)) {
+        const arr = (formData.value as any).collectionIds as number[]
+        collectionIds = arr.length ? arr : null
+      }
+
       const payload: Record<string, unknown> = {
         id: formData.value.id || 0,
         name: formData.value.name,
@@ -154,9 +167,10 @@ export const useProductForm = () => {
         isFeatured: !!formData.value.isFeatured,
         stockTrackingIsEnabled: false,
         categoryIds: formData.value.categoryIds || [],
-        // Map descriptions
-        shortDescription: formData.value.description || "",
-        description: formData.value.content || "",
+  // Map descriptions
+  shortDescription: formData.value.description || "",
+  description: formData.value.content || "",
+  collectionIds: collectionIds,
         // IDs from extended form if any
         supplierId:
           (formData.value as unknown as Record<string, unknown>)[
