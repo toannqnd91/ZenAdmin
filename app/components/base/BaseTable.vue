@@ -57,7 +57,17 @@ interface Props {
   draggable?: boolean
   dragHandleClass?: string
   dragAnimation?: number
+  
+  // Thêm prop tabs cho BaseTable
+  tabs?: TableTab[];
 }
+
+interface TableTab {
+  label: string;
+  value: string;
+  count?: number;
+}
+
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
@@ -82,6 +92,24 @@ const props = withDefaults(defineProps<Props>(), {
     }
   ]
 })
+
+// Tab state
+
+// Tab state: click đổi tab, emit khi đổi
+const currentTab = ref(props.tabs && props.tabs.length ? props.tabs[0].value : undefined)
+watch(
+  () => props.tabs,
+  (val) => {
+    if (val && val.length) currentTab.value = val[0].value
+  },
+  { immediate: true }
+)
+const onTabClick = (val: string) => {
+  if (currentTab.value !== val) {
+    currentTab.value = val
+    emit('update:tab', val)
+  }
+}
 
 const emit = defineEmits<{
   'update:q': [string]
@@ -285,7 +313,33 @@ const onRowDelete = (item: Record<string, unknown>) => {
     <!-- Top bar -->
     <div class="flex items-center justify-between gap-3 px-6 py-5">
       <h2 class="text-lg font-semibold">
-        {{ title }}
+          <div class="table-title-bar flex items-center justify-between">
+            <template v-if="props.tabs && props.tabs.length">
+              <div class="flex gap-2">
+                <button
+                  v-for="tab in props.tabs"
+                  :key="tab.value"
+                  :class="[
+                    'tab-btn px-3 py-1 rounded font-medium text-base transition',
+                    currentTab === tab.value
+                      ? 'bg-primary-50 text-primary-700 border-b-2 border-primary-600'
+                      : 'text-gray-600 hover:bg-gray-100 border-b-2 border-transparent'
+                  ]"
+                  @click="onTabClick(tab.value)"
+                  type="button"
+                >
+                  {{ tab.label }}
+                  <span v-if="typeof tab.count === 'number'" class="ml-1 text-xs bg-gray-200 rounded px-1.5">{{ tab.count }}</span>
+                </button>
+              </div>
+            </template>
+            <template v-else>
+              <div class="text-lg font-semibold">{{ props.title }}</div>
+            </template>
+            <div class="flex items-center gap-2">
+              <slot name="table-actions" />
+            </div>
+          </div>
       </h2>
 
       <div class="flex items-center gap-3">
@@ -900,3 +954,19 @@ tbody tr.sortable-drag {
   transform: rotate(1deg);
 }
 </style>
+
+/* Tab styles */
+.tab-btn {
+  outline: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  position: relative;
+}
+.tab-btn.active,
+.tab-btn.bg-primary-50 {
+  font-weight: 600;
+}
+.tab-btn:focus {
+  box-shadow: 0 0 0 2px #1b64f233;
+}
