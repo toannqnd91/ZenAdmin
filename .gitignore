@@ -23,6 +23,7 @@ logs
 .env
 .env.*
 !.env.development
+!.env.production
 !.env.example
 
 # VSC
