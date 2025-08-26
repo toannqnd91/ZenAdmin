@@ -155,6 +155,20 @@ export const useProductForm = () => {
         collectionIds = arr.length ? arr : null
       }
 
+      // variations: nếu là update thì thêm Id vào từng variation nếu có, create thì giữ nguyên không có Id
+      let variations = extras?.variations || [];
+      if (isUpdate && Array.isArray(variations)) {
+        variations = variations.map((v: any, idx: number) => {
+          // Nếu variation đã có id thì giữ, nếu không thì bỏ qua
+          if (v && v.id) return v;
+          // Tìm id từ data gốc nếu có (nếu cần có thể truyền vào qua extras)
+          if (v && v.name && Array.isArray((formData.value as any).originalVariations)) {
+            const found = (formData.value as any).originalVariations.find((ori: any) => ori.name === v.name);
+            if (found && found.id) return { ...v, id: found.id };
+          }
+          return v;
+        });
+      }
       const payload: Record<string, unknown> = {
         id: formData.value.id || 0,
         name: formData.value.name,
@@ -167,10 +181,10 @@ export const useProductForm = () => {
         isFeatured: !!formData.value.isFeatured,
         stockTrackingIsEnabled: false,
         categoryIds: formData.value.categoryIds || [],
-  // Map descriptions
-  shortDescription: formData.value.description || "",
-  description: formData.value.content || "",
-  collectionIds: collectionIds,
+        // Map descriptions
+        shortDescription: formData.value.description || "",
+        description: formData.value.content || "",
+        collectionIds: collectionIds,
         // IDs from extended form if any
         supplierId:
           (formData.value as unknown as Record<string, unknown>)[
@@ -194,7 +208,7 @@ export const useProductForm = () => {
           : { imageUrls: formData.value.imageUrls || [] }),
         // Extras from UI mapping
         options: extras?.options || [],
-        variations: extras?.variations || [],
+        variations,
         ...(extras?.productImages
           ? { productImages: extras.productImages }
           : {}),

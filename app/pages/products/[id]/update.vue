@@ -76,6 +76,12 @@ const loadDetail = async () => {
       await nextTick()
       if (Array.isArray(data.variations)) {
   const vdata: any = page.variants.variantData
+            // Lưu original variations để giữ Id
+            interface OriginalVariationRef { id: number | null | undefined; name: string }
+            if (!('originalVariations' in page.state.formData)) {
+              ;(page.state.formData as unknown as { originalVariations: OriginalVariationRef[] }).originalVariations = []
+            }
+            const originals: OriginalVariationRef[] = []
         for (const v of data.variations) {
           const key = v.name
           if (!vdata[key]) vdata[key] = { prices: {}, stocks: {} }
@@ -84,7 +90,9 @@ const loadDetail = async () => {
             if (!vdata[key].prices[wid]) vdata[key].prices[wid] = { value: Number(v.price) || 0, custom: true }
             vdata[key].stocks[wid] = Number(inv.quantity) || 0
           }
+              originals.push({ id: v.id, name: v.name })
         }
+            ;(page.state.formData as unknown as { originalVariations: OriginalVariationRef[] }).originalVariations = originals
       }
     }
   } catch (e) {
