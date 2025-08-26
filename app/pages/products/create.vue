@@ -687,6 +687,17 @@ const page = reactive(useCreateProductPage())
                       selected-count-text="Đã chọn" selected-count-suffix="giá trị" :count-when-at-least="2"
                       add-new-label="Thêm bộ sưu tập" multiple
                       class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                    <div v-if="page.state.selectedCollections && page.state.selectedCollections.length > 0" class="flex flex-wrap gap-1 mt-2">
+                      <span v-for="col in (page.state.collections || []).filter(c => page.state.selectedCollections.includes(c.id))" :key="col.id"
+                        class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200">
+                        {{ col.name }}
+                        <button type="button"
+                          class="ml-1 inline-flex items-center justify-center w-3 h-3 rounded-full text-primary-600 hover:bg-primary-200 hover:text-primary-800 focus:outline-none"
+                          @click="page.state.selectedCollections = page.state.selectedCollections.filter(id => id !== col.id)">
+                          ×
+                        </button>
+                      </span>
+                    </div>
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
