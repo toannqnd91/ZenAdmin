@@ -404,64 +404,83 @@ export function useCreateProductPage() {
   interface VariantRecord { prices: Record<number, VariantWarehousePrice>; stocks: Record<number, number> }
   const variantData = ref<Record<string, VariantRecord>>({})
 
+  // Internal list of variant keys ("Color / Size" etc.)
+  const variantKeys = ref<string[]>([])
+
+  // Build combinations when attributes / warehouses / selected warehouse change
+  watch(
+    [activeAttributes, () => formData.value.warehouseId, warehouses],
+    () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const attrs = activeAttributes.value as unknown as any[]
+      if (!Array.isArray(attrs) || attrs.length === 0) {
+        variantKeys.value = []
+        return
+      }
+      // Build cartesian product of attribute values
+  const lists = attrs.map(a => Array.isArray(a.values) ? a.values.map((v: unknown) => String(v)) : [])
+      let product: string[][] = []
+      for (const list of lists) {
+        if (product.length === 0) {
+          product = list.map((v: string) => [v])
+        } else {
+          const next: string[][] = []
+          for (const combo of product) {
+            for (const v of list) next.push([...combo, String(v)])
+          }
+          product = next
+        }
+      }
+      const newKeys = product.map(vals => vals.join(' / '))
+
+      // Initialize variantData entries for new keys (no side effects in computed)
+      // Build next variantData object immutably to avoid delete side-effects
+      const nextVariantData: Record<string, VariantRecord> = {}
+      for (const key of newKeys) {
+        if (!variantData.value[key]) {
+          const initialStocks: Record<number, number> = {}
+          for (const w of warehouses.value) {
+            initialStocks[w.id] = (formData.value.warehouseStocks || {})[w.id] || 0
+          }
+          nextVariantData[key] = { prices: {}, stocks: initialStocks }
+        } else {
+          // Clone existing to maintain reactivity on nested objects
+          const existing = variantData.value[key]
+          // Ensure any new warehouse ids are present
+          for (const w of warehouses.value) {
+            if (existing.stocks[w.id] === undefined) {
+              existing.stocks[w.id] = (formData.value.warehouseStocks || {})[w.id] || 0
+            }
+          }
+          nextVariantData[key] = existing
+        }
+      }
+      variantData.value = nextVariantData
+      variantKeys.value = newKeys
+    },
+    { immediate: true, deep: true }
+  )
+
   const variants = computed(() => {
+    const wid = (formData.value.warehouseId && warehouses.value.some(w => w.id === formData.value.warehouseId)) ? formData.value.warehouseId : 0
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const attrs = activeAttributes.value as unknown as any[]
-    if (!Array.isArray(attrs) || attrs.length === 0) return []
-    const lists = attrs.map((a) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const vs = (a && (a as any).values) as unknown
-      return Array.isArray(vs) ? vs : []
-    }) as unknown as unknown[]
-    let product: string[][] = []
-    for (const listAny of lists) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const list = (listAny as any[]).map(v => String(v))
-      if (product.length === 0) {
-        product = list.map(v => [v])
-      } else {
-        const next: string[][] = []
-        for (const combo of product) {
-          for (const v of list) next.push([...combo, String(v)])
-        }
-        product = next
-      }
-    }
-    const wid = (formData.value.warehouseId && warehouses.value.some(w => w.id === formData.value.warehouseId)) ? formData.value.warehouseId : 0
-    const keys: string[] = []
-    const list = product.map((vals) => {
+    return variantKeys.value.map((key) => {
+      const entry = variantData.value[key]
+      const parts = key.split(' / ')
       const options: Record<string, string> = {}
       for (let i = 0; i < attrs.length; i += 1) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const a = attrs[i] as any
-        const name = String((a && a.name) || '')
-        if (name) options[name] = String(vals[i] || '')
+        const name = String(attrs[i].name || '')
+        if (name) options[name] = String(parts[i] || '')
       }
-      const key = vals.join(' / ')
-      keys.push(key)
-      if (!variantData.value[key]) {
-        const initialStocks: Record<number, number> = {}
-        for (const w of warehouses.value) initialStocks[w.id] = (formData.value.warehouseStocks || {})[w.id] || 0
-        variantData.value[key] = { prices: {}, stocks: initialStocks }
-      }
-      const entry = variantData.value[key]
-      if (wid && !entry.prices[wid]) entry.prices[wid] = { value: Number(formData.value.price) || 0, custom: false }
-      if (wid && entry.stocks[wid] === undefined) entry.stocks[wid] = 0
       return {
         key,
         name: key,
         options,
-        price: wid && entry.prices[wid] ? entry.prices[wid].value : Number(formData.value.price) || 0,
-        stock: wid && entry.stocks[wid] !== undefined ? entry.stocks[wid] : 0
+        price: wid && entry?.prices[wid] ? entry.prices[wid].value : Number(formData.value.price) || 0,
+        stock: wid && entry?.stocks[wid] !== undefined ? entry.stocks[wid] : 0
       }
     })
-    // Cleanup removed variant keys
-    if (Object.keys(variantData.value).length) {
-      const next: Record<string, VariantRecord> = {}
-      for (const k of keys) if (variantData.value[k]) next[k] = variantData.value[k]
-      variantData.value = next
-    }
-    return list
   })
 
   const totalVariantStock = computed(() => {

@@ -14,12 +14,12 @@ export default defineNuxtConfig({
       apiBaseUrl:
         process.env.NUXT_PUBLIC_API_BASE_URL
         || (process.env.NODE_ENV === 'production'
-          ? 'https://localhost:62939/api/v1'
+          ? 'https://velavn.com/api/v1'
           : 'https://localhost:62939/api/v1'),
       imageBaseUrl:
         process.env.NUXT_PUBLIC_IMAGE_BASE_URL
         || (process.env.NODE_ENV === 'production'
-          ? 'https://localhost:62939'
+          ? 'https://velavn.com'
           : 'https://localhost:62939'),
       // public test user available on client via useRuntimeConfig().public.testUser
       testUser: process.env.NUXT_PUBLIC_TEST_USER || 'tester@example.com'
