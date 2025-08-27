@@ -141,7 +141,8 @@ const initializeEditor = async () => {
         'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
         'insertdatetime', 'media', 'table', 'help', 'wordcount'
       ],
-      toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | link image media table | align lineheight | numlist bullist indent outdent | removeformat | code fullscreen help',
+      // Đơn giản toolbar để giữ nút Fullscreen luôn hiển thị cạnh nút 3 chấm (overflow)
+      toolbar: 'undo redo | blocks fontsize | fullscreen | bold italic underline | fontfamily forecolor backcolor | align | bullist numlist | link image table | code',
       content_style: 'body { font-family: system-ui, sans-serif; font-size:14px; line-height:1.6; margin:1rem; }',
       placeholder: props.placeholder,
       branding: false,
