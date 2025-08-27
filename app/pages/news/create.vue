@@ -30,6 +30,9 @@ const {
   selectedCategories,
   toggleCategory,
   removeCategory,
+  isCategoriesLoading,
+  categoriesError,
+  refreshCategories,
   
   // Image upload
   isUploadingImage,
@@ -101,6 +104,7 @@ const cancel = () => {
                     <label for="content" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nội dung bài viết <span class="text-red-500">*</span></label>
                     <div class="rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden bg-white dark:bg-gray-800">
                       <TinyMCESelfHost
+                        editor-id="news-content-editor"
                         v-model="formData.content"
                         placeholder="Nhập nội dung bài viết..."
                         :height="300"
@@ -109,12 +113,14 @@ const cancel = () => {
                     <p v-if="errors.content" class="mt-1 text-sm text-red-600">{{ errors.content }}</p>
                   </div>
                   <div>
-                    <label for="desc" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tóm tắt</label>
+                    <label for="desc" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tóm tắt <span class="text-red-500">*</span></label>
                     <div class="rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden bg-white dark:bg-gray-800">
                       <TinyMCESelfHost
+                        editor-id="news-summary-editor"
                         v-model="formData.desc"
                         placeholder="Nhập mô tả ngắn"
-                        :height="150"
+                        :height="250"
+                        plain-text
                       />
                     </div>
                     <p v-if="errors.desc" class="mt-1 text-sm text-red-600">{{ errors.desc }}</p>
@@ -138,7 +144,7 @@ const cancel = () => {
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
-                <div v-else class="upload-area border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center bg-white dark:bg-gray-800 hover:border-primary-500 dark:hover:border-primary-400 focus-within:border-primary-500 dark:focus-within:border-primary-400 focus-within:ring-2 focus-within:ring-primary-500 transition-colors cursor-pointer" @click="clickFileInput">
+                <div v-else class="upload-area border border-dashed border-gray-300 rounded-xl p-6 text-center bg-white dark:bg-gray-800 hover:border-primary-500 dark:hover:border-primary-400 focus-within:border-primary-500 dark:focus-within:border-primary-400 focus-within:ring-2 focus-within:ring-primary-500 transition-colors cursor-pointer" @click="clickFileInput">
                   <div class="space-y-2">
                     <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
                     <div class="text-sm text-gray-600 dark:text-gray-400"><span class="font-medium text-primary-600 dark:text-primary-400">Click để tải lên ảnh bài viết</span> hoặc kéo thả vào đây</div>
@@ -167,7 +173,9 @@ const cancel = () => {
                         >
                       </div>
                       <div class="max-h-40 overflow-y-auto">
-                        <div v-if="filteredCategories.length === 0" class="p-3 text-sm text-gray-500">{{ searchTerm ? 'Không tìm thấy danh mục' : 'Đang tải danh mục...' }}</div>
+                        <div v-if="isCategoriesLoading" class="p-3 text-sm text-gray-500">Đang tải danh mục...</div>
+                        <div v-else-if="categoriesError" class="p-3 text-sm text-red-500">Lỗi tải danh mục</div>
+                        <div v-else-if="!filteredCategories.length" class="p-3 text-sm text-gray-500">{{ searchTerm ? 'Không tìm thấy danh mục' : 'Không có danh mục' }}</div>
                         <label v-for="category in filteredCategories" :key="category.id" class="flex items-center space-x-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
                           <UCheckbox :model-value="formData.categoryIds.includes(category.id)" @update:model-value="toggleCategory(category.id)" />
                           <span class="text-sm text-gray-700 dark:text-gray-300">{{ category.name }}</span>

@@ -44,7 +44,6 @@ const isReady = ref(false)
 let lastEmittedPlainText = ''
 
 type GetContentOptions = { format?: 'text' | 'raw' | 'html' }
-
 interface TinyMCEEditor {
   getContent: (opts?: GetContentOptions) => string
   setContent: (content: string, opts?: GetContentOptions) => void
@@ -52,42 +51,9 @@ interface TinyMCEEditor {
   destroy: () => void
   on: (event: string, callback: () => void) => void
 }
+interface TinyMCE { init: (config: any) => Promise<TinyMCEEditor[]>; baseURL: string; suffix: string }
 
-interface TinyMCEConfig {
-  target: HTMLElement
-  height: number
-  entity_encoding: 'named' | 'numeric' | 'raw'
-  base_url: string
-  suffix: string
-  menubar: string
-  toolbar_mode: string
-  plugins: string[]
-  toolbar: string
-  content_style: string
-  placeholder: string
-  branding: boolean
-  resize: string
-  elementpath: boolean
-  statusbar: boolean
-  paste_data_images: boolean
-  paste_as_text: boolean
-  automatic_uploads: boolean
-  file_picker_types: string
-  images_upload_handler: (blobInfo: { blob: () => Blob, base64: () => string }, progress?: (p: number) => void) => Promise<string>
-  promotion: boolean
-  convert_urls: boolean
-  relative_urls: boolean
-  remove_script_host: boolean
-  setup: (ed: TinyMCEEditor) => void
-}
-
-interface TinyMCE {
-  init: (config: TinyMCEConfig) => Promise<TinyMCEEditor[]>
-  baseURL: string
-  suffix: string
-}
-
-// Global window extension removed (handled elsewhere by TinyMCE types if present)
+declare global { interface Window { tinymce?: TinyMCE } }
 
 let __tinyLoaderPromise: Promise<TinyMCE | null> | null = null
 const loadLocalTinyMCE = async (): Promise<TinyMCE | null> => {
@@ -112,11 +78,7 @@ const loadLocalTinyMCE = async (): Promise<TinyMCE | null> => {
         resolve(window.tinymce)
       } else reject(new Error('TinyMCE không thể load'))
     }
-    script.onerror = () => {
-      console.error('[TinyMCESelfHost] load lỗi')
-      showFallback()
-      reject(new Error('Failed to load TinyMCE'))
-    }
+    script.onerror = () => { console.error('[TinyMCESelfHost] load lỗi'); showFallback(); reject(new Error('Failed to load TinyMCE')) }
     document.head.appendChild(script)
   })
   return __tinyLoaderPromise
@@ -136,11 +98,7 @@ const initializeEditor = async () => {
       suffix: '.min',
       menubar: 'file edit view insert format tools table help',
       toolbar_mode: 'sliding',
-      plugins: [
-        'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-        'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-        'insertdatetime', 'media', 'table', 'help', 'wordcount'
-      ],
+      plugins: ['advlist','autolink','lists','link','image','charmap','preview','anchor','searchreplace','visualblocks','code','fullscreen','insertdatetime','media','table','help','wordcount'],
       toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | link image media table | align lineheight | numlist bullist indent outdent | removeformat | code fullscreen help',
       content_style: 'body { font-family: system-ui, sans-serif; font-size:14px; line-height:1.6; margin:1rem; }',
       placeholder: props.placeholder,
@@ -156,9 +114,9 @@ const initializeEditor = async () => {
         try {
           const blob = blobInfo.blob()
           const file = new File([blob], `image-${Date.now()}.${blob.type.split('/')[1]}`, { type: blob.type })
-          const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml']
-          if (!allowed.includes(file.type)) throw new Error('Định dạng ảnh không hỗ trợ')
-          if (file.size > 5 * 1024 * 1024) throw new Error('Ảnh >5MB')
+          const allowed = ['image/jpeg','image/jpg','image/png','image/gif','image/svg+xml']
+            if (!allowed.includes(file.type)) throw new Error('Định dạng ảnh không hỗ trợ')
+          if (file.size > 5*1024*1024) throw new Error('Ảnh >5MB')
           const response = await fileService.uploadFile(file, 'editor')
           const data = response?.data ? (Array.isArray(response.data) ? response.data[0] : response.data) : null
           if (data?.fileName) return fileService.getFileUrl(data.fileName) || ''
@@ -176,20 +134,13 @@ const initializeEditor = async () => {
         editor = ed
         ed.on('init', () => {
           isReady.value = true
-          if (props.modelValue) {
-            ed.setContent(props.plainText ? props.modelValue.replace(/\n/g, '<br>') : props.modelValue)
-          }
+          if (props.modelValue) ed.setContent(props.plainText ? props.modelValue.replace(/\n/g,'<br>') : props.modelValue)
         })
         const emitContent = () => {
           if (props.plainText) {
             const text = ed.getContent({ format: 'text' }) || ''
-            if (text !== lastEmittedPlainText) {
-              lastEmittedPlainText = text
-              emit('update:modelValue', text)
-            }
-          } else {
-            emit('update:modelValue', ed.getContent())
-          }
+            if (text !== lastEmittedPlainText) { lastEmittedPlainText = text; emit('update:modelValue', text) }
+          } else emit('update:modelValue', ed.getContent())
         }
         ed.on('change', emitContent)
         ed.on('keyup paste input', emitContent)
@@ -204,12 +155,8 @@ const initializeEditor = async () => {
 const showFallback = () => {
   if (!editorElement.value) return
   editorElement.value.innerHTML = `<textarea style="width:100%;height:${props.height - 10}px;padding:12px;border:1px solid #d1d5db;border-radius:6px;">${props.modelValue || ''}</textarea>`
-  const ta = editorElement.value.querySelector('textarea') as HTMLTextAreaElement | null
-  if (ta) {
-    ta.addEventListener('input', (e) => {
-      emit('update:modelValue', (e.target as HTMLTextAreaElement).value)
-    })
-  }
+  const ta = editorElement.value.querySelector('textarea')
+  if (ta) ta.addEventListener('input', e => emit('update:modelValue',(e.target as HTMLTextAreaElement).value))
 }
 
 watch(() => props.modelValue, (val) => {
@@ -218,7 +165,7 @@ watch(() => props.modelValue, (val) => {
     const current = editor.getContent({ format: 'text' }) || ''
     const target = val || ''
     if (current !== target) {
-      editor.setContent(target.replace(/\n/g, '<br>'))
+      editor.setContent(target.replace(/\n/g,'<br>'))
       lastEmittedPlainText = target
     }
   } else if (editor.getContent() !== val) {
@@ -226,40 +173,21 @@ watch(() => props.modelValue, (val) => {
   }
 })
 
-onMounted(() => {
-  if (import.meta.client) {
-    setTimeout(initializeEditor, 30)
-  }
-})
-onBeforeUnmount(() => {
-  if (editor) {
-    try {
-      editor.destroy()
-    } catch (err) {
-      console.warn('TinyMCE destroy error', err)
-    }
-    editor = null
-    isReady.value = false
-  }
-})
+onMounted(() => { if (import.meta.client) setTimeout(initializeEditor, 30) })
+
+onBeforeUnmount(() => { if (editor) { try { editor.destroy(); } catch {} editor = null; isReady.value = false } })
 </script>
 
 <style scoped>
-.tinymce-selfhost-wrapper { width: 100%; background: white; }
-.dark .tinymce-selfhost-wrapper { background: #1f2937; }
-.editor-container { width: 100%; min-height: 200px; }
-.loading-container { display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 2rem; color: #6b7280; }
-.loading-spinner { width: 24px; height: 24px; border: 2px solid #e5e7eb; border-top: 2px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
-@keyframes spin { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
-:deep(.tox-tinymce) { border: none !important; }
-:deep(.tox-editor-header),
-:deep(.tox-menubar),
-:deep(.tox-toolbar),
-:deep(.tox-statusbar) { background: #f9fafb; border-color: #e5e7eb; }
-.dark :deep(.tox-editor-header),
-.dark :deep(.tox-menubar),
-.dark :deep(.tox-toolbar),
-.dark :deep(.tox-statusbar) { background: #374151; border-color: #4b5563; }
-:deep(.tox-edit-area) { background: white; }
-.dark :deep(.tox-edit-area) { background: #1f2937; }
+.tinymce-selfhost-wrapper { width:100%; background:white; }
+.dark .tinymce-selfhost-wrapper { background:#1f2937; }
+.editor-container { width:100%; min-height:200px; }
+.loading-container { display:flex; flex-direction:column; align-items:center; gap:1rem; padding:2rem; color:#6b7280; }
+.loading-spinner { width:24px; height:24px; border:2px solid #e5e7eb; border-top:2px solid #3b82f6; border-radius:50%; animation:spin 1s linear infinite; }
+@keyframes spin { 0%{transform:rotate(0)}100%{transform:rotate(360deg)} }
+:deep(.tox-tinymce){border:none !important;}
+:deep(.tox-editor-header),:deep(.tox-menubar),:deep(.tox-toolbar),:deep(.tox-statusbar){background:#f9fafb; border-color:#e5e7eb;}
+.dark :deep(.tox-editor-header),.dark :deep(.tox-menubar),.dark :deep(.tox-toolbar),.dark :deep(.tox-statusbar){background:#374151; border-color:#4b5563;}
+:deep(.tox-edit-area){background:white;}
+.dark :deep(.tox-edit-area){background:#1f2937;}
 </style>

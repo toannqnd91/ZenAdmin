@@ -10,6 +10,14 @@ interface FormErrors {
 }
 
 export const useNewsForm = (newsId?: number) => {
+  // Helper to decode HTML entities (for desc previously saved as encoded HTML)
+  const decodeEntities = (str: string): string => {
+    if (!str) return ''
+    if (typeof window === 'undefined') return str
+    const textarea = document.createElement('textarea')
+    textarea.innerHTML = str
+    return textarea.value
+  }
   // Form data
   const formData = ref<NewsFormData>({
     title: '',
@@ -58,11 +66,19 @@ export const useNewsForm = (newsId?: number) => {
   const isDropdownOpen = ref(false)
   const searchTerm = ref('')
 
-  // Fetch categories
-  const { data: categoriesResponse } = useAsyncData('news-categories', async () => {
-    const response = await newsService.getCategories()
-    return response
-  })
+  // Fetch categories (client-side to ensure auth token available on hard reload)
+  const { data: categoriesResponse, pending: categoriesPending, error: categoriesError, refresh: refreshCategories } = useAsyncData(
+    'news-categories',
+    async () => {
+      try {
+        return await newsService.getCategories()
+      } catch (e) {
+        console.error('Lỗi tải danh mục tin tức:', e)
+        return { success: false, data: [] }
+      }
+    },
+    { server: false, lazy: false }
+  )
 
   const categories = computed(() => {
     if (!categoriesResponse.value?.success || !categoriesResponse.value.data) return []
@@ -218,7 +234,7 @@ export const useNewsForm = (newsId?: number) => {
         const news = response.data
         formData.value = {
           title: news.title,
-          desc: news.desc,
+          desc: decodeEntities(news.desc || ''),
           content: news.content,
           imageUrl: news.imageUrl || '',
           tags: news.tags || [],
@@ -252,6 +268,8 @@ export const useNewsForm = (newsId?: number) => {
         // Update mode
         response = await newsService.updateNews(newsId, formData.value)
       } else {
+  // Ensure desc plain text trimmed (summary editor runs in plainText mode)
+  formData.value.desc = formData.value.desc.trim()
         // Create mode
         response = await newsService.createNews(formData.value)
       }
@@ -303,6 +321,9 @@ export const useNewsForm = (newsId?: number) => {
     selectedCategories,
     toggleCategory,
     removeCategory,
+  isCategoriesLoading: computed(() => categoriesPending.value),
+  categoriesError,
+  refreshCategories,
     
     // Image upload
     isUploadingImage,
