@@ -148,7 +148,7 @@ const splitLine = ref(false)
                   <a href="#" class="text-primary-600 text-sm font-medium">Danh sách tag</a>
                 </template>
               </BaseCardHeader>
-              <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200">
+              <div class="-mx-6 px-6">
                 <input
                   type="text"
                   class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
