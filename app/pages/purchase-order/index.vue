@@ -1,5 +1,7 @@
+
 <script setup lang="ts">
 import { ref } from 'vue'
+import BaseCardHeader from '~/components/BaseCardHeader.vue'
 
 const splitLine = ref(false)
 </script>
@@ -29,17 +31,17 @@ const splitLine = ref(false)
           <!-- Cột trái -->
           <div class="flex-1 space-y-6">
             <UPageCard variant="soft" class="bg-white rounded-lg">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2 font-medium text-lg">
-                    Sản phẩm
-                  </div>
-                  <CustomCheckbox
-                    v-model="splitLine"
-                    class="text-sm font-normal"
-                  >
-                    Tách dòng
-                  </CustomCheckbox>
-                </div>
+                <BaseCardHeader>
+                  Sản phẩm
+                  <template #actions>
+                    <CustomCheckbox
+                      v-model="splitLine"
+                      class="text-sm font-normal"
+                    >
+                      Tách dòng
+                    </CustomCheckbox>
+                  </template>
+                </BaseCardHeader>
                 <div class="flex items-center gap-2 mb-4">
                   <div class="flex-1 relative">
                     <input
@@ -62,7 +64,8 @@ const splitLine = ref(false)
                   </button>
                 </div>
             </UPageCard>
-            <UPageCard title="Thanh toán" variant="soft" class="bg-white rounded-lg">
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+                <BaseCardHeader>Thanh toán</BaseCardHeader>
                 <div class="space-y-2 text-sm">
                   <div class="flex justify-between">
                     <span>Tổng tiền</span>
@@ -85,8 +88,9 @@ const splitLine = ref(false)
           </div>
           <!-- Cột phải -->
           <div class="w-full lg:w-80 space-y-6">
-            <UPageCard title="Nhà cung cấp" variant="soft" class="bg-white rounded-lg">
-              <div class="-mx-6 px-6 pt-4">
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>Nhà cung cấp</BaseCardHeader>
+              <div class="-mx-6 px-6">
                 <input
                   type="text"
                   class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -94,16 +98,18 @@ const splitLine = ref(false)
                 >
               </div>
             </UPageCard>
-            <UPageCard title="Chi nhánh nhập" variant="soft" class="bg-white rounded-lg">
-              <div class="-mx-6 px-6 pt-4">
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>Chi nhánh nhập</BaseCardHeader>
+              <div class="-mx-6 px-6">
                 <select class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                   <option>Tên chi nhánh 1</option>
                   <option>Chi nhánh 2</option>
                 </select>
               </div>
             </UPageCard>
-            <UPageCard title="Thông tin bổ sung" variant="soft" class="bg-white rounded-lg">
-              <div class="-mx-6 px-6 pt-4">
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>Thông tin bổ sung</BaseCardHeader>
+              <div class="-mx-6 px-6">
                 <div class="mb-2">
                   <label class="block text-sm mb-1">Nhân viên phụ trách</label>
                   <select class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
@@ -125,8 +131,9 @@ const splitLine = ref(false)
                 </div>
               </div>
             </UPageCard>
-            <UPageCard title="Ghi chú" variant="soft" class="bg-white rounded-lg">
-              <div class="-mx-6 px-6 pt-4">
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>Ghi chú</BaseCardHeader>
+              <div class="-mx-6 px-6">
                 <textarea
                   class="w-full px-3 py-2.5 text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                   rows="2"
@@ -134,14 +141,14 @@ const splitLine = ref(false)
                 />
               </div>
             </UPageCard>
-            <UPageCard title="Tag" variant="soft" class="bg-white rounded-lg">
-              <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200">
-                <div class="flex items-center justify-between mb-2">
-                  <div class="font-medium">
-                    Tag
-                  </div>
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>
+                Tag
+                <template #actions>
                   <a href="#" class="text-primary-600 text-sm font-medium">Danh sách tag</a>
-                </div>
+                </template>
+              </BaseCardHeader>
+              <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200">
                 <input
                   type="text"
                   class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
