@@ -1,9 +1,73 @@
 
 <script setup lang="ts">
-import { ref } from 'vue'
+
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
 
 const splitLine = ref(false)
+
+
+const showProductSearch = ref(false)
+const productList = ref<any[]>([])
+const loadingProducts = ref(false)
+const productSearchPopupRef = ref<HTMLElement | null>(null)
+
+function openProductSearch() {
+  if (showProductSearch.value) return;
+  showProductSearch.value = true
+  fetchProducts()
+  nextTick(() => {
+    document.addEventListener('mousedown', handleClickOutside)
+  })
+}
+
+function closeProductSearch() {
+  showProductSearch.value = false
+  document.removeEventListener('mousedown', handleClickOutside)
+}
+
+function handleClickOutside(e: MouseEvent) {
+  if (!productSearchPopupRef.value) return;
+  if (!productSearchPopupRef.value.contains(e.target as Node)) {
+    closeProductSearch()
+  }
+}
+
+async function fetchProducts() {
+  loadingProducts.value = true
+  try {
+    const res = await fetch('https://localhost:62939/api/v1/product/grid', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': 'ZenUserGuid=2916f831-7605-486d-bc31-975e21dbeb5a'
+      },
+      body: JSON.stringify({
+        Pagination: { Start: 0, Number: 15 },
+        Search: { QueryObject: { Name: null, HasOptions: false } },
+        Sort: { Field: 'Id', Reverse: true }
+      })
+    })
+    const data = await res.json()
+    productList.value = data?.data?.items || []
+  } catch {
+    productList.value = []
+  }
+  loadingProducts.value = false
+}
+
+function handleF3(e) {
+  if (e.key === 'F3') {
+    openProductSearch()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleF3)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleF3)
+})
 </script>
 
 <template>
@@ -42,13 +106,47 @@ const splitLine = ref(false)
                     </CustomCheckbox>
                   </template>
                 </BaseCardHeader>
-                <div class="flex items-center gap-2 mb-4">
-                  <div class="flex-1 relative">
+                <div class="flex items-center gap-2 mb-4 relative">
+                  <div class="flex-1">
                     <input
+                      ref="mainProductInputRef"
                       type="text"
                       class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                       placeholder="Tìm theo tên, mã SKU, quét mã Barcode... (F3)"
+                      @focus="openProductSearch"
+                    />
+                    <div
+                      v-if="showProductSearch"
+                      class="absolute left-0 top-full z-50 w-full bg-white rounded-lg shadow-lg mt-2 max-h-[420px] overflow-auto border border-gray-200"
+                      ref="productSearchPopupRef"
                     >
+                      <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600" @click="closeProductSearch">&times;</button>
+                      <div class="flex items-center gap-2 mb-2 p-4 pb-0">
+                        <button class="flex items-center text-primary-600 text-sm font-medium hover:underline" style="padding:0">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                          Thêm mới sản phẩm
+                        </button>
+                      </div>
+
+                      <div v-if="loadingProducts" class="text-center py-8">Đang tải...</div>
+                      <div v-else>
+                        <div v-if="productList.length === 0" class="text-center py-8 text-gray-500">Không có sản phẩm</div>
+                        <div v-else class="p-4 pt-2">
+                          <div v-for="item in productList" :key="item.id" class="flex items-center py-3 gap-4" :style="'border-bottom: 1px solid rgb(232,234,235);' + (item === productList[productList.length-1] ? 'border-bottom: none;' : '')">
+                            <img :src="item.thumbnailImageUrl ? '/path/to/' + item.thumbnailImageUrl : '/no-image.svg'" class="w-12 h-12 rounded bg-gray-100 object-cover" />
+                            <div class="flex-1">
+                              <div class="font-medium">{{ item.name }}</div>
+                              <div v-if="item.normalizedName" class="text-xs text-gray-500">{{ item.normalizedName }}</div>
+                              <div class="text-xs text-gray-500">SKU: {{ item.sku || '---' }}</div>
+                            </div>
+                            <div class="text-right min-w-[100px]">
+                              <div class="font-semibold">{{ item.costPrice ? item.costPrice.toLocaleString() + '₫' : '---' }}</div>
+                              <div class="text-xs text-gray-500">Có thể bán: <span class="text-primary-600 font-medium">{{ item.stockQuantity }}</span></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   <button class="h-9 px-4 rounded-md border border-gray-300 bg-gray-50 text-sm font-medium hover:bg-gray-100">
                     Chọn nhiều
