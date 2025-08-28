@@ -25,11 +25,7 @@ const columns: TableColumn[] = [
     label: 'Tên bộ sưu tập',
     class: 'py-3 text-left font-medium'
   },
-  {
-    key: 'description',
-    label: 'Mô tả',
-    class: 'py-3 text-left font-medium'
-  },
+  // Removed description column
   {
     key: 'isPublished',
     label: 'Trạng thái',
@@ -39,9 +35,8 @@ const columns: TableColumn[] = [
 
 // Cấu hình chiều rộng các cột tương tự như WidgetsTable
 const colWidths = [
-  '28%', // name
-  '54%', // description
-  '10%'  // isPublished
+  // '38%', // name (wider since description removed)
+  // '10%'  // isPublished
 ]
 
 const addButton = {
@@ -54,7 +49,6 @@ const tableData = computed(() =>
   props.data.map(c => ({
     id: c.id,
     name: c.name,
-    description: c.description,
     imageUrl: c.imageUrl,
     isPublished: c.isPublished
   }))
@@ -98,9 +92,7 @@ const handleDelete = (selectedIds: string[]) => {
         </div>
       </div>
     </template>
-    <template #column-description="{ item }">
-      <span>{{ stripHtmlAndLimitWords((item as any).description, 25) || 'Không có mô tả' }}</span>
-    </template>
+  <!-- description column removed -->
     <template #column-isPublished="{ item }">
       <span v-if="(item as any).isPublished" class="text-green-600">Đã xuất bản</span>
       <span v-else class="text-gray-400">Nháp</span>
