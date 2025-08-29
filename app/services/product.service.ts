@@ -68,12 +68,12 @@ export class ProductService extends BaseService {
       // Luôn gửi HasOptions; mặc định true nếu không truyền vào để phù hợp yêu cầu
       HasOptions: typeof options?.hasOptions !== 'undefined' ? options.hasOptions : true
     }
-  const body = this.createListRequestBody({
-    pagination: options?.pagination,
-    search: searchObj,
-    sort: options?.sort
-  })
-  return this.post<{ items: ProductItem[], totalRecord: number, numberOfPages: number }>(API_ENDPOINTS.PRODUCTS, body)
+    const body = this.createListRequestBody({
+      pagination: options?.pagination,
+      search: searchObj,
+      sort: options?.sort
+    })
+    return this.post<{ items: ProductItem[], totalRecord: number, numberOfPages: number }>(API_ENDPOINTS.PRODUCTS, body)
   }
 
   /**

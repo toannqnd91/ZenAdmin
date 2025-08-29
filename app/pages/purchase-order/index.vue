@@ -1,8 +1,10 @@
 
 <script setup lang="ts">
 
+
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
+import { productService } from '@/services/product.service'
 
 const splitLine = ref(false)
 
@@ -36,20 +38,13 @@ function handleClickOutside(e: MouseEvent) {
 async function fetchProducts() {
   loadingProducts.value = true
   try {
-    const res = await fetch('https://localhost:62939/api/v1/product/grid', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': 'ZenUserGuid=2916f831-7605-486d-bc31-975e21dbeb5a'
-      },
-      body: JSON.stringify({
-        Pagination: { Start: 0, Number: 15 },
-        Search: { QueryObject: { Name: null, HasOptions: false } },
-        Sort: { Field: 'Id', Reverse: true }
-      })
+    const res = await productService.getProducts({
+      search: null,
+      hasOptions: false,
+      pagination: { start: 0, number: 15 },
+      sort: { field: 'Id', reverse: true }
     })
-    const data = await res.json()
-    productList.value = data?.data?.items || []
+    productList.value = res?.data?.items || []
   } catch {
     productList.value = []
   }
@@ -157,7 +152,7 @@ onBeforeUnmount(() => {
                   <div class="text-gray-500 mb-3">
                     Bạn chưa thêm sản phẩm nào
                   </div>
-                  <button class="px-4 h-9 rounded-md bg-primary-600 text-white font-medium hover:bg-primary-700 transition">
+                  <button class="px-4 h-9 rounded-md bg-primary-600 text-white font-medium hover:bg-primary-700 transition" @click="openProductSearch">
                     Thêm sản phẩm
                   </button>
                 </div>

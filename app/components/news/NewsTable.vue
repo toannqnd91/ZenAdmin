@@ -76,15 +76,15 @@ const handleRowClick = (item: NewsItem) => {
     @update:q="emit('update:q', $event)"
     @update:row-selection="emit('update:rowSelection', $event)"
     @update:pagination="emit('update:pagination', $event)"
-  @row-edit="emit('edit', $event)"
-  @row-delete="emit('delete', $event)"
-  @delete="emit('delete-multi', $event)"
+    @row-edit="emit('edit', $event)"
+    @row-delete="emit('delete', $event)"
+    @delete="emit('delete-multi', $event)"
     class=""
   >
     <!-- Custom title column with image and desc -->
     <template #column-title="{ item }">
       <div class="flex items-center gap-4">
-  <div class="h-11 w-11 min-w-[44px] min-h-[44px] aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
+        <div class="h-11 w-11 min-w-[44px] min-h-[44px] aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
           <img
             :src="fileService.getFileUrl(item.imageUrl) || '/no-image.svg'"
             :alt="item.title"

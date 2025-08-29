@@ -6,27 +6,27 @@ import type { ProductCategory as ProductCategoryType } from "@/composables/usePr
 import type { CreateProductRequest } from "@/services/product.service";
 
 export interface ProductFormData {
-  id?: number; // when present (>0) triggers update instead of create
-  name: string;
-  price: number | null;
-  compareAtPrice: number | null;
-  importPrice: number | null;
-  chargeTax: boolean;
-  sku: string;
-  description: string;
-  content: string;
-  imageUrls: string[];
-  categoryIds: number[];
-  url: string;
-  isFeatured: boolean;
-  isInStock: boolean;
+  id?: number // when present (>0) triggers update instead of create
+  name: string
+  price: number | null
+  compareAtPrice: number | null
+  importPrice: number | null
+  chargeTax: boolean
+  sku: string
+  description: string
+  content: string
+  imageUrls: string[]
+  categoryIds: number[]
+  url: string
+  isFeatured: boolean
+  isInStock: boolean
   // Optional extended fields (not strictly typed here to keep composable generic)
+  manageInventory?: boolean
+  warehouseStocks?: Record<number, number>
   // supplierId?: number | null
   // brandId?: number | null
   // warehouseId?: number | null
-  // manageInventory?: boolean
   // allowNegativeStock?: boolean
-  // warehouseStocks?: Record<number, number>
   // barcode?: string
 }
 
@@ -121,7 +121,7 @@ export const useProductForm = () => {
   }) => {
     errors.value = {};
     isSubmitting.value = true;
-    try {
+  try {
       // Validate
       if (!formData.value.name) errors.value.name = "Tên sản phẩm là bắt buộc";
       if (!formData.value.content)
@@ -169,12 +169,24 @@ export const useProductForm = () => {
           return v;
         });
       }
+      let inventory: Array<{ warehouseId: number; quantity: number }> | undefined = undefined;
+      // Nếu quản lý tồn kho thì build inventory từ warehouseStocks
+      if (formData.value.manageInventory) {
+        const stocks = formData.value.warehouseStocks as Record<string, number> || {}
+        const keys = Object.keys(stocks)
+        if (keys.length > 0) {
+          inventory = keys.map((k: string) => ({ warehouseId: parseInt(k, 10), quantity: Number(stocks[k]) || 0 }))
+        } else {
+          inventory = [{ warehouseId: 0, quantity: 0 }]
+        }
+      }
       const payload: Record<string, unknown> = {
         id: formData.value.id || 0,
         name: formData.value.name,
         slug,
         price: Number(formData.value.price) || 0,
         oldPrice: Number(formData.value.compareAtPrice) || 0,
+        costPrice: Number(formData.value.importPrice) || 0,
         isCallForPricing: false,
         isAllowToOrder: false,
         isPublished: true,
@@ -213,6 +225,7 @@ export const useProductForm = () => {
           ? { productImages: extras.productImages }
           : {}),
         // === Thêm field mới ở đây ===
+         ...(inventory ? { inventory } : {}),
       };
       // ==== HẾT PHẦN PAYLOAD =====================================================
 

@@ -13,14 +13,14 @@ export default defineAppConfig({
     preference: 'light'
   },
   settings: {
-    title: 'Vela',
-    description: 'Vela - Nơi cung cấp các sản phẩm chất lượng cao',
+    title: 'Phụ Kiện Quỳnh Đạt',
+    description: 'Phụ Kiện Quỳnh Đạt - Nơi cung cấp các sản phẩm chất lượng cao',
     favicon: '/favicon.png',
     team: {
-      label: 'Vela',
+      label: 'Phụ Kiện Quỳnh Đạt',
       avatar: {
         src: '',
-        alt: 'Vela'
+        alt: 'Phụ Kiện Quỳnh Đạt'
       }
     }
   }
