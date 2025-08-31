@@ -1,0 +1,6 @@
+{
+    "dataworkspace.excludedProjects": [
+        "VNNSoft/VNNSoft.sqlproj",
+        "ZenWeb/ZenWeb.sqlproj"
+    ]
+}
