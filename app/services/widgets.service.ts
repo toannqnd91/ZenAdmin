@@ -1,33 +1,6 @@
 import { BaseService } from './base.service'
 import { API_ENDPOINTS } from '@/utils/api'
-
-
 import type { ApiResponse } from '@/types/common'
-  export interface SimpleNewsWidgetData {
-    id: number;
-    name: string;
-    widgetZoneId: number;
-    publishStart: string;
-    publishEnd: string;
-    displayOrder: number;
-    news: Array<{
-      id: number;
-      name: string;
-      isPublished: boolean;
-    }>;
-// removed leftover closing brace
-  }
-
-export interface SimpleNewsWidgetResponse {
-  // removed old invalid interface
-  // removed orphaned interface declaration
-// removed orphaned interface declaration
-    code: string;
-    success: boolean;
-    message: string;
-    data: SimpleNewsWidgetData;
-  }
-// removed leftover closing brace
 
 export interface WidgetInstance {
   id: number
@@ -64,6 +37,27 @@ export interface CarouselWidgetItem {
   sortOrder: number
 }
 
+// Custom Data widget item
+export interface CustomDataWidgetItem {
+  caption: string
+  subCaption: string
+  imageUrl: string
+  linkText: string
+  targetUrl: string
+  sortOrder: number
+}
+
+// Create Custom Data widget request
+export interface CreateCustomDataWidgetRequest {
+  id: number
+  name: string
+  widgetZoneId: number
+  publishStart: string | null
+  publishEnd: string | null
+  displayOrder: number
+  items: CustomDataWidgetItem[]
+}
+
 export interface CreateCarouselWidgetRequest {
   id: number
   name: string
@@ -89,6 +83,20 @@ export interface CarouselWidgetResponse {
   success: boolean
   message: string
   data: CarouselWidgetData
+}
+// Simple news widget
+export interface SimpleNewsWidgetData {
+  id: number
+  name: string
+  widgetZoneId: number
+  publishStart: string
+  publishEnd: string
+  displayOrder: number
+  news: Array<{
+    id: number
+    name: string
+    isPublished: boolean
+  }>
 }
 
 export interface NewsWidgetSetting {
@@ -169,6 +177,13 @@ export class WidgetsService extends BaseService {
   }
 
   /**
+   * Create custom data widget
+   */
+  async createCustomDataWidget(data: CreateCustomDataWidgetRequest) {
+    return this.post<CreateWidgetApiResponse>(API_ENDPOINTS.CUSTOM_DATA_WIDGETS, data)
+  }
+
+  /**
    * Create news widget
    */
   async createNewsWidget(data: CreateNewsWidgetRequest): Promise<ApiResponse<null>> {
@@ -213,7 +228,7 @@ export class WidgetsService extends BaseService {
   /**
    * Update custom data widget by ID
    */
-  async updateCustomDataWidget(id: number, data: any) {
+  async updateCustomDataWidget(id: number, data: CreateCustomDataWidgetRequest) {
     return this.put(API_ENDPOINTS.CUSTOM_DATA_WIDGET_BY_ID(id), data)
   }
 
