@@ -1,25 +1,54 @@
-
 <script setup lang="ts">
-
-
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
+import CustomCheckbox from '@/components/CustomCheckbox.vue'
 import { productService } from '@/services/product.service'
 
 const splitLine = ref(false)
-
 
 const showProductSearch = ref(false)
 const productList = ref<any[]>([])
 const loadingProducts = ref(false)
 const productSearchPopupRef = ref<HTMLElement | null>(null)
+const mainProductInputRef = ref<HTMLInputElement | null>(null)
+
+// List of products added to purchase order
+const transferProducts = ref<any[]>([])
+
+function addProductToTransfer(item: any) {
+  const key = String(item.sku || item.id)
+  const found = transferProducts.value.find(p => String(p.sku || p.id) === key)
+  if (found) {
+    found.quantity += 1
+    found.total = found.quantity * found.unitPrice
+    closeProductSearch()
+    return
+  }
+  transferProducts.value.push({
+    ...item,
+    quantity: 1,
+    unitPrice: item.costPrice || 0,
+    total: item.costPrice || 0
+  })
+  closeProductSearch()
+}
+
+function removeTransferProduct(idx: number) {
+  transferProducts.value.splice(idx, 1)
+}
+
+function updateProductTotal(idx: number) {
+  const prod = transferProducts.value[idx]
+  prod.total = prod.quantity * prod.unitPrice
+}
 
 function openProductSearch() {
-  if (showProductSearch.value) return;
+  if (showProductSearch.value) return
   showProductSearch.value = true
   fetchProducts()
   nextTick(() => {
     document.addEventListener('mousedown', handleClickOutside)
+    mainProductInputRef.value?.focus()
   })
 }
 
@@ -29,7 +58,7 @@ function closeProductSearch() {
 }
 
 function handleClickOutside(e: MouseEvent) {
-  if (!productSearchPopupRef.value) return;
+  if (!productSearchPopupRef.value) return
   if (!productSearchPopupRef.value.contains(e.target as Node)) {
     closeProductSearch()
   }
@@ -51,7 +80,7 @@ async function fetchProducts() {
   loadingProducts.value = false
 }
 
-function handleF3(e) {
+function handleF3(e: KeyboardEvent) {
   if (e.key === 'F3') {
     openProductSearch()
   }
@@ -127,7 +156,7 @@ onBeforeUnmount(() => {
                       <div v-else>
                         <div v-if="productList.length === 0" class="text-center py-8 text-gray-500">Không có sản phẩm</div>
                         <div v-else class="p-4 pt-2">
-                          <div v-for="item in productList" :key="item.id" class="flex items-center py-3 gap-4" :style="'border-bottom: 1px solid rgb(232,234,235);' + (item === productList[productList.length-1] ? 'border-bottom: none;' : '')">
+                          <div v-for="item in productList" :key="item.id" class="flex items-center py-3 gap-4 cursor-pointer" :style="'border-bottom: 1px solid rgb(232,234,235);' + (item === productList[productList.length-1] ? 'border-bottom: none;' : '')" @click="addProductToTransfer(item)">
                             <img :src="item.thumbnailImageUrl ? '/path/to/' + item.thumbnailImageUrl : '/no-image.svg'" class="w-12 h-12 rounded bg-gray-100 object-cover" />
                             <div class="flex-1">
                               <div class="font-medium">{{ item.name }}</div>
@@ -147,7 +176,46 @@ onBeforeUnmount(() => {
                     Chọn nhiều
                   </button>
                 </div>
-                <div class="flex flex-col items-center justify-center py-10">
+                <div v-if="transferProducts.length" class="-mx-4 lg:-mx-6">
+                  <table class="min-w-full w-full text-sm border-separate border-spacing-0">
+                    <thead>
+                      <tr class="bg-gray-50">
+                        <th class="px-6 py-2 text-left font-semibold">Sản phẩm</th>
+                        <th class="px-6 py-2 text-left font-semibold">Số lượng</th>
+                        <th class="px-6 py-2 text-left font-semibold">Đơn giá</th>
+                        <th class="px-6 py-2 text-left font-semibold">Thành tiền</th>
+                        <th class="px-6 py-2 text-left font-semibold"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(prod, idx) in transferProducts" :key="prod.sku || prod.id">
+                        <td class="px-6 py-2">
+                          <div class="flex items-center gap-2">
+                            <img :src="prod.thumbnailImageUrl ? '/path/to/' + prod.thumbnailImageUrl : '/no-image.svg'" class="w-10 h-10 rounded bg-gray-100 object-cover" />
+                            <div>
+                              <div class="font-medium">{{ prod.name }}</div>
+                              <div class="text-xs text-gray-500">{{ prod.normalizedName }}</div>
+                              <div class="text-xs text-gray-500">SKU: {{ prod.sku }}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="px-6 py-2">
+                          <input type="number" min="1" v-model.number="prod.quantity" class="w-16 h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" @input="updateProductTotal(idx)" />
+                        </td>
+                        <td class="px-6 py-2">
+                          <span class="text-primary-600 font-semibold">{{ prod.unitPrice.toLocaleString() }}₫</span>
+                        </td>
+                        <td class="px-6 py-2">
+                          <span class="font-semibold">{{ (prod.quantity * prod.unitPrice).toLocaleString() }}₫</span>
+                        </td>
+                        <td class="px-6 py-2">
+                          <button class="text-error hover:underline" @click="removeTransferProduct(idx)">×</button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div v-else class="flex flex-col items-center justify-center py-10">
                   <img src="/no-image.svg" class="w-20 h-20 mb-3 opacity-60" alt="empty">
                   <div class="text-gray-500 mb-3">
                     Bạn chưa thêm sản phẩm nào
