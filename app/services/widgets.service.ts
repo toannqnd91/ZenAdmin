@@ -99,6 +99,9 @@ export interface SimpleNewsWidgetData {
   }>
 }
 
+// Create simple news widget request (same shape as data, id should be 0 for create)
+export type CreateSimpleNewsWidgetRequest = SimpleNewsWidgetData
+
 export interface NewsWidgetSetting {
   numberOfNews: number
   categoryId: number | null
@@ -244,6 +247,13 @@ export class WidgetsService extends BaseService {
    */
   async updateSimpleNewsWidget(id: number, data: SimpleNewsWidgetData): Promise<ApiResponse<null>> {
     return this.put<null>(API_ENDPOINTS.SIMPLE_NEWS_WIDGET_BY_ID(id), data)
+  }
+
+  /**
+   * Create simple news widget
+   */
+  async createSimpleNewsWidget(data: CreateSimpleNewsWidgetRequest): Promise<ApiResponse<null>> {
+    return this.post<null>(API_ENDPOINTS.SIMPLE_NEWS_WIDGETS, data)
   }
 }
 

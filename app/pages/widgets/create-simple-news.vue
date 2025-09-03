@@ -3,7 +3,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { widgetsService } from '~/services/widgets.service'
-import type { WidgetZone } from '~/services/widgets.service'
+import type { WidgetZone, CreateSimpleNewsWidgetRequest } from '~/services/widgets.service'
 import { useNewsService } from '@/composables/useNewsService'
 import type { NewsItem as NewsServiceItem } from '@/composables/useNews'
 
@@ -109,7 +109,7 @@ async function onSave() {
   }
 
   // Chuẩn bị dữ liệu gửi API
-  const payload = {
+  const payload: CreateSimpleNewsWidgetRequest = {
     id: 0,
     name: widgetName.value,
     widgetZoneId: selectedZone.id,
@@ -124,22 +124,14 @@ async function onSave() {
   }
 
   try {
-    const res = await fetch('https://demo.cokhitamlong.vn/api/v1/simple-news-widgets', {
-      method: 'POST',
-      headers: {
-        'accept': '*/*',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    })
-    const data = await res.json()
+    const data = await widgetsService.createSimpleNewsWidget(payload)
     if (data.success) {
       alert('Tạo widget thành công!')
       router.push('/widgets')
     } else {
       alert('Lỗi: ' + (data.message || 'Unknown error'))
     }
-  } catch (err) {
+  } catch {
     alert('Lỗi khi gọi API!')
   }
 }
