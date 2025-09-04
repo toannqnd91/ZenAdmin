@@ -10,18 +10,8 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      // Prefer explicit env vars, otherwise choose sensible fallback depending on NODE_ENV
-      apiBaseUrl:
-        process.env.NUXT_PUBLIC_API_BASE_URL
-        || (process.env.NODE_ENV === 'production'
-          ? 'https://phukienquynhdat-api.vnnsoft.com/api/v1'
-          : 'https://localhost:62939/api/v1'),
-      imageBaseUrl:
-        process.env.NUXT_PUBLIC_IMAGE_BASE_URL
-        || (process.env.NODE_ENV === 'production'
-          ? 'https://phukienquynhdat-api.vnnsoft.com'
-          : 'https://localhost:62939'),
-      // public test user available on client via useRuntimeConfig().public.testUser
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL,
+      imageBaseUrl: process.env.NUXT_PUBLIC_IMAGE_BASE_URL,
       testUser: process.env.NUXT_PUBLIC_TEST_USER || 'tester@example.com'
     },
     // server-only secret (accessible on server via useRuntimeConfig().testPassword)
