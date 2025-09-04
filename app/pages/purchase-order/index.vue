@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+// Hiển thị option placeholder chỉ khi chưa chọn
+const warehouseOptions = computed(() => warehouses.value.map(w => ({ id: String(w.id), label: w.name })))
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
 import { productService } from '@/services/product.service'
+import { warehouseService, type WarehouseItem } from '@/services/warehouse.service'
 
 const splitLine = ref(false)
 
@@ -12,8 +15,36 @@ const loadingProducts = ref(false)
 const productSearchPopupRef = ref<HTMLElement | null>(null)
 const mainProductInputRef = ref<HTMLInputElement | null>(null)
 
+
 // List of products added to purchase order
 const transferProducts = ref<any[]>([])
+
+// Chi nhánh nhập động
+const warehouses = ref<WarehouseItem[]>([])
+const selectedWarehouseId = ref<string | null>(null)
+const loadingWarehouses = ref(false)
+
+async function fetchWarehouses() {
+  loadingWarehouses.value = true
+  try {
+    const res = await warehouseService.getWarehouses()
+    warehouses.value = Array.isArray(res?.data) ? res.data : []
+  } catch {
+    warehouses.value = []
+  }
+  loadingWarehouses.value = false
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleF3)
+  fetchWarehouses()
+})
+
+// Tính toán tổng tiền, giảm giá, chi phí nhập hàng, tiền cần trả NCC
+const totalAmount = computed(() => transferProducts.value.reduce((sum, prod) => sum + (prod.quantity * prod.unitPrice), 0))
+const discountAmount = ref(0) // Có thể cập nhật sau
+const importCost = ref(0) // Có thể cập nhật sau
+const supplierPayAmount = computed(() => totalAmount.value - discountAmount.value + importCost.value)
 
 function addProductToTransfer(item: any) {
   const key = String(item.sku || item.id)
@@ -230,19 +261,19 @@ onBeforeUnmount(() => {
                 <div class="space-y-2 text-sm">
                   <div class="flex justify-between">
                     <span>Tổng tiền</span>
-                    <span>0₫</span>
+                    <span>{{ totalAmount.toLocaleString() }}₫</span>
                   </div>
                   <div class="flex justify-between">
                     <span>Thêm giảm giá (F6)</span>
-                    <span>0₫</span>
+                    <input type="number" min="0" v-model.number="discountAmount" class="w-24 h-8 px-2 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-right" />
                   </div>
                   <div class="flex justify-between">
                     <span>Chi phí nhập hàng (F7)</span>
-                    <span>0₫</span>
+                    <input type="number" min="0" v-model.number="importCost" class="w-24 h-8 px-2 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-right" />
                   </div>
                   <div class="flex justify-between font-semibold">
                     <span>Tiền cần trả NCC</span>
-                    <span>0₫</span>
+                    <span>{{ supplierPayAmount.toLocaleString() }}₫</span>
                   </div>
                 </div>
             </UPageCard>
@@ -262,10 +293,19 @@ onBeforeUnmount(() => {
             <UPageCard variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>Chi nhánh nhập</BaseCardHeader>
               <div class="-mx-6 px-6">
-                <select class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                  <option>Tên chi nhánh 1</option>
-                  <option>Chi nhánh 2</option>
-                </select>
+                <BaseDropdownSelect
+                  v-model="selectedWarehouseId"
+                  :options="warehouseOptions"
+                  :loading="loadingWarehouses"
+                  placeholder="Vui lòng chọn chi nhánh"
+                  :searchable="false"
+                  :clearable="false"
+                  :multiple="false"
+                  option-label="label"
+                  option-value="id"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  :disabled="loadingWarehouses"
+                />
               </div>
             </UPageCard>
             <UPageCard variant="soft" class="bg-white rounded-lg">
