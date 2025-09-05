@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Hiển thị option placeholder chỉ khi chưa chọn
 const warehouseOptions = computed(() => warehouses.value.map(w => ({ id: String(w.id), label: w.name })))
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
 import { productService } from '@/services/product.service'
@@ -45,6 +45,7 @@ const totalAmount = computed(() => transferProducts.value.reduce((sum, prod) => 
 const discountAmount = ref(0) // Có thể cập nhật sau
 const importCost = ref(0) // Có thể cập nhật sau
 const supplierPayAmount = computed(() => totalAmount.value - discountAmount.value + importCost.value)
+const paymentStatus = ref<'paid' | 'unpaid'>('unpaid')
 
 function addProductToTransfer(item: any) {
   const key = String(item.sku || item.id)
@@ -113,15 +114,69 @@ async function fetchProducts() {
 
 function handleF3(e: KeyboardEvent) {
   if (e.key === 'F3') {
-    openProductSearch()
+    e.preventDefault(); // Ngăn F3 mặc định của trình duyệt
+    if (showProductSearch.value) {
+      closeProductSearch();
+    } else {
+      openProductSearch();
+    }
   }
 }
 
+const discountModalRef = ref()
+const showDiscountModal = ref(false)
+
+function handleF6(e: KeyboardEvent) {
+  if (e.key === 'F6') {
+    e.preventDefault()
+    showDiscountModal.value = true
+  }
+}
+
+const discountType = ref<'amount' | 'percent'>('amount')
+const discountInput = ref(0)
+const discountError = ref('')
+
+function closeDiscountModal() {
+  showDiscountModal.value = false
+}
+
+function validateDiscount() {
+  let value = Number(discountInput.value) || 0
+  if (discountType.value === 'percent') {
+    value = Math.round(totalAmount.value * value / 100)
+  }
+  if (value > totalAmount.value) {
+    discountError.value = `Chiết khấu đơn không vượt quá tổng tiền ${totalAmount.value.toLocaleString()}₫`
+    return false
+  }
+  discountError.value = ''
+  return true
+}
+
+function applyDiscount() {
+  if (!validateDiscount()) return
+  let value = Number(discountInput.value) || 0
+  if (discountType.value === 'percent') {
+    value = Math.round(totalAmount.value * value / 100)
+  }
+  discountAmount.value = value
+  closeDiscountModal()
+}
+
+// Watch input và type để validate realtime
+watch([discountInput, discountType, totalAmount], () => {
+  validateDiscount()
+})
+
 onMounted(() => {
   window.addEventListener('keydown', handleF3)
+  window.addEventListener('keydown', handleF6, true)
+  fetchWarehouses()
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleF3)
+  window.removeEventListener('keydown', handleF6, true)
 })
 </script>
 
@@ -257,25 +312,43 @@ onBeforeUnmount(() => {
                 </div>
             </UPageCard>
             <UPageCard variant="soft" class="bg-white rounded-lg">
-                <BaseCardHeader>Thanh toán</BaseCardHeader>
-                <div class="space-y-2 text-sm">
-                  <div class="flex justify-between">
-                    <span>Tổng tiền</span>
-                    <span>{{ totalAmount.toLocaleString() }}₫</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span>Thêm giảm giá (F6)</span>
-                    <input type="number" min="0" v-model.number="discountAmount" class="w-24 h-8 px-2 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-right" />
-                  </div>
-                  <div class="flex justify-between">
-                    <span>Chi phí nhập hàng (F7)</span>
-                    <input type="number" min="0" v-model.number="importCost" class="w-24 h-8 px-2 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-right" />
-                  </div>
-                  <div class="flex justify-between font-semibold">
-                    <span>Tiền cần trả NCC</span>
-                    <span>{{ supplierPayAmount.toLocaleString() }}₫</span>
+              <BaseCardHeader>Thanh toán</BaseCardHeader>
+              <div class="space-y-2 text-sm">
+                <div class="grid grid-cols-12 items-center">
+                  <span class="font-medium col-span-3">Tổng tiền</span>
+                  <span class="text-gray-500 col-span-3 text-right">{{ transferProducts.length }} sản phẩm</span>
+                  <span class="col-span-3 text-gray-500 text-right"> </span>
+                  <span class="font-semibold col-span-3 text-right min-w-[90px]">{{ totalAmount.toLocaleString() }}₫</span>
+                </div>
+                <div class="grid grid-cols-12 items-center">
+                  <button type="button" class="text-primary-600 hover:underline focus:outline-none p-0 bg-transparent border-0 col-span-3 text-left" @click="showDiscountModal = true">Thêm giảm giá (F6)</button>
+                  <span class="col-span-3 text-gray-500 text-right">-------</span>
+                  <span class="col-span-3 text-gray-500 text-right"> </span>
+                  <span class="col-span-3 text-right min-w-[60px]">{{ discountAmount.toLocaleString() }}₫</span>
+                </div>
+                <div class="grid grid-cols-12 items-center">
+                  <button type="button" class="text-primary-600 hover:underline focus:outline-none p-0 bg-transparent border-0 col-span-3 text-left">Chi phí nhập hàng (F7)</button>
+                  <span class="col-span-3 text-gray-500 text-right">-------</span>
+                  <span class="col-span-3 text-gray-500 text-right"> </span>
+                  <span class="col-span-3 text-right min-w-[60px]">0₫</span>
+                </div>
+                <div class="grid grid-cols-12 items-center font-semibold">
+                  <span class="col-span-9">Tiền cần trả NCC</span>
+                  <span class="col-span-3 text-right min-w-[90px]">{{ supplierPayAmount.toLocaleString() }}₫</span>
+                </div>
+                <div class="mt-4 rounded-lg bg-blue-50 p-4">
+                  <div class="flex flex-col gap-2">
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                      <input type="radio" v-model="paymentStatus" value="paid" class="form-radio text-primary-600" />
+                      <span>Đã thanh toán</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                      <input type="radio" v-model="paymentStatus" value="unpaid" class="form-radio text-primary-600" />
+                      <span>Thanh toán sau</span>
+                    </label>
                   </div>
                 </div>
+              </div>
             </UPageCard>
           </div>
           <!-- Cột phải -->
@@ -366,8 +439,48 @@ onBeforeUnmount(() => {
             size="lg"
             class="px-8 py-2 text-lg font-semibold rounded-md shadow"
           />
+        </div>  
+      </div>
+      <!-- Modal giảm giá custom -->
+      <div v-if="showDiscountModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 relative">
+          <div class="text-lg font-semibold mb-4">Thêm giảm giá</div>
+          <div class="mb-6 flex items-center gap-4">
+            <label class="text-sm font-medium min-w-[100px]">Loại giảm giá:</label>
+            <div class="flex rounded-lg overflow-hidden border border-gray-200">
+              <button :class="['px-4 py-2 text-sm font-semibold', discountType === 'amount' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700']" @click="discountType = 'amount'">Giá trị</button>
+              <button :class="['px-4 py-2 text-sm font-semibold', discountType === 'percent' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700']" @click="discountType = 'percent'">%</button>
+            </div>
+            <div class="flex items-center gap-1 flex-1">
+              <div class="relative w-full">
+                <input type="number" v-model.number="discountInput" :class="['w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500', discountError ? 'border-red-400 bg-red-50' : 'border-gray-300']" />
+                <span v-if="discountType === 'amount'" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₫</span>
+                <span v-else class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">%</span>
+              </div>
+            </div>
+          </div>
+          <div v-if="discountError" class="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-600 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" /></svg>
+            <span>{{ discountError }}</span>
+          </div>
+          <div class="flex justify-end gap-3 mt-6">
+            <button class="px-6 h-10 rounded-md border border-primary-600 text-primary-600 font-medium bg-white hover:bg-gray-50" @click="closeDiscountModal">Hủy</button>
+            <button class="px-6 h-10 rounded-md bg-primary-600 text-white font-semibold hover:bg-primary-700" :disabled="!!discountError" @click="applyDiscount">Thêm giảm giá</button>
+          </div>
+          <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-2xl" @click="closeDiscountModal">&times;</button>
         </div>
       </div>
     </template>
   </UDashboardPanel>
 </template>
+
+<style>
+.hide-number-arrow::-webkit-outer-spin-button,
+.hide-number-arrow::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.hide-number-arrow[type="number"] {
+  -moz-appearance: textfield;
+}
+</style>
