@@ -1,3 +1,4 @@
+// ...existing code...
 <script setup lang="ts">
 // Hiển thị option placeholder chỉ khi chưa chọn
 const warehouseOptions = computed(() => warehouses.value.map(w => ({ id: String(w.id), label: w.name })))
@@ -15,6 +16,64 @@ const loadingProducts = ref(false)
 const productSearchPopupRef = ref<HTMLElement | null>(null)
 const mainProductInputRef = ref<HTMLInputElement | null>(null)
 
+
+
+// Dropdown nhà cung cấp
+const showSupplierDropdown = ref(false)
+interface SupplierItem { id: number; name: string; phone: string; code: string }
+const selectedSupplier = ref<SupplierItem | null>(null)
+// Hiển thị text rút gọn cho dropdown nhà cung cấp
+const supplierDisplayText = computed(() => {
+  if (!selectedSupplier.value) return 'Tìm theo tên, SDT, mã NCC...(F4)';
+  const text = `${selectedSupplier.value.name} - ${selectedSupplier.value.phone} (${selectedSupplier.value.code})`;
+  return text.length > 30 ? text.slice(0, 30) + '...' : text;
+});
+const supplierInputRef = ref<HTMLElement | null>(null)
+const supplierDropdownRef = ref<HTMLElement | null>(null)
+const supplierList = ref([
+  { id: 1, name: 'Công ty ABC', phone: '0901234567', code: 'NCC001' },
+  { id: 2, name: 'Công ty XYZ', phone: '0912345678', code: 'NCC002' },
+  { id: 3, name: 'Nhà cung cấp 3', phone: '0987654321', code: 'NCC003' }
+])
+const supplierSearch = ref('')
+const filteredSuppliers = computed(() => {
+  if (!supplierSearch.value) return supplierList.value
+  return supplierList.value.filter(sup =>
+    sup.name.toLowerCase().includes(supplierSearch.value.toLowerCase()) ||
+    sup.phone.includes(supplierSearch.value) ||
+    sup.code.toLowerCase().includes(supplierSearch.value.toLowerCase())
+  )
+})
+
+function toggleSupplierDropdown() {
+  showSupplierDropdown.value = !showSupplierDropdown.value
+  if (showSupplierDropdown.value) {
+    nextTick(() => {
+      document.addEventListener('mousedown', handleSupplierClickOutside)
+    })
+  } else {
+    document.removeEventListener('mousedown', handleSupplierClickOutside)
+  }
+}
+function closeSupplierDropdown() {
+  showSupplierDropdown.value = false
+  document.removeEventListener('mousedown', handleSupplierClickOutside)
+}
+function handleSupplierClickOutside(e: MouseEvent) {
+  if (!supplierDropdownRef.value || !supplierInputRef.value) return
+  if (!supplierDropdownRef.value.contains(e.target as Node) && !supplierInputRef.value.contains(e.target as Node)) {
+    closeSupplierDropdown()
+  }
+}
+function selectSupplier(sup: SupplierItem) {
+  selectedSupplier.value = sup
+  supplierSearch.value = ''
+  closeSupplierDropdown()
+}
+function onAddSupplier() {
+  // TODO: Mở modal thêm mới nhà cung cấp
+  closeSupplierDropdown()
+}
 
 // List of products added to purchase order
 const transferProducts = ref<any[]>([])
@@ -43,7 +102,8 @@ onMounted(() => {
 // Tính toán tổng tiền, giảm giá, chi phí nhập hàng, tiền cần trả NCC
 const totalAmount = computed(() => transferProducts.value.reduce((sum, prod) => sum + (prod.quantity * prod.unitPrice), 0))
 const discountAmount = ref(0) // Có thể cập nhật sau
-const importCost = ref(0) // Có thể cập nhật sau
+const importCost = ref(0)
+const appliedImportCosts = ref([])
 const supplierPayAmount = computed(() => totalAmount.value - discountAmount.value + importCost.value)
 const paymentStatus = ref<'paid' | 'unpaid'>('unpaid')
 
@@ -125,11 +185,44 @@ function handleF3(e: KeyboardEvent) {
 
 const discountModalRef = ref()
 const showDiscountModal = ref(false)
+// State for import cost modal
+const showImportCostModal = ref(false)
+const importCosts = ref([{ name: '', value: 0 }])
+const importCostError = ref('')
+function openImportCostModal() {
+  showImportCostModal.value = true
+}
+function closeImportCostModal() {
+  showImportCostModal.value = false
+}
+function handleF7(e: KeyboardEvent) {
+  if (e.key === 'F7') {
+    e.preventDefault()
+    openImportCostModal()
+  }
+}
+
+function addImportCost() {
+  importCosts.value.push({ name: '', value: 0 })
+}
+function removeImportCost(idx: number) {
+  if (importCosts.value.length > 1) importCosts.value.splice(idx, 1)
+}
+const totalImportCost = computed(() => importCosts.value.reduce((sum, c) => sum + (Number(c.value) || 0), 0))
+
+function applyImportCosts() {
+  // Only keep costs with a name (not empty)
+  const filtered = importCosts.value.filter(c => c.name && c.name.trim() !== '')
+  appliedImportCosts.value = filtered.map(c => ({ name: c.name, value: Number(c.value) || 0 }))
+  importCost.value = appliedImportCosts.value.reduce((sum, c) => sum + c.value, 0)
+  closeImportCostModal()
+}
 
 function handleF6(e: KeyboardEvent) {
   if (e.key === 'F6') {
     e.preventDefault()
-    showDiscountModal.value = true
+    console.log('F6 pressed, showDiscountModal before:', showDiscountModal.value)
+    openDiscountModal()
   }
 }
 
@@ -139,6 +232,12 @@ const discountError = ref('')
 
 function closeDiscountModal() {
   showDiscountModal.value = false
+}
+
+function openDiscountModal() {
+  console.log('Opening discount modal, current value:', showDiscountModal.value)
+  showDiscountModal.value = true
+  console.log('After opening, value:', showDiscountModal.value)
 }
 
 function validateDiscount() {
@@ -172,11 +271,13 @@ watch([discountInput, discountType, totalAmount], () => {
 onMounted(() => {
   window.addEventListener('keydown', handleF3)
   window.addEventListener('keydown', handleF6, true)
+  window.addEventListener('keydown', handleF7, true)
   fetchWarehouses()
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleF3)
   window.removeEventListener('keydown', handleF6, true)
+  window.removeEventListener('keydown', handleF7, true)
 })
 </script>
 
@@ -202,6 +303,51 @@ onBeforeUnmount(() => {
     <template #body>
       <div class="w-full max-w-6xl mx-auto px-4 lg:px-6">
         <div class="flex flex-col lg:flex-row gap-6">
+      <!-- Modal chi phí nhập hàng (F7) -->
+      <div 
+        v-if="showImportCostModal" 
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+        @click="closeImportCostModal"
+      >
+        <div 
+          class="bg-white rounded-lg w-full max-w-2xl p-6 relative no-shadow-modal"
+          style="box-shadow:none!important; border:none!important; outline:none!important;"
+          @click.stop
+        >
+          <div class="text-2xl font-semibold mb-6">Thêm chi phí nhập hàng</div>
+          <div v-for="(cost, idx) in importCosts" :key="idx" class="grid grid-cols-12 gap-4 mb-2">
+            <div class="col-span-6 flex flex-col justify-end">
+              <label v-if="idx === 0" class="block text-gray-700 font-medium mb-1">Tên chi phí<span class="text-red-500">*</span></label>
+              <input v-model="cost.name" type="text" class="w-full h-9 px-4 rounded-lg border border-gray-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-primary-500" :placeholder="'Nhập tên chi phí'">
+            </div>
+            <div class="col-span-5 flex flex-col justify-end">
+              <label v-if="idx === 0" class="block text-gray-700 font-medium mb-1">Giá trị</label>
+              <div class="relative">
+                <input v-model.number="cost.value" type="number" class="w-full h-9 px-4 pr-8 rounded-lg border border-gray-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-primary-500 text-right">
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₫</span>
+              </div>
+            </div>
+            <div class="col-span-1 flex items-end justify-center">
+              <button v-if="importCosts.length > 1" class="text-gray-400 hover:text-gray-600 text-xl flex items-center justify-center h-9" style="padding:0" @click="removeImportCost(idx)">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+          </div>
+          <button class="flex items-center text-primary-600 text-base font-medium mb-4" @click="addImportCost">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+            Thêm chi phí
+          </button>
+          <div class="bg-blue-50 rounded-lg px-6 py-4 mb-6">
+            <span class="font-medium text-base">Tổng chi phí:</span>
+            <span class="float-right font-semibold text-base">{{ totalImportCost.toLocaleString() }}₫</span>
+          </div>
+          <div class="flex justify-end gap-3 mt-6">
+            <button class="px-6 h-11 rounded-lg border border-primary-600 text-primary-600 font-medium bg-white hover:bg-gray-50 text-base" @click="closeImportCostModal">Hủy</button>
+            <button class="px-6 h-11 rounded-lg bg-primary-600 text-white font-semibold hover:bg-primary-700 text-base" @click="applyImportCosts">Áp dụng</button>
+          </div>
+          <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl" @click="closeImportCostModal">&times;</button>
+        </div>
+      </div>
           <!-- Cột trái -->
           <div class="flex-1 space-y-6">
             <UPageCard variant="soft" class="bg-white rounded-lg">
@@ -314,28 +460,60 @@ onBeforeUnmount(() => {
             <UPageCard variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>Thanh toán</BaseCardHeader>
               <div class="space-y-2 text-sm">
-                <div class="grid grid-cols-12 items-center">
-                  <span class="font-medium col-span-3">Tổng tiền</span>
-                  <span class="text-gray-500 col-span-3 text-right">{{ transferProducts.length }} sản phẩm</span>
-                  <span class="col-span-3 text-gray-500 text-right"> </span>
-                  <span class="font-semibold col-span-3 text-right min-w-[90px]">{{ totalAmount.toLocaleString() }}₫</span>
+          <div class="flex flex-col w-full">
+          <div class="flex min-h-[28px] w-full">
+            <div class="w-44 flex-shrink-0 flex items-center font-medium">Tổng tiền</div>
+            <div class="w-40 flex items-center justify-end text-gray-500">{{ transferProducts.length }} sản phẩm</div>
+            <div class="w-40 flex items-center justify-end text-gray-500"></div>
+            <div class="flex-1"></div>
+            <div class="w-24 flex items-center justify-end font-semibold">{{ totalAmount.toLocaleString() }}₫</div>
+          </div>
+        <div class="flex min-h-[28px] w-full">
+          <div class="w-44 flex-shrink-0 flex items-center">
+            <button type="button" class="text-primary-600 hover:underline focus:outline-none p-0 bg-transparent border-0 text-left" @click="openDiscountModal">Thêm giảm giá (F6)</button>
+          </div>
+          <div class="w-40 flex items-center justify-end text-gray-500">
+            <span v-if="discountType === 'percent' && discountInput">{{ discountInput }}%</span>
+            <span v-else>-------</span>
+          </div>
+          <div class="w-40 flex items-center justify-end text-gray-500"></div>
+          <div class="flex-1"></div>
+                    <div class="w-24 flex items-center justify-end">
+                      <span v-if="discountAmount > 0">-{{ discountAmount.toLocaleString() }}₫</span>
+                      <span v-else>{{ discountAmount.toLocaleString() }}₫</span>
+                    </div>
+        </div>
+        <template v-if="appliedImportCosts.length === 0">
+          <div class="flex min-h-[28px] w-full">
+            <div class="w-44 flex-shrink-0 flex items-center">
+              <button type="button" class="text-primary-600 hover:underline focus:outline-none p-0 bg-transparent border-0 text-left" @click="openImportCostModal">Chi phí nhập hàng (F7)</button>
+            </div>
+            <div class="w-40 flex items-center justify-end text-gray-400">-------</div>
+            <div class="w-40 flex items-center justify-end text-gray-500"></div>
+            <div class="flex-1"></div>
+            <div class="w-24 flex items-center justify-end">0₫</div>
+          </div>
+        </template>
+        <template v-else>
+          <div v-for="(cost, idx) in appliedImportCosts" :key="idx" class="flex min-h-[28px] w-full">
+            <div v-if="idx === 0" class="w-44 flex-shrink-0 flex items-center">
+              <button type="button" class="text-primary-600 hover:underline focus:outline-none p-0 bg-transparent border-0 text-left" @click="openImportCostModal">Chi phí nhập hàng (F7)</button>
+            </div>
+            <div v-else class="w-44 flex-shrink-0"></div>
+            <div class="w-40 flex items-center justify-end text-gray-700 text-sm">{{ cost.name }}</div>
+            <div class="w-40 flex items-center justify-end text-gray-500"></div>
+            <div class="flex-1"></div>
+            <div class="w-24 flex items-center justify-end">{{ cost.value.toLocaleString() }}₫</div>
+          </div>
+        </template>
                 </div>
-                <div class="grid grid-cols-12 items-center">
-                  <button type="button" class="text-primary-600 hover:underline focus:outline-none p-0 bg-transparent border-0 col-span-3 text-left" @click="showDiscountModal = true">Thêm giảm giá (F6)</button>
-                  <span class="col-span-3 text-gray-500 text-right">-------</span>
-                  <span class="col-span-3 text-gray-500 text-right"> </span>
-                  <span class="col-span-3 text-right min-w-[60px]">{{ discountAmount.toLocaleString() }}₫</span>
-                </div>
-                <div class="grid grid-cols-12 items-center">
-                  <button type="button" class="text-primary-600 hover:underline focus:outline-none p-0 bg-transparent border-0 col-span-3 text-left">Chi phí nhập hàng (F7)</button>
-                  <span class="col-span-3 text-gray-500 text-right">-------</span>
-                  <span class="col-span-3 text-gray-500 text-right"> </span>
-                  <span class="col-span-3 text-right min-w-[60px]">0₫</span>
-                </div>
-                <div class="grid grid-cols-12 items-center font-semibold">
-                  <span class="col-span-9">Tiền cần trả NCC</span>
-                  <span class="col-span-3 text-right min-w-[90px]">{{ supplierPayAmount.toLocaleString() }}₫</span>
-                </div>
+        <div class="flex min-h-[28px] w-full font-semibold">
+          <div class="w-44 flex-shrink-0 flex items-center">Tiền cần trả NCC</div>
+          <div class="w-40 flex items-center justify-end"></div>
+          <div class="w-40 flex items-center justify-end"></div>
+          <div class="flex-1"></div>
+          <div class="w-24 flex items-center justify-end">{{ supplierPayAmount.toLocaleString() }}₫</div>
+        </div>
                 <div class="mt-4 rounded-lg bg-blue-50 p-4">
                   <div class="flex flex-col gap-2">
                     <label class="inline-flex items-center gap-2 cursor-pointer">
@@ -356,11 +534,49 @@ onBeforeUnmount(() => {
             <UPageCard variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>Nhà cung cấp</BaseCardHeader>
               <div class="-mx-6 px-6">
-                <input
-                  type="text"
-                  class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Tìm theo tên, SDT, mã NCC...(F4)"
-                >
+                <div class="relative w-full">
+                  <div
+                    class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm flex items-center cursor-pointer transition-all duration-150 focus:outline-none"
+                    :class="{ 'ring-2 ring-primary-500 border-primary-500': showSupplierDropdown }"
+                    tabindex="0"
+                    ref="supplierInputRef"
+                    @click="toggleSupplierDropdown"
+                  >
+                    <div class="flex-1 min-w-0 flex items-center overflow-hidden">
+                      <span class="block w-full truncate text-gray-900">{{ supplierDisplayText }}</span>
+                    </div>
+                    <svg class="w-4 h-4 text-gray-400 ml-2 flex-shrink-0" fill="none" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                  <div
+                    v-if="showSupplierDropdown"
+                    class="absolute left-0 top-full z-50 w-full bg-white rounded-md shadow-lg border border-gray-300 mt-2"
+                    ref="supplierDropdownRef"
+                  >
+                    <button class="flex items-center w-full px-3 py-3.5 text-primary-600 font-medium text-sm hover:bg-gray-50 border-b border-gray-200 rounded-t-md" style="border-bottom: 1px solid #e8eaeb;" @click.stop="onAddSupplier">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 20 20"><path d="M10 4v12m6-6H4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      Thêm mới nhà cung cấp
+                    </button>
+                    <div class="px-3 pt-2 pb-2">
+                      <input
+                        v-model="supplierSearch"
+                        type="text"
+                        class="w-full h-9 px-3 rounded-md border border-gray-200 bg-gray-50 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-primary-500 placeholder-gray-400"
+                        placeholder="Tìm theo tên, SDT, mã NCC..."
+                        :disabled="!!selectedSupplier"
+                        @click.stop
+                      >
+                    </div>
+                    <div v-if="filteredSuppliers.length === 0" class="w-full px-3 py-4 text-center text-gray-500 text-sm rounded-b-md">Không có kết quả tìm kiếm</div>
+                    <div v-else>
+                      <div v-for="sup in filteredSuppliers" :key="sup.id" class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-all" @click.stop="selectSupplier(sup)">
+                        <div class="flex-1">
+                          <div class="font-medium text-gray-900 text-sm">{{ sup.name }}</div>
+                          <div class="text-xs text-gray-500">{{ sup.phone }} &middot; {{ sup.code }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </UPageCard>
             <UPageCard variant="soft" class="bg-white rounded-lg">
@@ -441,9 +657,17 @@ onBeforeUnmount(() => {
           />
         </div>  
       </div>
-      <!-- Modal giảm giá custom -->
-      <div v-if="showDiscountModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-  <div class="bg-white rounded-lg w-full max-w-lg p-6 relative" style="box-shadow:none!important; border:none!important; outline:none!important;">
+      <!-- Modal giảm giá -->
+      <div 
+        v-if="showDiscountModal" 
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+        @click="closeDiscountModal"
+      >
+        <div 
+          class="bg-white rounded-lg w-full max-w-lg p-6 relative shadow-none border-none no-shadow-modal"
+          style="box-shadow:none!important; border:none!important; outline:none!important;"
+          @click.stop
+        >
           <div class="text-lg font-semibold mb-4">Thêm giảm giá</div>
           <div class="mb-6 flex items-center gap-4">
             <label class="text-sm font-medium min-w-[100px]">Loại giảm giá:</label>
@@ -482,5 +706,21 @@ onBeforeUnmount(() => {
 }
 .hide-number-arrow[type="number"] {
   -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Remove border and shadow ONLY for modal container */
+.no-shadow-modal {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
+}
+
+.no-shadow-modal::before,
+.no-shadow-modal::after {
+  box-shadow: none !important;
+  border: none !important;
 }
 </style>
