@@ -443,7 +443,7 @@ onBeforeUnmount(() => {
       </div>
       <!-- Modal giảm giá custom -->
       <div v-if="showDiscountModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-        <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 relative">
+  <div class="bg-white rounded-lg w-full max-w-lg p-6 relative" style="box-shadow:none!important; border:none!important; outline:none!important;">
           <div class="text-lg font-semibold mb-4">Thêm giảm giá</div>
           <div class="mb-6 flex items-center gap-4">
             <label class="text-sm font-medium min-w-[100px]">Loại giảm giá:</label>
