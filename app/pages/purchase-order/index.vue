@@ -1,118 +1,119 @@
 // ...existing code...
 <script setup lang="ts">
-// Hiển thị option placeholder chỉ khi chưa chọn
-const warehouseOptions = computed(() => warehouses.value.map(w => ({ id: String(w.id), label: w.name })))
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
 import { productService } from '@/services/product.service'
-import { warehouseService, type WarehouseItem } from '@/services/warehouse.service'
+import { warehouseService } from '@/services/warehouse.service'
+import { supplierService } from '@/services/supplier.service'
+import type { SuppliersApiResponse } from '@/services/supplier.service'
+import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
+import type { ApiResponse } from '@/types/common'
+
+// Product types
+interface ProductSearchItem {
+  id: number | string
+  sku?: string
+  name: string
+  normalizedName?: string
+  thumbnailImageUrl?: string | null
+  costPrice?: number
+  stockQuantity?: number
+}
+interface TransferProduct extends ProductSearchItem {
+  quantity: number
+  unitPrice: number
+  total: number
+}
+
+// Import cost type
+interface ImportCost { name: string; value: number }
 
 const splitLine = ref(false)
 
 const showProductSearch = ref(false)
-const productList = ref<any[]>([])
+const productList = ref<ProductSearchItem[]>([])
 const loadingProducts = ref(false)
 const productSearchPopupRef = ref<HTMLElement | null>(null)
 const mainProductInputRef = ref<HTMLInputElement | null>(null)
 
 
 
-// Dropdown nhà cung cấp
-const showSupplierDropdown = ref(false)
-interface SupplierItem { id: number; name: string; phone: string; code: string }
-const selectedSupplier = ref<SupplierItem | null>(null)
-// Hiển thị text rút gọn cho dropdown nhà cung cấp
-const supplierDisplayText = computed(() => {
-  if (!selectedSupplier.value) return 'Tìm theo tên, SDT, mã NCC...(F4)';
-  const text = `${selectedSupplier.value.name} - ${selectedSupplier.value.phone} (${selectedSupplier.value.code})`;
-  return text.length > 30 ? text.slice(0, 30) + '...' : text;
-});
-const supplierInputRef = ref<HTMLElement | null>(null)
-const supplierDropdownRef = ref<HTMLElement | null>(null)
-const supplierList = ref([
-  { id: 1, name: 'Công ty ABC', phone: '0901234567', code: 'NCC001' },
-  { id: 2, name: 'Công ty XYZ', phone: '0912345678', code: 'NCC002' },
-  { id: 3, name: 'Nhà cung cấp 3', phone: '0987654321', code: 'NCC003' }
-])
-const supplierSearch = ref('')
-const filteredSuppliers = computed(() => {
-  if (!supplierSearch.value) return supplierList.value
-  return supplierList.value.filter(sup =>
-    sup.name.toLowerCase().includes(supplierSearch.value.toLowerCase()) ||
-    sup.phone.includes(supplierSearch.value) ||
-    sup.code.toLowerCase().includes(supplierSearch.value.toLowerCase())
-  )
-})
+// Nhà cung cấp - sử dụng component RemoteSearchSelect tái sử dụng
+// Generic item shape for RemoteSearchSelect compatibility
+type GenericItem = Record<string, unknown>
+const selectedSupplier = ref<GenericItem | null>(null)
 
-function toggleSupplierDropdown() {
-  showSupplierDropdown.value = !showSupplierDropdown.value
-  if (showSupplierDropdown.value) {
-    nextTick(() => {
-      document.addEventListener('mousedown', handleSupplierClickOutside)
-    })
-  } else {
-    document.removeEventListener('mousedown', handleSupplierClickOutside)
+async function fetchSuppliersSelect(search: string): Promise<GenericItem[]> {
+  try {
+    const res = await supplierService.getSuppliers({
+      search: search || undefined,
+      pagination: { start: 0, number: 30 },
+      sort: { field: 'Id', reverse: true }
+    }) as unknown as ApiResponse<SuppliersApiResponse['data']>
+    if (res.success && res.data && Array.isArray(res.data.items)) {
+      return res.data.items
+        .filter(s => !s.isDeleted)
+        .map(s => ({ ...(s as unknown as Record<string, unknown>) })) as GenericItem[]
+    }
+    return []
+  } catch {
+    return []
   }
 }
-function closeSupplierDropdown() {
-  showSupplierDropdown.value = false
-  document.removeEventListener('mousedown', handleSupplierClickOutside)
+
+function supplierDisplay(item: GenericItem) {
+  const name = String(item.name ?? '')
+  const phone = String(item.phone ?? '---')
+  const code = item.slug ? ` (${String(item.slug)})` : ''
+  return `${name} - ${phone}${code}`
 }
-function handleSupplierClickOutside(e: MouseEvent) {
-  if (!supplierDropdownRef.value || !supplierInputRef.value) return
-  if (!supplierDropdownRef.value.contains(e.target as Node) && !supplierInputRef.value.contains(e.target as Node)) {
-    closeSupplierDropdown()
-  }
-}
-function selectSupplier(sup: SupplierItem) {
-  selectedSupplier.value = sup
-  supplierSearch.value = ''
-  closeSupplierDropdown()
+function supplierSubtitle(item: GenericItem) {
+  return `${item.phone || '---'} · ${item.slug || ''}`
 }
 function onAddSupplier() {
-  // TODO: Mở modal thêm mới nhà cung cấp
-  closeSupplierDropdown()
+  // TODO: mở modal thêm mới nhà cung cấp
 }
 
 // List of products added to purchase order
-const transferProducts = ref<any[]>([])
+const transferProducts = ref<TransferProduct[]>([])
 
-// Chi nhánh nhập động
-const warehouses = ref<WarehouseItem[]>([])
-const selectedWarehouseId = ref<string | null>(null)
-const loadingWarehouses = ref(false)
-
-async function fetchWarehouses() {
-  loadingWarehouses.value = true
+// Chi nhánh nhập - dùng RemoteSearchSelect
+const selectedWarehouse = ref<GenericItem | null>(null)
+async function fetchWarehousesSelect(search: string): Promise<GenericItem[]> {
   try {
     const res = await warehouseService.getWarehouses()
-    warehouses.value = Array.isArray(res?.data) ? res.data : []
+    const list = Array.isArray(res?.data) ? res.data : []
+    return list
+      .filter((w: any) => !search || String(w.name).toLowerCase().includes(search.toLowerCase()))
+      .map(w => ({ ...(w as unknown as Record<string, unknown>) }))
   } catch {
-    warehouses.value = []
+    return []
   }
-  loadingWarehouses.value = false
+}
+function warehouseDisplay(item: GenericItem) { return String(item.name || '') }
+function warehouseSubtitle(item: GenericItem) {
+  return item.address ? String(item.address) : ''
 }
 
 onMounted(() => {
   window.addEventListener('keydown', handleF3)
-  fetchWarehouses()
 })
 
 // Tính toán tổng tiền, giảm giá, chi phí nhập hàng, tiền cần trả NCC
-const totalAmount = computed(() => transferProducts.value.reduce((sum, prod) => sum + (prod.quantity * prod.unitPrice), 0))
+const totalAmount = computed(() => transferProducts.value.reduce((sum, prod) => sum + ((prod.quantity || 0) * (prod.unitPrice || 0)), 0))
 const discountAmount = ref(0) // Có thể cập nhật sau
 const importCost = ref(0)
-const appliedImportCosts = ref([])
+const appliedImportCosts = ref<ImportCost[]>([])
 const supplierPayAmount = computed(() => totalAmount.value - discountAmount.value + importCost.value)
 const paymentStatus = ref<'paid' | 'unpaid'>('unpaid')
 
-function addProductToTransfer(item: any) {
+function addProductToTransfer(item: ProductSearchItem) {
   const key = String(item.sku || item.id)
   const found = transferProducts.value.find(p => String(p.sku || p.id) === key)
   if (found) {
-    found.quantity += 1
-    found.total = found.quantity * found.unitPrice
+    found.quantity = (found.quantity || 0) + 1
+    found.total = (found.quantity || 0) * (found.unitPrice || 0)
     closeProductSearch()
     return
   }
@@ -131,6 +132,7 @@ function removeTransferProduct(idx: number) {
 
 function updateProductTotal(idx: number) {
   const prod = transferProducts.value[idx]
+  if (!prod) return
   prod.total = prod.quantity * prod.unitPrice
 }
 
@@ -160,7 +162,7 @@ async function fetchProducts() {
   loadingProducts.value = true
   try {
     const res = await productService.getProducts({
-      search: null,
+      search: undefined,
       hasOptions: false,
       pagination: { start: 0, number: 15 },
       sort: { field: 'Id', reverse: true }
@@ -174,21 +176,21 @@ async function fetchProducts() {
 
 function handleF3(e: KeyboardEvent) {
   if (e.key === 'F3') {
-    e.preventDefault(); // Ngăn F3 mặc định của trình duyệt
+    e.preventDefault() // Ngăn F3 mặc định của trình duyệt
     if (showProductSearch.value) {
-      closeProductSearch();
+      closeProductSearch()
     } else {
-      openProductSearch();
+      openProductSearch()
     }
   }
 }
 
-const discountModalRef = ref()
+// Discount modal state
 const showDiscountModal = ref(false)
 // State for import cost modal
 const showImportCostModal = ref(false)
-const importCosts = ref([{ name: '', value: 0 }])
-const importCostError = ref('')
+const importCosts = ref<ImportCost[]>([{ name: '', value: 0 }])
+
 function openImportCostModal() {
   showImportCostModal.value = true
 }
@@ -211,7 +213,6 @@ function removeImportCost(idx: number) {
 const totalImportCost = computed(() => importCosts.value.reduce((sum, c) => sum + (Number(c.value) || 0), 0))
 
 function applyImportCosts() {
-  // Only keep costs with a name (not empty)
   const filtered = importCosts.value.filter(c => c.name && c.name.trim() !== '')
   appliedImportCosts.value = filtered.map(c => ({ name: c.name, value: Number(c.value) || 0 }))
   importCost.value = appliedImportCosts.value.reduce((sum, c) => sum + c.value, 0)
@@ -221,7 +222,6 @@ function applyImportCosts() {
 function handleF6(e: KeyboardEvent) {
   if (e.key === 'F6') {
     e.preventDefault()
-    console.log('F6 pressed, showDiscountModal before:', showDiscountModal.value)
     openDiscountModal()
   }
 }
@@ -235,9 +235,7 @@ function closeDiscountModal() {
 }
 
 function openDiscountModal() {
-  console.log('Opening discount modal, current value:', showDiscountModal.value)
   showDiscountModal.value = true
-  console.log('After opening, value:', showDiscountModal.value)
 }
 
 function validateDiscount() {
@@ -263,7 +261,6 @@ function applyDiscount() {
   closeDiscountModal()
 }
 
-// Watch input và type để validate realtime
 watch([discountInput, discountType, totalAmount], () => {
   validateDiscount()
 })
@@ -272,7 +269,6 @@ onMounted(() => {
   window.addEventListener('keydown', handleF3)
   window.addEventListener('keydown', handleF6, true)
   window.addEventListener('keydown', handleF7, true)
-  fetchWarehouses()
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleF3)
@@ -516,13 +512,23 @@ onBeforeUnmount(() => {
         </div>
                 <div class="mt-4 rounded-lg bg-blue-50 p-4">
                   <div class="flex flex-col gap-2">
-                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                      <input type="radio" v-model="paymentStatus" value="paid" class="form-radio text-primary-600" />
-                      <span>Đã thanh toán</span>
+                    <label class="inline-flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="radio"
+                        v-model="paymentStatus"
+                        value="paid"
+                        class="custom-radio"
+                      />
+                      <span class="text-base font-medium group-hover:text-primary-700 transition">Đã thanh toán</span>
                     </label>
-                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                      <input type="radio" v-model="paymentStatus" value="unpaid" class="form-radio text-primary-600" />
-                      <span>Thanh toán sau</span>
+                    <label class="inline-flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="radio"
+                        v-model="paymentStatus"
+                        value="unpaid"
+                        class="custom-radio"
+                      />
+                      <span class="text-base font-medium group-hover:text-primary-700 transition">Thanh toán sau</span>
                     </label>
                   </div>
                 </div>
@@ -534,67 +540,106 @@ onBeforeUnmount(() => {
             <UPageCard variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>Nhà cung cấp</BaseCardHeader>
               <div class="-mx-6 px-6">
-                <div class="relative w-full">
-                  <div
-                    class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm flex items-center cursor-pointer transition-all duration-150 focus:outline-none"
-                    :class="{ 'ring-2 ring-primary-500 border-primary-500': showSupplierDropdown }"
-                    tabindex="0"
-                    ref="supplierInputRef"
-                    @click="toggleSupplierDropdown"
-                  >
-                    <div class="flex-1 min-w-0 flex items-center overflow-hidden">
-                      <span class="block w-full truncate text-gray-900">{{ supplierDisplayText }}</span>
-                    </div>
-                    <svg class="w-4 h-4 text-gray-400 ml-2 flex-shrink-0" fill="none" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  </div>
-                  <div
-                    v-if="showSupplierDropdown"
-                    class="absolute left-0 top-full z-50 w-full bg-white rounded-md shadow-lg border border-gray-300 mt-2"
-                    ref="supplierDropdownRef"
-                  >
-                    <button class="flex items-center w-full px-3 py-3.5 text-primary-600 font-medium text-sm hover:bg-gray-50 border-b border-gray-200 rounded-t-md" style="border-bottom: 1px solid #e8eaeb;" @click.stop="onAddSupplier">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 20 20"><path d="M10 4v12m6-6H4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <RemoteSearchSelect
+                  v-model="selectedSupplier"
+                  :fetch-fn="fetchSuppliersSelect"
+                  :get-display-text="(supplierDisplay as any)"
+                  :get-item-subtitle="(supplierSubtitle as any)"
+                  label-field="name"
+                  placeholder="Tìm theo tên, SDT, mã NCC...(F4)"
+                  :debounce="300"
+                  :clearable="true"
+                  class="w-full"
+                >
+                  <template #add-action>
+                    <button
+                      type="button"
+                      class="flex items-center w-full px-3 py-3.5 text-primary-600 font-medium text-sm hover:bg-gray-50 border-b border-gray-200 rounded-t-md"
+                      style="border-bottom: 1px solid #e8eaeb;"
+                      @click.stop="onAddSupplier"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="w-4 h-4 mr-2"
+                        fill="none"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          d="M10 4v12m6-6H4"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
                       Thêm mới nhà cung cấp
                     </button>
-                    <div class="px-3 pt-2 pb-2">
-                      <input
-                        v-model="supplierSearch"
-                        type="text"
-                        class="w-full h-9 px-3 rounded-md border border-gray-200 bg-gray-50 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-primary-500 placeholder-gray-400"
-                        placeholder="Tìm theo tên, SDT, mã NCC..."
-                        :disabled="!!selectedSupplier"
-                        @click.stop
-                      >
-                    </div>
-                    <div v-if="filteredSuppliers.length === 0" class="w-full px-3 py-4 text-center text-gray-500 text-sm rounded-b-md">Không có kết quả tìm kiếm</div>
-                    <div v-else>
-                      <div v-for="sup in filteredSuppliers" :key="sup.id" class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-all" @click.stop="selectSupplier(sup)">
-                        <div class="flex-1">
-                          <div class="font-medium text-gray-900 text-sm">{{ sup.name }}</div>
-                          <div class="text-xs text-gray-500">{{ sup.phone }} &middot; {{ sup.code }}</div>
-                        </div>
+                  </template>
+                  <template #item="{ item }">
+                    <div class="flex-1">
+                      <div class="font-medium text-gray-900 text-sm">
+                        {{ item.name }}
+                      </div>
+                      <div class="text-xs text-gray-500">
+                        {{ item.phone }} &middot; {{ item.slug }}
                       </div>
                     </div>
-                  </div>
-                </div>
+                    <svg
+                      v-if="selectedSupplier && selectedSupplier.id === item.id"
+                      class="w-4 h-4 text-primary-600 ml-2 flex-shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M5 13l4 4L19 7"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </template>
+                </RemoteSearchSelect>
               </div>
             </UPageCard>
             <UPageCard variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>Chi nhánh nhập</BaseCardHeader>
               <div class="-mx-6 px-6">
-                <BaseDropdownSelect
-                  v-model="selectedWarehouseId"
-                  :options="warehouseOptions"
-                  :loading="loadingWarehouses"
-                  placeholder="Vui lòng chọn chi nhánh"
-                  :searchable="false"
-                  :clearable="false"
-                  :multiple="false"
-                  option-label="label"
-                  option-value="id"
-                  class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  :disabled="loadingWarehouses"
-                />
+                <RemoteSearchSelect
+                  v-model="selectedWarehouse"
+                  :fetch-fn="fetchWarehousesSelect"
+                  :get-display-text="(warehouseDisplay as any)"
+                  :get-item-subtitle="(warehouseSubtitle as any)"
+                  label-field="name"
+                  placeholder="Tìm tên chi nhánh... (F5)"
+                  open-key="F5"
+                  :debounce="250"
+                  :clearable="true"
+                  class="w-full"
+                >
+                  <template #item="{ item }">
+                    <div class="flex-1">
+                      <div class="font-medium text-gray-900 text-sm">{{ item.name }}</div>
+                      <div v-if="item.address" class="text-xs text-gray-500">{{ item.address }}</div>
+                    </div>
+                    <svg
+                      v-if="selectedWarehouse && selectedWarehouse.id === item.id"
+                      class="w-4 h-4 text-primary-600 ml-2 flex-shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M5 13l4 4L19 7"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </template>
+                </RemoteSearchSelect>
               </div>
             </UPageCard>
             <UPageCard variant="soft" class="bg-white rounded-lg">
@@ -724,3 +769,20 @@ onBeforeUnmount(() => {
   border: none !important;
 }
 </style>
+/* Custom radio button style for payment status */
+.custom-radio {
+  @apply w-10 h-10 border-2 border-gray-300 rounded-full bg-white checked:border-primary-600 checked:bg-primary-50 focus:ring-2 focus:ring-primary-300 transition-all duration-150;
+  appearance: none;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+}
+.custom-radio:checked::before {
+  content: '';
+  display: block;
+  width: 32px;
+  height: 32px;
+  margin: 8px auto;
+  border-radius: 9999px;
+  background: theme('colors.primary.600', #2563eb);
+}
