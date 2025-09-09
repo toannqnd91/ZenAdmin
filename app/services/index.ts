@@ -7,6 +7,7 @@ export { productService, ProductService } from './product.service'
 export { fileService, FileService } from './file.service'
 export { linksService, LinksService } from './links.service'
 export { widgetsService, WidgetsService } from './widgets.service'
+export { orderSourceService, OrderSourceService } from './order-source.service'
 
 // Export types
 export type { 

@@ -56,6 +56,26 @@ async function runFetch() {
   }
 }
 
+// Derive a stable item key and selection matcher
+function itemKey(item: GenericItem): string {
+  if (props.getItemKey) return String(props.getItemKey(item))
+  const obj = item as Record<string, unknown>
+  const candidates = ['id', 'slug', 'code', 'value'] as const
+  for (const key of candidates) {
+    const v = obj[key]
+    if (typeof v === 'string' || typeof v === 'number') return String(v)
+  }
+  try {
+    return JSON.stringify(item)
+  } catch {
+    return String(item)
+  }
+}
+const selectedKey = computed(() => (props.modelValue ? itemKey(props.modelValue) : null))
+function isSelected(item: GenericItem) {
+  return selectedKey.value !== null && itemKey(item) === selectedKey.value
+}
+
 function openDropdown() {
   if (props.disabled) return
   open.value = true
@@ -131,6 +151,8 @@ onBeforeUnmount(() => {
       @click="toggleDropdown"
     >
       <div class="flex-1 min-w-0 flex items-center overflow-hidden">
+        <!-- Optional left content in trigger, e.g., icon/avatar of selected item -->
+        <slot name="trigger-left" :value="modelValue" />
         <span class="block w-full truncate text-gray-900" :class="{ 'text-gray-400': !modelValue }">{{ displayText }}</span>
       </div>
       <button
@@ -182,8 +204,9 @@ onBeforeUnmount(() => {
       <div v-else>
         <div
           v-for="item in items"
-          :key="getItemKey ? getItemKey(item) : String((item as any).id ?? (item as any).slug ?? (item as any).code ?? (item as any).value ?? JSON.stringify(item))"
+          :key="itemKey(item)"
           class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-all"
+          :class="{ 'bg-primary-50': isSelected(item) }"
           @click.stop="selectItem(item)"
         >
           <slot name="item" :item="item">
@@ -196,6 +219,19 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </slot>
+          <svg
+            v-if="isSelected(item)"
+            class="w-4 h-4 text-primary-600 ml-2 flex-shrink-0"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-7.25 7.25a1 1 0 01-1.414 0l-3-3a1 1 0 111.414-1.414L8.5 11.586l6.543-6.543a1 1 0 011.414 0z"
+              clip-rule="evenodd"
+            />
+          </svg>
         </div>
       </div>
     </div>

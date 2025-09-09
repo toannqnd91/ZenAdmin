@@ -3,18 +3,20 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
 
-interface SupplierForm {
-  name: string
+interface CustomerForm {
+  fullName: string
   code: string
   phone: string
-  taxCode: string
   email: string
-  website: string
-  fax: string
+  gender: 'male' | 'female' | 'other' | ''
+  birthday: string
+  group: string
   country: string
-  region: string
+  province: string
+  district: string
   ward: string
   address: string
+  note: string
   manager: string
   tagsInput: string
   tags: string[]
@@ -22,18 +24,20 @@ interface SupplierForm {
 
 const router = useRouter()
 
-const form = ref<SupplierForm>({
-  name: '',
+const form = ref<CustomerForm>({
+  fullName: '',
   code: '',
   phone: '',
-  taxCode: '',
   email: '',
-  website: 'https://',
-  fax: '',
+  gender: '',
+  birthday: '',
+  group: '',
   country: 'Vietnam',
-  region: '',
+  province: '',
+  district: '',
   ward: '',
   address: '',
+  note: '',
   manager: 'Phạm Văn Toàn',
   tagsInput: '',
   tags: []
@@ -44,20 +48,20 @@ const touchedName = ref(false)
 
 const nameError = computed(() => {
   if (!touchedName.value) return ''
-  if (!form.value.name.trim()) return 'Tên nhà cung cấp là bắt buộc'
+  if (!form.value.fullName.trim()) return 'Tên khách hàng là bắt buộc'
   return ''
 })
 
-const isValid = computed(() => !nameError.value && form.value.name.trim().length > 0)
+const isValid = computed(() => !nameError.value && form.value.fullName.trim().length > 0)
 
 function onSubmit() {
   touchedName.value = true
   if (!isValid.value) return
   submitting.value = true
-  // TODO: Gọi API tạo mới nhà cung cấp (chưa có endpoint create trong service)
+  // TODO: Gọi API tạo khách hàng khi có endpoint
   setTimeout(() => {
     submitting.value = false
-    router.push('/suppliers')
+    router.push('/customers')
   }, 800)
 }
 
@@ -78,14 +82,14 @@ function goBack() {
 </script>
 
 <template>
-  <UDashboardPanel id="suppliers-create" class="flex flex-col h-full">
+  <UDashboardPanel id="customers-create" class="flex flex-col h-full">
     <template #header>
       <UDashboardNavbar>
         <template #leading>
           <div class="flex items-center gap-3">
             <UDashboardSidebarCollapse />
             <div class="text-lg font-semibold">
-              Thêm mới nhà cung cấp
+              Thêm mới khách hàng
             </div>
           </div>
         </template>
@@ -113,15 +117,15 @@ function goBack() {
                   <!-- Tên -->
                   <div class="md:col-span-2">
                     <label class="block text-xs font-medium text-gray-600 mb-1">
-                      Tên nhà cung cấp
+                      Tên khách hàng
                       <span class="text-red-500">*</span>
                     </label>
                     <input
-                      v-model="form.name"
+                      v-model="form.fullName"
                       type="text"
                       class="w-full h-9 px-3 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                       :class="nameError ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'"
-                      placeholder="Nhập tên nhà cung cấp"
+                      placeholder="Nhập tên khách hàng"
                       @blur="touchedName = true"
                     >
                     <p v-if="nameError" class="text-xs text-red-500 mt-1">
@@ -129,23 +133,14 @@ function goBack() {
                     </p>
                   </div>
 
-                  <!-- Mã -->
-                  <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Mã nhà cung cấp</label>
-                    <input
-                      v-model="form.code"
-                      type="text"
-                      placeholder="Nhập mã nhà cung cấp"
-                      class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                  </div>
-
-                  <!-- Phone -->
+                  <!-- Số điện thoại -->
                   <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Số điện thoại</label>
                     <div class="flex">
                       <div class="relative">
-                        <select class="h-9 pl-2 pr-7 text-sm rounded-l-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
+                        <select
+                          class="h-9 pl-2 pr-7 text-sm rounded-l-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none"
+                        >
                           <option value="VN">
                             🇻🇳 +84
                           </option>
@@ -185,37 +180,66 @@ function goBack() {
                     >
                   </div>
 
-                  <!-- Mã số thuế -->
+                  <!-- Giới tính -->
                   <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Mã số thuế</label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Giới tính</label>
+                    <select
+                      v-model="form.gender"
+                      class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="">
+                        Không xác định
+                      </option>
+                      <option value="male">
+                        Nam
+                      </option>
+                      <option value="female">
+                        Nữ
+                      </option>
+                      <option value="other">
+                        Khác
+                      </option>
+                    </select>
+                  </div>
+
+                  <!-- Ngày sinh -->
+                  <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Ngày sinh</label>
                     <input
-                      v-model="form.taxCode"
-                      type="text"
-                      placeholder="Nhập mã số thuế"
+                      v-model="form.birthday"
+                      type="date"
                       class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                   </div>
 
-                  <!-- Website -->
+                  <!-- Mã KH -->
                   <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Website</label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Mã khách hàng</label>
                     <input
-                      v-model="form.website"
+                      v-model="form.code"
                       type="text"
-                      placeholder="https://"
+                      placeholder="VD: C0001"
                       class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                   </div>
 
-                  <!-- Fax -->
+                  <!-- Nhóm KH -->
                   <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Số fax</label>
-                    <input
-                      v-model="form.fax"
-                      type="text"
-                      placeholder="Nhập số fax"
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Nhóm khách hàng</label>
+                    <select
+                      v-model="form.group"
                       class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
+                      <option value="">
+                        Chưa phân nhóm
+                      </option>
+                      <option value="retail">
+                        Bán lẻ
+                      </option>
+                      <option value="vip">
+                        VIP
+                      </option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -237,13 +261,13 @@ function goBack() {
                     </select>
                   </div>
                   <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Khu vực</label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Tỉnh/Thành phố</label>
                     <select
-                      v-model="form.region"
+                      v-model="form.province"
                       class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="" disabled>
-                        Chọn khu vực
+                        Chọn Tỉnh/Thành phố
                       </option>
                       <option>
                         Hà Nội
@@ -253,20 +277,25 @@ function goBack() {
                       </option>
                     </select>
                   </div>
-                  <div class="md:col-span-2">
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Phường xã</label>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Quận/Huyện</label>
+                    <select
+                      v-model="form.district"
+                      class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="" disabled>
+                        Chọn Quận/Huyện
+                      </option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Phường/Xã</label>
                     <select
                       v-model="form.ward"
                       class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="" disabled>
-                        Chọn Phường xã
-                      </option>
-                      <option>
-                        Phường 1
-                      </option>
-                      <option>
-                        Phường 2
+                        Chọn Phường/Xã
                       </option>
                     </select>
                   </div>
@@ -280,6 +309,18 @@ function goBack() {
                     >
                   </div>
                 </div>
+              </div>
+            </UPageCard>
+
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>Ghi chú</BaseCardHeader>
+              <div class="-mx-6 px-6">
+                <textarea
+                  v-model="form.note"
+                  rows="4"
+                  class="w-full px-3 py-2 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                  placeholder="Nhập ghi chú cho khách hàng"
+                />
               </div>
             </UPageCard>
           </div>
@@ -312,7 +353,6 @@ function goBack() {
                 </template>
               </BaseCardHeader>
               <div class="-mx-6 px-6">
-                <label class="block text-xs font-medium text-gray-600 mb-1">Tag</label>
                 <input
                   v-model="form.tagsInput"
                   type="text"
@@ -345,7 +385,7 @@ function goBack() {
         <div class="flex justify-end mt-8 mb-4">
           <button
             type="button"
-            class="px-6 h-10 rounded-md font-semibold text-sm disabled:opacity-60 disabled:cursor-not-allowed transition shadow-sm bg-primary-600 text-white hover:bg-primary-700"
+            class="px-6 h-10 rounded-md font-semibold text-sm disabled:opacity-60 disabled:cursor-not-allowed transition shadow sm bg-primary-600 text-white hover:bg-primary-700"
             :disabled="!isValid || submitting"
             @click="onSubmit"
           >

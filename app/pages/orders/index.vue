@@ -81,6 +81,7 @@ function onTabChange(val: string) {
         :data="data"
         :loading="loading"
         :tabs="tabCounts"
+        :add-button="{ label: 'Tạo đơn hàng', href: '/orders/create' }"
         @update:tab="onTabChange"
       />
     </template>
