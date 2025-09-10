@@ -17,6 +17,7 @@ interface Props {
   clearable?: boolean
   maxDisplayLength?: number
   openKey?: string // e.g. F4
+  searchable?: boolean // when false, hide search input
 }
 const props = defineProps<Props>()
 const emit = defineEmits(['update:modelValue', 'select', 'clear'])
@@ -182,7 +183,7 @@ onBeforeUnmount(() => {
       class="absolute left-0 top-full z-50 w-full bg-white rounded-md shadow-lg border border-gray-300 mt-2"
     >
       <slot name="add-action" />
-      <div class="px-3 pt-2 pb-2">
+      <div v-if="searchable !== false" class="px-3 pt-2 pb-2">
         <input
           v-model="search"
           type="text"
