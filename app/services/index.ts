@@ -8,21 +8,22 @@ export { fileService, FileService } from './file.service'
 export { linksService, LinksService } from './links.service'
 export { widgetsService, WidgetsService } from './widgets.service'
 export { orderSourceService, OrderSourceService } from './order-source.service'
+export { customersService, CustomersService } from './customers.service'
 
 // Export types
-export type { 
-  CreateProductRequest, 
-  UpdateProductRequest, 
+export type {
+  CreateProductRequest,
+  UpdateProductRequest,
   ProductCategory,
   CreateProductCategoryRequest,
-  UpdateProductCategoryRequest 
+  UpdateProductCategoryRequest
 } from './product.service'
 
-export type { 
-  News, 
+export type {
+  News,
   NewsFormData,
-  CreateNewsRequest, 
-  UpdateNewsRequest 
+  CreateNewsRequest,
+  UpdateNewsRequest
 } from './news.service'
 
 export type {

@@ -1,41 +1,25 @@
 <script setup lang="ts">
 import type { TableColumn } from '@/components/base/BaseTable.vue'
 import BaseTable from '@/components/base/BaseTable.vue'
-import { ref, computed } from 'vue'
-import type { User } from '~/types'
 
-const toast = useToast()
+interface Props {
+  data: Record<string, unknown>[]
+  loading?: boolean
+  q: string
+  rowSelection: Record<string, boolean>
+  pagination: { pageIndex: number, pageSize: number }
+  totalRecords?: number
+  totalPages?: number
+}
 
-const {
-  data: users,
-  status
-} = await useFetch<User[]>('/api/customers', { lazy: true })
-
-const q = ref('')
-const rowSelection = ref<Record<string, boolean>>({})
-const pagination = ref({ pageIndex: 0, pageSize: 10 })
+const props = defineProps<Props>()
 
 const columns: TableColumn[] = [
-  {
-    key: 'name',
-    label: 'Tên khách hàng',
-    class: 'py-3 text-left font-medium'
-  },
-  {
-    key: 'email',
-    label: 'Email',
-    class: 'py-3 text-left font-medium'
-  },
-  {
-    key: 'location',
-    label: 'Địa chỉ',
-    class: 'py-3 text-left font-medium'
-  },
-  {
-    key: 'status',
-    label: 'Trạng thái',
-    class: 'py-3 text-left font-medium'
-  }
+  { key: 'name', label: 'Tên khách hàng', class: 'py-3 text-left font-medium' },
+  { key: 'phone', label: 'Điện thoại', class: 'py-3 text-left font-medium' },
+  { key: 'receivable', label: 'Nợ hiện tại', class: 'py-3 text-left font-medium' },
+  { key: 'totalSale', label: 'Tổng bán', class: 'py-3 text-left font-medium' },
+  { key: 'netSale', label: 'Tổng bán trừ trả hàng', class: 'py-3 text-right font-medium' }
 ]
 
 const addButton = {
@@ -43,46 +27,56 @@ const addButton = {
   href: '/customers/create'
 }
 
-const handleRowClick = (item: User) => {
-  navigateTo(`/customers/${item.id}`)
+const handleRowClick = (item: Record<string, unknown>) => {
+  const id = String(item.id || '')
+  if (id) navigateTo(`/customers/${id}`)
 }
 
-const tableData = computed(() => (users.value || []).map(u => ({
-  ...u,
-  id: u.id
-})))
-
+// Column widths: name wider
 const colWidths = [
-  '28%', // name
-  '22%', // email
-  '22%', // location
-  '18%'  // status
+  '30%', // name
+  '16%', // phone
+  '18%', // receivable
+  '18%', // totalSale
+  '18%' // netSale
 ]
 </script>
 
-
 <template>
   <BaseTable
-    :q="q"
-    :row-selection="rowSelection"
-    :pagination="pagination"
-    :data="tableData"
-    :loading="status === 'pending'"
+    :q="props.q"
+    :row-selection="props.rowSelection"
+    :pagination="props.pagination"
+    :data="props.data"
+    :loading="props.loading"
+    :total-records="props.totalRecords"
+    :total-pages="props.totalPages"
     title="Danh sách khách hàng"
     :columns="columns"
     :col-widths="colWidths"
     :add-button="addButton"
+    :show-row-actions="false"
     search-placeholder="Tìm kiếm khách hàng..."
     :row-click-handler="handleRowClick"
   >
-    <template #column-name="{ item }">
-      <div class="flex items-center gap-4">
-        <UAvatar v-bind="item.avatar" size="lg" />
+    <template #column-name="slotProps">
+      <div v-if="String((slotProps.item as any).id) !== 'summary'" class="flex items-center gap-4">
+        <UAvatar :src="(slotProps.item as any).avatar?.src" :alt="(slotProps.item as any).avatar?.alt" size="lg" />
         <div class="flex flex-col">
-          <span class="text-[15px] text-gray-900 font-medium">{{ item.name }}</span>
-          <span class="text-sm text-muted line-clamp-2">{{ item.email || 'Không có email' }}</span>
+          <span class="text-[15px] text-gray-900 font-medium">{{ (slotProps.item as any).name }}</span>
+          <span class="text-sm text-muted line-clamp-2">{{ (slotProps.item as any).code || 'Không có mã' }}</span>
         </div>
       </div>
+    </template>
+
+    <template #column-receivable="{ value }">
+      <span>{{ Number(value || 0).toLocaleString('vi-VN') }}</span>
+    </template>
+    <template #column-totalSale="{ value }">
+      <span>{{ Number(value || 0).toLocaleString('vi-VN') }}</span>
+    </template>
+    <template #column-netSale="{ value }">
+      <span class="block text-right">{{ Number(value || 0).toLocaleString('vi-VN') }}</span>
     </template>
   </BaseTable>
 </template>

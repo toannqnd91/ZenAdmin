@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// Image URL logic like ProductsTable
+import { useRuntimeConfig } from '#imports'
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 // import { useRouter } from 'vue-router'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
@@ -8,6 +10,18 @@ import { productService } from '@/services/product.service'
 import { warehouseService } from '@/services/warehouse.service'
 import { orderSourceService } from '@/services/order-source.service'
 import type { OrderSourceItem } from '@/services/order-source.service'
+
+const config = useRuntimeConfig()
+const imageBaseUrl = config?.public?.imageBaseUrl || ''
+function getProductImageUrl(item: { thumbnailImageUrl?: string | null }) {
+  const url = item.thumbnailImageUrl
+  if (!url) return '/no-image.svg'
+  if (!url.includes('/') && imageBaseUrl) {
+    return `${imageBaseUrl}/image/${url}`
+  }
+  return url
+}
+
 
 // Types
 interface ProductSearchItem {
@@ -151,8 +165,17 @@ function handleF3(e: KeyboardEvent) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('keydown', handleF3)
+  // Fetch sources and set POS as default if available
+  try {
+    const res = await orderSourceService.getOrderSources()
+    const list: OrderSourceItem[] = Array.isArray(res?.data) ? res.data : []
+    if (list.length && !selectedSource.value) {
+      const pos = list.find(s => s.code?.toLowerCase() === 'pos' || s.name?.toLowerCase() === 'pos')
+      if (pos) selectedSource.value = { ...pos }
+    }
+  } catch {}
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleF3)
@@ -168,6 +191,72 @@ const grandTotal = computed(() => totalAmount.value - discount.value + shippingF
 function currency(n: number) {
   return n.toLocaleString() + '₫'
 }
+
+// Discount & Shipping Fee Modals (like purchase-order)
+const showDiscountModal = ref(false)
+const showShippingFeeModal = ref(false)
+const discountType = ref<'amount' | 'percent'>('amount')
+const discountInput = ref(0)
+const discountError = ref('')
+const shippingFeeInput = ref(0)
+const shippingFeeError = ref('')
+
+function openDiscountModal() {
+  showDiscountModal.value = true
+}
+function closeDiscountModal() {
+  showDiscountModal.value = false
+}
+function openShippingFeeModal() {
+  showShippingFeeModal.value = true
+}
+function closeShippingFeeModal() {
+  showShippingFeeModal.value = false
+}
+
+function validateDiscount() {
+  let value = Number(discountInput.value) || 0
+  if (discountType.value === 'percent') {
+    value = Math.round(totalAmount.value * value / 100)
+  }
+  if (value > totalAmount.value) {
+    discountError.value = `Chiết khấu đơn không vượt quá tổng tiền ${totalAmount.value.toLocaleString()}₫`
+    return false
+  }
+  discountError.value = ''
+  return true
+}
+function applyDiscount() {
+  if (!validateDiscount()) return
+  let value = Number(discountInput.value) || 0
+  if (discountType.value === 'percent') {
+    value = Math.round(totalAmount.value * value / 100)
+  }
+  discount.value = value
+  closeDiscountModal()
+}
+
+function validateShippingFee() {
+  const value = Number(shippingFeeInput.value) || 0
+  if (value < 0) {
+    shippingFeeError.value = 'Phí giao hàng không được âm'
+    return false
+  }
+  shippingFeeError.value = ''
+  return true
+}
+function applyShippingFee() {
+  if (!validateShippingFee()) return
+  shippingFee.value = Number(shippingFeeInput.value) || 0
+  closeShippingFeeModal()
+}
+
+watch([discountInput, discountType, totalAmount], () => {
+  validateDiscount()
+})
+watch([shippingFeeInput], () => {
+  validateShippingFee()
+})
 
 // Actions
 // Removed unused goBack()
@@ -244,7 +333,7 @@ function createAndConfirm() { /* TODO */ }
                           :style="'border-bottom: 1px solid rgb(232,234,235);' + (item === productList[productList.length-1] ? 'border-bottom: none;' : '')"
                           @click="addProduct(item)"
                         >
-                          <img :src="item.thumbnailImageUrl ? '/path/to/' + item.thumbnailImageUrl : '/no-image.svg'" class="w-12 h-12 rounded bg-gray-100 object-cover" />
+                          <img :src="getProductImageUrl(item)" class="w-12 h-12 rounded bg-gray-100 object-cover" @error="(e) => { e.target.src = '/no-image.svg' }">
                           <div class="flex-1">
                             <div class="font-medium">{{ item.name }}</div>
                             <div v-if="item.normalizedName" class="text-xs text-gray-500">{{ item.normalizedName }}</div>
@@ -276,7 +365,7 @@ function createAndConfirm() { /* TODO */ }
                     <tr v-for="(prod, idx) in orderProducts" :key="prod.sku || prod.id">
                       <td class="px-6 py-2">
                         <div class="flex items-center gap-2">
-                          <img :src="prod.thumbnailImageUrl ? '/path/to/' + prod.thumbnailImageUrl : '/no-image.svg'" class="w-10 h-10 rounded bg-gray-100 object-cover" />
+                          <img :src="getProductImageUrl(prod)" class="w-10 h-10 rounded bg-gray-100 object-cover" @error="(e) => { e.target.src = '/no-image.svg' }">
                           <div>
                             <div class="font-medium">{{ prod.name }}</div>
                             <div class="text-xs text-gray-500">{{ prod.normalizedName }}</div>
@@ -320,17 +409,94 @@ function createAndConfirm() { /* TODO */ }
                   <span class="text-gray-600">{{ orderProducts.length ? currency(totalAmount) : '---' }}</span>
                 </div>
                 <div class="flex items-center justify-between min-h-[28px]">
-                  <button class="text-primary-600 text-left text-sm hover:underline p-0 bg-transparent">Thêm giảm giá</button>
+                  <button type="button" class="text-primary-600 text-left text-sm hover:underline p-0 bg-transparent" @click="openDiscountModal">Thêm giảm giá</button>
                   <span class="text-gray-600">{{ discount ? '-' + currency(discount) : '---' }}</span>
                 </div>
                 <div class="flex items-center justify-between min-h-[28px]">
-                  <button class="text-primary-600 text-left text-sm hover:underline p-0 bg-transparent">Thêm phí giao hàng</button>
+                  <button type="button" class="text-primary-600 text-left text-sm hover:underline p-0 bg-transparent" @click="openShippingFeeModal">Thêm phí giao hàng</button>
                   <span class="text-gray-600">{{ shippingFee ? currency(shippingFee) : '---' }}</span>
                 </div>
                 <div class="flex items-center justify-between min-h-[32px] font-semibold border-t border-gray-100 pt-2">
                   <span>Thành tiền</span>
                   <span>{{ orderProducts.length ? currency(grandTotal) : '0₫' }}</span>
                 </div>
+    <!-- Modal giảm giá -->
+    <div v-if="showDiscountModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30" @click="closeDiscountModal">
+      <div class="bg-white rounded-lg w-full max-w-lg p-6 relative shadow-none border-none no-shadow-modal" style="box-shadow:none!important; border:none!important; outline:none!important;" @click.stop>
+        <div class="text-lg font-semibold mb-4">Thêm giảm giá</div>
+        <div class="mb-6 flex items-center gap-4">
+          <label class="text-sm font-medium min-w-[100px]">Loại giảm giá:</label>
+          <div class="flex rounded-lg overflow-hidden border border-gray-200">
+            <button :class="['px-4 py-2 text-sm font-semibold', discountType === 'amount' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700']" @click="discountType = 'amount'">Giá trị</button>
+            <button :class="['px-4 py-2 text-sm font-semibold', discountType === 'percent' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700']" @click="discountType = 'percent'">%</button>
+          </div>
+          <div class="flex items-center gap-1 flex-1">
+            <div class="relative w-full">
+              <input type="number" v-model.number="discountInput" :class="['w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500', discountError ? 'border-red-400 bg-red-50' : 'border-gray-300']" />
+              <span v-if="discountType === 'amount'" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₫</span>
+              <span v-else class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">%</span>
+            </div>
+          </div>
+        </div>
+        <div v-if="discountError" class="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-600 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" /></svg>
+          <span>{{ discountError }}</span>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+          <UButton
+            label="Hủy"
+            color="primary"
+            variant="soft"
+            class="px-6 h-9 font-medium"
+            @click="closeDiscountModal"
+          />
+          <UButton
+            label="Áp dụng"
+            color="primary"
+            class="px-6 h-9 font-semibold"
+            :disabled="!!discountError"
+            @click="applyDiscount"
+          />
+        </div>
+        <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-2xl" @click="closeDiscountModal">&times;</button>
+      </div>
+    </div>
+    <!-- Modal phí giao hàng -->
+    <div v-if="showShippingFeeModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30" @click="closeShippingFeeModal">
+      <div class="bg-white rounded-lg w-full max-w-lg p-6 relative shadow-none border-none no-shadow-modal" style="box-shadow:none!important; border:none!important; outline:none!important;" @click.stop>
+        <div class="text-lg font-semibold mb-4">Thêm phí giao hàng</div>
+        <div class="mb-6 flex items-center gap-4">
+          <label class="text-sm font-medium min-w-[100px]">Giá trị:</label>
+          <div class="flex items-center gap-1 flex-1">
+            <div class="relative w-full">
+              <input type="number" v-model.number="shippingFeeInput" :class="['w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500', shippingFeeError ? 'border-red-400 bg-red-50' : 'border-gray-300']" />
+              <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₫</span>
+            </div>
+          </div>
+        </div>
+        <div v-if="shippingFeeError" class="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-600 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" /></svg>
+          <span>{{ shippingFeeError }}</span>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+          <UButton
+            label="Hủy"
+            color="primary"
+            variant="soft"
+            class="px-6 h-9 font-medium"
+            @click="closeShippingFeeModal"
+          />
+          <UButton
+            label="Áp dụng"
+            color="primary"
+            class="px-6 h-9 font-semibold"
+            :disabled="!!shippingFeeError"
+            @click="applyShippingFee"
+          />
+        </div>
+        <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-2xl" @click="closeShippingFeeModal">&times;</button>
+      </div>
+    </div>
               </div>
             </UPageCard>
           </div>

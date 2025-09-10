@@ -6,8 +6,7 @@ export const API_ENDPOINTS = {
   UPLOAD_FILE: '/File/Upload',
   UPLOAD_MULTIPLE_FILES: '/File/UploadMultiple',
   DELETE_FILE: (fileName: string) => `/File/${fileName}`,
-  
-  // Widget endpoints  
+  // Widget endpoints
   CAROUSEL_WIDGET: '/CarouselWidget',
   CAROUSEL_WIDGET_BY_ID: (id: number) => `/CarouselWidget/${id}`,
   NEWS_WIDGET: '/NewsWidget',
@@ -19,13 +18,11 @@ export const API_ENDPOINTS = {
   CUSTOM_DATA_WIDGET_BY_ID: (id: number) => `/custom-data-widgets/${id}`,
   SIMPLE_NEWS_WIDGETS: '/simple-news-widgets',
   SIMPLE_NEWS_WIDGET_BY_ID: (id: number) => `/simple-news-widgets/${id}`,
-  
   // Auth endpoints
   LOGIN: '/Identity/login',
   LOGOUT: '/Identity/logout',
   REFRESH_TOKEN: '/Identity/refresh',
   PROFILE: '/Identity/profile',
-  
   // Content endpoints
   COLLECTIONS: '/collections',
   DASHBOARD_MENU: '/DashboardMenu',
@@ -39,7 +36,6 @@ export const API_ENDPOINTS = {
   NEWS_UPDATE: (id: number) => `/News/${id}/update`,
   NEWS_DELETE: (id: number) => `/News/${id}/delete`,
   NEWS_DELETE_MULTI: '/News/delete-multiple',
-
   // Product endpoints
   PRODUCT_CATEGORIES: '/ProductCategories',
   PRODUCT_CATEGORY_BY_ID: (id: number) => `/ProductCategories/${id}`,
@@ -54,17 +50,17 @@ export const API_ENDPOINTS = {
 
   // Supplier endpoints
   SUPPLIERS: '/Suppliers',
+  // Customer endpoints
+  CUSTOMERS_GRID: '/customers/grid',
 
   // Pages endpoints
   PAGES: '/pages',
-  
   // Links endpoints
   LINKS: '/Links',
   LINK_BY_URL: (url: string) => `/Links/${url}`,
   LINK_MENU_ITEMS: (linkUrl: string) => `/Links/${linkUrl}/MenuItems`,
   LINK_MENU_ITEM_BY_ID: (linkUrl: string, itemId: number) => `/Links/${linkUrl}/MenuItems/${itemId}`,
   LINK_MENU_ITEMS_REORDER: (linkUrl: string) => `/Links/${linkUrl}/MenuItems/reorder`,
-  
   // Menu endpoints
   MENU_CATEGORIES: (menuUrl: string) => `/Menus/${menuUrl}/category`,
   MENU_REORDER: '/Menus/reorder',

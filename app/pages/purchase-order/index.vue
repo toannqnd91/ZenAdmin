@@ -338,10 +338,26 @@ onBeforeUnmount(() => {
             <span class="float-right font-semibold text-base">{{ totalImportCost.toLocaleString() }}₫</span>
           </div>
           <div class="flex justify-end gap-3 mt-6">
-            <button class="px-6 h-11 rounded-lg border border-primary-600 text-primary-600 font-medium bg-white hover:bg-gray-50 text-base" @click="closeImportCostModal">Hủy</button>
-            <button class="px-6 h-11 rounded-lg bg-primary-600 text-white font-semibold hover:bg-primary-700 text-base" @click="applyImportCosts">Áp dụng</button>
+            <UButton
+              label="Hủy"
+              color="primary"
+              variant="soft"
+              class="px-6 h-9 font-medium"
+              @click="closeImportCostModal"
+            />
+            <UButton
+              label="Áp dụng"
+              color="primary"
+              class="px-6 h-9 font-semibold"
+              @click="applyImportCosts"
+            />
           </div>
-          <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl" @click="closeImportCostModal">&times;</button>
+              <button
+                class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
+                @click="closeImportCostModal"
+              >
+                &times;
+              </button>
         </div>
       </div>
           <!-- Cột trái -->
@@ -733,8 +749,20 @@ onBeforeUnmount(() => {
             <span>{{ discountError }}</span>
           </div>
           <div class="flex justify-end gap-3 mt-6">
-            <button class="px-6 h-10 rounded-md border border-primary-600 text-primary-600 font-medium bg-white hover:bg-gray-50" @click="closeDiscountModal">Hủy</button>
-            <button class="px-6 h-10 rounded-md bg-primary-600 text-white font-semibold hover:bg-primary-700" :disabled="!!discountError" @click="applyDiscount">Thêm giảm giá</button>
+            <UButton
+              label="Hủy"
+              color="primary"
+              variant="soft"
+              class="px-6 h-9 font-medium"
+              @click="closeDiscountModal"
+            />
+            <UButton
+              label="Thêm giảm giá"
+              color="primary"
+              class="px-6 h-9 font-semibold"
+              :disabled="!!discountError"
+              @click="applyDiscount"
+            />
           </div>
           <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-2xl" @click="closeDiscountModal">&times;</button>
         </div>

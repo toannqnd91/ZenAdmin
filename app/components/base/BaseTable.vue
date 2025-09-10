@@ -50,6 +50,7 @@ interface Props {
   // Styling
   showFilter?: boolean
   searchPlaceholder?: string
+  showRowActions?: boolean
 
   // Colgroup widths
   colWidths?: string[]
@@ -59,20 +60,20 @@ interface Props {
   dragAnimation?: number
   
   // Thêm prop tabs cho BaseTable
-  tabs?: TableTab[];
+  tabs?: TableTab[]
 }
 
 interface TableTab {
-  label: string;
-  value: string;
-  count?: number;
+  label: string
+  value: string
+  count?: number
 }
-
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
   rowClickEnabled: true,
   showFilter: true,
+  showRowActions: true,
   searchPlaceholder: 'Tìm kiếm...',
   pagination: () => ({ pageIndex: 0, pageSize: 15 }),
   totalRecords: 0,
@@ -96,11 +97,11 @@ const props = withDefaults(defineProps<Props>(), {
 // Tab state
 
 // Tab state: click đổi tab, emit khi đổi
-const currentTab = ref(props.tabs && props.tabs.length ? props.tabs[0].value : undefined)
+const currentTab = ref<string | undefined>(props.tabs?.[0]?.value)
 watch(
   () => props.tabs,
   (val) => {
-    if (val && val.length) currentTab.value = val[0].value
+    if (val?.length) currentTab.value = val[0]?.value
   },
   { immediate: true }
 )
@@ -115,6 +116,7 @@ const emit = defineEmits<{
   'update:q': [string]
   'update:rowSelection': [Record<string, boolean>]
   'update:pagination': [{ pageIndex: number, pageSize: number }]
+  'update:tab': [string]
   'delete': [string[]]
   'reorder': [Array<Record<string, unknown>>]
   'row-copy-id': [string | number]
@@ -208,8 +210,9 @@ const setRowSelected = (id: string | number, v: boolean) => {
 const selectedCount = computed(() => Object.values(props.rowSelection || {}).filter(Boolean).length)
 
 type LooseRow = Record<string, unknown> & { id?: string | number }
-const pageAllSelected = computed(() => ((pageItems.value as unknown) as LooseRow[]).length > 0 && ((pageItems.value as unknown) as LooseRow[]).every(it => isSelected(String(it.id))))
-const pageSomeSelected = computed(() => ((pageItems.value as unknown) as LooseRow[]).some(it => isSelected(String(it.id))))
+const selectableItems = computed(() => ((pageItems.value as unknown) as LooseRow[]).filter(it => String(it.id) !== 'summary'))
+const pageAllSelected = computed(() => selectableItems.value.length > 0 && selectableItems.value.every(it => isSelected(String(it.id))))
+const pageSomeSelected = computed(() => selectableItems.value.some(it => isSelected(String(it.id))))
 const selectAllState = computed<'none' | 'some' | 'all'>(() =>
   pageAllSelected.value ? 'all' : (pageSomeSelected.value ? 'some' : 'none')
 )
@@ -217,7 +220,10 @@ const selectAllState = computed<'none' | 'some' | 'all'>(() =>
 const toggleAllPage = () => {
   const targetValue = !(selectAllState.value === 'all')
   const next = { ...(props.rowSelection || {}) }
-  for (const it of pageItems.value) next[String(it.id)] = targetValue
+  for (const it of pageItems.value) {
+    if (String((it as LooseRow).id) === 'summary') continue
+    next[String((it as LooseRow).id!)] = targetValue
+  }
   emit('update:rowSelection', next)
 }
 
@@ -233,23 +239,19 @@ const onBodyClick = (e: Event) => {
   // choose the currently rendered array
   const itemsArray = props.draggable ? draggableItems.value : pageItems.value
   const item = itemsArray[idx]
-  if (item && props.rowClickHandler) props.rowClickHandler(item)
+  if (item && String((item as LooseRow).id) !== 'summary' && props.rowClickHandler) props.rowClickHandler(item)
 }
 
 const isDragging = ref(false)
 
 const onDragStart = () => {
   isDragging.value = true
-  // Debug
-  console.debug('[BaseTable] onDragStart')
 }
 
 const onDragEnd = (event: SortableEvent) => {
   isDragging.value = false
   // Only emit reorder if the index changed
   if (event.oldIndex !== undefined && event.newIndex !== undefined && event.oldIndex !== event.newIndex) {
-    // Debug
-    console.debug('[BaseTable] onDragEnd', { oldIndex: event.oldIndex, newIndex: event.newIndex })
     // Emit the new order (array of items)
     emit('reorder', draggableItems.value.slice())
   }
@@ -313,33 +315,35 @@ const onRowDelete = (item: Record<string, unknown>) => {
     <!-- Top bar -->
     <div class="flex items-center justify-between gap-3 px-6 py-5">
       <h2 class="text-lg font-semibold">
-          <div class="table-title-bar flex items-center justify-between">
-            <template v-if="props.tabs && props.tabs.length">
-              <div class="flex gap-2">
-                <button
-                  v-for="tab in props.tabs"
-                  :key="tab.value"
-                  :class="[
-                    'tab-btn px-3 py-1 rounded font-medium text-base transition',
-                    currentTab === tab.value
-                      ? 'bg-primary-50 text-primary-700 border-b-2 border-primary-600'
-                      : 'text-gray-600 hover:bg-gray-100 border-b-2 border-transparent'
-                  ]"
-                  @click="onTabClick(tab.value)"
-                  type="button"
-                >
-                  {{ tab.label }}
-                  <span v-if="typeof tab.count === 'number'" class="ml-1 text-xs bg-gray-200 rounded px-1.5">{{ tab.count }}</span>
-                </button>
-              </div>
-            </template>
-            <template v-else>
-              <div class="text-lg font-semibold">{{ props.title }}</div>
-            </template>
-            <div class="flex items-center gap-2">
-              <slot name="table-actions" />
+        <div class="table-title-bar flex items-center justify-between">
+          <template v-if="props.tabs && props.tabs.length">
+            <div class="flex gap-2">
+              <button
+                v-for="tab in props.tabs"
+                :key="tab.value"
+                :class="[
+                  'tab-btn px-3 py-1 rounded font-medium text-base transition',
+                  currentTab === tab.value
+                    ? 'bg-primary-50 text-primary-700 border-b-2 border-primary-600'
+                    : 'text-gray-600 hover:bg-gray-100 border-b-2 border-transparent'
+                ]"
+                type="button"
+                @click="onTabClick(tab.value)"
+              >
+                {{ tab.label }}
+                <span v-if="typeof tab.count === 'number'" class="ml-1 text-xs bg-gray-200 rounded px-1.5">{{ tab.count }}</span>
+              </button>
             </div>
+          </template>
+          <template v-else>
+            <div class="text-lg font-semibold">
+              {{ props.title }}
+            </div>
+          </template>
+          <div class="flex items-center gap-2">
+            <slot name="table-actions" />
           </div>
+        </div>
       </h2>
 
       <div class="flex items-center gap-3">
@@ -398,7 +402,8 @@ const onRowDelete = (item: Record<string, unknown>) => {
         </template>
         <button
           v-else-if="addButton"
-                    class="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-primary-600 hover:bg-primary-700 text-white font-medium whitespace-nowrap text-sm"
+          class="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-primary-600 hover:bg-primary-700 text-white font-medium whitespace-nowrap text-sm"
+          type="button"
           @click="handleAddClick"
         >
           {{ addButton.label }}
@@ -529,7 +534,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
               ]"
             >
           </template>
-          <col class="w-[60px]">
+          <col v-if="props.showRowActions" class="w-[60px]">
         </colgroup>
         <thead class="text-gray-500">
           <tr class="h-14" :class="{ hidden: selectedCount > 0 }">
@@ -583,7 +588,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
             >
               {{ column.label }}
             </th>
-            <th class="py-3 text-left font-medium pr-4">
+            <th v-if="props.showRowActions" class="py-3 text-left font-medium pr-4">
               <!-- Cột actions -->
             </th>
           </tr>
@@ -600,6 +605,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
             <td class="py-4 align-middle">
               <div class="w-14 h-full flex items-center justify-start">
                 <button
+                  v-if="String(item.id) !== 'summary'"
                   data-role="chk"
                   type="button"
                   role="checkbox"
@@ -653,54 +659,56 @@ const onRowDelete = (item: Record<string, unknown>) => {
             </td>
 
             <!-- actions -->
-            <td class="py-4 pr-4">
+            <td v-if="props.showRowActions" class="py-4 pr-4">
               <div class="flex justify-end">
-                <slot name="row-actions" :item="item">
-                  <div class="relative inline-block text-left">
-                    <button
-                      type="button"
-                      class="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-gray-100"
-                      @click.stop="toggleRowMenu(item.id as string | number)"
-                    >
-                      <svg
-                        class="w-5 h-5 text-gray-700"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
+                <template v-if="String(item.id) !== 'summary'">
+                  <slot name="row-actions" :item="item">
+                    <div class="relative inline-block text-left">
+                      <button
+                        type="button"
+                        class="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-gray-100"
+                        @click.stop="toggleRowMenu(item.id as string | number)"
                       >
-                        <circle cx="12" cy="6" r="1" />
-                        <circle cx="12" cy="12" r="1" />
-                        <circle cx="12" cy="18" r="1" />
-                      </svg>
-                    </button>
-                    <div
-                      v-if="isRowMenuOpen(item.id as string | number)"
-                      class="origin-top-right absolute right-0 mt-2 w-40 rounded-md shadow-lg bg-white z-50 ring-black ring-opacity-5"
-                    >
-                      <div class="py-1">
-                        <button
-                          class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          @click.stop="onRowCopyId(item)"
+                        <svg
+                          class="w-5 h-5 text-gray-700"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
                         >
-                          Copy ID
-                        </button>
-                        <button
-                          class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          @click.stop="onRowEdit(item)"
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                          @click.stop="onRowDelete(item)"
-                        >
-                          Xoá
-                        </button>
+                          <circle cx="12" cy="6" r="1" />
+                          <circle cx="12" cy="12" r="1" />
+                          <circle cx="12" cy="18" r="1" />
+                        </svg>
+                      </button>
+                      <div
+                        v-if="isRowMenuOpen(item.id as string | number)"
+                        class="origin-top-right absolute right-0 mt-2 w-40 rounded-md shadow-lg bg-white z-50 ring-black ring-opacity-5"
+                      >
+                        <div class="py-1">
+                          <button
+                            class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            @click.stop="onRowCopyId(item)"
+                          >
+                            Copy ID
+                          </button>
+                          <button
+                            class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            @click.stop="onRowEdit(item)"
+                          >
+                            Sửa
+                          </button>
+                          <button
+                            class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                            @click.stop="onRowDelete(item)"
+                          >
+                            Xoá
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </slot>
+                  </slot>
+                </template>
               </div>
             </td>
           </tr>
@@ -729,6 +737,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
             <td class="py-4 align-middle">
               <div class="w-14 h-full flex items-center justify-start">
                 <button
+                  v-if="String(item.id) !== 'summary'"
                   data-role="chk"
                   type="button"
                   role="checkbox"
@@ -782,54 +791,56 @@ const onRowDelete = (item: Record<string, unknown>) => {
             </td>
 
             <!-- actions -->
-            <td class="py-4 pr-4">
+            <td v-if="props.showRowActions" class="py-4 pr-4">
               <div class="flex justify-end">
-                <slot name="row-actions" :item="item">
-                  <div class="relative inline-block text-left">
-                    <button
-                      type="button"
-                      class="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-gray-100"
-                      @click.stop="toggleRowMenu(item.id as string | number)"
-                    >
-                      <svg
-                        class="w-5 h-5 text-gray-700"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
+                <template v-if="String(item.id) !== 'summary'">
+                  <slot name="row-actions" :item="item">
+                    <div class="relative inline-block text-left">
+                      <button
+                        type="button"
+                        class="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-gray-100"
+                        @click.stop="toggleRowMenu(item.id as string | number)"
                       >
-                        <circle cx="12" cy="6" r="1" />
-                        <circle cx="12" cy="12" r="1" />
-                        <circle cx="12" cy="18" r="1" />
-                      </svg>
-                    </button>
-                    <div
-                      v-if="isRowMenuOpen(item.id as string | number)"
-                      class="origin-top-right absolute right-0 mt-2 w-40 rounded-md shadow-lg bg-white z-50 ring-1 ring-black ring-opacity-5"
-                    >
-                      <div class="py-1">
-                        <button
-                          class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          @click.stop="onRowCopyId(item)"
+                        <svg
+                          class="w-5 h-5 text-gray-700"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
                         >
-                          Copy ID
-                        </button>
-                        <button
-                          class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          @click.stop="onRowEdit(item)"
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                          @click.stop="onRowDelete(item)"
-                        >
-                          Xoá
-                        </button>
+                          <circle cx="12" cy="6" r="1" />
+                          <circle cx="12" cy="12" r="1" />
+                          <circle cx="12" cy="18" r="1" />
+                        </svg>
+                      </button>
+                      <div
+                        v-if="isRowMenuOpen(item.id as string | number)"
+                        class="origin-top-right absolute right-0 mt-2 w-40 rounded-md shadow-lg bg-white z-50 ring-1 ring-black ring-opacity-5"
+                      >
+                        <div class="py-1">
+                          <button
+                            class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            @click.stop="onRowCopyId(item)"
+                          >
+                            Copy ID
+                          </button>
+                          <button
+                            class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            @click.stop="onRowEdit(item)"
+                          >
+                            Sửa
+                          </button>
+                          <button
+                            class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                            @click.stop="onRowDelete(item)"
+                          >
+                            Xoá
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </slot>
+                  </slot>
+                </template>
               </div>
             </td>
           </tr>
@@ -953,7 +964,6 @@ tbody tr.sortable-drag {
   background: #ddd6fe;
   transform: rotate(1deg);
 }
-</style>
 
 /* Tab styles */
 .tab-btn {
@@ -970,3 +980,4 @@ tbody tr.sortable-drag {
 .tab-btn:focus {
   box-shadow: 0 0 0 2px #1b64f233;
 }
+</style>
