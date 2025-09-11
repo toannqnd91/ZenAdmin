@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
+import CustomRadio from '@/components/CustomRadio.vue'
 import { productService } from '@/services/product.service'
 import { warehouseService } from '@/services/warehouse.service'
 import { orderSourceService } from '@/services/order-source.service'
@@ -71,7 +72,6 @@ interface WarehouseLike {
   warehouseId?: number | string
 }
 
-
 // State
 const router = useRouter()
 const splitLine = ref(false)
@@ -106,6 +106,8 @@ type PaymentMethod = typeof paymentMethods[number]
 const paymentMethod = ref<PaymentMethod>(paymentMethods[0])
 // Bridge object for RemoteSearchSelect
 const paymentMethodOption = ref<{ label: string, value: PaymentMethod } | null>({ label: paymentMethod.value, value: paymentMethod.value })
+// Amount paid when paymentStatus === 'paid'
+const paymentAmount = ref<number | null>(null)
 
 // RemoteSearchSelect fetcher for payment methods (local filter)
 async function fetchPaymentMethods(search: string) {
@@ -125,6 +127,8 @@ watch(paymentMethod, (m) => {
     paymentMethodOption.value = { label: m, value: m }
   }
 })
+
+// (moved watchers near totals where grandTotal is defined)
 
 type ShippingOption = 'carrier' | 'self' | 'delivered' | 'later'
 const shippingOption = ref<ShippingOption>('delivered')
@@ -338,6 +342,22 @@ const grandTotal = computed(() => totalAmount.value - discount.value + shippingF
 function currency(n: number) {
   return n.toLocaleString() + '₫'
 }
+
+// Keep payment amount in sync with totals when 'Đã thanh toán'
+watch(paymentStatus, (s) => {
+  if (s === 'paid') {
+    if (paymentAmount.value == null || paymentAmount.value === 0) {
+      paymentAmount.value = grandTotal.value
+    }
+  } else {
+    paymentAmount.value = null
+  }
+})
+watch(grandTotal, (gt) => {
+  if (paymentStatus.value === 'paid' && (paymentAmount.value == null || paymentAmount.value === 0)) {
+    paymentAmount.value = gt
+  }
+})
 
 // Discount & Shipping Fee Modals (like purchase-order)
 const showDiscountModal = ref(false)
@@ -683,37 +703,55 @@ function onAddCustomer() {
                 <!-- Payment panel -->
                 <div v-if="orderProducts.length" class="mt-3 p-4 rounded-lg bg-primary-50">
                   <div class="flex flex-col gap-2">
-                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                      <input
-                        v-model="paymentStatus"
-                        type="radio"
-                        class="accent-primary-600"
-                        value="paid"
-                      >
-                      <span>Đã thanh toán</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                      <input
-                        v-model="paymentStatus"
-                        type="radio"
-                        class="accent-primary-600"
-                        value="later"
-                      >
-                      <span>Thanh toán sau</span>
-                    </label>
-                  </div>
-                  <div class="mt-3">
-                    <div class="text-xs text-gray-600 mb-1">
-                      Hình thức thanh toán
+                    <CustomRadio v-model="paymentStatus" value="paid" label="Đã thanh toán" />
+                    <div v-if="paymentStatus === 'paid'" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                      <div>
+                        <div class="text-xs text-gray-600 mb-1">
+                          Hình thức thanh toán
+                        </div>
+                        <RemoteSearchSelect
+                          v-model="paymentMethodOption"
+                          :fetch-fn="fetchPaymentMethods"
+                          placeholder="Chọn hình thức thanh toán"
+                          :clearable="false"
+                          label-field="label"
+                          :searchable="false"
+                        />
+                      </div>
+                      <div>
+                        <div class="text-xs text-gray-600 mb-1">
+                          Số tiền
+                        </div>
+                        <div class="relative">
+                          <input
+                            v-model.number="paymentAmount"
+                            type="number"
+                            min="0"
+                            class="w-full h-9 px-3 pr-6 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-right"
+                          >
+                          <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">đ</span>
+                        </div>
+                      </div>
                     </div>
-                    <RemoteSearchSelect
-                      v-model="paymentMethodOption"
-                      :fetch-fn="fetchPaymentMethods"
-                      placeholder="Chọn hình thức thanh toán"
-                      :clearable="false"
-                      label-field="label"
-                      :searchable="false"
+                    <CustomRadio
+                      v-model="paymentStatus"
+                      class="mt-2"
+                      value="later"
+                      label="Thanh toán sau"
                     />
+                    <div v-if="paymentStatus === 'later'" class="mt-2">
+                      <div class="text-xs text-gray-600 mb-1">
+                        Hình thức thanh toán
+                      </div>
+                      <RemoteSearchSelect
+                        v-model="paymentMethodOption"
+                        :fetch-fn="fetchPaymentMethods"
+                        placeholder="Chọn hình thức thanh toán"
+                        :clearable="false"
+                        label-field="label"
+                        :searchable="false"
+                      />
+                    </div>
                   </div>
                 </div>
                 <!-- Modal giảm giá -->
