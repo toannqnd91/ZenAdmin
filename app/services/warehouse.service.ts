@@ -8,6 +8,7 @@ export interface WarehouseItem {
   productCount?: number
   totalStock?: number
   address?: string
+  isDefault?: boolean
 }
 
 export class WarehouseService extends BaseService {

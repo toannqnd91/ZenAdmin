@@ -16,6 +16,9 @@ const columns = [
     { key: 'totalStock', label: 'Số lượng tồn kho' }
 ]
 
+// Cấu hình chiều rộng các cột theo thứ tự columns
+const colWidths: string[] = [null, '160px', '180px', '180px']
+
 async function fetchWarehouses() {
     loading.value = true
     try {
@@ -49,8 +52,22 @@ onMounted(fetchWarehouses)
                         :data="warehouses"
                         :loading="loading"
                         :columns="columns"
+                        :col-widths="colWidths"
                         title="Danh sách kho"
                     >
+                        <template #column-name="{ item }">
+                            <div class="flex items-center gap-2">
+                                <span>{{ item.name }}</span>
+                                <UBadge
+                                    v-if="item && item.isDefault"
+                                    color="primary"
+                                    variant="soft"
+                                    size="sm"
+                                >
+                                    Mặc định
+                                </UBadge>
+                            </div>
+                        </template>
                         <template #column-createdOn="{ item }">
                             <span>{{ item.createdOn ? new Date(String(item.createdOn)).toLocaleDateString('vi-VN') : '' }}</span>
                         </template>
