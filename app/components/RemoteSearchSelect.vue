@@ -20,6 +20,7 @@ interface Props {
   searchable?: boolean // when false, hide search input
   dropdownMaxHeight?: number | string // max height of dropdown items area
   searchInTrigger?: boolean // when true, type in the top trigger instead of dropdown
+  resetSearchOnOpen?: boolean // when true, clear search on open to show full list
 }
 const props = defineProps<Props>()
 const emit = defineEmits(['update:modelValue', 'select', 'clear'])
@@ -88,7 +89,12 @@ function isSelected(item: GenericItem) {
 function openDropdown() {
   if (props.disabled) return
   open.value = true
-  if (!items.value.length) runFetch()
+  // Clear search so full list is shown even when an item was selected
+  if (props.resetSearchOnOpen !== false) {
+    search.value = ''
+  }
+  // Always fetch on open to reflect current search text
+  runFetch()
   nextTick(() => document.addEventListener('mousedown', handleClickOutside))
 }
 function closeDropdown() {

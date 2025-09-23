@@ -2,6 +2,8 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
+import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
+import { locationService } from '@/services/location.service'
 
 interface CustomerForm {
   fullName: string
@@ -42,6 +44,62 @@ const form = ref<CustomerForm>({
   tagsInput: '',
   tags: []
 })
+
+// Location selections (Province & Ward)
+type GenericItem = Record<string, unknown>
+const selectedProvince = ref<GenericItem | null>(null)
+const selectedWard = ref<GenericItem | null>(null)
+
+async function fetchProvinces(search: string) {
+  try {
+    const res = await locationService.getProvinces()
+    const list = Array.isArray(res?.data) ? res.data : []
+    const q = (search || '').toLowerCase()
+    const mapped = list.map(p => ({ id: p.id, name: p.name, code: p.code, division_type: p.division_type }))
+    return q ? mapped.filter(x => String(x.name).toLowerCase().includes(q)) : mapped
+  } catch {
+    return []
+  }
+}
+
+async function fetchWards(search: string) {
+  try {
+    const pid = selectedProvince.value?.id
+    if (!pid) return []
+    const res = await locationService.getWardsByProvince(pid as number | string)
+    const list = Array.isArray(res?.data) ? res.data : []
+    const q = (search || '').toLowerCase()
+    const mapped = list.map(w => ({ id: w.id, name: w.name, code: w.code, division_type: w.division_type }))
+    return q ? mapped.filter(x => String(x.name).toLowerCase().includes(q)) : mapped
+  } catch {
+    return []
+  }
+}
+
+function onSelectProvince(item: GenericItem) {
+  selectedProvince.value = item
+  form.value.province = String(item?.name ?? '')
+  // Reset dependent ward when province changes
+  selectedWard.value = null
+  form.value.ward = ''
+}
+
+function onClearProvince() {
+  selectedProvince.value = null
+  form.value.province = ''
+  selectedWard.value = null
+  form.value.ward = ''
+}
+
+function onSelectWard(item: GenericItem) {
+  selectedWard.value = item
+  form.value.ward = String(item?.name ?? '')
+}
+
+function onClearWard() {
+  selectedWard.value = null
+  form.value.ward = ''
+}
 
 const submitting = ref(false)
 const touchedName = ref(false)
@@ -262,42 +320,34 @@ function goBack() {
                   </div>
                   <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Tỉnh/Thành phố</label>
-                    <select
-                      v-model="form.province"
-                      class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="" disabled>
-                        Chọn Tỉnh/Thành phố
-                      </option>
-                      <option>
-                        Hà Nội
-                      </option>
-                      <option>
-                        Hồ Chí Minh
-                      </option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Quận/Huyện</label>
-                    <select
-                      v-model="form.district"
-                      class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="" disabled>
-                        Chọn Quận/Huyện
-                      </option>
-                    </select>
+                    <RemoteSearchSelect
+                      v-model="selectedProvince"
+                      :fetch-fn="fetchProvinces"
+                      placeholder="Chọn Tỉnh/Thành phố"
+                      label-field="name"
+                      clearable
+                      searchable
+                      :dropdown-max-height="320"
+                      search-in-trigger
+                      @select="onSelectProvince"
+                      @clear="onClearProvince"
+                    />
                   </div>
                   <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Phường/Xã</label>
-                    <select
-                      v-model="form.ward"
-                      class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="" disabled>
-                        Chọn Phường/Xã
-                      </option>
-                    </select>
+                    <RemoteSearchSelect
+                      v-model="selectedWard"
+                      :fetch-fn="fetchWards"
+                      :disabled="!selectedProvince"
+                      placeholder="Chọn Phường/Xã"
+                      label-field="name"
+                      clearable
+                      searchable
+                      :dropdown-max-height="320"
+                      search-in-trigger
+                      @select="onSelectWard"
+                      @clear="onClearWard"
+                    />
                   </div>
                   <div class="md:col-span-2">
                     <label class="block text-xs font-medium text-gray-600 mb-1">Địa chỉ cụ thể</label>
