@@ -61,6 +61,7 @@ interface OrderProduct extends ProductSearchItem {
   quantity: number
   unitPrice: number
   total: number
+  baseUnitPrice?: number
 }
 type GenericItem = Record<string, unknown>
 interface WarehouseLike {
@@ -252,6 +253,7 @@ function addProduct(item: ProductSearchItem) {
     ...item,
     quantity: 1,
     unitPrice: item.price || 0,
+    baseUnitPrice: item.price || 0,
     total: item.price || 0
   })
   closeProductSearch()
@@ -264,6 +266,134 @@ function updateProductTotal(idx: number) {
   if (!prod) return
   if (prod.quantity < 1) prod.quantity = 1
   prod.total = prod.quantity * prod.unitPrice
+}
+
+function getBaseUnitPrice(prod: OrderProduct) {
+  return typeof prod.baseUnitPrice === 'number' ? prod.baseUnitPrice : prod.unitPrice
+}
+function calcDiscountAmount(prod: OrderProduct) {
+  const base = getBaseUnitPrice(prod)
+  return Math.max(0, base - prod.unitPrice)
+}
+function calcDiscountPercent(prod: OrderProduct) {
+  const base = getBaseUnitPrice(prod)
+  if (base <= 0) return 0
+  const amt = calcDiscountAmount(prod)
+  return Math.round((amt * 100) / base)
+}
+
+// =========================
+// Price adjust modal (per product)
+// =========================
+const showPriceModal = ref(false)
+const priceModalIdx = ref<number | null>(null)
+const priceUseNew = ref(false)
+const priceNewValue = ref<number | null>(null)
+const priceDiscountType = ref<'amount' | 'percent'>('amount')
+const priceDiscountInput = ref<number | null>(null)
+const priceReason = ref('')
+const priceError = ref('')
+
+function openPriceModal(idx: number) {
+  const prod = orderProducts.value[idx]
+  if (!prod) return
+  priceModalIdx.value = idx
+  priceUseNew.value = false
+  priceNewValue.value = prod.unitPrice
+  priceDiscountType.value = 'amount'
+  priceDiscountInput.value = null
+  priceReason.value = ''
+  priceError.value = ''
+  showPriceModal.value = true
+}
+
+function closePriceModal() {
+  showPriceModal.value = false
+}
+
+const pricePreview = computed(() => {
+  const idx = priceModalIdx.value
+  if (idx === null) return null
+  const prod = orderProducts.value[idx]
+  if (!prod) return null
+  const base = typeof prod.baseUnitPrice === 'number' ? prod.baseUnitPrice : prod.unitPrice
+  if (priceUseNew.value) {
+    const v = Number(priceNewValue.value ?? 0)
+    return v >= 0 ? v : 0
+  }
+  const di = Number(priceDiscountInput.value ?? 0)
+  if (!di || di <= 0) return base
+  if (priceDiscountType.value === 'percent') {
+    const pct = Math.max(0, Math.min(100, di))
+    const off = Math.round((base * pct) / 100)
+    return Math.max(0, base - off)
+  }
+  // amount
+  return Math.max(0, base - di)
+})
+
+function validatePriceModal(): boolean {
+  priceError.value = ''
+  if (priceUseNew.value) {
+    const v = Number(priceNewValue.value)
+    if (!Number.isFinite(v) || v < 0) {
+      priceError.value = 'Giá mới không hợp lệ'
+      return false
+    }
+    return true
+  }
+  if (priceDiscountInput.value != null && priceDiscountType.value === 'percent') {
+    const p = Number(priceDiscountInput.value)
+    if (p < 0 || p > 100) {
+      priceError.value = 'Phần trăm giảm giá phải trong khoảng 0-100'
+      return false
+    }
+  }
+  return true
+}
+
+function applyPriceAdjust() {
+  if (!validatePriceModal()) return
+  const idx = priceModalIdx.value
+  if (idx === null) return
+  const prod = orderProducts.value[idx]
+  if (!prod) return
+  const base = typeof prod.baseUnitPrice === 'number' ? prod.baseUnitPrice : (prod.baseUnitPrice = prod.unitPrice)
+
+  let finalPrice: number
+  if (priceUseNew.value) {
+    finalPrice = Math.max(0, Number(priceNewValue.value ?? 0))
+  } else if (priceDiscountInput.value && Number(priceDiscountInput.value) > 0) {
+    if (priceDiscountType.value === 'percent') {
+      const pct = Math.max(0, Math.min(100, Number(priceDiscountInput.value)))
+      const off = Math.round((base * pct) / 100)
+      finalPrice = Math.max(0, base - off)
+    } else {
+      finalPrice = Math.max(0, base - Number(priceDiscountInput.value))
+    }
+  } else {
+    finalPrice = base
+  }
+
+  prod.unitPrice = finalPrice
+  prod.total = prod.quantity * prod.unitPrice
+  closePriceModal()
+}
+
+function removePriceAdjust() {
+  const idx = priceModalIdx.value
+  if (idx === null) return
+  const prod = orderProducts.value[idx]
+  if (!prod) return
+  const base = typeof prod.baseUnitPrice === 'number' ? prod.baseUnitPrice : prod.unitPrice
+  prod.unitPrice = base
+  prod.total = prod.quantity * prod.unitPrice
+  priceUseNew.value = false
+  priceNewValue.value = base
+  priceDiscountInput.value = null
+  priceDiscountType.value = 'amount'
+  priceReason.value = ''
+  priceError.value = ''
 }
 
 function openProductSearch() {
@@ -646,7 +776,19 @@ function onAddCustomer() {
                         >
                       </td>
                       <td class="px-6 py-2">
-                        <span class="text-primary-600 font-semibold">{{ prod.unitPrice.toLocaleString() }}₫</span>
+                        <div class="flex flex-col">
+                          <span
+                            class="text-primary-600 font-semibold cursor-pointer hover:underline"
+                            @click="openPriceModal(idx)"
+                          >
+                            {{ currency(prod.unitPrice) }}
+                          </span>
+                          <div v-if="calcDiscountAmount(prod) > 0" class="text-xs text-gray-500">
+                            <span class="line-through mr-2">{{ currency(getBaseUnitPrice(prod)) }}</span>
+                            <span class="text-red-600 mr-1">-{{ currency(calcDiscountAmount(prod)).replace('₫', '') }}₫</span>
+                            <span class="text-red-600">(-{{ calcDiscountPercent(prod) }}%)</span>
+                          </div>
+                        </div>
                       </td>
                       <td class="px-6 py-2">
                         <span class="font-semibold">{{ (prod.quantity * prod.unitPrice).toLocaleString() }}₫</span>
@@ -861,6 +1003,129 @@ function onAddCustomer() {
                       />
                     </div>
                     <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-2xl" @click="closeShippingFeeModal">
+                      &times;
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Modal điều chỉnh giá sản phẩm -->
+                <div v-if="showPriceModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30" @click="closePriceModal">
+                  <div
+                    class="bg-white rounded-lg w-full max-w-lg p-6 relative shadow-none border-none no-shadow-modal"
+                    style="box-shadow:none!important; border:none!important; outline:none!important;"
+                    @click.stop
+                  >
+                    <div class="text-lg font-semibold mb-4">
+                      Điều chỉnh giá
+                    </div>
+
+                    <div class="mb-4 flex items-center justify-between">
+                      <div class="text-sm text-gray-700 font-medium">
+                        Đặt giá mới cho sản phẩm
+                      </div>
+                      <CustomCheckbox v-model="priceUseNew" />
+                    </div>
+
+                    <div v-if="priceUseNew" class="mb-6">
+                      <label class="text-sm font-medium text-gray-700 mb-1 block">Giá mới</label>
+                      <div class="relative">
+                        <input
+                          v-model.number="priceNewValue"
+                          type="number"
+                          min="0"
+                          class="w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          :class="priceError ? 'border-red-400 bg-red-50' : 'border-gray-300'"
+                        >
+                        <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₫</span>
+                      </div>
+                    </div>
+
+                    <div v-else class="mb-6">
+                      <div class="mb-2 flex items-center gap-4">
+                        <label class="text-sm font-medium min-w-[100px]">Thêm giảm giá:</label>
+                        <div class="flex rounded-lg overflow-hidden border border-gray-200">
+                          <button
+                            :class="['px-4 py-2 text-sm font-semibold', priceDiscountType === 'amount' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700']"
+                            @click="priceDiscountType = 'amount'"
+                          >
+                            Giá trị
+                          </button>
+                          <button
+                            :class="['px-4 py-2 text-sm font-semibold', priceDiscountType === 'percent' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700']"
+                            @click="priceDiscountType = 'percent'"
+                          >
+                            %
+                          </button>
+                        </div>
+                        <div class="flex-1 relative">
+                          <input
+                            v-model.number="priceDiscountInput"
+                            type="number"
+                            class="w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            :class="priceError ? 'border-red-400 bg-red-50' : 'border-gray-300'"
+                          >
+                          <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">{{ priceDiscountType === 'amount' ? '₫' : '%' }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="mb-4">
+                      <label class="text-sm font-medium text-gray-700 mb-1 block">Lý do giảm giá</label>
+                      <input
+                        v-model="priceReason"
+                        type="text"
+                        class="w-full h-9 px-2 rounded border focus:outline-none focus:ring-2 focus:ring-primary-500 border-gray-300"
+                        placeholder="Ghi chú (không bắt buộc)"
+                      >
+                    </div>
+
+                    <div class="mb-4 text-sm text-gray-700">
+                      <div class="flex items-center justify-between">
+                        <span>Giá gốc</span>
+                        <span>
+                          {{ (() => { const idx = priceModalIdx; if (idx === null) return '---'; const p = orderProducts[idx]; const base = (p && typeof p.baseUnitPrice === 'number') ? p.baseUnitPrice : (p ? p.unitPrice : 0); return currency(base) })() }}
+                        </span>
+                      </div>
+                      <div class="flex items-center justify-between mt-1">
+                        <span>Giá áp dụng</span>
+                        <span>{{ typeof pricePreview === 'number' ? currency(pricePreview) : '---' }}</span>
+                      </div>
+                    </div>
+
+                    <div v-if="priceError" class="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-600 text-sm">
+                      {{ priceError }}
+                    </div>
+
+                    <div class="flex justify-between gap-3 mt-6">
+                      <UButton
+                        label="Xóa giảm giá"
+                        color="error"
+                        variant="soft"
+                        class="px-4 h-9 font-medium"
+                        @click="removePriceAdjust"
+                      />
+                      <div class="flex gap-3">
+                        <UButton
+                          label="Hủy"
+                          color="primary"
+                          variant="soft"
+                          class="px-6 h-9 font-medium"
+                          @click="closePriceModal"
+                        />
+                        <UButton
+                          label="Xác nhận"
+                          color="primary"
+                          class="px-6 h-9 font-semibold"
+                          :disabled="!!priceError"
+                          @click="applyPriceAdjust"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-2xl"
+                      @click="closePriceModal"
+                    >
                       &times;
                     </button>
                   </div>

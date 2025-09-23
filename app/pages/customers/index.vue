@@ -77,9 +77,9 @@ const tableData = computed(() => {
 
     <template #body>
       <CustomersTable
-        :q="q"
-        :row-selection="rowSelection"
-        :pagination="pagination"
+        v-model:q="q"
+        v-model:row-selection="rowSelection"
+        v-model:pagination="pagination"
         :data="tableData"
         :loading="loading"
         :total-records="totalRecords"

@@ -13,6 +13,11 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const emit = defineEmits<{
+  'update:q': [string]
+  'update:rowSelection': [Record<string, boolean>]
+  'update:pagination': [{ pageIndex: number, pageSize: number }]
+}>()
 
 const columns: TableColumn[] = [
   { key: 'name', label: 'Tên khách hàng', class: 'py-3 text-left font-medium' },
@@ -58,6 +63,9 @@ const colWidths = [
     :show-row-actions="false"
     search-placeholder="Tìm kiếm khách hàng..."
     :row-click-handler="handleRowClick"
+    @update:q="emit('update:q', $event)"
+    @update:row-selection="emit('update:rowSelection', $event)"
+    @update:pagination="emit('update:pagination', $event)"
   >
     <template #column-name="slotProps">
       <div v-if="String((slotProps.item as any).id) !== 'summary'" class="flex items-center gap-4">
@@ -67,6 +75,10 @@ const colWidths = [
           <span class="text-sm text-muted line-clamp-2">{{ (slotProps.item as any).code || 'Không có mã' }}</span>
         </div>
       </div>
+    </template>
+
+    <template #column-phone="{ value }">
+      <span>{{ String(value ?? '').trim() || '-' }}</span>
     </template>
 
     <template #column-receivable="{ value }">
