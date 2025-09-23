@@ -66,6 +66,20 @@
 			"command": "pnpm lint",
 			"isBackground": false,
 			"group": "build"
+		},
+		{
+			"label": "Run Typecheck",
+			"type": "shell",
+			"command": "pnpm typecheck",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Run ESLint",
+			"type": "shell",
+			"command": "pnpm lint",
+			"isBackground": false,
+			"group": "build"
 		}
 	]
 }
