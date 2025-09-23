@@ -19,8 +19,13 @@ export class LocationService extends BaseService {
   /**
    * Lấy danh sách Xã/Phường theo Tỉnh/Thành phố
    */
-  async getWardsByProvince(provinceId: number | string) {
-    return this.get<LocationItem[]>(`https://localhost:62939/api/v1/locations/provinces/${provinceId}/wards`)
+  async getWardsByProvinceCode(provinceCode: number | string) {
+    return this.get<LocationItem[]>(`https://localhost:62939/api/v1/locations/provinces/${provinceCode}/wards`)
+  }
+
+  // Backward-compatible alias (treat input as code per API contract)
+  async getWardsByProvince(provinceCode: number | string) {
+    return this.getWardsByProvinceCode(provinceCode)
   }
 }
 

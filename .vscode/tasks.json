@@ -94,6 +94,27 @@
 			"command": "pnpm lint",
 			"isBackground": false,
 			"group": "build"
+		},
+		{
+			"label": "Typecheck + Lint",
+			"type": "shell",
+			"command": "pnpm typecheck && pnpm lint",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc",
+				"$eslint-stylish"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Typecheck",
+			"type": "shell",
+			"command": "pnpm typecheck",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
 		}
 	]
 }

@@ -29,6 +29,11 @@ export interface CustomersGridResponse {
 }
 
 export class CustomersService extends BaseService {
+  /** Create a new customer via external API */
+  async createCustomer(data: CreateCustomerRequest) {
+    return this.post<CreateCustomerResponse>(API_ENDPOINTS.CUSTOMER_CREATE_EXTERNAL, data)
+  }
+
   /**
    * POST customers grid with pagination/search/sort
    */
@@ -58,3 +63,35 @@ export class CustomersService extends BaseService {
 }
 
 export const customersService = new CustomersService()
+
+// Types for create customer
+export interface CreateCustomerRequest {
+  fullName: string
+  email?: string | null
+  phoneNumber?: string | null
+  birthDate?: string | null
+  gender?: number | null
+  note?: string | null
+  customerCode?: string | null
+  customerGroupId?: number | null
+  ownerUserId?: string | null
+  tags?: string[]
+  countryId?: string | null
+  stateOrProvinceId?: number | null
+  districtId?: number | null
+  wardId?: number | null
+  addressLine1?: string | null
+  addressLine2?: string | null
+  zipCode?: string | null
+  contactName?: string | null
+  avatarUrl?: string | null
+}
+
+export interface CreateCustomerResponse {
+  code: string
+  success: boolean
+  message: string
+  data: {
+    id: number | string
+  } | null
+}

@@ -20,7 +20,7 @@ const fetchCustomers = async () => {
     const res = await customersService.getCustomers({
       pagination: { start: pagination.value.pageIndex, number: pagination.value.pageSize },
       search: { name: q.value || null, excludeGuests: true },
-      sort: { field: 'Id', reverse: false }
+      sort: { field: 'Id', reverse: true }
     })
     if (res.success && res.data) {
       data.value = res.data.items || []

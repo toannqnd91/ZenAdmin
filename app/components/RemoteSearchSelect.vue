@@ -51,12 +51,13 @@ const displayText = computed(() => {
   return text.length > maxDisplay.value ? text.slice(0, maxDisplay.value) + '...' : text
 })
 
-async function runFetch() {
+async function runFetch(searchOverride?: string) {
   if (!props.fetchFn) return
   loading.value = true
   error.value = null
   try {
-    const data = await props.fetchFn(search.value)
+    const q = typeof searchOverride === 'string' ? searchOverride : search.value
+    const data = await props.fetchFn(q)
     items.value = Array.isArray(data) ? data : []
   } catch (e) {
     error.value = (e instanceof Error ? e.message : 'Lỗi tải dữ liệu')
@@ -89,12 +90,12 @@ function isSelected(item: GenericItem) {
 function openDropdown() {
   if (props.disabled) return
   open.value = true
-  // Clear search so full list is shown even when an item was selected
+  // Show full list on open without clearing the input text
   if (props.resetSearchOnOpen !== false) {
-    search.value = ''
+    runFetch('')
+  } else {
+    runFetch()
   }
-  // Always fetch on open to reflect current search text
-  runFetch()
   nextTick(() => document.addEventListener('mousedown', handleClickOutside))
 }
 function closeDropdown() {
@@ -128,15 +129,6 @@ watch(search, () => {
 function selectItem(item: GenericItem) {
   emit('update:modelValue', item)
   emit('select', item)
-  // Reflect selected item text in the trigger input when using searchInTrigger
-  if (props.searchInTrigger) {
-    const txt = props.getDisplayText
-      ? props.getDisplayText(item)
-      : (props.labelField && item[props.labelField] !== undefined
-          ? String(item[props.labelField] as unknown)
-          : String(item))
-    search.value = txt
-  }
   closeDropdown()
 }
 

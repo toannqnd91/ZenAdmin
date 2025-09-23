@@ -53,6 +53,8 @@ export const API_ENDPOINTS = {
   SUPPLIERS: '/Suppliers',
   // Customer endpoints
   CUSTOMERS_GRID: '/customers/grid',
+  // External customer endpoints
+  CUSTOMER_CREATE_EXTERNAL: 'https://localhost:62939/api/v1/customer',
 
   // Pages endpoints
   PAGES: '/pages',

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import { locationService } from '@/services/location.service'
+import { customersService } from '@/services/customers.service'
 
 interface CustomerForm {
   fullName: string
@@ -49,6 +50,10 @@ const form = ref<CustomerForm>({
 type GenericItem = Record<string, unknown>
 const selectedProvince = ref<GenericItem | null>(null)
 const selectedWard = ref<GenericItem | null>(null)
+const selectedProvinceCode = computed(() => {
+  const code = selectedProvince.value?.code
+  return (typeof code === 'string' || typeof code === 'number') ? code : null
+})
 
 async function fetchProvinces(search: string) {
   try {
@@ -64,9 +69,9 @@ async function fetchProvinces(search: string) {
 
 async function fetchWards(search: string) {
   try {
-    const pid = selectedProvince.value?.id
-    if (!pid) return []
-    const res = await locationService.getWardsByProvince(pid as number | string)
+    const pcode = selectedProvinceCode.value
+    if (!pcode) return []
+    const res = await locationService.getWardsByProvinceCode(pcode as number | string)
     const list = Array.isArray(res?.data) ? res.data : []
     const q = (search || '').toLowerCase()
     const mapped = list.map(w => ({ id: w.id, name: w.name, code: w.code, division_type: w.division_type }))
@@ -112,15 +117,63 @@ const nameError = computed(() => {
 
 const isValid = computed(() => !nameError.value && form.value.fullName.trim().length > 0)
 
-function onSubmit() {
+function toBirthDateISO(dateStr: string): string | null {
+  // Accepts yyyy-MM-dd or dd/MM/yyyy
+  const s = (dateStr || '').trim()
+  if (!s) return null
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    return new Date(s + 'T00:00:00').toISOString()
+  }
+  const parts = s.split('/')
+  if (parts.length === 3) {
+    const [dd, mm, yyyy] = parts as [string, string, string]
+    const iso = `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}T00:00:00`
+    const d = new Date(iso)
+    return isNaN(d.getTime()) ? null : d.toISOString()
+  }
+  return null
+}
+
+function mapGenderToNumber(g: CustomerForm['gender']): number | null {
+  if (g === 'male') return 1
+  if (g === 'female') return 2
+  if (g === 'other') return 3
+  return null
+}
+
+async function onSubmit() {
   touchedName.value = true
   if (!isValid.value) return
   submitting.value = true
-  // TODO: Gọi API tạo khách hàng khi có endpoint
-  setTimeout(() => {
-    submitting.value = false
+  try {
+    const payload = {
+      fullName: form.value.fullName.trim(),
+      email: form.value.email || null,
+      phoneNumber: form.value.phone || null,
+      birthDate: toBirthDateISO(form.value.birthday),
+      gender: mapGenderToNumber(form.value.gender),
+      note: form.value.note || null,
+      customerCode: form.value.code || null,
+      customerGroupId: null, // can be null per spec
+      ownerUserId: null, // can be null per spec
+      tags: form.value.tags.length ? form.value.tags : [],
+      countryId: 'VN', // default VN per spec
+      stateOrProvinceId: selectedProvince.value?.id as number ?? null,
+      districtId: null,
+      wardId: selectedWard.value?.id as number ?? null,
+      addressLine1: form.value.address || null,
+      addressLine2: null,
+      zipCode: null,
+      contactName: null,
+      avatarUrl: null
+    }
+    await customersService.createCustomer(payload)
     router.push('/customers')
-  }, 800)
+  } catch (e) {
+    console.error('Create customer failed:', e)
+  } finally {
+    submitting.value = false
+  }
 }
 
 function addTagFromInput() {
@@ -349,7 +402,7 @@ function goBack() {
                       @clear="onClearWard"
                     />
                   </div>
-                  <div class="md:col-span-2">
+                  <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Địa chỉ cụ thể</label>
                     <input
                       v-model="form.address"
