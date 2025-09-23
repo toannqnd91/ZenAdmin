@@ -117,6 +117,24 @@ function formatDateDDMMYYYY(date: Date) {
   return `${d}/${m}/${y}`
 }
 const orderDate = ref(formatDateDDMMYYYY(new Date()))
+// Keep both dates as dd/MM/yyyy strings and normalize on blur
+const scheduledDate = ref<string>('') // dd/MM/yyyy (optional)
+function normalizeDDMMYYYY(s: string): string {
+  if (!s) return ''
+  const sep = s.includes('-') ? '-' : s.includes('.') ? '.' : '/'
+  const parts = s.split(sep)
+  if (parts.length !== 3) return s
+  const [dd, mm, yyyy] = parts.map(p => p.trim())
+  if (!dd || !mm || !yyyy) return s
+  // convert 1 or 2 digit day/month
+  const d = Number(dd)
+  const m = Number(mm)
+  let y = Number(yyyy)
+  if (!Number.isFinite(d) || !Number.isFinite(m) || !Number.isFinite(y)) return s
+  if (y < 100) y += 2000
+  if (d < 1 || d > 31 || m < 1 || m > 12 || y < 1000) return s
+  return `${d.toString().padStart(2, '0')}/${m.toString().padStart(2, '0')}/${y.toString().padStart(4, '0')}`
+}
 
 // Payments & Shipping controls
 const paymentStatus = ref<'paid' | 'later'>('later')
@@ -1480,18 +1498,11 @@ function onAddCustomer() {
                     <input
                       v-model="orderDate"
                       type="text"
-                      class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                       placeholder="dd/MM/yyyy"
+                      class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      @blur="orderDate = normalizeDDMMYYYY(orderDate)"
                     >
-                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
-                      <svg
-                        class="w-4 h-4"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      ><path d="M8 7V3m8 4V3M5 11h14M5 19h14M5 15h14" /></svg>
-                    </span>
+                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
                   </div>
                   <p class="text-[11px] text-gray-500 mt-1">
                     Giá trị chỉ ghi nhận khi tạo đơn hàng
@@ -1500,16 +1511,14 @@ function onAddCustomer() {
                 <div>
                   <label class="block text-xs font-medium text-gray-600 mb-1">Ngày hẹn giao</label>
                   <div class="relative">
-                    <input type="date" class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
-                      <svg
-                        class="w-4 h-4"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      ><path d="M8 7V3m8 4V3M5 11h14M5 19h14M5 15h14" /></svg>
-                    </span>
+                    <input
+                      v-model="scheduledDate"
+                      type="text"
+                      placeholder="dd/MM/yyyy"
+                      class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      @blur="scheduledDate = normalizeDDMMYYYY(scheduledDate)"
+                    >
+                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
                   </div>
                 </div>
                 <div>
