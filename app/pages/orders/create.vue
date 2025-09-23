@@ -127,6 +127,7 @@ const paymentMethod = ref<PaymentMethod>(paymentMethods[0])
 const paymentMethodOption = ref<{ label: string, value: PaymentMethod } | null>({ label: paymentMethod.value, value: paymentMethod.value })
 // Amount paid when paymentStatus === 'paid'
 const paymentAmount = ref<number | null>(null)
+const paymentAmountDirty = ref(false)
 
 // RemoteSearchSelect fetcher for payment methods (local filter)
 async function fetchPaymentMethods(search: string) {
@@ -283,7 +284,9 @@ function removeProduct(idx: number) {
 function updateProductTotal(idx: number) {
   const prod = orderProducts.value[idx]
   if (!prod) return
-  if (prod.quantity < 1) prod.quantity = 1
+  if (!Number.isFinite(prod.quantity) || prod.quantity < 1) {
+    prod.quantity = 1
+  }
   prod.total = prod.quantity * prod.unitPrice
 }
 
@@ -585,18 +588,24 @@ function currency(n: number) {
 // Keep payment amount in sync with totals when 'Đã thanh toán'
 watch(paymentStatus, (s) => {
   if (s === 'paid') {
-    if (paymentAmount.value == null || paymentAmount.value === 0) {
+    if (!paymentAmountDirty.value) {
       paymentAmount.value = grandTotal.value
     }
   } else {
     paymentAmount.value = null
+    paymentAmountDirty.value = false
   }
 })
 watch(grandTotal, (gt) => {
-  if (paymentStatus.value === 'paid' && (paymentAmount.value == null || paymentAmount.value === 0)) {
+  if (paymentStatus.value === 'paid' && !paymentAmountDirty.value) {
     paymentAmount.value = gt
   }
 })
+
+function syncPaymentAmount() {
+  paymentAmount.value = grandTotal.value
+  paymentAmountDirty.value = false
+}
 
 // Discount & Shipping Fee Modals (like purchase-order)
 const showDiscountModal = ref(false)
@@ -973,8 +982,16 @@ function onAddCustomer() {
                         />
                       </div>
                       <div>
-                        <div class="text-xs text-gray-600 mb-1">
-                          Số tiền
+                        <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
+                          <span>Số tiền (Khách hàng trả)</span>
+                          <button
+                            v-if="paymentAmountDirty"
+                            type="button"
+                            class="text-primary-600 hover:underline p-0 bg-transparent whitespace-nowrap"
+                            @click="syncPaymentAmount()"
+                          >
+                            Đồng bộ với thành tiền
+                          </button>
                         </div>
                         <div class="relative">
                           <input
@@ -982,6 +999,7 @@ function onAddCustomer() {
                             type="number"
                             min="0"
                             class="w-full h-9 px-3 pr-6 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-right"
+                            @input="paymentAmountDirty = true"
                           >
                           <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">đ</span>
                         </div>
