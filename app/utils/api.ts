@@ -2,6 +2,7 @@
 export const API_ENDPOINTS = {
   // Warehouse endpoints
   WAREHOUSES: '/Warehouse',
+  WAREHOUSE_DEFAULT: '/Warehouse/default',
   // File endpoints
   UPLOAD_FILE: '/File/Upload',
   UPLOAD_MULTIPLE_FILES: '/File/UploadMultiple',

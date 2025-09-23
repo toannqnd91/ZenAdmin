@@ -9,6 +9,7 @@ import CustomCheckbox from '@/components/CustomCheckbox.vue'
 import CustomRadio from '@/components/CustomRadio.vue'
 import { productService } from '@/services/product.service'
 import { warehouseService } from '@/services/warehouse.service'
+import type { WarehouseItem } from '@/services/warehouse.service'
 import { orderSourceService } from '@/services/order-source.service'
 import type { OrderSourceItem } from '@/services/order-source.service'
 import { customersService } from '@/services'
@@ -456,6 +457,34 @@ onMounted(async () => {
     }
   } catch {
     // noop
+  }
+
+  // Defaults requested:
+  // - Shipping method: Nhận tại cửa hàng
+  if (!shippingMethod.value) {
+    shippingMethod.value = 'Nhận tại cửa hàng'
+  }
+  // - Payment status: Đã thanh toán
+  if (paymentStatus.value !== 'paid') {
+    paymentStatus.value = 'paid'
+  }
+  // - Default branch: fetch default warehouse id via service and select it
+  try {
+    const def = await warehouseService.getDefaultWarehouse()
+    const defId = def?.data?.id
+    if (typeof defId === 'number' || typeof defId === 'string') {
+      // Try resolve branch name from warehouses list
+      try {
+        const all = await warehouseService.getWarehouses()
+        const list: WarehouseItem[] = Array.isArray(all?.data) ? all.data : []
+        const found = list.find((w: WarehouseItem) => String(w.id) === String(defId))
+        selectedBranch.value = { id: defId, name: (found && found.name) ? found.name : 'Chi nhánh mặc định' }
+      } catch {
+        selectedBranch.value = { id: defId, name: 'Chi nhánh mặc định' }
+      }
+    }
+  } catch {
+    // ignore if API not available
   }
 })
 onBeforeUnmount(() => {

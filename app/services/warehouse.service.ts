@@ -15,6 +15,10 @@ export class WarehouseService extends BaseService {
   async getWarehouses() {
     return this.get<WarehouseItem[]>(API_ENDPOINTS.WAREHOUSES)
   }
+
+  async getDefaultWarehouse() {
+    return this.get<{ id: number }>(API_ENDPOINTS.WAREHOUSE_DEFAULT)
+  }
 }
 
 export const warehouseService = new WarehouseService()
