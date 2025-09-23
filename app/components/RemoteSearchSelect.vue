@@ -18,6 +18,8 @@ interface Props {
   maxDisplayLength?: number
   openKey?: string // e.g. F4
   searchable?: boolean // when false, hide search input
+  dropdownMaxHeight?: number | string // max height of dropdown items area
+  searchInTrigger?: boolean // when true, type in the top trigger instead of dropdown
 }
 const props = defineProps<Props>()
 const emit = defineEmits(['update:modelValue', 'select', 'clear'])
@@ -32,6 +34,12 @@ const triggerRef = ref<HTMLElement | null>(null)
 let debounceTimer: number | undefined
 
 const maxDisplay = computed(() => props.maxDisplayLength ?? 30)
+const maxListStyle = computed(() => {
+  const v = props.dropdownMaxHeight
+  if (v == null) return 'max-height: 380px;'
+  if (typeof v === 'number') return `max-height: ${v}px;`
+  return `max-height: ${v};`
+})
 
 const displayText = computed(() => {
   if (!props.modelValue) return props.placeholder || 'Chọn...'
@@ -102,6 +110,10 @@ function handleClickOutside(e: MouseEvent) {
 }
 
 watch(search, () => {
+  // If typing in trigger while closed, auto open and fetch
+  if (!open.value && props.searchInTrigger && props.searchable !== false) {
+    openDropdown()
+  }
   if (!open.value) return
   if (debounceTimer) window.clearTimeout(debounceTimer)
   debounceTimer = window.setTimeout(() => runFetch(), props.debounce ?? 300)
@@ -110,6 +122,15 @@ watch(search, () => {
 function selectItem(item: GenericItem) {
   emit('update:modelValue', item)
   emit('select', item)
+  // Reflect selected item text in the trigger input when using searchInTrigger
+  if (props.searchInTrigger) {
+    const txt = props.getDisplayText
+      ? props.getDisplayText(item)
+      : (props.labelField && item[props.labelField] !== undefined
+          ? String(item[props.labelField] as unknown)
+          : String(item))
+    search.value = txt
+  }
   closeDropdown()
 }
 
@@ -154,7 +175,16 @@ onBeforeUnmount(() => {
       <div class="flex-1 min-w-0 flex items-center overflow-hidden">
         <!-- Optional left content in trigger, e.g., icon/avatar of selected item -->
         <slot name="trigger-left" :value="modelValue" />
-        <span class="block w-full truncate text-gray-900" :class="{ 'text-gray-400': !modelValue }">{{ displayText }}</span>
+        <template v-if="searchable !== false && searchInTrigger && open">
+          <input
+            v-model="search"
+            type="text"
+            class="w-full h-7 px-0 border-0 outline-none bg-transparent text-gray-900 placeholder-gray-400"
+            :placeholder="placeholder || 'Tìm kiếm...'"
+            @click.stop
+          >
+        </template>
+        <span v-else class="block w-full truncate text-gray-900" :class="{ 'text-gray-400': !modelValue }">{{ displayText }}</span>
       </div>
       <button
         v-if="clearable && modelValue && !disabled"
@@ -183,7 +213,7 @@ onBeforeUnmount(() => {
       class="absolute left-0 top-full z-50 w-full bg-white rounded-md shadow-lg border border-gray-300 mt-2"
     >
       <slot name="add-action" />
-      <div v-if="searchable !== false" class="px-3 pt-2 pb-2">
+      <div v-if="searchable !== false && !searchInTrigger" class="px-3 pt-2 pb-2">
         <input
           v-model="search"
           type="text"
@@ -203,36 +233,38 @@ onBeforeUnmount(() => {
         Không có kết quả
       </div>
       <div v-else>
-        <div
-          v-for="item in items"
-          :key="itemKey(item)"
-          class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-all"
-          :class="{ 'bg-primary-50': isSelected(item) }"
-          @click.stop="selectItem(item)"
-        >
-          <slot name="item" :item="item">
-            <div class="flex-1">
-              <div class="font-medium text-gray-900 text-sm">
-                {{ getDisplayText ? getDisplayText(item) : (labelField ? (item[labelField] ?? '') : '') }}
-              </div>
-              <div v-if="getItemSubtitle && getItemSubtitle(item)" class="text-xs text-gray-500">
-                {{ getItemSubtitle(item) }}
-              </div>
-            </div>
-          </slot>
-          <svg
-            v-if="isSelected(item)"
-            class="w-4 h-4 text-primary-600 ml-2 flex-shrink-0"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            aria-hidden="true"
+        <div class="overflow-auto" :style="maxListStyle">
+          <div
+            v-for="item in items"
+            :key="itemKey(item)"
+            class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-all"
+            :class="{ 'bg-primary-50': isSelected(item) }"
+            @click.stop="selectItem(item)"
           >
-            <path
-              fill-rule="evenodd"
-              d="M16.707 5.293a1 1 0 010 1.414l-7.25 7.25a1 1 0 01-1.414 0l-3-3a1 1 0 111.414-1.414L8.5 11.586l6.543-6.543a1 1 0 011.414 0z"
-              clip-rule="evenodd"
-            />
-          </svg>
+            <slot name="item" :item="item">
+              <div class="flex-1">
+                <div class="font-medium text-gray-900 text-sm">
+                  {{ getDisplayText ? getDisplayText(item) : (labelField ? (item[labelField] ?? '') : '') }}
+                </div>
+                <div v-if="getItemSubtitle && getItemSubtitle(item)" class="text-xs text-gray-500">
+                  {{ getItemSubtitle(item) }}
+                </div>
+              </div>
+            </slot>
+            <svg
+              v-if="isSelected(item)"
+              class="w-4 h-4 text-primary-600 ml-2 flex-shrink-0"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414l-7.25 7.25a1 1 0 01-1.414 0l-3-3a1 1 0 111.414-1.414L8.5 11.586l6.543-6.543a1 1 0 011.414 0z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </div>
         </div>
       </div>
     </div>

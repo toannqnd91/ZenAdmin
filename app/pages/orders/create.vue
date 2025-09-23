@@ -63,6 +63,10 @@ interface OrderProduct extends ProductSearchItem {
   unitPrice: number
   total: number
   baseUnitPrice?: number
+  appliedDiscountType?: 'amount' | 'percent'
+  appliedDiscountInput?: number | null
+  usedNewPrice?: boolean
+  discountReason?: string
 }
 type GenericItem = Record<string, unknown>
 interface WarehouseLike {
@@ -91,6 +95,19 @@ const orderProducts = ref<OrderProduct[]>([])
 const selectedCustomer = ref<GenericItem | null>(null)
 const selectedSource = ref<GenericItem | null>(null)
 const selectedBranch = ref<GenericItem | null>(null)
+// Staff in charge (current logged-in user)
+const { user: authUser, getProfile } = useAuthService()
+const staffInCharge = ref<string>('')
+
+type AuthUserLike = { display_name?: string, fullName?: string }
+function extractDisplayName(u: unknown): string {
+  if (u && typeof u === 'object') {
+    const obj = u as AuthUserLike
+    if (typeof obj.display_name === 'string' && obj.display_name) return obj.display_name
+    if (typeof obj.fullName === 'string' && obj.fullName) return obj.fullName
+  }
+  return ''
+}
 
 // Ngày đặt hàng: default to today in dd/MM/yyyy
 function formatDateDDMMYYYY(date: Date) {
@@ -255,7 +272,8 @@ function addProduct(item: ProductSearchItem) {
     quantity: 1,
     unitPrice: item.price || 0,
     baseUnitPrice: item.price || 0,
-    total: item.price || 0
+    total: item.price || 0,
+    discountReason: undefined
   })
   closeProductSearch()
 }
@@ -299,12 +317,41 @@ function openPriceModal(idx: number) {
   const prod = orderProducts.value[idx]
   if (!prod) return
   priceModalIdx.value = idx
-  priceUseNew.value = false
-  priceNewValue.value = prod.unitPrice
-  priceDiscountType.value = 'amount'
-  priceDiscountInput.value = null
-  priceReason.value = ''
+  priceReason.value = prod.discountReason || ''
   priceError.value = ''
+
+  // Prefill based on current unitPrice vs base price
+  const base = getBaseUnitPrice(prod)
+  priceNewValue.value = prod.unitPrice
+
+  // If we previously applied a specific mode, respect it
+  if (prod.usedNewPrice) {
+    priceUseNew.value = true
+    priceDiscountType.value = 'amount'
+    priceDiscountInput.value = null
+  } else if (prod.appliedDiscountType && (prod.appliedDiscountInput ?? null) !== null) {
+    priceUseNew.value = false
+    priceDiscountType.value = prod.appliedDiscountType
+    priceDiscountInput.value = Number(prod.appliedDiscountInput || 0)
+  } else if (typeof base === 'number' && base > 0 && prod.unitPrice !== base) {
+    const diff = base - prod.unitPrice
+    if (diff > 0) {
+      // Inferred discount by amount
+      priceUseNew.value = false
+      priceDiscountType.value = 'amount'
+      priceDiscountInput.value = diff
+    } else {
+      // Price increased above base (surcharge) -> treat as custom new price
+      priceUseNew.value = true
+      priceDiscountType.value = 'amount'
+      priceDiscountInput.value = null
+    }
+  } else {
+    // Default empty state
+    priceUseNew.value = false
+    priceDiscountType.value = 'amount'
+    priceDiscountInput.value = null
+  }
   showPriceModal.value = true
 }
 
@@ -364,20 +411,35 @@ function applyPriceAdjust() {
   let finalPrice: number
   if (priceUseNew.value) {
     finalPrice = Math.max(0, Number(priceNewValue.value ?? 0))
+    prod.usedNewPrice = true
+    prod.appliedDiscountType = undefined
+    prod.appliedDiscountInput = null
   } else if (priceDiscountInput.value && Number(priceDiscountInput.value) > 0) {
     if (priceDiscountType.value === 'percent') {
       const pct = Math.max(0, Math.min(100, Number(priceDiscountInput.value)))
       const off = Math.round((base * pct) / 100)
       finalPrice = Math.max(0, base - off)
+      prod.usedNewPrice = false
+      prod.appliedDiscountType = 'percent'
+      prod.appliedDiscountInput = pct
     } else {
       finalPrice = Math.max(0, base - Number(priceDiscountInput.value))
+      prod.usedNewPrice = false
+      prod.appliedDiscountType = 'amount'
+      prod.appliedDiscountInput = Number(priceDiscountInput.value)
     }
   } else {
     finalPrice = base
+    prod.usedNewPrice = false
+    prod.appliedDiscountType = undefined
+    prod.appliedDiscountInput = null
   }
 
   prod.unitPrice = finalPrice
   prod.total = prod.quantity * prod.unitPrice
+  // Save reason (trim empty to undefined)
+  const r = (priceReason.value || '').trim()
+  prod.discountReason = r.length ? r : undefined
   closePriceModal()
 }
 
@@ -395,6 +457,11 @@ function removePriceAdjust() {
   priceDiscountType.value = 'amount'
   priceReason.value = ''
   priceError.value = ''
+  // Clear applied markers
+  prod.usedNewPrice = false
+  prod.appliedDiscountType = undefined
+  prod.appliedDiscountInput = null
+  prod.discountReason = undefined
 }
 
 function openProductSearch() {
@@ -485,6 +552,19 @@ onMounted(async () => {
     }
   } catch {
     // ignore if API not available
+  }
+
+  // Nhân viên phụ trách: lấy display_name của tài khoản đang đăng nhập
+  try {
+    // Prefill from decoded token if available immediately
+    const prefill = extractDisplayName(authUser.value)
+    if (prefill) staffInCharge.value = prefill
+    // Fetch fresh profile to ensure correct display_name
+    const profile = await getProfile()
+    const dn = extractDisplayName(profile)
+    if (dn) staffInCharge.value = dn
+  } catch {
+    // silently ignore profile errors; field will stay blank
   }
 })
 onBeforeUnmount(() => {
@@ -816,6 +896,9 @@ function onAddCustomer() {
                             <span class="line-through mr-2">{{ currency(getBaseUnitPrice(prod)) }}</span>
                             <span class="text-red-600 mr-1">-{{ currency(calcDiscountAmount(prod)).replace('₫', '') }}₫</span>
                             <span class="text-red-600">(-{{ calcDiscountPercent(prod) }}%)</span>
+                            <div v-if="prod.discountReason" class="text-[11px] text-gray-400 mt-0.5 truncate max-w-[240px]">
+                              Lý do: {{ prod.discountReason }}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -1264,6 +1347,9 @@ function onAddCustomer() {
                   :debounce="300"
                   label-field="name"
                   open-key="F4"
+                  :dropdown-max-height="420"
+                  :searchable="true"
+                  :search-in-trigger="true"
                   :class="[{ 'border border-red-400 rounded-md': triedSubmit && !hasCustomer }]"
                   :aria-invalid="(triedSubmit && !hasCustomer) ? 'true' : 'false'"
                 >
@@ -1356,10 +1442,13 @@ function onAddCustomer() {
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-gray-600 mb-1">Nhân viên phụ trách</label>
-                  <select class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                    <option>Phạm Văn Toàn</option>
-                    <option>Nguyễn Văn B</option>
-                  </select>
+                  <input
+                    v-model="staffInCharge"
+                    type="text"
+                    readonly
+                    class="w-full h-9 px-3 rounded-md border border-gray-300 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="Tên nhân viên"
+                  >
                 </div>
                 <div>
                   <label class="text-xs font-medium text-gray-600 mb-1 flex items-center gap-1">Ngày đặt hàng <svg
