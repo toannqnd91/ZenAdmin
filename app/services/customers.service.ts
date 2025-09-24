@@ -28,10 +28,79 @@ export interface CustomersGridResponse {
   totalNetSalesAll: number
 }
 
+// External get-by-id response shape
+export interface ExternalCustomerByIdResponse {
+  code: string
+  success: boolean
+  message: string
+  data: {
+    id: string
+    fullName: string
+    email: string | null
+    phoneNumber: string | null
+    createdOn: string
+    isActivated: boolean
+    birthDate: string | null
+    gender: number | null
+    avatarUrl: string | null
+    customerCode: string | null
+    address: Array<{
+      id: number
+      addressLine1: string | null
+      city: string | null
+      stateOrProvinceId: number | null
+      districtId: number | null
+      wardId: number | null
+      wardName: string | null
+      districtName: string | null
+      stateOrProvinceName: string | null
+      countryName: string | null
+      zipCode: string | null
+      phoneNumber: string | null
+      contactName: string | null
+      isDefault: boolean
+    }>
+    groups: Array<{ groupId: number, name: string }>
+    totalSales: number
+    totalNetSales: number
+    totalOrders: number
+    totalAmount: number
+    paid: number
+    receivable: number
+  } | null
+}
+
+// External groups list response item
+export interface CustomerGroupItem {
+  id: number
+  name: string
+  description: string | null
+  isActive: boolean
+  discountValue: number | null
+  discountType: number | null
+  ruleJson: string | null
+  ruleMode: number
+  autoRun: boolean
+  createdOn: string
+  latestUpdatedOn: string
+}
+
 export class CustomersService extends BaseService {
   /** Create a new customer via external API */
   async createCustomer(data: CreateCustomerRequest) {
     return this.post<CreateCustomerResponse>(API_ENDPOINTS.CUSTOMER_CREATE_EXTERNAL, data)
+  }
+
+  /** Get customer by id via external API */
+  async getCustomerByIdExternal(id: string) {
+    // The external API already wraps the payload in our ApiResponse envelope,
+    // so we should type T to the inner `data` shape, not the whole response.
+    return this.get<ExternalCustomerByIdResponse['data']>(API_ENDPOINTS.CUSTOMER_BY_ID_EXTERNAL(id))
+  }
+
+  /** Get customer groups via external API */
+  async getCustomerGroupsExternal() {
+    return this.get<CustomerGroupItem[]>(API_ENDPOINTS.CUSTOMER_GROUPS_EXTERNAL)
   }
 
   /**

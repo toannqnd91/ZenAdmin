@@ -55,6 +55,8 @@ export const API_ENDPOINTS = {
   CUSTOMERS_GRID: '/customers/grid',
   // External customer endpoints
   CUSTOMER_CREATE_EXTERNAL: 'https://localhost:62939/api/v1/customer',
+  CUSTOMER_BY_ID_EXTERNAL: (id: string) => `https://localhost:62939/api/v1/customer/${id}`,
+  CUSTOMER_GROUPS_EXTERNAL: 'https://localhost:62939/api/v1/customergroups',
 
   // Pages endpoints
   PAGES: '/pages',

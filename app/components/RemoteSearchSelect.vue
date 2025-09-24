@@ -5,7 +5,7 @@ type GenericItem = Record<string, unknown>
 type FetchFn = (search: string) => Promise<GenericItem[]>
 
 interface Props {
-  modelValue: GenericItem | null
+  modelValue: GenericItem | GenericItem[] | null
   fetchFn: FetchFn
   placeholder?: string
   labelField?: string
@@ -21,6 +21,7 @@ interface Props {
   dropdownMaxHeight?: number | string // max height of dropdown items area
   searchInTrigger?: boolean // when true, type in the top trigger instead of dropdown
   resetSearchOnOpen?: boolean // when true, clear search on open to show full list
+  multiple?: boolean // when true, allow selecting multiple items
 }
 const props = defineProps<Props>()
 const emit = defineEmits(['update:modelValue', 'select', 'clear'])
@@ -42,12 +43,25 @@ const maxListStyle = computed(() => {
   return `max-height: ${v};`
 })
 
+function itemLabel(item: GenericItem): string {
+  if (props.getDisplayText) return props.getDisplayText(item)
+  if (props.labelField && item && item[props.labelField] !== undefined) return String(item[props.labelField])
+  try {
+    return String(item)
+  } catch {
+    return ''
+  }
+}
+
 const displayText = computed(() => {
+  if (props.multiple) {
+    const arr = Array.isArray(props.modelValue) ? props.modelValue : []
+    if (!arr.length) return props.placeholder || 'Chọn...'
+    const text = arr.map(itemLabel).filter(Boolean).join(', ')
+    return text.length > maxDisplay.value ? text.slice(0, maxDisplay.value) + '...' : text
+  }
   if (!props.modelValue) return props.placeholder || 'Chọn...'
-  let text: string
-  if (props.getDisplayText) text = props.getDisplayText(props.modelValue)
-  else if (props.labelField && props.modelValue && props.modelValue[props.labelField] !== undefined) text = String(props.modelValue[props.labelField])
-  else text = String(props.modelValue)
+  const text = itemLabel(props.modelValue as GenericItem)
   return text.length > maxDisplay.value ? text.slice(0, maxDisplay.value) + '...' : text
 })
 
@@ -82,9 +96,16 @@ function itemKey(item: GenericItem): string {
     return String(item)
   }
 }
-const selectedKey = computed(() => (props.modelValue ? itemKey(props.modelValue) : null))
+const selectedKey = computed(() => (!props.multiple && props.modelValue ? itemKey(props.modelValue as GenericItem) : null))
+const selectedKeys = computed<Set<string>>(() => {
+  if (props.multiple && Array.isArray(props.modelValue)) {
+    return new Set(props.modelValue.map(it => itemKey(it)))
+  }
+  const s = selectedKey.value
+  return new Set(s ? [s] : [])
+})
 function isSelected(item: GenericItem) {
-  return selectedKey.value !== null && itemKey(item) === selectedKey.value
+  return selectedKeys.value.has(itemKey(item))
 }
 
 function openDropdown() {
@@ -127,6 +148,17 @@ watch(search, () => {
 })
 
 function selectItem(item: GenericItem) {
+  if (props.multiple) {
+    const current = Array.isArray(props.modelValue) ? [...props.modelValue] : []
+    const k = itemKey(item)
+    const idx = current.findIndex(it => itemKey(it) === k)
+    if (idx >= 0) current.splice(idx, 1)
+    else current.push(item)
+    emit('update:modelValue', current)
+    emit('select', item)
+    // keep dropdown open for multi-select
+    return
+  }
   emit('update:modelValue', item)
   emit('select', item)
   closeDropdown()
@@ -134,7 +166,8 @@ function selectItem(item: GenericItem) {
 
 function clearSelection(e: MouseEvent) {
   e.stopPropagation()
-  emit('update:modelValue', null)
+  if (props.multiple) emit('update:modelValue', [])
+  else emit('update:modelValue', null)
   emit('clear')
   search.value = ''
   runFetch()
@@ -185,7 +218,7 @@ onBeforeUnmount(() => {
         <span v-else class="block w-full truncate text-gray-900" :class="{ 'text-gray-400': !modelValue }">{{ displayText }}</span>
       </div>
       <button
-        v-if="clearable && modelValue && !disabled"
+        v-if="clearable && ((Array.isArray(modelValue) ? modelValue.length > 0 : !!modelValue)) && !disabled"
         class="mr-1 text-gray-400 hover:text-gray-600"
         @click.stop="clearSelection"
       >
@@ -217,7 +250,7 @@ onBeforeUnmount(() => {
           type="text"
           class="w-full h-9 px-3 rounded-md border border-gray-200 bg-gray-50 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-primary-500 placeholder-gray-400"
           :placeholder="placeholder || 'Tìm kiếm...'"
-          :disabled="!!modelValue && !clearable"
+          :disabled="((Array.isArray(modelValue) ? modelValue.length > 0 : !!modelValue) && !clearable)"
           @click.stop
         >
       </div>
