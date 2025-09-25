@@ -16,9 +16,41 @@ if (!customerId.value) {
   router.replace('/customers')
 }
 
-// Helpers & placeholder data to reflect the provided UI
-type OrderStatus = 'Đã thanh toán' | 'Thanh toán một phần' | 'Chưa thanh toán'
-type ProcessStatus = 'Đã xử lý' | 'Đang xử lý' | 'Đã hủy'
+// Status display types
+type UiPaymentStatus = 'Đã thanh toán' | 'Thanh toán một phần' | 'Chưa thanh toán'
+type UiProcessStatus = 'Đã xử lý' | 'Đang xử lý' | 'Đã hủy'
+
+// Backend enum reference (numeric order status)
+const ORDER_STATUS_MAP: Record<number, UiProcessStatus> = {
+  1: 'Đang xử lý', // New
+  10: 'Đang xử lý', // OnHold
+  20: 'Đang xử lý', // PendingPayment
+  30: 'Đang xử lý', // PaymentReceived
+  35: 'Đang xử lý', // PaymentFailed
+  40: 'Đang xử lý', // Invoiced
+  50: 'Đang xử lý', // Shipping
+  60: 'Đang xử lý', // Shipped
+  70: 'Đã xử lý', // Complete
+  80: 'Đã hủy', // Canceled
+  90: 'Đã hủy', // Refunded (treat as canceled for now)
+  100: 'Đã xử lý' // Closed
+}
+
+function mapPaymentStatus(apiStatus: string | null | undefined, paidAmount: number, total: number): UiPaymentStatus {
+  const status = (apiStatus || '').toLowerCase()
+  if (status === 'paid' || (paidAmount >= total && total > 0)) return 'Đã thanh toán'
+  if (status === 'partiallypaid' || paidAmount > 0) return 'Thanh toán một phần'
+  return 'Chưa thanh toán'
+}
+
+function mapProcessStatusFromCode(code: number | null | undefined, text: string | null | undefined): UiProcessStatus {
+  if (code != null && ORDER_STATUS_MAP[code]) return ORDER_STATUS_MAP[code]
+  // fallback to text heuristics
+  const t = (text || '').toLowerCase()
+  if (t.includes('cancel')) return 'Đã hủy'
+  if (t.includes('complete') || t.includes('close')) return 'Đã xử lý'
+  return 'Đang xử lý'
+}
 
 function initialsFromName(name: string) {
   const parts = (name || '')
@@ -78,13 +110,19 @@ const recentOrders = ref<Array<{
   author: string
   time: string
   amount: number
-  paymentStatus: OrderStatus
-  processStatus: ProcessStatus
-}>>([
-  { no: '#1004', author: 'Từ Admin', time: '24/09/2025 09:17', amount: 360000, paymentStatus: 'Thanh toán một phần', processStatus: 'Đã xử lý' },
-  { no: '#1003', author: 'Từ Admin', time: '24/09/2025 09:16', amount: 300000, paymentStatus: 'Đã thanh toán', processStatus: 'Đã xử lý' },
-  { no: '#1002', author: 'Từ Admin', time: '24/09/2025 09:15', amount: 840000, paymentStatus: 'Đã thanh toán', processStatus: 'Đã xử lý' }
-])
+  paymentStatus: UiPaymentStatus
+  processStatus: UiProcessStatus
+}>>([])
+
+function formatDateTime(iso: string | null | undefined) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const date = d.toLocaleDateString('vi-VN')
+  const time = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
+  return `${date} ${time}`
+}
+
+// Legacy helper no longer used (replaced by mapProcessStatusFromCode)
 
 const note = ref('')
 const newTag = ref('')
@@ -137,10 +175,11 @@ const addressText = computed(() => [
 onMounted(async () => {
   try {
     if (!customerId.value) return
-    // Fetch groups and customer details in parallel
-    const [groupsRes, customerRes] = await Promise.all([
+    // Fetch groups, customer details and recent orders in parallel
+    const [groupsRes, customerRes, ordersRes] = await Promise.all([
       customersService.getCustomerGroupsExternal(),
-      customersService.getCustomerByIdExternal(customerId.value)
+      customersService.getCustomerByIdExternal(customerId.value),
+      customersService.getCustomerOrdersExternal(customerId.value)
     ])
 
     groups.value = Array.isArray(groupsRes?.data) ? groupsRes.data.map(g => ({ id: g.id, name: g.name })) : []
@@ -186,7 +225,32 @@ onMounted(async () => {
       customer.value.orderStats.avgSpend = d.totalOrders
         ? Math.round((d.totalAmount || 0) / d.totalOrders)
         : 0
-      // latestOrderNo unknown from payload → leave blank
+      // note
+      if (typeof d.note === 'string') {
+        note.value = d.note
+      }
+      // latestOrderNo unknown from customer payload → will try to derive from orders response below
+    }
+    // Orders mapping
+    if (ordersRes?.data?.items?.length) {
+      recentOrders.value = ordersRes.data.items.map((i) => {
+        const paymentStatus = mapPaymentStatus(i.paymentStatus, i.paidAmount, i.orderTotal)
+
+        const rawCode = i.orderCode || `#${i.id}`
+        const normalizedCode = rawCode.startsWith('#') ? rawCode : `#${rawCode}`
+
+        return {
+          no: normalizedCode,
+          author: 'Từ Admin', // API does not supply author; placeholder
+          time: formatDateTime(i.createdOn),
+          amount: i.orderTotal || 0,
+          paymentStatus,
+          processStatus: mapProcessStatusFromCode(i.orderStatus, i.orderStatusText)
+        }
+      })
+      if (!customer.value.orderStats.latestOrderNo && recentOrders.value[0]) {
+        customer.value.orderStats.latestOrderNo = recentOrders.value[0].no
+      }
     }
   } catch {
     // Silent for now; could add a toast later

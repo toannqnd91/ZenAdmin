@@ -85,6 +85,49 @@ export interface CustomerGroupItem {
   latestUpdatedOn: string
 }
 
+// External customer orders list request/response
+export interface CustomerOrdersListRequest {
+  Pagination?: {
+    Start: number
+    TotalItemCount?: number
+    Number: number
+    NumberOfPages?: number
+  }
+  Search?: {
+    QueryObject?: {
+      Name?: string | null
+    }
+  }
+  Sort?: {
+    Field: string
+    Reverse: boolean
+  }
+}
+
+export interface CustomerOrderItem {
+  id: number
+  orderCode: string
+  orderNumber: string
+  createdOn: string
+  orderStatus: number
+  orderStatusText: string
+  orderTotal: number
+  paidAmount: number
+  paymentStatus: string
+  items: number
+}
+
+export interface CustomerOrdersListResponse {
+  code: string
+  success: boolean
+  message: string
+  data: {
+    items: CustomerOrderItem[]
+    totalRecord: number
+    numberOfPages: number
+  } | null
+}
+
 export class CustomersService extends BaseService {
   /** Create a new customer via external API */
   async createCustomer(data: CreateCustomerRequest) {
@@ -101,6 +144,28 @@ export class CustomersService extends BaseService {
   /** Get customer groups via external API */
   async getCustomerGroupsExternal() {
     return this.get<CustomerGroupItem[]>(API_ENDPOINTS.CUSTOMER_GROUPS_EXTERNAL)
+  }
+
+  /** Get recent orders for a customer via external API (POST) */
+  async getCustomerOrdersExternal(id: string, body?: Partial<CustomerOrdersListRequest>) {
+    const request: CustomerOrdersListRequest = {
+      Pagination: {
+        Start: body?.Pagination?.Start ?? 0,
+        TotalItemCount: body?.Pagination?.TotalItemCount ?? 0,
+        Number: body?.Pagination?.Number ?? 20,
+        NumberOfPages: body?.Pagination?.NumberOfPages ?? 10
+      },
+      Search: {
+        QueryObject: {
+          Name: body?.Search?.QueryObject?.Name ?? null
+        }
+      },
+      Sort: {
+        Field: body?.Sort?.Field ?? 'Id',
+        Reverse: body?.Sort?.Reverse ?? false
+      }
+    }
+    return this.post<CustomerOrdersListResponse['data']>(API_ENDPOINTS.CUSTOMER_ORDERS_EXTERNAL(id), request)
   }
 
   /**
