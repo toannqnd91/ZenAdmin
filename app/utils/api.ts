@@ -48,6 +48,7 @@ export const API_ENDPOINTS = {
 
   // Order endpoints
   ORDER_SOURCES: '/Order/order-sources',
+  ORDER_GRID_EXTERNAL: '/Order/grid',
 
   // Supplier endpoints
   SUPPLIERS: '/Suppliers',

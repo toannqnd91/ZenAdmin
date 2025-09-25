@@ -51,6 +51,7 @@ interface Props {
   showFilter?: boolean
   searchPlaceholder?: string
   showRowActions?: boolean
+  selectable?: boolean
 
   // Colgroup widths
   colWidths?: string[]
@@ -74,6 +75,7 @@ const props = withDefaults(defineProps<Props>(), {
   rowClickEnabled: true,
   showFilter: true,
   showRowActions: true,
+  selectable: true,
   searchPlaceholder: 'Tìm kiếm...',
   pagination: () => ({ pageIndex: 0, pageSize: 15 }),
   totalRecords: 0,
@@ -207,7 +209,7 @@ const setRowSelected = (id: string | number, v: boolean) => {
   next[String(id)] = v
   emit('update:rowSelection', next)
 }
-const selectedCount = computed(() => Object.values(props.rowSelection || {}).filter(Boolean).length)
+const selectedCount = computed(() => props.selectable ? Object.values(props.rowSelection || {}).filter(Boolean).length : 0)
 
 type LooseRow = Record<string, unknown> & { id?: string | number }
 const selectableItems = computed(() => ((pageItems.value as unknown) as LooseRow[]).filter(it => String(it.id) !== 'summary'))
@@ -218,6 +220,7 @@ const selectAllState = computed<'none' | 'some' | 'all'>(() =>
 )
 
 const toggleAllPage = () => {
+  if (!props.selectable) return
   const targetValue = !(selectAllState.value === 'all')
   const next = { ...(props.rowSelection || {}) }
   for (const it of pageItems.value) {
@@ -324,8 +327,8 @@ const onRowDelete = (item: Record<string, unknown>) => {
                 :class="[
                   'tab-btn px-3 py-1 rounded font-medium text-base transition',
                   currentTab === tab.value
-                    ? 'bg-primary-50 text-primary-700 border-b-2 border-primary-600'
-                    : 'text-gray-600 hover:bg-gray-100 border-b-2 border-transparent'
+                    ? 'active bg-primary-50 text-primary-700'
+                    : 'text-gray-600 hover:bg-gray-100'
                 ]"
                 type="button"
                 @click="onTabClick(tab.value)"
@@ -420,11 +423,11 @@ const onRowDelete = (item: Record<string, unknown>) => {
       </div>
     </div>
 
-    <div v-if="selectedCount === 0" class="border-t border-gray-200" />
+  <div v-if="selectedCount === 0 && props.selectable" class="border-t border-gray-200" />
 
     <!-- Selection toolbar -->
     <div
-      v-if="selectedCount > 0"
+  v-if="props.selectable && selectedCount > 0"
       class="bg-white border-t border-gray-200 px-6"
     >
       <div class="flex items-center h-14">
@@ -516,7 +519,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
     >
       <table class="w-full table-fixed text-sm">
         <colgroup>
-          <col class="w-14">
+          <col v-if="props.selectable" class="w-14">
           <template v-if="props.colWidths && props.colWidths.length === columns.length">
             <col v-for="(w, idx) in props.colWidths" :key="'colw'+idx" :style="{ width: w }">
           </template>
@@ -538,7 +541,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
         </colgroup>
         <thead class="text-gray-500">
           <tr class="h-14" :class="{ hidden: selectedCount > 0 }">
-            <th class="py-0">
+            <th v-if="props.selectable" class="py-0">
               <div class="w-14 h-full flex items-center justify-start">
                 <button
                   data-role="chk"
@@ -602,7 +605,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
             :class="{ 'is-active': isSelected(String(item.id)) }"
           >
             <!-- Row checkbox -->
-            <td class="py-4 align-middle">
+            <td v-if="props.selectable" class="py-4 align-middle">
               <div class="w-14 h-full flex items-center justify-start">
                 <button
                   v-if="String(item.id) !== 'summary'"
@@ -734,7 +737,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
             :class="{ 'is-active': isSelected(String(item.id)), 'opacity-60': isDragging }"
           >
             <!-- Row checkbox -->
-            <td class="py-4 align-middle">
+            <td v-if="props.selectable" class="py-4 align-middle">
               <div class="w-14 h-full flex items-center justify-start">
                 <button
                   v-if="String(item.id) !== 'summary'"
@@ -976,6 +979,19 @@ tbody tr.sortable-drag {
 .tab-btn.active,
 .tab-btn.bg-primary-50 {
   font-weight: 600;
+}
+.tab-btn.active {
+  color: var(--color-blue-700) !important;
+}
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -6px; /* spacing below text */
+  height: 2px; /* thinner line */
+  background: var(--color-blue-700); /* exact requested color */
+  border-radius: 1px 1px 0 0;
 }
 .tab-btn:focus {
   box-shadow: 0 0 0 2px #1b64f233;
