@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import { sub } from 'date-fns'
 import type { DropdownMenuItem } from '@nuxt/ui'
+import { onMounted, ref, shallowRef, watch } from 'vue'
 // removed Period/Range type imports because they are not exported from ~/types in this workspace
 
 import { useAuthService } from '~/composables/useAuthService'
 import TrialBanner from '@/components/home/TrialBanner.vue'
+import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
+import { orderSourceService } from '@/services/order-source.service'
+import type { OrderSourceItem } from '@/services/order-source.service'
 
 const { user } = useAuthService()
 
 const { isNotificationsSlideoverOpen } = useDashboard()
 
+// (Kept for potential future use – shortcut actions in header)
 const _items = [[{
   label: 'New mail',
   icon: 'i-lucide-send',
@@ -25,6 +30,45 @@ const range = shallowRef({
   end: new Date()
 })
 const period = ref('daily')
+
+// Dynamic order source selection (mirrors pattern in /orders/create)
+// Model holds the selected source object { id, name, code, ... } or null
+const selectedOrderSource = ref<OrderSourceItem | { id: null, name: string, code: string } | null>({ id: null, name: 'Tất cả nguồn', code: 'ALL' })
+
+async function fetchOrderSources(search: string) {
+  try {
+    const res = await orderSourceService.getOrderSources()
+    const list: OrderSourceItem[] = Array.isArray(res?.data) ? res.data : []
+    const q = (search || '').toLowerCase()
+    const filtered = q
+      ? list.filter(s => s.name?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q))
+      : list
+    // Include a synthetic "Tất cả nguồn" option (value null) at top for resetting filter
+    return [
+      { id: null, name: 'Tất cả nguồn', code: 'ALL' },
+      ...filtered
+    ]
+  } catch {
+    return []
+  }
+}
+
+// No auto-POS selection; keep default 'All'
+onMounted(async () => {
+  try {
+    await orderSourceService.getOrderSources()
+  } catch {
+    /* ignore */
+  }
+})
+
+// Placeholder watcher: integrate filtering logic for dashboard stats when backend supports it
+watch(selectedOrderSource, (val) => {
+  // TODO: trigger dashboard data refresh with selected source filter
+  // Example: refreshOverview({ sourceId: val?.id ?? null })
+  // For now this is a no-op.
+  void val
+})
 </script>
 
 <template>
@@ -71,8 +115,25 @@ const period = ref('daily')
             </div>
             <div class="flex flex-col sm:flex-row sm:items-center gap-3">
               <div class="flex items-center gap-2">
-                <HomeDateRangePicker v-model="range" class="min-w-[240px]" />
+                <!-- <HomeDateRangePicker v-model="range" class="min-w-[240px]" /> -->
                 <HomePeriodSelect v-model="period" :range="range" />
+                <div class="min-w-[160px]">
+                  <div class="relative">
+                    <RemoteSearchSelect
+                      v-model="selectedOrderSource"
+                      :fetch-fn="fetchOrderSources"
+                      placeholder="Nguồn đơn"
+                      label-field="name"
+                      :clearable="true"
+                      :searchable="true"
+                      :debounce="250"
+                      :dropdown-max-height="300"
+                      class="text-[12px]"
+                      :input-classes="'h-8 px-3 rounded-md bg-[var(--ui-bg-elevated)] border-0 ring-0 focus:ring-0 focus:outline-none transition text-gray-700 placeholder:text-gray-400'"
+                      :dropdown-classes="'mt-1 shadow-sm rounded-md bg-white'"
+                    />
+                  </div>
+                </div>
               </div>
               <div class="flex gap-2">
                 <UButton size="xs" color="neutral" variant="soft">
