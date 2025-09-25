@@ -52,14 +52,7 @@ const period = ref('daily')
         </template>
       </UDashboardNavbar>
 
-      <UDashboardToolbar>
-        <template #left>
-          <!-- NOTE: The `-ms-1` class is used to align with the `DashboardSidebarCollapse` button here. -->
-          <HomeDateRangePicker v-model="range" class="-ms-1" />
-
-          <HomePeriodSelect v-model="period" :range="range" />
-        </template>
-      </UDashboardToolbar>
+      <!-- Toolbar removed: controls moved into Overview card -->
     </template>
 
     <template #body>
@@ -76,13 +69,19 @@ const period = ref('daily')
             <div class="font-semibold text-lg">
               Tổng quan
             </div>
-            <div class="flex gap-2">
-              <UButton size="xs" color="neutral" variant="soft">
-                Tháng này
-              </UButton>
-              <UButton size="xs" color="neutral" variant="soft">
-                Tất cả kênh
-              </UButton>
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div class="flex items-center gap-2">
+                <HomeDateRangePicker v-model="range" class="min-w-[240px]" />
+                <HomePeriodSelect v-model="period" :range="range" />
+              </div>
+              <div class="flex gap-2">
+                <UButton size="xs" color="neutral" variant="soft">
+                  Tháng này
+                </UButton>
+                <UButton size="xs" color="neutral" variant="soft">
+                  Tất cả kênh
+                </UButton>
+              </div>
             </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
