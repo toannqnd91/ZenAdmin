@@ -4,6 +4,7 @@ import type { DropdownMenuItem } from '@nuxt/ui'
 // removed Period/Range type imports because they are not exported from ~/types in this workspace
 
 import { useAuthService } from '~/composables/useAuthService'
+import TrialBanner from '@/components/home/TrialBanner.vue'
 
 const { user } = useAuthService()
 
@@ -67,6 +68,7 @@ const period = ref('daily')
         <h2 class="text-2xl font-semibold mb-7">
           Chào mừng trở lại, {{ user?.display_name || 'Người dùng' }} 🎉
         </h2>
+        <TrialBanner :days-left="5" class="mb-6" />
 
         <!-- Overview Card -->
         <div class="bg-white rounded-md p-6">
