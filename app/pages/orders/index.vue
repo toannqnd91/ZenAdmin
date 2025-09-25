@@ -49,8 +49,15 @@ const tabCounts = computed(() => [
 
 function formatDate(iso?: string) {
   if (!iso) return ''
-  // Expect format: YYYY-MM-DDTHH:mm:ss+TZ
-  return iso.slice(0, 16).replace('T', ' ')
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  // Format dd/MM/yyyy HH:mm (24h)
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  const hours = String(d.getHours()).padStart(2, '0')
+  const mins = String(d.getMinutes()).padStart(2, '0')
+  return `${day}/${month}/${year} ${hours}:${mins}`
 }
 
 function normalizePaymentStatus(raw?: string) {
