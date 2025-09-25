@@ -14,7 +14,7 @@ const daysText = computed(() => {
 </script>
 
 <template>
-  <div class="w-full bg-[rgba(27,100,242,0.08)] border border-[rgba(27,100,242,0.15)] rounded-lg px-4 md:px-5 py-3 flex flex-col md:flex-row md:items-center gap-4">
+  <div class="w-full bg-[rgb(204,231,255)] border border-[rgba(27,100,242,0.15)] rounded-lg px-4 md:px-5 py-3 flex flex-col md:flex-row md:items-center gap-4">
     <div class="flex items-start gap-3 flex-1">
       <div class="w-12 h-12 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white font-semibold shadow-inner">
         <slot name="avatar">
@@ -35,12 +35,12 @@ const daysText = computed(() => {
         </p>
         <p class="text-xs md:text-sm text-gray-600 flex flex-wrap items-center gap-2">
           Liên hệ tư vấn:
-          <span class="font-semibold">CSKH Sapo</span>
+          <span class="font-semibold">CSKH</span>
           <span class="inline-flex items-center gap-1 text-green-600">
             <UIcon name="i-logos-whatsapp-icon" class="w-4 h-4" />
-            19006750
+            0947708288
           </span>
-          <span class="inline-flex items-center gap-1 text-blue-600">
+          <span class="inline-flex items-center gap-1 text-blue-600 ml-6">
             <UIcon name="i-simple-icons-messenger" class="w-4 h-4" />
             Messenger
           </span>
