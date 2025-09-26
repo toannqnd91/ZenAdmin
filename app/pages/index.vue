@@ -1,18 +1,21 @@
 <script setup lang="ts">
 // date-fns no longer needed after fixed period list
 import type { DropdownMenuItem } from '@nuxt/ui'
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 // removed Period/Range type imports because they are not exported from ~/types in this workspace
 
 import { useAuthService } from '~/composables/useAuthService'
 import TrialBanner from '@/components/home/TrialBanner.vue'
+import OverviewLineChart from '@/components/home/OverviewLineChart.vue'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import { orderSourceService } from '@/services/order-source.service'
 import type { OrderSourceItem } from '@/services/order-source.service'
 import { warehouseService } from '@/services/warehouse.service'
 import type { WarehouseItem } from '@/services/warehouse.service'
 import { statisticsService } from '@/services/statistics.service'
-import type { OverviewResponseData, OverviewRangeKey } from '@/services/statistics.service'
+import type { TopProductDTO, TopCustomerDTO, OverviewResponseData, OverviewRangeKey } from '@/services/statistics.service'
+import TopHorizontalBar from '@/components/home/top/TopHorizontalBar.vue'
+
 // (placeholder) branch service would typically be imported; using orderSourceService pattern until real service
 
 interface BranchItem {
@@ -202,6 +205,59 @@ function onClearSource() {
   selectedOrderSource.value = allSource
 }
 
+// Top products and customers state
+const topProducts = ref<TopProductDTO[]>([])
+const topCustomers = ref<TopCustomerDTO[]>([])
+const topProductsLoading = ref(false)
+const topCustomersLoading = ref(false)
+const topProductsMetric = ref<'revenue' | 'quantity' | 'orders'>('revenue')
+
+async function loadTopProducts() {
+  topProductsLoading.value = true
+  try {
+    const rangeKey = deriveRangeKey()
+    const res = await statisticsService.getTopProducts({
+      range: rangeKey,
+      metric: topProductsMetric.value,
+      limit: 10,
+      sourceId: selectedOrderSource.value?.id ?? undefined,
+      warehouseId: selectedBranch.value?.id ?? undefined
+    })
+    topProducts.value = Array.isArray(res.data) ? res.data : []
+  } catch (e) {
+    console.error('Failed to load top products', e)
+    topProducts.value = []
+  } finally {
+    topProductsLoading.value = false
+  }
+}
+
+async function loadTopCustomers() {
+  topCustomersLoading.value = true
+  try {
+    const rangeKey = deriveRangeKey()
+    const res = await statisticsService.getTopCustomers({
+      range: rangeKey,
+      limit: 10,
+      sourceId: selectedOrderSource.value?.id ?? undefined,
+      warehouseId: selectedBranch.value?.id ?? undefined
+    })
+    topCustomers.value = Array.isArray(res.data) ? res.data : []
+  } catch (e) {
+    console.error('Failed to load top customers', e)
+    topCustomers.value = []
+  } finally {
+    topCustomersLoading.value = false
+  }
+}
+
+watch([topProductsMetric, selectedPeriod, selectedOrderSource, selectedBranch], () => {
+  loadTopProducts()
+  loadTopCustomers()
+})
+
+// metric changes now handled directly via v-model like interaction (TopHorizontalBar emits update:metric which we can add later if needed)
+
 // Placeholder watcher: integrate filtering logic for dashboard stats when backend supports it
 watch(selectedOrderSource, (val) => {
   // TODO: trigger dashboard data refresh with selected source filter
@@ -336,16 +392,31 @@ watch(selectedOrderSource, (val) => {
               </div>
             </div>
           </div>
-          <!-- Chart placeholder -->
-          <div class="h-56 bg-[rgba(27,100,242,0.08)] rounded-md flex items-center justify-center mb-2">
-            <span class="text-gray-400">[Biểu đồ đường]</span>
-          </div>
-          <div class="flex justify-between text-xs text-gray-500 mt-2">
-            <div>
-              <span class="font-semibold text-blue-600">■</span> Apr 01 - Apr 07, 2024
-              <span class="ml-4 text-blue-300">───</span> Mar 01 - Mar 07, 2024
-            </div>
-          </div>
+          <!-- Chart -->
+          <OverviewLineChart
+            class="mb-4"
+            :points="overviewData?.chart.points || []"
+            :loading="overviewLoading"
+            :metrics="['revenue', 'profit', 'orders']"
+            :line-width="1"
+          />
+        </div>
+
+        <!-- Top lists section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TopHorizontalBar
+            title="Top 10 sản phẩm bán chạy"
+            :items="topProducts"
+            :loading="topProductsLoading"
+            :metric="topProductsMetric"
+            metric-selectable
+          />
+          <TopHorizontalBar
+            title="Top 10 khách mua nhiều nhất"
+            :items="topCustomers"
+            :loading="topCustomersLoading"
+            metric="revenue"
+          />
         </div>
 
         <!-- Things to do next -->

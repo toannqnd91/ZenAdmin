@@ -1,4 +1,5 @@
 import { BaseService } from './base.service'
+import type { ApiResponse } from '@/types/common'
 import { API_ENDPOINTS } from '@/utils/api'
 
 // API: GET /api/v1/Statistics/overview
@@ -11,6 +12,9 @@ export interface OverviewMetric {
   growth: number
 }
 
+// Internal normalized metrics that UI expects.
+// Backend now returns: grossRevenue, netRevenue, refunded, returnedValue, pendingRefund, profit, orders, returns
+// We decide to expose 'revenue' = netRevenue (net sales), keep profit/orders/returns.
 export interface OverviewMetricsGroup {
   revenue: OverviewMetric
   profit: OverviewMetric
@@ -25,7 +29,7 @@ export interface OverviewPending {
 
 export interface OverviewChartPoint {
   period: string // ISO date/time string
-  revenue: number
+  revenue: number // mapped from netRevenue
   profit: number
   orders: number
   returns?: number
@@ -68,8 +72,181 @@ export class StatisticsService extends BaseService {
       if (v === undefined || v === null || v === '') continue
       clean[k] = typeof v === 'number' ? v : String(v)
     }
-    return this.get<OverviewResponseData>(API_ENDPOINTS.STATISTICS_OVERVIEW, clean)
+    interface RawOverviewEnvelope {
+      period: {
+        from: string
+        to: string
+        previousFrom: string
+        previousTo: string
+      }
+      metrics: {
+        grossRevenue: OverviewMetric
+        netRevenue: OverviewMetric
+        refunded: OverviewMetric
+        returnedValue: OverviewMetric
+        pendingRefund: OverviewMetric
+        profit: OverviewMetric
+        orders: OverviewMetric
+        returns: OverviewMetric
+      }
+      pending?: OverviewPending
+      chart: {
+        granularity: 'day' | 'week' | 'month'
+        points: Array<{
+          period: string
+          grossRevenue?: number
+          netRevenue?: number
+          refunded?: number
+          returnedValue?: number
+          pendingRefundValue?: number
+          profit?: number
+          orders?: number
+          returns?: number
+        }>
+      }
+    }
+
+    const res = await this.get<RawOverviewEnvelope>(API_ENDPOINTS.STATISTICS_OVERVIEW, clean)
+    const raw = res.data
+
+    // Normalize metrics to existing UI contract
+    const normalized: OverviewResponseData = {
+      period: raw.period,
+      metrics: {
+        revenue: raw.metrics.netRevenue || raw.metrics.grossRevenue, // fallback
+        profit: raw.metrics.profit,
+        orders: raw.metrics.orders,
+        returns: raw.metrics.returns
+      },
+      pending: raw.pending || { ordersToProcess: 0, returnsToProcess: 0 },
+      chart: {
+        granularity: raw.chart.granularity,
+        points: raw.chart.points.map(p => ({
+          period: p.period,
+          // prefer netRevenue
+          revenue: (p.netRevenue ?? p.grossRevenue ?? 0),
+          profit: p.profit ?? 0,
+          orders: p.orders ?? 0,
+          returns: p.returns
+        }))
+      }
+    }
+    return { ...res, data: normalized }
+  }
+
+  // --- Top Products & Customers ---
+  // API: GET /api/v1/Statistics/top-products
+  // Query params: range | from | to, metric (revenue|quantity|orders), limit (default 10)
+  // Response shape (assumed): { success, code, message, data: TopProductDTO[] }
+  // We'll define strict interfaces so consuming code is typed.
+
+  async getTopProducts(params: TopItemsQuery) {
+    const clean: Record<string, string | number> = {}
+    for (const [k, v] of Object.entries(params)) {
+      if (v === undefined || v === null || v === '') continue
+      clean[k] = typeof v === 'number' ? v : String(v)
+    }
+    if (!clean.limit) clean.limit = 10
+    interface RawTopProductsEnvelope {
+      period?: { from: string, to: string }
+      metric?: string
+      items?: Array<{
+        productId: number
+        productName: string
+        quantity?: number
+        revenue?: number
+        profit?: number
+        orders?: number
+      }>
+    }
+    const res = await this.get<RawTopProductsEnvelope | TopProductDTO[]>(API_ENDPOINTS.STATISTICS_TOP_PRODUCTS, clean)
+    const data = res.data
+    if (Array.isArray(data)) return res as ApiResponse<TopProductDTO[]>
+    if (data && data.items) {
+      const mapped: TopProductDTO[] = data.items.map(it => ({
+        productId: it.productId,
+        name: it.productName,
+        revenue: it.revenue ?? 0,
+        quantity: it.quantity ?? 0,
+        orders: it.orders ?? 0,
+        profit: it.profit ?? 0
+      }))
+      return { ...res, data: mapped }
+    }
+    return { ...res, data: [] }
+  }
+
+  async getTopCustomers(params: TopItemsQuery) {
+    const clean: Record<string, string | number> = {}
+    for (const [k, v] of Object.entries(params)) {
+      if (v === undefined || v === null || v === '') continue
+      clean[k] = typeof v === 'number' ? v : String(v)
+    }
+    if (!clean.limit) clean.limit = 10
+    interface RawTopCustomersEnvelope {
+      items?: Array<{
+        customerId?: string | number
+        id?: string | number
+        CustomerId?: string | number
+        customerName?: string
+        name?: string
+        revenue?: number
+        orders?: number
+        orderCount?: number
+        quantity?: number
+        totalQuantity?: number
+        avatarUrl?: string | null
+      }>
+    }
+    const res = await this.get<RawTopCustomersEnvelope | TopCustomerDTO[]>(API_ENDPOINTS.STATISTICS_TOP_CUSTOMERS, clean)
+    const data = res.data
+    if (Array.isArray(data)) return res as ApiResponse<TopCustomerDTO[]>
+    if (data && data.items) {
+      const mapped: TopCustomerDTO[] = data.items.map(it => ({
+        customerId: it.customerId ?? it.id ?? it.CustomerId ?? 0,
+        name: it.customerName ?? it.name ?? 'Unknown',
+        revenue: it.revenue ?? 0,
+        orders: it.orders ?? it.orderCount ?? 0,
+        quantity: it.quantity ?? it.totalQuantity ?? undefined,
+        avatarUrl: it.avatarUrl ?? null
+      }))
+      return { ...res, data: mapped }
+    }
+    return { ...res, data: [] }
   }
 }
 
 export const statisticsService = new StatisticsService()
+
+// ----- Top lists types -----
+export type TopRangeKey = OverviewRangeKey | 'all'
+
+export interface TopItemsQuery {
+  from?: string
+  to?: string
+  range?: TopRangeKey
+  metric?: 'revenue' | 'quantity' | 'orders'
+  limit?: number
+  sourceId?: number | null
+  warehouseId?: number | null
+}
+
+export interface TopProductDTO {
+  productId: number
+  name: string
+  sku?: string
+  imageUrl?: string | null
+  revenue: number
+  quantity: number
+  orders: number
+  profit?: number
+}
+
+export interface TopCustomerDTO {
+  customerId: string | number
+  name: string
+  avatarUrl?: string | null
+  revenue: number
+  orders: number
+  quantity?: number // optional if backend returns
+}
