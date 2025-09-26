@@ -56,11 +56,22 @@ watch(periods, () => {
 </script>
 
 <template>
-  <USelect
-    v-model="model"
-    :items="uiPeriods"
-    variant="ghost"
-    class="data-[state=open]:bg-elevated"
-    :ui="{ value: 'none', itemLabel: 'none', trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200' }"
-  />
+  <div class="relative">
+    <USelect
+      v-model="model"
+      :items="uiPeriods"
+      variant="ghost"
+      class="data-[state=open]:bg-elevated pr-6"
+      :ui="{ value: 'pr-1', itemLabel: 'none', trailingIcon: (uiPeriods.length > 0 && model !== (uiPeriods[0]?.value)) ? 'opacity-0 w-0' : 'ml-1 group-data-[state=open]:rotate-180 transition-transform duration-200' }"
+    />
+    <button
+      v-if="uiPeriods.length > 0 && model !== (uiPeriods[0]?.value)"
+      type="button"
+      class="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 rounded-sm hover:bg-gray-100 transition"
+      :title="'Đặt lại'"
+      @click="model = uiPeriods[0]?.value || model"
+    >
+      <UIcon name="i-lucide-x" class="w-3.5 h-3.5" />
+    </button>
+  </div>
 </template>

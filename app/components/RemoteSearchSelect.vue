@@ -22,6 +22,9 @@ interface Props {
   searchInTrigger?: boolean // when true, type in the top trigger instead of dropdown
   resetSearchOnOpen?: boolean // when true, clear search on open to show full list
   multiple?: boolean // when true, allow selecting multiple items
+  autoWidth?: boolean // when true, dropdown width fits content (min aligned to trigger)
+  borderless?: boolean // when true, remove outer borders and use subtle hover bg
+  fullWidth?: boolean // when false, do not force w-full on trigger container
 }
 const props = defineProps<Props>()
 const emit = defineEmits(['update:modelValue', 'select', 'clear'])
@@ -34,6 +37,7 @@ const error = ref<string | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
 const triggerRef = ref<HTMLElement | null>(null)
 let debounceTimer: number | undefined
+const longestLabelPx = ref<number | null>(null)
 
 const maxDisplay = computed(() => props.maxDisplayLength ?? 30)
 const maxListStyle = computed(() => {
@@ -73,6 +77,27 @@ async function runFetch(searchOverride?: string) {
     const q = typeof searchOverride === 'string' ? searchOverride : search.value
     const data = await props.fetchFn(q)
     items.value = Array.isArray(data) ? data : []
+    if (props.autoWidth) {
+      // Measure longest label roughly using canvas (faster than DOM measuring each render)
+      try {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          // approximate font used in items: text-sm (Tailwind ~14px) with normal weight
+          ctx.font = '400 14px ui-sans-serif, system-ui, sans-serif'
+          let max = 0
+          for (const it of items.value) {
+            const label = itemLabel(it)
+            const w = ctx.measureText(label).width
+            if (w > max) max = w
+          }
+          // Add padding (left+right 24px) plus space for check icon (~20px) + scrollbar reserve (if any)
+          longestLabelPx.value = Math.ceil(max + 24 + 20 + 4)
+        }
+      } catch {
+        longestLabelPx.value = null
+      }
+    }
   } catch (e) {
     error.value = (e instanceof Error ? e.message : 'Lỗi tải dữ liệu')
     items.value = []
@@ -195,11 +220,18 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="relative w-full">
+  <div class="relative" :class="props.fullWidth !== false ? 'w-full' : 'inline-flex'">
     <div
       ref="triggerRef"
-      class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm flex items-center cursor-pointer transition-all duration-150 focus:outline-none"
-      :class="{ 'ring-2 ring-primary-500 border-primary-500': open, 'opacity-60 cursor-not-allowed': disabled }"
+      class="h-9 px-3 rounded-md text-sm flex items-center cursor-pointer transition-all duration-150 focus:outline-none"
+      :class="[
+        props.fullWidth !== false ? 'w-full' : 'w-auto',
+        disabled ? 'opacity-60 cursor-not-allowed' : '',
+        open && !props.borderless ? 'ring-2 ring-primary-500 border border-primary-500 bg-white' : '',
+        open && props.borderless ? 'ring-2 ring-primary-500 bg-white' : '',
+        !open && props.borderless ? 'bg-transparent hover:bg-gray-50' : '',
+        !open && !props.borderless ? 'border border-gray-300 bg-white' : ''
+      ]"
       tabindex="0"
       @click="toggleDropdown"
     >
@@ -241,7 +273,17 @@ onBeforeUnmount(() => {
     <div
       v-if="open"
       ref="dropdownRef"
-      class="absolute left-0 top-full z-50 w-full bg-white rounded-md shadow-lg border border-gray-300 mt-2"
+      :class="[
+        'absolute left-0 top-full z-50 bg-white rounded-md shadow-lg mt-2',
+        props.borderless ? 'border border-gray-200' : 'border border-gray-300',
+        props.autoWidth ? 'w-auto' : 'w-full'
+      ]"
+      :style="props.autoWidth ? {
+        minWidth: (triggerRef?.offsetWidth || 0) + 'px',
+        width: longestLabelPx != null && longestLabelPx > (triggerRef?.offsetWidth || 0)
+          ? longestLabelPx + 'px'
+          : undefined
+      } : undefined"
     >
       <slot name="add-action" />
       <div v-if="searchable !== false && !searchInTrigger" class="px-3 pt-2 pb-2">

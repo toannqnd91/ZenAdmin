@@ -29,6 +29,8 @@ export const API_ENDPOINTS = {
   DASHBOARD_MENU: '/DashboardMenu',
   DASHBOARD_STATS: '/Dashboard/stats',
   DASHBOARD_OVERVIEW: '/Dashboard/overview',
+  // Statistics endpoints
+  STATISTICS_OVERVIEW: '/Statistics/overview',
   NEWS_CATEGORIES: '/NewsCategories',
   NEWS_CATEGORY_BY_ID: (id: number) => `/NewsCategories/${id}`,
   NEWS: '/News',

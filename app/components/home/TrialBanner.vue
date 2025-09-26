@@ -14,7 +14,7 @@ const daysText = computed(() => {
 </script>
 
 <template>
-  <div class="w-full bg-[rgb(204,231,255)] border border-[rgba(27,100,242,0.15)] rounded-lg px-4 md:px-5 py-3 flex flex-col md:flex-row md:items-center gap-4">
+  <div class="w-full bg-white rounded-lg px-4 md:px-5 py-3 flex flex-col md:flex-row md:items-center gap-4">
     <div class="flex items-start gap-3 flex-1">
       <div class="w-12 h-12 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white font-semibold shadow-inner">
         <slot name="avatar">

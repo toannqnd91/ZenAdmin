@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { sub } from 'date-fns'
+// date-fns no longer needed after fixed period list
 import type { DropdownMenuItem } from '@nuxt/ui'
-import { onMounted, ref, shallowRef, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 // removed Period/Range type imports because they are not exported from ~/types in this workspace
 
 import { useAuthService } from '~/composables/useAuthService'
@@ -9,6 +9,19 @@ import TrialBanner from '@/components/home/TrialBanner.vue'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import { orderSourceService } from '@/services/order-source.service'
 import type { OrderSourceItem } from '@/services/order-source.service'
+import { warehouseService } from '@/services/warehouse.service'
+import type { WarehouseItem } from '@/services/warehouse.service'
+import { statisticsService } from '@/services/statistics.service'
+import type { OverviewResponseData, OverviewRangeKey } from '@/services/statistics.service'
+// (placeholder) branch service would typically be imported; using orderSourceService pattern until real service
+
+interface BranchItem {
+  id: number | null
+  name: string
+  code?: string
+  isDefault?: boolean
+  [key: string]: unknown
+}
 
 const { user } = useAuthService()
 
@@ -25,42 +38,169 @@ const _items = [[{
   to: '/customers'
 }]] satisfies DropdownMenuItem[][]
 
-const range = shallowRef({
-  start: sub(new Date(), { days: 14 }),
-  end: new Date()
-})
+// (Range retained previously for dynamic granularity; no longer needed with fixed period options)
 const period = ref('daily')
 
-// Dynamic order source selection (mirrors pattern in /orders/create)
-// Model holds the selected source object { id, name, code, ... } or null
-const selectedOrderSource = ref<OrderSourceItem | { id: null, name: string, code: string } | null>({ id: null, name: 'Tất cả nguồn', code: 'ALL' })
+// Period selection via RemoteSearchSelect (replaces HomePeriodSelect)
+interface PeriodOption {
+  value: string
+  label: string
+  [key: string]: unknown
+}
+
+// Fixed set of predefined periods for statistics API
+// Mapping to backend range keys (except 'all' which means no range param -> full time)
+const periodOptions = computed<PeriodOption[]>(() => ([
+  { value: 'today', label: 'Hôm nay' },
+  { value: 'yesterday', label: 'Hôm qua' },
+  { value: 'last7d', label: '7 ngày qua' },
+  { value: 'thismonth', label: 'Tháng này' },
+  { value: 'lastmonth', label: 'Tháng trước' },
+  { value: 'all', label: 'Toàn thời gian' }
+]))
+
+const selectedPeriod = ref<PeriodOption | null>(null)
+
+// Keep period string and selected object in sync; ensure validity when range changes
+watch(periodOptions, (opts) => {
+  if (!opts.find(o => o.value === period.value)) {
+    period.value = opts[0]?.value || 'daily'
+  }
+  selectedPeriod.value = opts.find(o => o.value === period.value) || opts[0] || null
+}, { immediate: true })
+
+watch(selectedPeriod, (opt) => {
+  if (opt && opt.value !== period.value) period.value = opt.value
+})
+
+async function fetchPeriods(search: string) {
+  let list = periodOptions.value
+  if (search) {
+    const lower = search.toLowerCase()
+    list = list.filter(o => o.label.toLowerCase().includes(lower))
+  }
+  return list
+}
+
+function onClearPeriod() {
+  const first = periodOptions.value[0]
+  if (first) selectedPeriod.value = first
+}
+
+// Order source selection using generic RemoteSearchSelect
+// Keep an explicit "Tất cả" object when cleared
+const allSource = { id: null, name: 'Tất cả nguồn', code: 'ALL' }
+const selectedOrderSource = ref<OrderSourceItem | typeof allSource | null>(allSource)
+
+// Branch selection (chi nhánh) similar pattern with 'Tất cả chi nhánh'
+const allBranch: BranchItem = { id: null, name: 'Tất cả chi nhánh', code: 'ALL_BRANCH' }
+const selectedBranch = ref<BranchItem | null>(allBranch)
+
+// Overview statistics state
+const overviewLoading = ref(false)
+const overviewData = ref<OverviewResponseData | null>(null)
+
+// Map internal selected period or range selection to API range key when possible.
+function deriveRangeKey(): OverviewRangeKey | undefined {
+  // Direct mapping from selectedPeriod value; 'all' returns undefined so backend gives full range aggregate
+  const val = selectedPeriod.value?.value
+  if (!val || val === 'all') return undefined
+  if (['today', 'yesterday', 'last7d', 'thismonth', 'lastmonth'].includes(val)) return val as OverviewRangeKey
+  return undefined
+}
+
+async function loadOverview() {
+  overviewLoading.value = true
+  try {
+    const rangeKey = deriveRangeKey()
+    const res = await statisticsService.getOverview({
+      range: rangeKey,
+      sourceId: selectedOrderSource.value?.id ?? undefined,
+      warehouseId: selectedBranch.value?.id ?? undefined
+    })
+    overviewData.value = res.data
+  } catch (e) {
+    console.error('Failed to load overview', e)
+    overviewData.value = null
+  } finally {
+    overviewLoading.value = false
+  }
+}
+
+// Initial load and reactive reloads
+onMounted(loadOverview)
+watch([selectedOrderSource, selectedBranch, selectedPeriod], () => {
+  loadOverview()
+})
+
+// Helper: format numbers (simple locale for now)
+function formatMetricValue(val: number, suffix?: string) {
+  if (val == null) return '--'
+  const formatted = val.toLocaleString('vi-VN')
+  return suffix ? `${formatted} ${suffix}` : formatted
+}
+function formatGrowth(growth: number) {
+  if (growth == null) return '--'
+  const sign = growth > 0 ? '+' : ''
+  return `${sign}${growth.toFixed(2)}%`
+}
+function growthClass(growth?: number) {
+  if (growth == null) return 'text-gray-400'
+  if (growth > 0) return 'text-green-600'
+  if (growth < 0) return 'text-red-600'
+  return 'text-gray-500'
+}
+
+type MetricKey = 'revenue' | 'profit' | 'orders' | 'returns'
+const metricCards: { key: MetricKey, label: string, suffix?: string }[] = [
+  { key: 'revenue', label: 'Doanh thu thuần', suffix: 'đ' },
+  { key: 'profit', label: 'Lợi nhuận bán hàng', suffix: 'đ' },
+  { key: 'orders', label: 'Tổng đơn' },
+  { key: 'returns', label: 'Trả hàng' }
+]
+
+async function fetchBranches(search: string) {
+  try {
+    const res = await warehouseService.getWarehouses()
+    const list: WarehouseItem[] = Array.isArray(res?.data) ? res.data : []
+    const mapped: BranchItem[] = list.map(w => ({
+      id: w.id,
+      name: w.name,
+      code: undefined,
+      isDefault: w.isDefault
+    }))
+    const lower = (search || '').toLowerCase()
+    const filtered = lower
+      ? mapped.filter(w => w.name.toLowerCase().includes(lower))
+      : mapped
+    return [allBranch, ...filtered]
+  } catch {
+    return [allBranch]
+  }
+}
+
+function onClearBranch() {
+  selectedBranch.value = allBranch
+}
 
 async function fetchOrderSources(search: string) {
   try {
     const res = await orderSourceService.getOrderSources()
     const list: OrderSourceItem[] = Array.isArray(res?.data) ? res.data : []
-    const q = (search || '').toLowerCase()
-    const filtered = q
-      ? list.filter(s => s.name?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q))
+    const lower = (search || '').toLowerCase()
+    const filtered = lower
+      ? list.filter(s => s.name.toLowerCase().includes(lower) || s.code.toLowerCase().includes(lower))
       : list
-    // Include a synthetic "Tất cả nguồn" option (value null) at top for resetting filter
-    return [
-      { id: null, name: 'Tất cả nguồn', code: 'ALL' },
-      ...filtered
-    ]
+    // Prepend All option
+    return [allSource, ...filtered]
   } catch {
-    return []
+    return [allSource]
   }
 }
 
-// No auto-POS selection; keep default 'All'
-onMounted(async () => {
-  try {
-    await orderSourceService.getOrderSources()
-  } catch {
-    /* ignore */
-  }
-})
+function onClearSource() {
+  selectedOrderSource.value = allSource
+}
 
 // Placeholder watcher: integrate filtering logic for dashboard stats when backend supports it
 watch(selectedOrderSource, (val) => {
@@ -116,89 +256,82 @@ watch(selectedOrderSource, (val) => {
             <div class="flex flex-col sm:flex-row sm:items-center gap-3">
               <div class="flex items-center gap-2">
                 <!-- <HomeDateRangePicker v-model="range" class="min-w-[240px]" /> -->
-                <HomePeriodSelect v-model="period" :range="range" />
-                <div class="min-w-[160px]">
-                  <div class="relative">
-                    <RemoteSearchSelect
-                      v-model="selectedOrderSource"
-                      :fetch-fn="fetchOrderSources"
-                      placeholder="Nguồn đơn"
-                      label-field="name"
-                      :clearable="true"
-                      :searchable="true"
-                      :debounce="250"
-                      :dropdown-max-height="300"
-                      class="text-[12px]"
-                      :input-classes="'h-8 px-3 rounded-md bg-[var(--ui-bg-elevated)] border-0 ring-0 focus:ring-0 focus:outline-none transition text-gray-700 placeholder:text-gray-400'"
-                      :dropdown-classes="'mt-1 shadow-sm rounded-md bg-white'"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div class="flex gap-2">
-                <UButton size="xs" color="neutral" variant="soft">
-                  Tháng này
-                </UButton>
-                <UButton size="xs" color="neutral" variant="soft">
-                  Tất cả kênh
-                </UButton>
+                <RemoteSearchSelect
+                  v-model="selectedPeriod"
+                  :fetch-fn="fetchPeriods"
+                  label-field="label"
+                  :clearable="selectedPeriod?.value !== periodOptions[0]?.value"
+                  :searchable="false"
+                  dropdown-max-height="180px"
+                  class="[&_.mr-1]:ml-1"
+                  :auto-width="true"
+                  borderless
+                  @clear="onClearPeriod"
+                />
+                <RemoteSearchSelect
+                  v-model="selectedOrderSource"
+                  :fetch-fn="fetchOrderSources"
+                  placeholder="Tất cả nguồn"
+                  label-field="name"
+                  :clearable="selectedOrderSource?.id !== null"
+                  :searchable="false"
+                  class="[&_.mr-1]:ml-1"
+                  :auto-width="true"
+                  borderless
+                  @clear="onClearSource"
+                />
+                <RemoteSearchSelect
+                  v-model="selectedBranch"
+                  :fetch-fn="fetchBranches"
+                  placeholder="Tất cả chi nhánh"
+                  label-field="name"
+                  :clearable="selectedBranch?.id !== null"
+                  :searchable="false"
+                  class="[&_.mr-1]:ml-1"
+                  :auto-width="true"
+                  borderless
+                  @clear="onClearBranch"
+                />
               </div>
             </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white rounded-md p-4 flex flex-col gap-1" style="border:1px dashed #e6e6e6;">
+            <div
+              v-for="card in metricCards"
+              :key="card.key"
+              class="bg-white rounded-md p-4 flex flex-col gap-1"
+              style="border:1px dashed #e6e6e6;"
+            >
               <div class="text-xs text-gray-500">
-                Tổng doanh thu
+                {{ card.label }}
               </div>
               <div class="flex items-center justify-between">
                 <div class="text-xl font-bold">
-                  42.280 đ
+                  <span v-if="overviewData">
+                    {{ formatMetricValue(overviewData.metrics[card.key].value, card.suffix) }}
+                  </span>
+                  <span v-else class="text-gray-400">--</span>
                 </div>
-                <div class="text-xs font-medium text-green-600 flex items-center gap-1">
-                  <UIcon name="i-heroicons-arrow-up-right" class="text-green-500" />
-                  <span>15.20%</span>
-                </div>
-              </div>
-            </div>
-            <div class="bg-white rounded-md p-4 flex flex-col gap-1" style="border:1px dashed #e6e6e6;">
-              <div class="text-xs text-gray-500">
-                Lợi nhuận bán hàng
-              </div>
-              <div class="flex items-center justify-between">
-                <div class="text-xl font-bold">
-                  x3.175
-                </div>
-                <div class="text-xs font-medium text-green-600 flex items-center gap-1">
-                  <UIcon name="i-heroicons-arrow-up-right" class="text-green-500" />
-                  <span>11.30%</span>
-                </div>
-              </div>
-            </div>
-            <div class="bg-white rounded-md p-4 flex flex-col gap-1" style="border:1px dashed #e6e6e6;">
-              <div class="text-xs text-gray-500">
-                Đóng góp
-              </div>
-              <div class="flex items-center justify-between">
-                <div class="text-xl font-bold">
-                  6.879.145
-                </div>
-                <div class="text-xs font-medium text-green-600 flex items-center gap-1">
-                  <UIcon name="i-heroicons-arrow-up-right" class="text-green-500" />
-                  <span>12.05%</span>
-                </div>
-              </div>
-            </div>
-            <div class="bg-white rounded-md p-4 flex flex-col gap-1" style="border:1px dashed #e6e6e6;">
-              <div class="text-xs text-gray-500">
-                Tổng thu nhập
-              </div>
-              <div class="flex items-center justify-between">
-                <div class="text-xl font-bold">
-                  9.528 đ
-                </div>
-                <div class="text-xs font-medium text-green-600 flex items-center gap-1">
-                  <UIcon name="i-heroicons-arrow-up-right" class="text-green-500" />
-                  <span>15.10%</span>
+                <div
+                  class="text-xs font-medium flex items-center gap-1"
+                  :class="growthClass(overviewData?.metrics[card.key].growth)"
+                >
+                  <template v-if="overviewData">
+                    <UIcon
+                      v-if="overviewData.metrics[card.key].growth > 0"
+                      name="i-heroicons-arrow-up-right"
+                      class="text-green-500"
+                    />
+                    <UIcon
+                      v-else-if="overviewData.metrics[card.key].growth < 0"
+                      name="i-heroicons-arrow-down-right"
+                      class="text-red-500"
+                    />
+                    <span>
+                      {{ formatGrowth(overviewData.metrics[card.key].growth) }}
+                    </span>
+                  </template>
+                  <span v-else class="text-gray-400">--</span>
                 </div>
               </div>
             </div>

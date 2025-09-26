@@ -1340,13 +1340,14 @@ function onAddCustomer() {
                   :clearable="true"
                   :debounce="300"
                   label-field="name"
-                  :class="[{ 'border border-red-400 rounded-md': triedSubmit && !hasSource }]"
+                  :class="[{ 'border border-red-400 rounded-md': triedSubmit && !hasSource }, 'w-full']"
+                  :full-width="true"
                   :aria-invalid="(triedSubmit && !hasSource) ? 'true' : 'false'"
                 >
                   <template #trigger-left="{ value }">
                     <img
-                      v-if="value && typeof value.iconUrl === 'string'"
-                      :src="String(value.iconUrl)"
+                      v-if="value && typeof (value as any).iconUrl === 'string'"
+                      :src="String((value as any).iconUrl)"
                       class="w-4 h-4 object-contain mr-2"
                       alt="icon"
                     >
@@ -1383,6 +1384,7 @@ function onAddCustomer() {
                   :debounce="300"
                   label-field="name"
                   open-key="F4"
+                  :full-width="true"
                   :dropdown-max-height="420"
                   :searchable="true"
                   :search-in-trigger="true"
@@ -1416,7 +1418,7 @@ function onAddCustomer() {
                   <template #trigger-left="{ value }">
                     <img
                       v-if="value"
-                      :src="getCustomerAvatarUrl(value.avatarUrl)"
+                      :src="getCustomerAvatarUrl((value as any).avatarUrl)"
                       class="w-4 h-4 object-cover rounded-full mr-2"
                       alt="avatar"
                       @error="e => { const t = e.target as HTMLImageElement; if (t) t.src = '/no-avatar.jpg' }"
@@ -1468,6 +1470,7 @@ function onAddCustomer() {
                     placeholder="Cửa hàng chính"
                     :clearable="true"
                     :debounce="300"
+                    :full-width="true"
                     label-field="name"
                     :class="[{ 'border border-red-400 rounded-md': triedSubmit && !hasBranch }]"
                     :aria-invalid="(triedSubmit && !hasBranch) ? 'true' : 'false'"
