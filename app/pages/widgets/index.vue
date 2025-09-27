@@ -16,7 +16,10 @@ const {
 } = useWidgets()
 
 // Handle reorder emitted by WidgetsTable
-interface ReorderItem { id: number;[k: string]: unknown }
+interface ReorderItem {
+  id: number
+  [k: string]: unknown
+}
 async function handleReorder(newOrder: unknown) {
   const arr = (Array.isArray(newOrder) ? newOrder : []) as ReorderItem[]
   // newOrder is array of items after drag (from BaseTable draggableItems)
@@ -154,9 +157,17 @@ onMounted(fetchWidgets)
     </template>
     <template #body>
       <div class="flex flex-col h-full">
-        <WidgetsTable v-model:q="q" v-model:row-selection="rowSelection" v-model:pagination="pagination"
-          :data="filteredWidgets" :loading="loading" :add-button-dropdown-items="widgetTypeMenu"
-          :get-row-items="getRowItems" :format-date="formatDate" @reorder="(newOrder) => handleReorder(newOrder)" />
+        <WidgetsTable
+          v-model:q="q"
+          v-model:row-selection="rowSelection"
+          v-model:pagination="pagination"
+          :data="filteredWidgets"
+          :loading="loading"
+          :add-button-dropdown-items="widgetTypeMenu"
+          :get-row-items="getRowItems"
+          :format-date="formatDate"
+          @reorder="(newOrder) => handleReorder(newOrder)"
+        />
         <div v-if="error" class="text-error mt-4">
           {{ error }}
         </div>

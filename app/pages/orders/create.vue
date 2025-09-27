@@ -198,14 +198,73 @@ watch(shippingMethod, (m) => {
 })
 
 // Remote fetchers
+// Simple in-memory caches so that after first load, opening the dropdown again
+// does not re-hit the API (user requirement: load once, reuse).
+// - Sources & Branches: full list cached (they're typically small lists)
+// - Customers: cache only the initial (empty search) page; still allow remote
+//   search calls when user types a query.
+const sourcesCache = ref<OrderSourceItem[] | null>(null)
+const branchesRawCache = ref<WarehouseLike[] | null>(null)
+const customersCache = ref<CustomerRecord[] | null>(null)
+
+// Add Customer Modal state
+const showAddCustomerModal = ref(false)
+const newCustomer = ref({
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  company: '',
+  shipFirstName: '',
+  shipLastName: '',
+  shipCompany: '',
+  shipPhone: '',
+  shipProvince: '',
+  shipWard: '',
+  shipAddress: '',
+  country: 'Vietnam',
+  zipcode: ''
+})
+const addCustomerError = ref('')
+const showExtraInfo = ref(false)
+
+function resetNewCustomer() {
+  newCustomer.value = {
+    firstName: '', lastName: '', email: '', phone: '', company: '',
+    shipFirstName: '', shipLastName: '', shipCompany: '', shipPhone: '',
+    shipProvince: '', shipWard: '', shipAddress: '',
+    country: 'Vietnam', zipcode: ''
+  }
+  addCustomerError.value = ''
+  showExtraInfo.value = false
+}
+
 async function fetchCustomers(search: string): Promise<CustomerOption[]> {
   try {
-    const res = await customersService.getCustomers({
-      pagination: { start: 0, number: 15 },
-      search: { name: search || null, excludeGuests: true },
-      sort: { field: 'Id', reverse: false }
-    })
-    const items = (Array.isArray(res?.data?.items) ? res.data.items : []) as CustomerRecord[]
+    let items: CustomerRecord[] = []
+    const trimmed = (search || '').trim()
+    if (!trimmed) {
+      // Empty search: use cache if available
+      if (customersCache.value) {
+        items = customersCache.value
+      } else {
+        const res = await customersService.getCustomers({
+          pagination: { start: 0, number: 15 },
+          search: { name: null, excludeGuests: true },
+          sort: { field: 'Id', reverse: false }
+        })
+        items = (Array.isArray(res?.data?.items) ? res.data.items : []) as CustomerRecord[]
+        customersCache.value = items
+      }
+    } else {
+      // When user searches, still perform remote request (do not cache per query for now)
+      const res = await customersService.getCustomers({
+        pagination: { start: 0, number: 15 },
+        search: { name: trimmed, excludeGuests: true },
+        sort: { field: 'Id', reverse: false }
+      })
+      items = (Array.isArray(res?.data?.items) ? res.data.items : []) as CustomerRecord[]
+    }
     return items.map(cc => ({
       id: cc.id,
       name: cc.fullName ?? cc.name ?? cc.customerName ?? '',
@@ -219,8 +278,11 @@ async function fetchCustomers(search: string): Promise<CustomerOption[]> {
 }
 async function fetchSources(search: string): Promise<GenericItem[]> {
   try {
-    const res = await orderSourceService.getOrderSources()
-    const list: OrderSourceItem[] = Array.isArray(res?.data) ? res.data : []
+    if (!sourcesCache.value) {
+      const res = await orderSourceService.getOrderSources()
+      sourcesCache.value = Array.isArray(res?.data) ? res.data : []
+    }
+    const list: OrderSourceItem[] = sourcesCache.value || []
     const lower = search?.toLowerCase?.() || ''
     return lower
       ? list.filter(s => s.name.toLowerCase().includes(lower) || s.code.toLowerCase().includes(lower))
@@ -231,9 +293,11 @@ async function fetchSources(search: string): Promise<GenericItem[]> {
 }
 async function fetchBranches(search: string): Promise<GenericItem[]> {
   try {
-    const res = await warehouseService.getWarehouses()
-    const list = Array.isArray(res?.data) ? res.data : []
-    const norm = (list as WarehouseLike[]).map((w) => {
+    if (!branchesRawCache.value) {
+      const res = await warehouseService.getWarehouses()
+      branchesRawCache.value = Array.isArray(res?.data) ? (res.data as WarehouseLike[]) : []
+    }
+    const norm = (branchesRawCache.value as WarehouseLike[]).map((w) => {
       const id = (w.id ?? w.warehouseId ?? w.Id) as string | number
       const name = String(w.name ?? w.warehouseName ?? w.title ?? '')
       return { id, name }
@@ -726,8 +790,32 @@ function createAndConfirm() {
 }
 
 function onAddCustomer() {
-  // Điều hướng sang trang thêm mới khách hàng
-  router.push('/customers/create')
+  resetNewCustomer()
+  showAddCustomerModal.value = true
+}
+
+async function saveNewCustomer() {
+  addCustomerError.value = ''
+  if (!newCustomer.value.firstName && !newCustomer.value.lastName && !newCustomer.value.phone) {
+    addCustomerError.value = 'Vui lòng nhập ít nhất Họ/Tên hoặc SĐT'
+    return
+  }
+  // Mock create (would call API): build display name & id
+  const displayName = `${newCustomer.value.lastName} ${newCustomer.value.firstName}`.trim() || newCustomer.value.phone || 'Khách mới'
+  const created: CustomerOption = {
+    id: Date.now(),
+    name: displayName,
+    phone: newCustomer.value.phone,
+    code: 'NEW'
+  }
+  // Update cache so dropdown shows it immediately at top
+  if (customersCache.value) {
+    customersCache.value = [{ id: created.id, fullName: created.name, phoneNumber: created.phone, customerCode: created.code } as any, ...customersCache.value]
+  } else {
+    customersCache.value = [{ id: created.id, fullName: created.name, phoneNumber: created.phone, customerCode: created.code } as any]
+  }
+  selectedCustomer.value = created as any
+  showAddCustomerModal.value = false
 }
 </script>
 
@@ -1553,6 +1641,245 @@ function onAddCustomer() {
       </div>
     </template>
   </UDashboardPanel>
+  <!-- Add Customer Modal -->
+  <Teleport to="body">
+    <div
+      v-if="showAddCustomerModal"
+      class="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 overflow-auto p-4"
+      @keydown.esc="showAddCustomerModal=false"
+    >
+      <div
+        class="bg-white w-full max-w-3xl rounded-lg shadow-lg flex flex-col"
+        @click.stop
+      >
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-semibold">
+            Thêm mới khách hàng
+          </h3>
+          <button
+            class="text-gray-400 hover:text-gray-600"
+            @click="showAddCustomerModal=false"
+          >
+            &times;
+          </button>
+        </div>
+        <div class="px-6 py-5 space-y-8 text-sm">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Họ</label>
+              <input
+                v-model="newCustomer.lastName"
+                type="text"
+                class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Nhập họ"
+              >
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Tên</label>
+              <input
+                v-model="newCustomer.firstName"
+                type="text"
+                class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Nhập tên"
+              >
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Email</label>
+              <input
+                v-model="newCustomer.email"
+                type="email"
+                class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Nhập email"
+              >
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Số điện thoại</label>
+              <div class="flex items-center gap-2">
+                <input
+                  v-model="newCustomer.phone"
+                  type="text"
+                  class="flex-1 h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nhập số điện thoại"
+                >
+                <div class="h-9 px-2 flex items-center rounded-md border border-gray-300 bg-gray-50 text-xs">
+                  VN
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <button
+              type="button"
+              class="text-primary-600 text-sm font-medium flex items-center gap-1"
+              @click="showExtraInfo=!showExtraInfo"
+            >
+              <span v-if="!showExtraInfo">Thông tin thêm</span>
+              <span v-else>Ẩn thông tin thêm</span>
+              <svg
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path :d="showExtraInfo ? 'm18 15-6-6-6 6' : 'm6 9 6 6 6-6'" />
+              </svg>
+            </button>
+            <div v-if="showExtraInfo" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Công ty</label>
+                <input
+                  v-model="newCustomer.company"
+                  type="text"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nhập tên công ty"
+                >
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 class="text-base font-semibold mb-4">
+              Địa chỉ nhận hàng
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Họ</label>
+                <input
+                  v-model="newCustomer.shipLastName"
+                  type="text"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nhập họ"
+                >
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Tên</label>
+                <input
+                  v-model="newCustomer.shipFirstName"
+                  type="text"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nhập tên"
+                >
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Công ty</label>
+                <input
+                  v-model="newCustomer.shipCompany"
+                  type="text"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nhập tên công ty"
+                >
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Số điện thoại</label>
+                <input
+                  v-model="newCustomer.shipPhone"
+                  type="text"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nhập số điện thoại"
+                >
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Postal/Zipcode</label>
+                <input
+                  v-model="newCustomer.zipcode"
+                  type="text"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nhập Postal/Zipcode"
+                >
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Quốc gia</label>
+                <input
+                  v-model="newCustomer.country"
+                  type="text"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-100 cursor-not-allowed"
+                  placeholder="Quốc gia"
+                  readonly
+                >
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Tỉnh/Thành phố</label>
+                <select
+                  v-model="newCustomer.shipProvince"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">
+                    Chọn tỉnh/thành phố
+                  </option>
+                  <option value="Hà Nội">
+                    Hà Nội
+                  </option>
+                  <option value="TP Hồ Chí Minh">
+                    TP Hồ Chí Minh
+                  </option>
+                  <option value="Đà Nẵng">
+                    Đà Nẵng
+                  </option>
+                  <!-- Add more options as needed -->
+                </select>
+              </div>        
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Phường/Xã</label>
+                <select
+                  v-model="newCustomer.shipWard"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">
+                    Chọn phường/xã
+                  </option>
+                  <option value="Phường 1">
+                    Phường 1
+                  </option>
+                  <option value="Phường 2">
+                    Phường 2
+                  </option>
+                  <option value="Xã A">
+                    Xã A
+                  </option>
+                  <!-- Add more options as needed -->
+                </select>
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Địa chỉ cụ thể</label>
+                <input
+                  v-model="newCustomer.shipAddress"
+                  type="text"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nhập địa chỉ cụ thể"
+                >
+              </div>        
+            </div>
+          </div>
+          <p
+            v-if="addCustomerError"
+            class="text-xs text-red-600"
+          >
+            {{ addCustomerError }}
+          </p>
+        </div>
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
+          <button
+            type="button"
+            class="h-9 px-4 rounded-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50"
+            @click="showAddCustomerModal=false"
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            class="h-9 px-5 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700"
+            @click="saveNewCustomer"
+          >
+            Lưu
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>

@@ -62,6 +62,11 @@ interface Props {
   
   // Thêm prop tabs cho BaseTable
   tabs?: TableTab[]
+
+  // Body (table container) horizontal padding utility classes
+  bodyPadding?: string
+  headerPaddingX?: string
+  footerPadding?: string
 }
 
 interface TableTab {
@@ -80,6 +85,9 @@ const props = withDefaults(defineProps<Props>(), {
   pagination: () => ({ pageIndex: 0, pageSize: 15 }),
   totalRecords: 0,
   totalPages: 1,
+  bodyPadding: 'px-6',
+  headerPaddingX: 'px-6',
+  footerPadding: 'px-6 pb-4',
   actions: () => [
     {
       label: 'Change Status',
@@ -316,7 +324,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
 <template>
   <div class="bg-white border-gray-200 relative">
     <!-- Top bar -->
-    <div class="flex items-center justify-between gap-3 px-6 py-5">
+    <div :class="['flex items-center justify-between gap-3', props.headerPaddingX, 'py-5']">
       <h2 class="text-lg font-semibold">
         <div class="table-title-bar flex items-center justify-between">
           <template v-if="props.tabs && props.tabs.length">
@@ -352,9 +360,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
       <div class="flex items-center gap-3">
         <button
           v-if="showFilter"
-          class="h-9 w-9 inline-flex items-center justify-center rounded-md
-                  border border-gray-300 bg-white hover:bg-gray-50
-                  focus:outline-none focus:ring-2 focus:ring-blue-400"
+          class="h-9 w-9 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400"
           style="aspect-ratio: 1 / 1 !important;"
           title="Filter"
           aria-label="Filter"
@@ -392,43 +398,45 @@ const onRowDelete = (item: Record<string, unknown>) => {
           >
         </div>
 
-        <template v-if="addButtonDropdownItems && addButtonDropdownItems.length">
-          <UDropdownMenu :items="(addButtonDropdownItems as any)" :popper="{ placement: 'bottom-end' }">
-            <UButton
-              label="Thêm widget"
-              color="primary"
-              variant="solid"
-              icon="i-lucide-plus"
-              class="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-[#1b64f2] hover:bg-[#155ae0] text-white font-medium whitespace-nowrap text-sm"
-            />
-          </UDropdownMenu>
-        </template>
-        <button
-          v-else-if="addButton"
-          class="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-primary-600 hover:bg-primary-700 text-white font-medium whitespace-nowrap text-sm"
-          type="button"
-          @click="handleAddClick"
-        >
-          {{ addButton.label }}
-          <svg
-            class="w-5 h-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
+        <slot name="search-actions">
+          <template v-if="addButtonDropdownItems && addButtonDropdownItems.length">
+            <UDropdownMenu :items="(addButtonDropdownItems as any)" :popper="{ placement: 'bottom-end' }">
+              <UButton
+                label="Thêm widget"
+                color="primary"
+                variant="solid"
+                icon="i-lucide-plus"
+                class="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-[#1b64f2] hover:bg-[#155ae0] text-white font-medium whitespace-nowrap text-sm"
+              />
+            </UDropdownMenu>
+          </template>
+          <button
+            v-else-if="addButton"
+            class="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-primary-600 hover:bg-primary-700 text-white font-medium whitespace-nowrap text-sm"
+            type="button"
+            @click="handleAddClick"
           >
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-        </button>
+            {{ addButton.label }}
+            <svg
+              class="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+        </slot>
       </div>
     </div>
 
-  <div v-if="selectedCount === 0 && props.selectable" class="border-t border-gray-200" />
+    <div v-if="selectedCount === 0 && props.selectable" class="border-t border-gray-200" />
 
     <!-- Selection toolbar -->
     <div
-  v-if="props.selectable && selectedCount > 0"
-      class="bg-white border-t border-gray-200 px-6"
+      v-if="props.selectable && selectedCount > 0"
+      :class="['bg-white border-t border-gray-200', props.headerPaddingX]"
     >
       <div class="flex items-center h-14">
         <div class="w-14 h-full flex items-center justify-start">
@@ -514,7 +522,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
 
     <!-- Table -->
     <div
-      class="px-6"
+      :class="props.bodyPadding"
       @click="onBodyClick"
     >
       <table class="w-full table-fixed text-sm">
@@ -854,7 +862,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
     </div>
 
     <!-- Footer -->
-    <div class="flex items-center justify-between px-6 pb-4">
+    <div :class="['flex items-center justify-between', props.footerPadding]">
       <slot name="header-actions" />
       <div class="flex w-full items-center justify-between text-sm text-gray-600">
         <span v-if="totalRecords">Hiển thị {{ rangeFrom }}–{{ rangeTo }} trên {{ totalRecords }}</span>
