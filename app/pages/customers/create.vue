@@ -381,6 +381,7 @@ function goBack() {
                       clearable
                       searchable
                       :dropdown-max-height="320"
+                      :full-width="true"
                       search-in-trigger
                       @select="onSelectProvince"
                       @clear="onClearProvince"
@@ -397,6 +398,7 @@ function goBack() {
                       clearable
                       searchable
                       :dropdown-max-height="320"
+                      :full-width="true"
                       search-in-trigger
                       @select="onSelectWard"
                       @clear="onClearWard"

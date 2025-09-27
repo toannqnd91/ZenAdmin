@@ -1085,6 +1085,7 @@ async function saveNewCustomer() {
                           :clearable="false"
                           label-field="label"
                           :searchable="false"
+                          :full-width="true"
                         />
                       </div>
                       <div>
@@ -1128,6 +1129,7 @@ async function saveNewCustomer() {
                         :clearable="false"
                         label-field="label"
                         :searchable="false"
+                        class="w-full"
                       />
                     </div>
                   </div>
@@ -1366,7 +1368,7 @@ async function saveNewCustomer() {
                     </button>
                   </div>
                 </div>
-              </div>
+            </div>
             </UPageCard>
 
             <!-- E-invoice card (moved to left) -->
