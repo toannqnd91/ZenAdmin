@@ -2,6 +2,7 @@
 // Image URL logic like ProductsTable
 import { useRuntimeConfig } from '#imports'
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
+import AddCustomerModal from '@/components/AddCustomerModal.vue'
 import { useRouter } from 'vue-router'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
@@ -13,26 +14,23 @@ import type { WarehouseItem } from '@/services/warehouse.service'
 import { orderSourceService } from '@/services/order-source.service'
 import type { OrderSourceItem } from '@/services/order-source.service'
 import { customersService } from '@/services'
+import { useAuthService } from '@/composables/useAuthService'
 
+// Runtime config & helpers (restored)
 const config = useRuntimeConfig()
 const imageBaseUrl = config?.public?.imageBaseUrl || ''
 function getProductImageUrl(item: { thumbnailImageUrl?: string | null }) {
   const url = item.thumbnailImageUrl
   if (!url) return '/no-image.svg'
-  if (!url.includes('/') && imageBaseUrl) {
-    return `${imageBaseUrl}/image/${url}`
-  }
+  if (!url.includes('/') && imageBaseUrl) return `${imageBaseUrl}/image/${url}`
   return url
 }
-
-// Customer avatar fallback helper
 function getCustomerAvatarUrl(avatar: unknown) {
   const src = typeof avatar === 'string' ? avatar : ''
-  if (src && src !== 'string') return src
-  return '/no-avatar.jpg'
+  return src || '/no-avatar.jpg'
 }
 
-// Types
+// Types (restored)
 type CustomerOption = {
   id: number | string
   name: string
@@ -78,15 +76,15 @@ interface WarehouseLike {
   warehouseId?: number | string
 }
 
-// State
-const router = useRouter()
+// Primary reactive state (restored)
+// (router removed - not used currently)
 const splitLine = ref(false)
 const showProductSearch = ref(false)
 const productList = ref<ProductSearchItem[]>([])
 const loadingProducts = ref(false)
 const loadingMoreProducts = ref(false)
 const perPage = 15
-const productPage = ref(0) // 0-based page index
+const productPage = ref(0)
 const totalProductPages = ref<number | null>(null)
 const productSearchPopupRef = ref<HTMLElement | null>(null)
 const mainProductInputRef = ref<HTMLInputElement | null>(null)
@@ -95,18 +93,29 @@ const orderProducts = ref<OrderProduct[]>([])
 const selectedCustomer = ref<GenericItem | null>(null)
 const selectedSource = ref<GenericItem | null>(null)
 const selectedBranch = ref<GenericItem | null>(null)
+
 // Staff in charge (current logged-in user)
 const { user: authUser, getProfile } = useAuthService()
 const staffInCharge = ref<string>('')
-
-type AuthUserLike = { display_name?: string, fullName?: string }
+type AuthUserLike = { display_name?: string; fullName?: string }
 function extractDisplayName(u: unknown): string {
   if (u && typeof u === 'object') {
-    const obj = u as AuthUserLike
-    if (typeof obj.display_name === 'string' && obj.display_name) return obj.display_name
-    if (typeof obj.fullName === 'string' && obj.fullName) return obj.fullName
+    const o = u as AuthUserLike
+    if (o.display_name) return o.display_name
+    if (o.fullName) return o.fullName
   }
   return ''
+}
+
+// Add customer modal state (new component based)
+const showAddCustomerModal = ref(false)
+function onCustomerAdded(c: { id: string | number; name: string; phone: string; code: string }) {
+  if (customersCache.value) {
+    customersCache.value = [{ id: c.id, fullName: c.name, phoneNumber: c.phone, customerCode: c.code } as CustomerRecord, ...customersCache.value]
+  } else {
+    customersCache.value = [{ id: c.id, fullName: c.name, phoneNumber: c.phone, customerCode: c.code } as CustomerRecord]
+  }
+  selectedCustomer.value = { id: c.id, name: c.name, phone: c.phone, code: c.code }
 }
 
 // Ngày đặt hàng: default to today in dd/MM/yyyy
@@ -207,37 +216,7 @@ const sourcesCache = ref<OrderSourceItem[] | null>(null)
 const branchesRawCache = ref<WarehouseLike[] | null>(null)
 const customersCache = ref<CustomerRecord[] | null>(null)
 
-// Add Customer Modal state
-const showAddCustomerModal = ref(false)
-const newCustomer = ref({
-  firstName: '',
-  lastName: '',
-  email: '',
-  phone: '',
-  company: '',
-  shipFirstName: '',
-  shipLastName: '',
-  shipCompany: '',
-  shipPhone: '',
-  shipProvince: '',
-  shipWard: '',
-  shipAddress: '',
-  country: 'Vietnam',
-  zipcode: ''
-})
-const addCustomerError = ref('')
-const showExtraInfo = ref(false)
-
-function resetNewCustomer() {
-  newCustomer.value = {
-    firstName: '', lastName: '', email: '', phone: '', company: '',
-    shipFirstName: '', shipLastName: '', shipCompany: '', shipPhone: '',
-    shipProvince: '', shipWard: '', shipAddress: '',
-    country: 'Vietnam', zipcode: ''
-  }
-  addCustomerError.value = ''
-  showExtraInfo.value = false
-}
+// (removed legacy inline Add Customer modal logic; using standalone component)
 
 async function fetchCustomers(search: string): Promise<CustomerOption[]> {
   try {
@@ -274,6 +253,31 @@ async function fetchCustomers(search: string): Promise<CustomerOption[]> {
     }))
   } catch {
     return []
+  }
+}
+// Paginated fetchMore for infinite scroll (continues pages when user scrolls)
+async function fetchMoreCustomers(search: string, page: number): Promise<CustomerOption[] | { items: CustomerOption[]; hasMore: boolean }> {
+  try {
+    const trimmed = (search || '').trim()
+    const pageSize = 15
+    const res = await customersService.getCustomers({
+      pagination: { start: page * pageSize, number: pageSize },
+      search: { name: trimmed || null, excludeGuests: true },
+      sort: { field: 'Id', reverse: false }
+    })
+    const itemsRaw = Array.isArray(res?.data?.items) ? res.data.items : []
+    const mapped: CustomerOption[] = itemsRaw.map((cc: any) => ({
+      id: cc.id,
+      name: cc.fullName ?? cc.name ?? cc.customerName ?? '',
+      phone: cc.phoneNumber,
+      code: cc.customerCode,
+      avatarUrl: typeof cc.avatarUrl === 'string' ? cc.avatarUrl : null
+    }))
+    const totalPages = typeof res?.data?.numberOfPages === 'number' ? res.data.numberOfPages : null
+    const hasMore = totalPages == null ? mapped.length === pageSize : page + 1 < totalPages
+    return { items: mapped, hasMore }
+  } catch {
+    return { items: [], hasMore: false }
   }
 }
 async function fetchSources(search: string): Promise<GenericItem[]> {
@@ -323,7 +327,6 @@ async function fetchProducts(reset = false) {
     const res = await productService.getProducts({
       search: undefined,
       hasOptions: false,
-      // Use offset-based pagination like /products: start = pageIndex * pageSize
       pagination: { start: productPage.value * perPage, number: perPage },
       sort: { field: 'Id', reverse: true }
     })
@@ -332,15 +335,16 @@ async function fetchProducts(reset = false) {
     if (pages !== null) totalProductPages.value = pages
     if (reset || isInitial) productList.value = items
     else productList.value.push(...items)
-    // advance page if we received items
     if (items.length > 0) productPage.value += 1
   } catch {
     if (reset || isInitial) productList.value = []
+  } finally {
+    loadingProducts.value = false
+    loadingMoreProducts.value = false
   }
-  if (isInitial) loadingProducts.value = false
-  else loadingMoreProducts.value = false
 }
 
+// Product operations (restored)
 function addProduct(item: ProductSearchItem) {
   const key = String(item.sku || item.id)
   const found = orderProducts.value.find(p => String(p.sku || p.id) === key)
@@ -366,12 +370,9 @@ function removeProduct(idx: number) {
 function updateProductTotal(idx: number) {
   const prod = orderProducts.value[idx]
   if (!prod) return
-  if (!Number.isFinite(prod.quantity) || prod.quantity < 1) {
-    prod.quantity = 1
-  }
+  if (!Number.isFinite(prod.quantity) || prod.quantity < 1) prod.quantity = 1
   prod.total = prod.quantity * prod.unitPrice
 }
-
 function getBaseUnitPrice(prod: OrderProduct) {
   return typeof prod.baseUnitPrice === 'number' ? prod.baseUnitPrice : prod.unitPrice
 }
@@ -386,9 +387,7 @@ function calcDiscountPercent(prod: OrderProduct) {
   return Math.round((amt * 100) / base)
 }
 
-// =========================
-// Price adjust modal (per product)
-// =========================
+// Pricing modal logic (restored)
 const showPriceModal = ref(false)
 const priceModalIdx = ref<number | null>(null)
 const priceUseNew = ref(false)
@@ -397,21 +396,14 @@ const priceDiscountType = ref<'amount' | 'percent'>('amount')
 const priceDiscountInput = ref<number | null>(null)
 const priceReason = ref('')
 const priceError = ref('')
-
 function openPriceModal(idx: number) {
+  priceModalIdx.value = idx
   const prod = orderProducts.value[idx]
   if (!prod) return
-  priceModalIdx.value = idx
-  priceReason.value = prod.discountReason || ''
-  priceError.value = ''
-
-  // Prefill based on current unitPrice vs base price
-  const base = getBaseUnitPrice(prod)
-  priceNewValue.value = prod.unitPrice
-
-  // If we previously applied a specific mode, respect it
+  const base = typeof prod.baseUnitPrice === 'number' ? prod.baseUnitPrice : prod.unitPrice
   if (prod.usedNewPrice) {
     priceUseNew.value = true
+    priceNewValue.value = prod.unitPrice
     priceDiscountType.value = 'amount'
     priceDiscountInput.value = null
   } else if (prod.appliedDiscountType && (prod.appliedDiscountInput ?? null) !== null) {
@@ -478,13 +470,12 @@ function validatePriceModal(): boolean {
   if (priceDiscountInput.value != null && priceDiscountType.value === 'percent') {
     const p = Number(priceDiscountInput.value)
     if (p < 0 || p > 100) {
-      priceError.value = 'Phần trăm giảm giá phải trong khoảng 0-100'
+      priceError.value = 'Phần trăm giảm phải trong 0-100'
       return false
     }
   }
   return true
 }
-
 function applyPriceAdjust() {
   if (!validatePriceModal()) return
   const idx = priceModalIdx.value
@@ -492,7 +483,6 @@ function applyPriceAdjust() {
   const prod = orderProducts.value[idx]
   if (!prod) return
   const base = typeof prod.baseUnitPrice === 'number' ? prod.baseUnitPrice : (prod.baseUnitPrice = prod.unitPrice)
-
   let finalPrice: number
   if (priceUseNew.value) {
     finalPrice = Math.max(0, Number(priceNewValue.value ?? 0))
@@ -519,15 +509,12 @@ function applyPriceAdjust() {
     prod.appliedDiscountType = undefined
     prod.appliedDiscountInput = null
   }
-
   prod.unitPrice = finalPrice
   prod.total = prod.quantity * prod.unitPrice
-  // Save reason (trim empty to undefined)
   const r = (priceReason.value || '').trim()
   prod.discountReason = r.length ? r : undefined
   closePriceModal()
 }
-
 function removePriceAdjust() {
   const idx = priceModalIdx.value
   if (idx === null) return
@@ -542,13 +529,11 @@ function removePriceAdjust() {
   priceDiscountType.value = 'amount'
   priceReason.value = ''
   priceError.value = ''
-  // Clear applied markers
   prod.usedNewPrice = false
   prod.appliedDiscountType = undefined
   prod.appliedDiscountInput = null
   prod.discountReason = undefined
 }
-
 function openProductSearch() {
   if (showProductSearch.value) return
   showProductSearch.value = true
@@ -790,32 +775,7 @@ function createAndConfirm() {
 }
 
 function onAddCustomer() {
-  resetNewCustomer()
   showAddCustomerModal.value = true
-}
-
-async function saveNewCustomer() {
-  addCustomerError.value = ''
-  if (!newCustomer.value.firstName && !newCustomer.value.lastName && !newCustomer.value.phone) {
-    addCustomerError.value = 'Vui lòng nhập ít nhất Họ/Tên hoặc SĐT'
-    return
-  }
-  // Mock create (would call API): build display name & id
-  const displayName = `${newCustomer.value.lastName} ${newCustomer.value.firstName}`.trim() || newCustomer.value.phone || 'Khách mới'
-  const created: CustomerOption = {
-    id: Date.now(),
-    name: displayName,
-    phone: newCustomer.value.phone,
-    code: 'NEW'
-  }
-  // Update cache so dropdown shows it immediately at top
-  if (customersCache.value) {
-    customersCache.value = [{ id: created.id, fullName: created.name, phoneNumber: created.phone, customerCode: created.code } as any, ...customersCache.value]
-  } else {
-    customersCache.value = [{ id: created.id, fullName: created.name, phoneNumber: created.phone, customerCode: created.code } as any]
-  }
-  selectedCustomer.value = created as any
-  showAddCustomerModal.value = false
 }
 </script>
 
@@ -1469,6 +1429,7 @@ async function saveNewCustomer() {
                 <RemoteSearchSelect
                   v-model="selectedCustomer"
                   :fetch-fn="fetchCustomers"
+                  :fetch-more-fn="fetchMoreCustomers"
                   placeholder="Tìm theo tên, SDT...(F4)"
                   :clearable="true"
                   :debounce="300"
@@ -1478,6 +1439,7 @@ async function saveNewCustomer() {
                   :dropdown-max-height="420"
                   :searchable="true"
                   :search-in-trigger="true"
+                  infinite-scroll
                   :class="[{ 'border border-red-400 rounded-md': triedSubmit && !hasCustomer }]"
                   :aria-invalid="(triedSubmit && !hasCustomer) ? 'true' : 'false'"
                 >
@@ -1643,245 +1605,7 @@ async function saveNewCustomer() {
       </div>
     </template>
   </UDashboardPanel>
-  <!-- Add Customer Modal -->
-  <Teleport to="body">
-    <div
-      v-if="showAddCustomerModal"
-      class="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 overflow-auto p-4"
-      @keydown.esc="showAddCustomerModal=false"
-    >
-      <div
-        class="bg-white w-full max-w-3xl rounded-lg shadow-lg flex flex-col"
-        @click.stop
-      >
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-semibold">
-            Thêm mới khách hàng
-          </h3>
-          <button
-            class="text-gray-400 hover:text-gray-600"
-            @click="showAddCustomerModal=false"
-          >
-            &times;
-          </button>
-        </div>
-        <div class="px-6 py-5 space-y-8 text-sm">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label class="block text-xs font-medium text-gray-600 mb-1">Họ</label>
-              <input
-                v-model="newCustomer.lastName"
-                type="text"
-                class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Nhập họ"
-              >
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-600 mb-1">Tên</label>
-              <input
-                v-model="newCustomer.firstName"
-                type="text"
-                class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Nhập tên"
-              >
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-600 mb-1">Email</label>
-              <input
-                v-model="newCustomer.email"
-                type="email"
-                class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Nhập email"
-              >
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-600 mb-1">Số điện thoại</label>
-              <div class="flex items-center gap-2">
-                <input
-                  v-model="newCustomer.phone"
-                  type="text"
-                  class="flex-1 h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Nhập số điện thoại"
-                >
-                <div class="h-9 px-2 flex items-center rounded-md border border-gray-300 bg-gray-50 text-xs">
-                  VN
-                </div>
-              </div>
-            </div>
-          </div>
-          <div>
-            <button
-              type="button"
-              class="text-primary-600 text-sm font-medium flex items-center gap-1"
-              @click="showExtraInfo=!showExtraInfo"
-            >
-              <span v-if="!showExtraInfo">Thông tin thêm</span>
-              <span v-else>Ẩn thông tin thêm</span>
-              <svg
-                class="w-4 h-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path :d="showExtraInfo ? 'm18 15-6-6-6 6' : 'm6 9 6 6 6-6'" />
-              </svg>
-            </button>
-            <div v-if="showExtraInfo" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Công ty</label>
-                <input
-                  v-model="newCustomer.company"
-                  type="text"
-                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Nhập tên công ty"
-                >
-              </div>
-            </div>
-          </div>
-          <div>
-            <h4 class="text-base font-semibold mb-4">
-              Địa chỉ nhận hàng
-            </h4>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Họ</label>
-                <input
-                  v-model="newCustomer.shipLastName"
-                  type="text"
-                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Nhập họ"
-                >
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Tên</label>
-                <input
-                  v-model="newCustomer.shipFirstName"
-                  type="text"
-                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Nhập tên"
-                >
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Công ty</label>
-                <input
-                  v-model="newCustomer.shipCompany"
-                  type="text"
-                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Nhập tên công ty"
-                >
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Số điện thoại</label>
-                <input
-                  v-model="newCustomer.shipPhone"
-                  type="text"
-                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Nhập số điện thoại"
-                >
-              </div>
-
-              <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Postal/Zipcode</label>
-                <input
-                  v-model="newCustomer.zipcode"
-                  type="text"
-                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Nhập Postal/Zipcode"
-                >
-              </div>
-
-              <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Quốc gia</label>
-                <input
-                  v-model="newCustomer.country"
-                  type="text"
-                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-100 cursor-not-allowed"
-                  placeholder="Quốc gia"
-                  readonly
-                >
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Tỉnh/Thành phố</label>
-                <select
-                  v-model="newCustomer.shipProvince"
-                  class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="">
-                    Chọn tỉnh/thành phố
-                  </option>
-                  <option value="Hà Nội">
-                    Hà Nội
-                  </option>
-                  <option value="TP Hồ Chí Minh">
-                    TP Hồ Chí Minh
-                  </option>
-                  <option value="Đà Nẵng">
-                    Đà Nẵng
-                  </option>
-                  <!-- Add more options as needed -->
-                </select>
-              </div>        
-              <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Phường/Xã</label>
-                <select
-                  v-model="newCustomer.shipWard"
-                  class="w-full h-9 px-3 rounded-md border border-gray-300 bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="">
-                    Chọn phường/xã
-                  </option>
-                  <option value="Phường 1">
-                    Phường 1
-                  </option>
-                  <option value="Phường 2">
-                    Phường 2
-                  </option>
-                  <option value="Xã A">
-                    Xã A
-                  </option>
-                  <!-- Add more options as needed -->
-                </select>
-              </div>
-              <div class="md:col-span-2">
-                <label class="block text-xs font-medium text-gray-600 mb-1">Địa chỉ cụ thể</label>
-                <input
-                  v-model="newCustomer.shipAddress"
-                  type="text"
-                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Nhập địa chỉ cụ thể"
-                >
-              </div>        
-            </div>
-          </div>
-          <p
-            v-if="addCustomerError"
-            class="text-xs text-red-600"
-          >
-            {{ addCustomerError }}
-          </p>
-        </div>
-        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
-          <button
-            type="button"
-            class="h-9 px-4 rounded-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50"
-            @click="showAddCustomerModal=false"
-          >
-            Hủy
-          </button>
-          <button
-            type="button"
-            class="h-9 px-5 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700"
-            @click="saveNewCustomer"
-          >
-            Lưu
-          </button>
-        </div>
-      </div>
-    </div>
-  </Teleport>
+  <AddCustomerModal v-model="showAddCustomerModal" @saved="onCustomerAdded" />
 </template>
 
 <style scoped>

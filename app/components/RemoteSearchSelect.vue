@@ -7,6 +7,7 @@ type FetchFn = (search: string) => Promise<GenericItem[]>
 interface Props {
   modelValue: GenericItem | GenericItem[] | null
   fetchFn: FetchFn
+  fetchMoreFn?: (search: string, page: number) => Promise<GenericItem[] | { items: GenericItem[]; hasMore: boolean }>
   placeholder?: string
   labelField?: string
   getDisplayText?: (item: GenericItem) => string
@@ -25,6 +26,8 @@ interface Props {
   autoWidth?: boolean // when true, dropdown width fits content (min aligned to trigger)
   borderless?: boolean // when true, remove outer borders and use subtle hover bg
   fullWidth?: boolean // when false, do not force w-full on trigger container
+  infiniteScroll?: boolean // enable infinite scroll when fetchMoreFn provided
+  pageSize?: number // hint for page size (optional, for parent optimization)
 }
 const props = defineProps<Props>()
 const emit = defineEmits(['update:modelValue', 'select', 'clear'])
@@ -32,7 +35,11 @@ const emit = defineEmits(['update:modelValue', 'select', 'clear'])
 const open = ref(false)
 const search = ref('')
 const items = ref<GenericItem[]>([])
-const loading = ref(false)
+const hasMore = ref(false)
+const page = ref(0)
+// Separate loading states to avoid flicker when appending more results
+const loadingInitial = ref(false) // first / refreshed fetch
+const loadingMore = ref(false) // incremental infinite scroll fetch
 const error = ref<string | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
 const triggerRef = ref<HTMLElement | null>(null)
@@ -71,12 +78,15 @@ const displayText = computed(() => {
 
 async function runFetch(searchOverride?: string) {
   if (!props.fetchFn) return
-  loading.value = true
+  loadingInitial.value = true
   error.value = null
   try {
     const q = typeof searchOverride === 'string' ? searchOverride : search.value
     const data = await props.fetchFn(q)
     items.value = Array.isArray(data) ? data : []
+    page.value = 1
+    // if infinite scroll with fetchMoreFn, assume more until proven otherwise
+    hasMore.value = !!props.infiniteScroll && !!props.fetchMoreFn
     if (props.autoWidth) {
       // Measure longest label roughly using canvas (faster than DOM measuring each render)
       try {
@@ -102,7 +112,47 @@ async function runFetch(searchOverride?: string) {
     error.value = (e instanceof Error ? e.message : 'Lỗi tải dữ liệu')
     items.value = []
   } finally {
-    loading.value = false
+    loadingInitial.value = false
+  }
+}
+
+async function loadMoreIfNeeded(container: HTMLElement) {
+  if (!props.infiniteScroll || !props.fetchMoreFn) return
+  if (loadingInitial.value || loadingMore.value) return
+  if (!hasMore.value) return
+  const threshold = 120
+  if (container.scrollTop + container.clientHeight < container.scrollHeight - threshold) return
+  // load next page
+  loadingMore.value = true
+  try {
+    const q = search.value
+    const data = await props.fetchMoreFn(q, page.value)
+    if (Array.isArray(data)) {
+      if (!data.length) hasMore.value = false
+      else {
+        items.value.push(...data)
+        page.value += 1
+      }
+    } else if (data && 'items' in data) {
+      const arr = Array.isArray(data.items) ? data.items : []
+      if (!arr.length) hasMore.value = false
+      else {
+        items.value.push(...arr)
+        page.value += 1
+      }
+      hasMore.value = data.hasMore
+    } else {
+      hasMore.value = false
+    }
+    await nextTick()
+    // NOTE: Do NOT adjust scrollTop after append so that user is no longer
+    // at the bottom. This prevents immediately triggering another page load
+    // (auto-chaining). User must scroll down again to fetch the next page.
+  } catch {
+    // ignore load-more errors; keep existing list
+    hasMore.value = false
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -296,7 +346,7 @@ onBeforeUnmount(() => {
           @click.stop
         >
       </div>
-      <div v-if="loading" class="w-full px-3 py-4 text-center text-gray-500 text-sm">
+      <div v-if="loadingInitial" class="w-full px-3 py-4 text-center text-gray-500 text-sm">
         Đang tải...
       </div>
       <div v-else-if="error" class="w-full px-3 py-4 text-center text-red-500 text-sm">
@@ -306,7 +356,7 @@ onBeforeUnmount(() => {
         Không có kết quả
       </div>
       <div v-else>
-        <div class="overflow-auto" :style="maxListStyle">
+        <div class="overflow-auto" :style="maxListStyle" @scroll="e => loadMoreIfNeeded(e.target as HTMLElement)">
           <div
             v-for="item in items"
             :key="itemKey(item)"
@@ -337,6 +387,18 @@ onBeforeUnmount(() => {
                 clip-rule="evenodd"
               />
             </svg>
+          </div>
+          <div
+            v-if="infiniteScroll && loadingMore"
+            class="px-3 py-2 text-center text-xs text-gray-500"
+          >
+            Đang tải thêm...
+          </div>
+          <div
+            v-else-if="infiniteScroll && !hasMore"
+            class="px-3 py-2 text-center text-[11px] text-gray-400"
+          >
+            Hết dữ liệu
           </div>
         </div>
       </div>
