@@ -324,38 +324,46 @@ const onRowDelete = (item: Record<string, unknown>) => {
 <template>
   <div class="bg-white border-gray-200 relative">
     <!-- Top bar -->
-    <div :class="['flex items-center justify-between gap-3', props.headerPaddingX, 'py-5']">
-      <h2 class="text-lg font-semibold">
-        <div class="table-title-bar flex items-center justify-between">
+    <div :class="['flex items-center gap-3', props.headerPaddingX, 'py-5']">
+      <h2 class="text-lg font-semibold flex-1 min-w-0">
+        <div class="table-title-bar flex items-center gap-4 w-full">
           <template v-if="props.tabs && props.tabs.length">
-            <div class="flex gap-2">
-              <button
-                v-for="tab in props.tabs"
-                :key="tab.value"
-                :class="[
-                  'tab-btn px-3 py-1 rounded font-medium text-base transition',
-                  currentTab === tab.value
-                    ? 'active bg-primary-50 text-primary-700'
-                    : 'text-gray-600 hover:bg-gray-100'
-                ]"
-                type="button"
-                @click="onTabClick(tab.value)"
-              >
-                {{ tab.label }}
-                <span v-if="typeof tab.count === 'number'" class="ml-1 text-xs bg-gray-200 rounded px-1.5">{{ tab.count }}</span>
-              </button>
+            <div class="tab-scroll-wrapper flex-1 min-w-0 relative">
+              <!-- underline base line -->
+              <div class="absolute left-0 right-0 bottom-0 h-px bg-gray-200 pointer-events-none" />
+              <div class="tab-scroll flex flex-nowrap gap-2 overflow-x-auto overflow-y-visible overscroll-x-contain py-1 pr-2 pr-4 -mb-1" role="tablist">
+                <button
+                  v-for="tab in props.tabs"
+                  :key="tab.value"
+                  :class="[
+                    'tab-btn relative whitespace-nowrap px-3 py-1 rounded font-medium text-base transition',
+                    currentTab === tab.value
+                      ? 'active bg-primary-50 text-primary-700'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  ]"
+                  type="button"
+                  role="tab"
+                  :aria-selected="currentTab === tab.value"
+                  @click="onTabClick(tab.value)"
+                >
+                  <span class="inline-flex items-center">
+                    {{ tab.label }}
+                    <span v-if="typeof tab.count === 'number'" class="ml-1 text-xs bg-gray-200 rounded px-1.5">{{ tab.count }}</span>
+                  </span>
+                </button>
+              </div>
             </div>
           </template>
           <template v-else>
-            <div class="text-lg font-semibold">
+            <div class="flex-1 min-w-0 text-lg font-semibold truncate">
               {{ props.title }}
             </div>
           </template>
-          <div class="flex items-center gap-2">
-            <slot name="table-actions" />
-          </div>
         </div>
       </h2>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <slot name="table-actions" />
+      </div>
 
       <div class="flex items-center gap-3">
         <button
@@ -980,6 +988,21 @@ tbody tr.sortable-drag {
   transform: rotate(1deg);
 }
 
+.tab-scroll-wrapper {
+  min-width: 0;
+}
+
+.tab-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  touch-action: pan-x;
+  scroll-snap-type: x proximity;
+}
+
+.tab-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 /* Tab styles */
 .tab-btn {
   outline: none;
@@ -987,6 +1010,7 @@ tbody tr.sortable-drag {
   background: none;
   cursor: pointer;
   position: relative;
+  scroll-snap-align: start;
 }
 .tab-btn.active,
 .tab-btn.bg-primary-50 {
@@ -998,11 +1022,11 @@ tbody tr.sortable-drag {
 .tab-btn.active::after {
   content: '';
   position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: -6px; /* spacing below text */
-  height: 2px; /* thinner line */
-  background: var(--color-blue-700); /* exact requested color */
+  left: 12px;
+  right: 12px;
+  bottom: -1px; /* aligned with baseline */
+  height: 2px;
+  background: var(--color-blue-600, #1b64f2);
   border-radius: 1px 1px 0 0;
 }
 .tab-btn:focus {
