@@ -131,7 +131,11 @@ async function loadOverview() {
 }
 
 // Initial load and reactive reloads
-onMounted(loadOverview)
+onMounted(() => {
+  loadOverview()
+  loadTopProducts()
+  loadTopCustomers()
+})
 watch([selectedOrderSource, selectedBranch, selectedPeriod], () => {
   loadOverview()
 })
