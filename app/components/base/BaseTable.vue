@@ -523,9 +523,12 @@ const onRowDelete = (item: Record<string, unknown>) => {
     <!-- Table -->
     <div
       :class="props.bodyPadding"
-      @click="onBodyClick"
     >
-      <table class="w-full table-fixed text-sm">
+      <div
+        class="overflow-x-auto"
+        @click="onBodyClick"
+      >
+        <table class="w-full min-w-[64rem] table-fixed text-sm">
         <colgroup>
           <col v-if="props.selectable" class="w-14">
           <template v-if="props.colWidths && props.colWidths.length === columns.length">
@@ -856,7 +859,8 @@ const onRowDelete = (item: Record<string, unknown>) => {
             </td>
           </tr>
         </VueDraggable>
-      </table>
+        </table>
+      </div>
 
       <div class="h-6 border-t border-gray-200" />
     </div>
