@@ -13,7 +13,8 @@ import { warehouseService } from '@/services/warehouse.service'
 import type { WarehouseItem } from '@/services/warehouse.service'
 import { orderSourceService } from '@/services/order-source.service'
 import type { OrderSourceItem } from '@/services/order-source.service'
-import { customersService } from '@/services'
+import { customersService, ordersService } from '@/services'
+import { useToast } from '#imports'
 import { useAuthService } from '@/composables/useAuthService'
 
 // Runtime config & helpers (restored)
@@ -215,6 +216,142 @@ watch(shippingMethod, (m) => {
 const sourcesCache = ref<OrderSourceItem[] | null>(null)
 const branchesRawCache = ref<WarehouseLike[] | null>(null)
 const customersCache = ref<CustomerRecord[] | null>(null)
+
+// Order note & coupon
+const orderNote = ref('')
+const couponCode = ref('')
+
+// Shipping fee & discount (reuse existing discount/shippingFee refs later in file for order-level values)
+// Temporary holders for early total preview before discount modal usage
+const shippingFeeAmount = ref<number>(0) // will mirror shippingFee when applied
+const orderDiscountAmount = ref<number>(0) // will mirror discount when applied
+
+// Derived totals (basic: sum of item totals - order discount + shipping)
+const posSubTotal = computed(() => orderProducts.value.reduce((s, p) => s + p.total, 0))
+// Keep existing grandTotal later in file; for create API use this alias
+// Keep a POS grand total (synchronized later just before submission)
+const posGrandTotal = computed(() => Math.max(0, posSubTotal.value - (orderDiscountAmount.value) + shippingFeeAmount.value))
+
+// Map UI payment method string to API numeric (placeholder mapping)
+function mapPaymentMethodToApi(value: string): number {
+  // Example mapping: adjust to backend enum
+  switch (value) {
+    case 'Tiền mặt': return 1
+    case 'Chuyển khoản': return 2
+    case 'Thẻ': return 3
+    default: return 0
+  }
+}
+
+// Delivery option mapping based on shippingOption
+function mapDeliveryOptionToApi(opt: string): number {
+  switch (opt) {
+    case 'carrier': return 1
+    case 'self': return 2
+    case 'delivered': return 3
+    case 'later': return 4
+    default: return 0
+  }
+}
+
+const creatingOrder = ref(false)
+const createError = ref<string | null>(null)
+const toast = useToast()
+interface SimpleSelectable {
+  id?: number | string
+  name?: string
+  phone?: string
+}
+function parseDDMMYYYYToISO(s: string): string | null {
+  if (!s) return null
+  const parts = s.split(/[./-]/)
+  if (parts.length !== 3) return null
+  const [dd, mm, yyyy] = parts.map(p => Number(p))
+  if (!dd || !mm || !yyyy) return null
+  const d = new Date(yyyy, mm - 1, dd, 0, 0, 0)
+  if (isNaN(d.getTime())) return null
+  return d.toISOString()
+}
+
+async function handleCreateOrder() {
+  if (!selectedBranch.value) {
+    createError.value = 'Chưa chọn chi nhánh/kho'
+    return
+  }
+  if (!selectedCustomer.value) {
+    createError.value = 'Chưa chọn khách hàng'
+    return
+  }
+  if (orderProducts.value.length === 0) {
+    createError.value = 'Chưa chọn sản phẩm'
+    return
+  }
+  createError.value = null
+  creatingOrder.value = true
+  try {
+    const itemsPayload = orderProducts.value.map(p => ({
+      productId: p.id as number | string, 
+      quantity: p.quantity,
+      productPrice: p.baseUnitPrice ?? p.unitPrice,
+      discountAmount: p.appliedDiscountType ? (p.appliedDiscountType === 'amount' ? (p.appliedDiscountInput || 0) : 0) : 0,
+      unitPrice: p.unitPrice
+    }))
+    const paidAmount = paymentStatus.value === 'paid' ? (paymentAmount.value || posGrandTotal.value) : 0
+    // Sync early placeholders with actual reactive discount/shipping values used in UI totals
+    orderDiscountAmount.value = (discount?.value ?? 0)
+    shippingFeeAmount.value = (shippingFee?.value ?? 0)
+
+    const body: CreatePosOrderRequest = {
+      items: itemsPayload,
+      paymentMethod: mapPaymentMethodToApi(paymentMethod.value),
+      warehouseId: (selectedBranch.value as SimpleSelectable)?.id ?? 0,
+      customerId: (selectedCustomer.value as SimpleSelectable)?.id ?? '',
+      deliveryAddress: {
+        contactName: (selectedCustomer.value as SimpleSelectable)?.name || '',
+        phoneNumber: (selectedCustomer.value as SimpleSelectable)?.phone || '',
+        email: null,
+        addressLine1: '',
+        addressLine2: '',
+        countryId: 'VN',
+        stateOrProvinceId: null,
+        districtId: null,
+        city: '',
+        zipCode: ''
+      },
+      payLater: paymentStatus.value === 'later',
+      paidAmount,
+      orderSourceId: (selectedSource.value as SimpleSelectable)?.id ?? null,
+  shippingFeeAmount: (shippingFee?.value ?? shippingFeeAmount.value) || 0,
+  discountAmount: (discount?.value ?? orderDiscountAmount.value) || 0,
+      deliveryOption: mapDeliveryOptionToApi(shippingOption.value),
+      shippingMethod: shippingMethod.value || null,
+      expectedDeliveryDate: parseDDMMYYYYToISO(scheduledDate.value),
+      orderNote: orderNote.value || null,
+      couponCode: couponCode.value || null,
+      applyCouponToEachItem: true
+    }
+    const res = await ordersService.createPosOrder(body)
+    const envelope = res as unknown as { code?: string | number; success?: boolean; message?: string }
+    if (envelope.code === '201' || envelope.code === 201 || envelope.success) {
+      toast.add({ title: 'Tạo đơn thành công', description: envelope.message || '', color: 'green' })
+      // Reset một số field chính
+      orderProducts.value = []
+      discount.value = 0
+      shippingFee.value = 0
+      paymentAmount.value = null
+      paymentAmountDirty.value = false
+      orderNote.value = ''
+      couponCode.value = ''
+    } else {
+      throw new Error(envelope.message || 'Không rõ trạng thái phản hồi')
+    }
+  } catch (e) {
+    createError.value = e instanceof Error ? e.message : 'Tạo đơn thất bại'
+    toast.add({ title: 'Tạo đơn thất bại', description: createError.value || '', color: 'red' })
+  } finally {
+    creatingOrder.value = false
+  }
+}
 
 // (removed legacy inline Add Customer modal logic; using standalone component)
 
@@ -646,7 +783,7 @@ onBeforeUnmount(() => {
 const totalAmount = computed(() => orderProducts.value.reduce((sum, p) => sum + p.total, 0))
 const discount = ref(0)
 const shippingFee = ref(0)
-const grandTotal = computed(() => totalAmount.value - discount.value + shippingFee.value)
+const orderGrandTotal = computed(() => totalAmount.value - discount.value + shippingFee.value)
 
 function currency(n: number) {
   return n.toLocaleString() + '₫'
@@ -656,21 +793,21 @@ function currency(n: number) {
 watch(paymentStatus, (s) => {
   if (s === 'paid') {
     if (!paymentAmountDirty.value) {
-      paymentAmount.value = grandTotal.value
+      paymentAmount.value = orderGrandTotal.value
     }
   } else {
     paymentAmount.value = null
     paymentAmountDirty.value = false
   }
 })
-watch(grandTotal, (gt) => {
+watch(orderGrandTotal, (gt) => {
   if (paymentStatus.value === 'paid' && !paymentAmountDirty.value) {
     paymentAmount.value = gt
   }
 })
 
 function syncPaymentAmount() {
-  paymentAmount.value = grandTotal.value
+  paymentAmount.value = orderGrandTotal.value
   paymentAmountDirty.value = false
 }
 
@@ -749,7 +886,7 @@ const hasCustomer = computed(() => !!selectedCustomer.value)
 const hasBranch = computed(() => !!selectedBranch.value)
 
 function saveDraft() { /* TODO */ }
-function createAndConfirm() {
+async function createAndConfirm() {
   triedSubmit.value = true
   const missingProducts = !hasProducts.value
   const missingCustomer = !hasCustomer.value
@@ -770,8 +907,7 @@ function createAndConfirm() {
     })
     return
   }
-
-  // TODO: Submit payload to API when available
+  if (!creatingOrder.value) await handleCreateOrder()
 }
 
 function onAddCustomer() {
@@ -1027,7 +1163,7 @@ function onAddCustomer() {
                 </div>
                 <div class="flex items-center justify-between min-h-[32px] font-semibold border-t border-gray-100 pt-2">
                   <span>Thành tiền</span>
-                  <span>{{ orderProducts.length ? currency(grandTotal) : '0₫' }}</span>
+                  <span>{{ orderProducts.length ? currency(orderGrandTotal) : '0₫' }}</span>
                 </div>
                 <!-- Payment panel -->
                 <div v-if="orderProducts.length" class="mt-3 p-4 rounded-lg bg-primary-50">
