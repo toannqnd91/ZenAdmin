@@ -201,13 +201,19 @@ function close() {
   <Teleport to="body">
     <div
       v-if="open"
-      class="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 overflow-auto p-4"
+      class="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 p-4"
       @keydown.esc="close"
     >
-      <div class="bg-white w-full max-w-3xl rounded-lg shadow-lg flex flex-col" @click.stop>
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+      <div
+        class="bg-white w-full max-w-3xl rounded-lg shadow-lg flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-customer-title"
+        @click.stop
+      >
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
           <h3 class="text-lg font-semibold">
-            Thêm mới khách hàng
+            <span id="add-customer-title">Thêm mới khách hàng</span>
           </h3>
           <button
             class="text-gray-400 hover:text-gray-600"
@@ -216,7 +222,8 @@ function close() {
             &times;
           </button>
         </div>
-        <div class="px-6 py-5 space-y-8 text-sm">
+        <!-- Scroll body -->
+        <div class="flex-1 overflow-y-auto px-6 py-5 space-y-8 text-sm modal-body-scroll">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label class="block text-xs font-medium text-gray-600 mb-1">Họ <span class="text-red-500">*</span></label>
@@ -337,7 +344,7 @@ function close() {
           </div>
           <p v-if="error" class="text-xs text-red-600">{{ error }}</p>
         </div>
-        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 flex-shrink-0">
           <button type="button" class="h-9 px-4 rounded-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50" @click="close">Hủy</button>
           <button type="button" class="h-9 px-5 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700" @click="save">Lưu</button>
         </div>
@@ -345,3 +352,14 @@ function close() {
     </div>
   </Teleport>
 </template>
+
+<style scoped>
+.modal-body-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+/* Optional nicer thin scrollbar (WebKit) */
+.modal-body-scroll::-webkit-scrollbar { width: 8px; }
+.modal-body-scroll::-webkit-scrollbar-track { background: transparent; }
+.modal-body-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+.modal-body-scroll::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+</style>

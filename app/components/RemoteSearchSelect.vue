@@ -43,6 +43,9 @@ const loadingMore = ref(false) // incremental infinite scroll fetch
 const error = ref<string | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
 const triggerRef = ref<HTMLElement | null>(null)
+const dropDirection = ref<'down' | 'up'>('down')
+const dynamicListMaxHeight = ref<string | null>(null)
+let scrollParent: HTMLElement | null = null
 let debounceTimer: number | undefined
 const longestLabelPx = ref<number | null>(null)
 
@@ -192,11 +195,23 @@ function openDropdown() {
   } else {
     runFetch()
   }
-  nextTick(() => document.addEventListener('mousedown', handleClickOutside))
+  nextTick(() => {
+    computeDropDirection()
+    document.addEventListener('mousedown', handleClickOutside)
+    window.addEventListener('resize', computeDropDirection, { passive: true })
+    window.addEventListener('scroll', computeDropDirection, { passive: true })
+    scrollParent = findScrollParent(triggerRef.value)
+    if (scrollParent && scrollParent !== document.body && scrollParent !== document.documentElement) {
+      scrollParent.addEventListener('scroll', computeDropDirection, { passive: true })
+    }
+  })
 }
 function closeDropdown() {
   open.value = false
   document.removeEventListener('mousedown', handleClickOutside)
+  window.removeEventListener('resize', computeDropDirection)
+  window.removeEventListener('scroll', computeDropDirection)
+  if (scrollParent) scrollParent.removeEventListener('scroll', computeDropDirection)
 }
 function toggleDropdown() {
   if (open.value) {
@@ -210,6 +225,61 @@ function handleClickOutside(e: MouseEvent) {
   if (!dropdownRef.value.contains(e.target as Node) && !triggerRef.value.contains(e.target as Node)) {
     closeDropdown()
   }
+}
+
+function computeDropDirection() {
+  if (!triggerRef.value) return
+  try {
+    const rect = triggerRef.value.getBoundingClientRect()
+    const viewportH = window.innerHeight || document.documentElement.clientHeight
+    let spaceBelow = viewportH - rect.bottom
+    let spaceAbove = rect.top
+    const sp = findScrollParent(triggerRef.value)
+    if (sp && sp !== document.body && sp !== document.documentElement) {
+      const spRect = sp.getBoundingClientRect()
+      const belowWithin = spRect.bottom - rect.bottom
+      const aboveWithin = rect.top - spRect.top
+      if (belowWithin < spaceBelow) spaceBelow = belowWithin
+      if (aboveWithin < spaceAbove) spaceAbove = aboveWithin
+    }
+    let desired = 380
+    if (props.dropdownMaxHeight) {
+      if (typeof props.dropdownMaxHeight === 'number') desired = props.dropdownMaxHeight
+      else {
+        const m = String(props.dropdownMaxHeight).match(/(\d+)(px)?/)
+        if (m) desired = Number(m[1])
+      }
+    }
+    if (spaceBelow < Math.min(desired * 0.4, 200) && spaceAbove > spaceBelow) {
+      dropDirection.value = 'up'
+    } else {
+      dropDirection.value = 'down'
+    }
+    const usable = dropDirection.value === 'down' ? spaceBelow : spaceAbove
+    if (usable > 60) {
+      const mh = Math.min(desired, Math.max(usable - 8, 120))
+      dynamicListMaxHeight.value = `max-height: ${Math.floor(mh)}px;`
+    } else {
+      dynamicListMaxHeight.value = 'max-height: 120px;'
+    }
+  } catch {
+    dropDirection.value = 'down'
+  }
+}
+
+function findScrollParent(el?: HTMLElement | null): HTMLElement | null {
+  if (!el) return null
+  let parent: HTMLElement | null = el.parentElement
+  const overflowRegex = /(auto|scroll|overlay)/
+  while (parent && parent !== document.body) {
+    const style = window.getComputedStyle(parent)
+    const overflowY = style.overflowY
+    if (overflowRegex.test(overflowY) && parent.scrollHeight > parent.clientHeight) {
+      return parent
+    }
+    parent = parent.parentElement
+  }
+  return document.body
 }
 
 watch(search, () => {
@@ -324,9 +394,11 @@ onBeforeUnmount(() => {
       v-if="open"
       ref="dropdownRef"
       :class="[
-        'absolute left-0 top-full z-50 bg-white rounded-md shadow-lg mt-2',
+        'absolute left-0 z-50 bg-white rounded-md shadow-lg',
+        dropDirection === 'down' ? 'top-full mt-2 origin-top' : 'bottom-full mb-2 origin-bottom',
         props.borderless ? 'border border-gray-200' : 'border border-gray-300',
-        props.autoWidth ? 'w-auto' : 'w-full'
+        props.autoWidth ? 'w-auto' : 'w-full',
+        'animate-dropdown'
       ]"
       :style="props.autoWidth ? {
         minWidth: (triggerRef?.offsetWidth || 0) + 'px',
@@ -356,7 +428,7 @@ onBeforeUnmount(() => {
         Không có kết quả
       </div>
       <div v-else>
-        <div class="overflow-auto" :style="maxListStyle" @scroll="e => loadMoreIfNeeded(e.target as HTMLElement)">
+  <div class="overflow-auto" :style="[maxListStyle, dynamicListMaxHeight]" @scroll="e => loadMoreIfNeeded(e.target as HTMLElement)">
           <div
             v-for="item in items"
             :key="itemKey(item)"
@@ -405,3 +477,14 @@ onBeforeUnmount(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.animate-dropdown {
+  --pop-scale: 0.98;
+  animation: dropdownFade .12s ease-out;
+}
+@keyframes dropdownFade {
+  0% { opacity: 0; transform: scale(var(--pop-scale)); }
+  100% { opacity: 1; transform: scale(1); }
+}
+</style>
