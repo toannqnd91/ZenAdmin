@@ -54,6 +54,8 @@ export const API_ENDPOINTS = {
   ORDER_SOURCES: '/Order/order-sources',
   ORDER_GRID_EXTERNAL: '/Order/grid',
   ORDER_CREATE_POS: '/Order/create-pos-order',
+  ORDER_BY_ID: (id: number | string) => `/Order/${id}`,
+  ORDER_HISTORY: (id: number | string) => `/Order/${id}/history`,
 
   // Supplier endpoints
   SUPPLIERS: '/Suppliers',
