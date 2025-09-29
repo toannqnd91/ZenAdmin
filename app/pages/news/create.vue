@@ -1,6 +1,8 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
-useHead({ title: 'Thêm tin tức mới - Cơ Khí Tam Long' })
+import { useAppTitle } from '@/composables/useAppSettings'
+const appTitle = useAppTitle()
+useHead({ title: `Thêm tin tức mới - ${appTitle}` })
 </script>
 
 <template>

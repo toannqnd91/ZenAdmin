@@ -535,6 +535,7 @@ onMounted(async () => {
                     :search-in-trigger="true"
                     :dropdown-max-height="360"
                     :multiple="true"
+                    :full-width="true"
                   />
                 </div>
                 <div v-if="selectedGroups.length" class="flex flex-wrap gap-2">

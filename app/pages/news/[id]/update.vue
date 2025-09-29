@@ -1,6 +1,8 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
-useHead({ title: 'Chỉnh sửa tin tức - Cơ Khí Tam Long' })
+import { useAppTitle } from '@/composables/useAppSettings'
+const appTitle = useAppTitle()
+useHead({ title: `Chỉnh sửa tin tức - ${appTitle}` })
 const route = useRoute()
 const newsId = parseInt(route.params.id as string)
 </script>
