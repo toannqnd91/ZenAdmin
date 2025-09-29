@@ -73,6 +73,7 @@ const colWidths = [
     :col-widths="colWidths"
     title="Đơn hàng"
     :tabs="props.tabs"
+    tabs-style="underline"
     :total-pages="props.totalPages"
     :total-records="props.totalRecords"
     :show-row-actions="false"
@@ -81,6 +82,15 @@ const colWidths = [
     @update:pagination="val => emit('update:pagination', val)"
     @update:tab="val => emit('update:tab', val)"
   >
+    <!-- Custom column render: total (currency) -->
+    <template #column-code="{ value }">
+      <NuxtLink
+        :to="`/orders/${String(value).replace(/^#/, '')}`"
+        class="text-primary-600 hover:underline font-medium"
+      >
+        {{ value }}
+      </NuxtLink>
+    </template>
     <!-- Custom column render: total (currency) -->
     <template #column-total="{ value }">
       <span class="tabular-nums whitespace-nowrap">{{ formatMoney(value as number) }}</span>

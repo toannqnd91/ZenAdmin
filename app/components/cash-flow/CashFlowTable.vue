@@ -43,6 +43,7 @@ const emit = defineEmits<{
   'update:tab': [string]
 }>()
 
+// Table columns definition
 const columns = [
   { key: 'code', label: 'Mã phiếu', sortable: true },
   { key: 'date', label: 'Ngày ghi nhận', sortable: true },
@@ -51,6 +52,20 @@ const columns = [
   { key: 'originalDoc', label: 'Mã chứng từ gốc', sortable: true },
   { key: 'amount', label: 'Số tiền', sortable: true }
 ]
+
+// Emit handlers (wrapper to avoid TS template inference complaints)
+function onUpdateQ(val: string) {
+  emit('update:q', val)
+}
+function onUpdateRowSelection(val: Record<string, boolean>) {
+  emit('update:rowSelection', val)
+}
+function onUpdatePagination(val: { pageIndex: number, pageSize: number }) {
+  emit('update:pagination', val)
+}
+function onUpdateTab(val: string) {
+  emit('update:tab', val)
+}
 
 // Similar explicit widths style as Orders table for consistent layout
 const colWidths = [
@@ -73,7 +88,10 @@ const colWidths = [
     :columns="columns"
     :col-widths="colWidths"
     title="Sổ quỹ"
-    :tabs="props.tabs"
+    hide-title
+  :tabs="props.tabs"
+  tabs-style="underline"
+    tabs-separate-line
     :total-pages="props.totalPages"
     :total-records="props.totalRecords"
     :show-row-actions="false"
@@ -84,13 +102,20 @@ const colWidths = [
     footer-padding="px-6 pb-4"
     :add-button="props.addButton"
     search-placeholder="Tìm mã phiếu, tham chiếu, chứng từ gốc"
-    @update:q="val => emit('update:q', val)"
-    @update:row-selection="val => emit('update:rowSelection', val)"
-    @update:pagination="val => emit('update:pagination', val)"
-    @update:tab="val => emit('update:tab', val)"
+    hide-search
+    @update:q="onUpdateQ"
+    @update:row-selection="onUpdateRowSelection"
+    @update:pagination="onUpdatePagination"
+    @update:tab="onUpdateTab"
   >
     <template #search-actions>
       <slot name="search-actions" />
+    </template>
+    <template #filters-line>
+      <slot name="filters-line" />
+    </template>
+    <template #tabs-line-actions>
+      <slot name="tabs-line-actions" />
     </template>
     <template #column-code="{ value }">
       <button class="text-primary-600 font-medium hover:underline">

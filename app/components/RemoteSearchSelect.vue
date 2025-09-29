@@ -28,6 +28,7 @@ interface Props {
   fullWidth?: boolean // when false, do not force w-full on trigger container
   infiniteScroll?: boolean // enable infinite scroll when fetchMoreFn provided
   pageSize?: number // hint for page size (optional, for parent optimization)
+  triggerClass?: string // extra classes appended to trigger (for grouped styling, radius overrides, widths)
 }
 const props = defineProps<Props>()
 const emit = defineEmits(['update:modelValue', 'select', 'clear'])
@@ -350,7 +351,8 @@ onBeforeUnmount(() => {
         open && !props.borderless ? 'ring-2 ring-primary-500 border border-primary-500 bg-white' : '',
         open && props.borderless ? 'ring-2 ring-primary-500 bg-white' : '',
         !open && props.borderless ? 'bg-transparent hover:bg-gray-50' : '',
-        !open && !props.borderless ? 'border border-gray-300 bg-white' : ''
+        !open && !props.borderless ? 'border border-gray-300 bg-white' : '',
+        props.triggerClass || ''
       ]"
       tabindex="0"
       @click="toggleDropdown"
@@ -428,7 +430,7 @@ onBeforeUnmount(() => {
         Không có kết quả
       </div>
       <div v-else>
-  <div class="overflow-auto" :style="[maxListStyle, dynamicListMaxHeight]" @scroll="e => loadMoreIfNeeded(e.target as HTMLElement)">
+        <div class="overflow-auto" :style="[maxListStyle, dynamicListMaxHeight]" @scroll="e => loadMoreIfNeeded(e.target as HTMLElement)">
           <div
             v-for="item in items"
             :key="itemKey(item)"

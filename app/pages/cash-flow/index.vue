@@ -37,22 +37,29 @@ const selectedBranch = ref<BranchOption | null>(null)
 const selectedDocType = ref<DocTypeOption | null>(null)
 
 // Mock fetchers for RemoteSearchSelect
-async function fetchDatePresets(q: string) {
-  const items = [
+interface DatePresetItem extends Record<string, unknown> {
+  value: string
+  label: string
+}
+async function fetchDatePresets(q: string): Promise<DatePresetItem[]> {
+  // Fixed predefined date presets (no server fetch)
+  const items: DatePresetItem[] = [
     { value: 'today', label: 'Hôm nay' },
     { value: 'yesterday', label: 'Hôm qua' },
     { value: 'last7d', label: '7 ngày qua' },
-    { value: 'thismonth', label: 'Tháng này' },
-    { value: 'lastmonth', label: 'Tháng trước' },
+    { value: 'last30d', label: '30 ngày qua' },
+    { value: 'prevWeek', label: 'Tuần trước' },
+    { value: 'thisWeek', label: 'Tuần này' },
+    { value: 'lastMonth', label: 'Tháng trước' },
+    { value: 'thisMonth', label: 'Tháng này' },
+    { value: 'prevYear', label: 'Năm trước' },
+    { value: 'thisYear', label: 'Năm nay' },
+    { value: 'custom', label: 'Tùy chọn' },
     { value: 'all', label: 'Toàn thời gian' }
   ]
-  interface DatePreset extends Record<string, unknown> {
-    value: string
-    label: string
-  }
-  const typed: DatePreset[] = items
+  // For now we ignore the search query (static list) but still filter if user types
   const qq = q.toLowerCase()
-  return qq ? typed.filter(i => i.label.toLowerCase().includes(qq)) : typed
+  return (qq ? items.filter(i => i.label.toLowerCase().includes(qq)) : items)
 }
 async function fetchBranches(q: string) {
   const items: (BranchOption & { [k: string]: unknown })[] = [
@@ -156,9 +163,14 @@ function onTabChange(val: string) {
 <template>
   <UDashboardPanel id="cash-flow">
     <template #header>
-      <UDashboardNavbar title="Sổ quỹ">
+      <UDashboardNavbar>
         <template #leading>
           <UDashboardSidebarCollapse />
+          <div>
+            <div class="text-lg font-semibold">
+              Sổ quỹ
+            </div>
+          </div>
         </template>
         <template #right>
           <div class="flex items-center gap-2">
@@ -181,68 +193,74 @@ function onTabChange(val: string) {
     <template #body>
       <!-- Summary Card (formula style) -->
       <UPageCard variant="soft" class="bg-white rounded-lg">
-        <div class="flex flex-wrap items-center gap-10 text-[13px] leading-tight">
+        <div
+          class="flex flex-wrap items-start gap-x-10 gap-y-6 text-[14px] leading-tight
+                 md:items-center"
+        >
           <!-- Opening Balance -->
-          <div class="flex flex-col justify-center min-w-[110px]">
-            <div class="text-[13px] text-gray-900 font-medium flex items-center gap-1">
+          <div class="flex flex-col justify-center min-w-[110px] shrink-0">
+            <div class="text-[14px] text-gray-900 font-medium flex items-center gap-1">
               <span>Quỹ đầu kỳ</span>
               <UTooltip text="Số dư đầu kỳ" />
             </div>
-            <div class="font-semibold text-[15px] mt-1">
+            <div class="font-semibold text-[16px] mt-1">
               {{ formatCurrency(openingBalance) }}
             </div>
           </div>
           <!-- + separator -->
-          <div class="self-center flex items-center text-sm font-medium text-gray-400 px-2">
+          <div class="hidden md:inline-flex self-center items-center text-sm font-medium text-gray-400 px-2">
             +
           </div>
           <!-- Total Receipts -->
-          <div class="flex flex-col justify-center min-w-[120px]">
-            <div class="text-[13px] text-gray-900 font-medium flex items-center gap-1">
+          <div class="flex flex-col justify-center min-w-[120px] shrink-0">
+            <div class="text-[14px] text-gray-900 font-medium flex items-center gap-1">
               <span>Tổng thu</span>
               <UTooltip text="Tổng số tiền đã thu" />
             </div>
-            <div class="font-semibold text-emerald-600 text-[15px] mt-1">
+            <div class="font-semibold text-emerald-600 text-[16px] mt-1">
               {{ formatCurrency(totalReceipts) }}
             </div>
           </div>
           <!-- - separator -->
-          <div class="self-center flex items-center text-sm font-medium text-gray-400 px-2">
+          <div class="hidden md:inline-flex self-center items-center text-sm font-medium text-gray-400 px-2">
             -
           </div>
           <!-- Total Payments -->
-          <div class="flex flex-col justify-center min-w-[120px]">
-            <div class="text-[13px] text-gray-900 font-medium flex items-center gap-1">
+          <div class="flex flex-col justify-center min-w-[120px] shrink-0">
+            <div class="text-[14px] text-gray-900 font-medium flex items-center gap-1">
               <span>Tổng chi</span>
               <UTooltip text="Tổng số tiền đã chi" />
             </div>
-            <div class="font-semibold text-red-600 text-[15px] mt-1">
+            <div class="font-semibold text-red-600 text-[16px] mt-1">
               {{ formatCurrency(totalPayments) }}
             </div>
           </div>
           <!-- = separator -->
-          <div class="self-center flex items-center text-sm font-medium text-gray-400 px-2">
+          <div class="hidden md:inline-flex self-center items-center text-sm font-medium text-gray-400 px-2">
             =
           </div>
           <!-- Closing Balance -->
-          <div class="flex flex-col justify-center min-w-[120px]">
-            <div class="text-[13px] text-gray-900 font-medium flex items-center gap-1">
+          <div class="flex flex-col justify-center min-w-[120px] shrink-0 order-first w-full md:order-none md:w-auto">
+            <div class="text-[14px] text-gray-900 font-medium flex items-center gap-1">
               <span>Tồn quỹ</span>
               <UTooltip text="Số dư cuối cùng sau thu - chi" />
             </div>
-            <div class="font-semibold text-sky-700 text-[15px] mt-1">
+            <div class="font-semibold text-sky-700 text-[16px] mt-1">
               {{ formatCurrency(closingBalance) }}
             </div>
           </div>
           <!-- Cash / Bank split -->
-          <div class="ml-auto bg-sky-50 rounded-md px-8 py-4 flex flex-col justify-center min-w-[260px]">
+          <div
+            class="bg-sky-50 rounded-md px-6 py-4 flex flex-col justify-center min-w-[240px]
+                   w-full md:w-auto md:ml-auto"
+          >
             <div class="flex items-center justify-between gap-10">
-              <span class="text-[13px] text-gray-900 font-medium">Quỹ tiền mặt:</span>
-              <span class="text-[15px] font-semibold">{{ formatCurrency(cashBalance) }}</span>
+              <span class="text-[14px] text-gray-900 font-medium">Quỹ tiền mặt:</span>
+              <span class="text-[16px] font-semibold">{{ formatCurrency(cashBalance) }}</span>
             </div>
             <div class="flex items-center justify-between gap-10 mt-2">
-              <span class="text-[13px] text-gray-900 font-medium">Quỹ tiền gửi:</span>
-              <span class="text-[15px] font-semibold">{{ formatCurrency(bankBalance) }}</span>
+              <span class="text-[14px] text-gray-900 font-medium">Quỹ tiền gửi:</span>
+              <span class="text-[16px] font-semibold">{{ formatCurrency(bankBalance) }}</span>
             </div>
           </div>
         </div>
@@ -263,7 +281,90 @@ function onTabChange(val: string) {
         @update:pagination="val => pagination = val"
         @update:tab="onTabChange"
       >
-        <template #search-actions>
+        <template #filters-line>
+          <div class="flex flex-wrap items-center w-full gap-4">
+            <!-- Search input (left) -->
+            <div class="relative flex-1 min-w-[260px]">
+              <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-500">
+                <svg
+                  class="w-5 h-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m21 21-4.35-4.35" />
+                </svg>
+              </span>
+              <input
+                v-model="q"
+                type="text"
+                placeholder="Tìm mã phiếu, tham chiếu, chứng từ gốc"
+                class="h-9 w-full pl-9 pr-3 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:border-gray-400 focus:ring-0 text-sm"
+              >
+            </div>
+            <!-- Right filter group (tight, right aligned) -->
+            <div class="ml-auto flex items-center">
+              <!-- Unified group wrapper -->
+              <!-- NOTE: Removed overflow-hidden so dropdowns (absolutely positioned inside each RemoteSearchSelect) are not clipped.
+                   Using border on outer wrapper + borderless triggers keeps unified look. -->
+              <div class="flex items-stretch h-9 rounded-md border border-gray-300 bg-white group">
+                <RemoteSearchSelect
+                  v-model="selectedDatePreset"
+                  :fetch-fn="fetchDatePresets"
+                  placeholder="Ngày ghi nhận"
+                  label-field="label"
+                  borderless
+                  :trigger-class="'h-9 rounded-none border-r border-gray-200 min-w-[138px] px-3 flex-1'"
+                  clearable
+                />
+                <RemoteSearchSelect
+                  v-model="selectedBranch"
+                  :fetch-fn="fetchBranches"
+                  placeholder="Chi nhánh"
+                  label-field="name"
+                  borderless
+                  :trigger-class="'h-9 rounded-none border-r border-gray-200 min-w-[120px] px-3 flex-1'"
+                  clearable
+                />
+                <RemoteSearchSelect
+                  v-model="selectedDocType"
+                  :fetch-fn="fetchDocTypes"
+                  placeholder="Loại chứng từ"
+                  label-field="name"
+                  borderless
+                  :trigger-class="'h-9 rounded-none border-r border-gray-200 min-w-[140px] px-3 flex-1'"
+                  clearable
+                />
+                <button
+                  type="button"
+                  class="h-full px-4 inline-flex items-center gap-2 text-sm text-gray-700 hover:bg-gray-50 rounded-none"
+                >
+                  <svg
+                    class="w-4 h-4 text-gray-500"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M3 4h18M6 8h12l-4 6v6l-4-2v-4l-4-6Z" />
+                  </svg>
+                  Bộ lọc khác
+                </button>
+              </div>
+              <button
+                type="button"
+                class="ml-4 h-9 px-4 inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm text-gray-700"
+              >
+                Lưu bộ lọc
+              </button>
+            </div>
+          </div>
+        </template>
+        <template #tabs-line-actions>
           <UDropdownMenu :items="createSlipItems" :popper="{ placement: 'bottom-start' }">
             <button
               type="button"

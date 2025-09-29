@@ -62,11 +62,19 @@ interface Props {
   
   // Thêm prop tabs cho BaseTable
   tabs?: TableTab[]
+  // When true, render the tabs as a standalone line above the header bar
+  tabsSeparateLine?: boolean
 
   // Body (table container) horizontal padding utility classes
   bodyPadding?: string
   headerPaddingX?: string
   footerPadding?: string
+  // Hide built-in search input (so parent can render its own in filters-line)
+  hideSearch?: boolean
+  // Hide title text completely
+  hideTitle?: boolean
+  // Tabs visual style: default 'pill' (current behavior) or 'underline'
+  tabsStyle?: 'pill' | 'underline'
 }
 
 interface TableTab {
@@ -88,6 +96,10 @@ const props = withDefaults(defineProps<Props>(), {
   bodyPadding: 'px-6',
   headerPaddingX: 'px-6',
   footerPadding: 'px-6 pb-4',
+  tabsSeparateLine: false,
+  hideSearch: false,
+  hideTitle: false,
+  tabsStyle: 'pill',
   actions: () => [
     {
       label: 'Change Status',
@@ -323,15 +335,37 @@ const onRowDelete = (item: Record<string, unknown>) => {
 
 <template>
   <div class="bg-white border-gray-200 relative">
-    <!-- Top bar -->
-    <div :class="['flex items-center gap-3', props.headerPaddingX, 'py-5']">
-      <h2 class="text-lg font-semibold flex-1 min-w-0">
-        <div class="table-title-bar flex items-center gap-4 w-full">
-          <template v-if="props.tabs && props.tabs.length">
-            <div class="tab-scroll-wrapper flex-1 min-w-0 relative">
-              <!-- underline base line -->
-              <div class="absolute left-0 right-0 bottom-0 h-px bg-gray-200 pointer-events-none" />
-              <div class="tab-scroll flex flex-nowrap gap-2 overflow-x-auto overflow-y-visible overscroll-x-contain py-1 pr-2 pr-4 -mb-1" role="tablist">
+    <!-- Tabs separate line (optional) -->
+    <template v-if="tabsSeparateLine && props.tabs && props.tabs.length">
+      <div class="px-6 pt-4">
+        <div class="flex items-center gap-4">
+          <div class="tab-scroll-wrapper flex-1 min-w-0 relative">
+            <div class="absolute left-0 right-0 bottom-0 h-px bg-gray-200 pointer-events-none" />
+            <div class="tab-scroll flex flex-nowrap gap-2 overflow-x-auto overflow-y-visible overscroll-x-contain pr-4" role="tablist">
+              <template v-if="props.tabsStyle === 'underline'">
+                <button
+                  v-for="tab in props.tabs"
+                  :key="tab.value"
+                  :class="[
+                    'tab-btn relative whitespace-nowrap px-2.5 py-1 font-medium text-base transition',
+                    currentTab === tab.value ? 'text-primary-700' : 'text-gray-600 hover:text-gray-800'
+                  ]"
+                  type="button"
+                  role="tab"
+                  :aria-selected="currentTab === tab.value"
+                  @click="onTabClick(tab.value)"
+                >
+                  <span class="inline-flex items-center">
+                    {{ tab.label }}
+                    <span v-if="typeof tab.count === 'number'" class="ml-1 text-xs bg-gray-200 rounded px-1.5">{{ tab.count }}</span>
+                  </span>
+                  <span
+                    v-if="currentTab === tab.value"
+                    class="absolute left-0 right-0 bottom-0 h-px bg-primary-600"
+                  />
+                </button>
+              </template>
+              <template v-else>
                 <button
                   v-for="tab in props.tabs"
                   :key="tab.value"
@@ -351,11 +385,80 @@ const onRowDelete = (item: Record<string, unknown>) => {
                     <span v-if="typeof tab.count === 'number'" class="ml-1 text-xs bg-gray-200 rounded px-1.5">{{ tab.count }}</span>
                   </span>
                 </button>
+              </template>
+            </div>
+          </div>
+          <!-- New slot for actions aligned with tabs line -->
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <slot name="tabs-line-actions" />
+          </div>
+        </div>
+      </div>
+      <!-- Optional filters row when tabs are separate -->
+      <div v-if="$slots['filters-line']" class="px-6 pt-2">
+        <slot name="filters-line" />
+      </div>
+    </template>
+    <!-- Top bar -->
+    <div :class="['flex items-center gap-3', props.headerPaddingX, 'py-5']">
+      <h2 class="text-lg font-semibold flex-1 min-w-0">
+        <div class="table-title-bar flex items-center gap-4 w-full">
+          <template v-if="!tabsSeparateLine && props.tabs && props.tabs.length">
+            <div class="tab-scroll-wrapper flex-1 min-w-0 relative">
+              <div class="absolute left-0 right-0 bottom-0 h-px bg-gray-200 pointer-events-none" />
+              <div class="tab-scroll flex flex-nowrap gap-2 overflow-x-auto overflow-y-visible overscroll-x-contain py-1 pr-2 pr-4 -mb-1" role="tablist">
+                <template v-if="props.tabsStyle === 'underline'">
+                  <button
+                    v-for="tab in props.tabs"
+                    :key="tab.value"
+                    :class="[
+                      'tab-btn relative whitespace-nowrap px-2.5 py-1 font-medium text-base transition',
+                      currentTab === tab.value ? 'text-primary-700' : 'text-gray-600 hover:text-gray-800'
+                    ]"
+                    type="button"
+                    role="tab"
+                    :aria-selected="currentTab === tab.value"
+                    @click="onTabClick(tab.value)"
+                  >
+                    <span class="inline-flex items-center">
+                      {{ tab.label }}
+                      <span v-if="typeof tab.count === 'number'" class="ml-1 text-xs bg-gray-200 rounded px-1.5">{{ tab.count }}</span>
+                    </span>
+                    <span
+                      v-if="currentTab === tab.value"
+                      class="absolute left-0 right-0 bottom-0 h-px bg-primary-600"
+                    />
+                  </button>
+                </template>
+                <template v-else>
+                  <button
+                    v-for="tab in props.tabs"
+                    :key="tab.value"
+                    :class="[
+                      'tab-btn relative whitespace-nowrap px-3 py-1 rounded font-medium text-base transition',
+                      currentTab === tab.value
+                        ? 'active bg-primary-50 text-primary-700'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    ]"
+                    type="button"
+                    role="tab"
+                    :aria-selected="currentTab === tab.value"
+                    @click="onTabClick(tab.value)"
+                  >
+                    <span class="inline-flex items-center">
+                      {{ tab.label }}
+                      <span v-if="typeof tab.count === 'number'" class="ml-1 text-xs bg-gray-200 rounded px-1.5">{{ tab.count }}</span>
+                    </span>
+                  </button>
+                </template>
               </div>
             </div>
           </template>
           <template v-else>
-            <div class="flex-1 min-w-0 text-lg font-semibold truncate">
+            <div
+              v-if="!props.hideTitle"
+              class="flex-1 min-w-0 text-lg font-semibold truncate"
+            >
               {{ props.title }}
             </div>
           </template>
@@ -384,7 +487,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
           </svg>
         </button>
 
-        <div class="relative w-full max-w-xs">
+        <div v-if="!props.hideSearch" class="relative w-full max-w-xs">
           <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-500">
             <svg
               class="w-5 h-5"
@@ -437,6 +540,10 @@ const onRowDelete = (item: Record<string, unknown>) => {
           </button>
         </slot>
       </div>
+    </div>
+    <!-- Filters line when tabs are inline (not separate) -->
+    <div v-if="!tabsSeparateLine && $slots['filters-line']" class="px-6 -mt-3 mb-2">
+      <slot name="filters-line" />
     </div>
 
     <div v-if="selectedCount === 0 && props.selectable" class="border-t border-gray-200" />
@@ -537,206 +644,206 @@ const onRowDelete = (item: Record<string, unknown>) => {
         @click="onBodyClick"
       >
         <table class="w-full min-w-[64rem] table-fixed text-sm">
-        <colgroup>
-          <col v-if="props.selectable" class="w-14">
-          <template v-if="props.colWidths && props.colWidths.length === columns.length">
-            <col v-for="(w, idx) in props.colWidths" :key="'colw'+idx" :style="{ width: w }">
-          </template>
-          <template v-else>
-            <col
-              v-for="(column, index) in columns"
-              :key="column.key"
-              :class="[
-                index === 0 ? 'min-w-[300px]' : '',
-                index === 1 ? 'w-[150px]' : '',
-                index === 2 ? 'w-[120px]' : '',
-                index === 3 ? 'w-[100px]' : '',
-                index === 4 ? 'w-[120px]' : '',
-                index >= 5 ? 'w-[100px]' : ''
-              ]"
-            >
-          </template>
-          <col v-if="props.showRowActions" class="w-[60px]">
-        </colgroup>
-        <thead class="text-gray-500">
-          <tr class="h-14" :class="{ hidden: selectedCount > 0 }">
-            <th v-if="props.selectable" class="py-0">
-              <div class="w-14 h-full flex items-center justify-start">
-                <button
-                  data-role="chk"
-                  type="button"
-                  role="checkbox"
-                  :aria-checked="selectAllState==='all' ? 'true' : (selectAllState==='some' ? 'mixed' : 'false')"
-                  :title="selectAllState==='all' ? 'Unselect all' : 'Select all'"
-                  :class="[
-                    'inline-flex items-center justify-center h-5 w-5 rounded-md border focus:outline-none focus:ring-2 focus:ring-offset-1',
-                    selectAllState==='none'
-                      ? 'bg-white border-gray-300 text-gray-400 focus:ring-blue-400'
-                      : 'bg-[#1b64f2] border-[#1b64f2] text-white focus:ring-blue-400'
-                  ]"
-                  @click="toggleAllPage"
-                  @keydown="onCheckboxKey($event, toggleAllPage)"
-                >
-                  <svg
-                    v-if="selectAllState==='all'"
-                    class="h-3.5 w-3.5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  <svg
-                    v-else-if="selectAllState==='some'"
-                    class="h-3.5 w-3.5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                  >
-                    <path d="M5 12h14" />
-                  </svg>
-                </button>
-              </div>
-            </th>
-            <th
-              v-for="column in columns"
-              :key="column.key"
-              :class="column.class || 'py-3 text-left font-medium'"
-            >
-              {{ column.label }}
-            </th>
-            <th v-if="props.showRowActions" class="py-3 text-left font-medium pr-4">
-              <!-- Cột actions -->
-            </th>
-          </tr>
-        </thead>
-
-        <tbody v-if="!props.draggable">
-          <tr
-            v-for="item in pageItems"
-            :key="String(item.id)"
-            class="group/row border-t border-gray-200 row-band"
-            :class="{ 'is-active': isSelected(String(item.id)) }"
-          >
-            <!-- Row checkbox -->
-            <td v-if="props.selectable" class="py-4 align-middle">
-              <div class="w-14 h-full flex items-center justify-start">
-                <button
-                  v-if="String(item.id) !== 'summary'"
-                  data-role="chk"
-                  type="button"
-                  role="checkbox"
-                  :aria-checked="isSelected(String(item.id)) ? 'true' : 'false'"
-                  :class="[
-                    'inline-flex items-center justify-center h-5 w-5 rounded-md border focus:outline-none focus:ring-2 focus:ring-offset-1',
-                    isSelected(String(item.id))
-                      ? 'bg-[#1b64f2] border-[#1b64f2] text-white focus:ring-blue-400'
-                      : 'bg-white border-gray-300 text-gray-400 focus:ring-blue-400'
-                  ]"
-                  @click="setRowSelected(String(item.id), !isSelected(String(item.id)))"
-                  @keydown="onCheckboxKey($event, () => setRowSelected(String(item.id), !isSelected(String(item.id))))"
-                >
-                  <svg
-                    v-if="isSelected(String(item.id))"
-                    class="h-3.5 w-3.5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </button>
-              </div>
-            </td>
-
-            <!-- Dynamic columns -->
-            <td
-              v-for="column in columns"
-              :key="column.key"
-              class="py-4"
-            >
-              <slot
-                :name="`column-${column.key}`"
-                :item="item"
-                :value="getColumnValue(item, column)"
+          <colgroup>
+            <col v-if="props.selectable" class="w-14">
+            <template v-if="props.colWidths && props.colWidths.length === columns.length">
+              <col v-for="(w, idx) in props.colWidths" :key="'colw'+idx" :style="{ width: w }">
+            </template>
+            <template v-else>
+              <col
+                v-for="(column, index) in columns"
+                :key="column.key"
+                :class="[
+                  index === 0 ? 'min-w-[300px]' : '',
+                  index === 1 ? 'w-[150px]' : '',
+                  index === 2 ? 'w-[120px]' : '',
+                  index === 3 ? 'w-[100px]' : '',
+                  index === 4 ? 'w-[120px]' : '',
+                  index >= 5 ? 'w-[100px]' : ''
+                ]"
               >
-                <!-- Default rendering -->
-                <template v-if="column.render">
-                  <component
-                    :is="column.render(item)"
-                  />
-                </template>
-                <template v-else>
-                  {{ getColumnValue(item, column) }}
-                </template>
-              </slot>
-            </td>
+            </template>
+            <col v-if="props.showRowActions" class="w-[60px]">
+          </colgroup>
+          <thead class="text-gray-500">
+            <tr class="h-14" :class="{ hidden: selectedCount > 0 }">
+              <th v-if="props.selectable" class="py-0">
+                <div class="w-14 h-full flex items-center justify-start">
+                  <button
+                    data-role="chk"
+                    type="button"
+                    role="checkbox"
+                    :aria-checked="selectAllState==='all' ? 'true' : (selectAllState==='some' ? 'mixed' : 'false')"
+                    :title="selectAllState==='all' ? 'Unselect all' : 'Select all'"
+                    :class="[
+                      'inline-flex items-center justify-center h-5 w-5 rounded-md border focus:outline-none focus:ring-2 focus:ring-offset-1',
+                      selectAllState==='none'
+                        ? 'bg-white border-gray-300 text-gray-400 focus:ring-blue-400'
+                        : 'bg-[#1b64f2] border-[#1b64f2] text-white focus:ring-blue-400'
+                    ]"
+                    @click="toggleAllPage"
+                    @keydown="onCheckboxKey($event, toggleAllPage)"
+                  >
+                    <svg
+                      v-if="selectAllState==='all'"
+                      class="h-3.5 w-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    <svg
+                      v-else-if="selectAllState==='some'"
+                      class="h-3.5 w-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                    >
+                      <path d="M5 12h14" />
+                    </svg>
+                  </button>
+                </div>
+              </th>
+              <th
+                v-for="column in columns"
+                :key="column.key"
+                :class="column.class || 'py-3 text-left font-medium'"
+              >
+                {{ column.label }}
+              </th>
+              <th v-if="props.showRowActions" class="py-3 text-left font-medium pr-4">
+                <!-- Cột actions -->
+              </th>
+            </tr>
+          </thead>
 
-            <!-- actions -->
-            <td v-if="props.showRowActions" class="py-4 pr-4">
-              <div class="flex justify-end">
-                <template v-if="String(item.id) !== 'summary'">
-                  <slot name="row-actions" :item="item">
-                    <div class="relative inline-block text-left">
-                      <button
-                        type="button"
-                        class="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-gray-100"
-                        @click.stop="toggleRowMenu(item.id as string | number)"
-                      >
-                        <svg
-                          class="w-5 h-5 text-gray-700"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
+          <tbody v-if="!props.draggable">
+            <tr
+              v-for="item in pageItems"
+              :key="String(item.id)"
+              class="group/row border-t border-gray-200 row-band"
+              :class="{ 'is-active': isSelected(String(item.id)) }"
+            >
+              <!-- Row checkbox -->
+              <td v-if="props.selectable" class="py-4 align-middle">
+                <div class="w-14 h-full flex items-center justify-start">
+                  <button
+                    v-if="String(item.id) !== 'summary'"
+                    data-role="chk"
+                    type="button"
+                    role="checkbox"
+                    :aria-checked="isSelected(String(item.id)) ? 'true' : 'false'"
+                    :class="[
+                      'inline-flex items-center justify-center h-5 w-5 rounded-md border focus:outline-none focus:ring-2 focus:ring-offset-1',
+                      isSelected(String(item.id))
+                        ? 'bg-[#1b64f2] border-[#1b64f2] text-white focus:ring-blue-400'
+                        : 'bg-white border-gray-300 text-gray-400 focus:ring-blue-400'
+                    ]"
+                    @click="setRowSelected(String(item.id), !isSelected(String(item.id)))"
+                    @keydown="onCheckboxKey($event, () => setRowSelected(String(item.id), !isSelected(String(item.id))))"
+                  >
+                    <svg
+                      v-if="isSelected(String(item.id))"
+                      class="h-3.5 w-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </button>
+                </div>
+              </td>
+
+              <!-- Dynamic columns -->
+              <td
+                v-for="column in columns"
+                :key="column.key"
+                class="py-4"
+              >
+                <slot
+                  :name="`column-${column.key}`"
+                  :item="item"
+                  :value="getColumnValue(item, column)"
+                >
+                  <!-- Default rendering -->
+                  <template v-if="column.render">
+                    <component
+                      :is="column.render(item)"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ getColumnValue(item, column) }}
+                  </template>
+                </slot>
+              </td>
+
+              <!-- actions -->
+              <td v-if="props.showRowActions" class="py-4 pr-4">
+                <div class="flex justify-end">
+                  <template v-if="String(item.id) !== 'summary'">
+                    <slot name="row-actions" :item="item">
+                      <div class="relative inline-block text-left">
+                        <button
+                          type="button"
+                          class="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-gray-100"
+                          @click.stop="toggleRowMenu(item.id as string | number)"
                         >
-                          <circle cx="12" cy="6" r="1" />
-                          <circle cx="12" cy="12" r="1" />
-                          <circle cx="12" cy="18" r="1" />
-                        </svg>
-                      </button>
-                      <div
-                        v-if="isRowMenuOpen(item.id as string | number)"
-                        class="origin-top-right absolute right-0 mt-2 w-40 rounded-md shadow-lg bg-white z-50 ring-black ring-opacity-5"
-                      >
-                        <div class="py-1">
-                          <button
-                            class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            @click.stop="onRowCopyId(item)"
+                          <svg
+                            class="w-5 h-5 text-gray-700"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
                           >
-                            Copy ID
-                          </button>
-                          <button
-                            class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            @click.stop="onRowEdit(item)"
-                          >
-                            Sửa
-                          </button>
-                          <button
-                            class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                            @click.stop="onRowDelete(item)"
-                          >
-                            Xoá
-                          </button>
+                            <circle cx="12" cy="6" r="1" />
+                            <circle cx="12" cy="12" r="1" />
+                            <circle cx="12" cy="18" r="1" />
+                          </svg>
+                        </button>
+                        <div
+                          v-if="isRowMenuOpen(item.id as string | number)"
+                          class="origin-top-right absolute right-0 mt-2 w-40 rounded-md shadow-lg bg-white z-50 ring-black ring-opacity-5"
+                        >
+                          <div class="py-1">
+                            <button
+                              class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              @click.stop="onRowCopyId(item)"
+                            >
+                              Copy ID
+                            </button>
+                            <button
+                              class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              @click.stop="onRowEdit(item)"
+                            >
+                              Sửa
+                            </button>
+                            <button
+                              class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                              @click.stop="onRowDelete(item)"
+                            >
+                              Xoá
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </slot>
-                </template>
-              </div>
-            </td>
-          </tr>
-        </tbody>
+                    </slot>
+                  </template>
+                </div>
+              </td>
+            </tr>
+          </tbody>
 
-        <VueDraggable
+          <VueDraggable
           v-if="props.draggable"
           v-model="draggableItems"
           tag="tbody"

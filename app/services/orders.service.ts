@@ -40,11 +40,11 @@ export class OrdersService extends BaseService {
 
   // Order detail ----------------------------------------------------------
   async getOrderById(id: number | string) {
-    return this.get<OrderDetail | null>(API_ENDPOINTS.ORDER_BY_ID(id))
+    return this.get<OrderDetailRawResponse | null>(API_ENDPOINTS.ORDER_BY_ID(id))
   }
 
   async getOrderHistory(id: number | string) {
-    return this.get<OrderHistoryEvent[] | null>(API_ENDPOINTS.ORDER_HISTORY(id))
+    return this.get<OrderHistoryListResponse | null>(API_ENDPOINTS.ORDER_HISTORY(id) + '?page=1&pageSize=20')
   }
 }
 
@@ -226,6 +226,118 @@ export interface OrderDetail {
   note: string | null
   meta: OrderDetailMetaInfo | null
   history?: OrderHistoryEvent[]
+}
+
+// Raw API (current backend) -----------------------------------------------
+export interface RawOrderItem {
+  id: number
+  productId: number
+  productName: string
+  productImage: string | null
+  productPrice: number
+  quantity: number
+  shippedQuantity: number
+  taxAmount: number
+  taxPercent: number
+  discountAmount: number
+  total: number
+  taxIncludedAmount: number
+  rowTotal: number
+  variationOptions: unknown[]
+  // string formatted values
+  taxAmountString: string
+  productPriceString: string
+  discountAmountString: string
+  totalString: string
+  taxIncludedAmountString: string
+  rowTotalString: string
+}
+
+export interface RawOrderEntity {
+  id: number
+  customerId: string
+  customerName: string
+  customerEmail: string
+  createdOn: string
+  orderStatusString: string
+  orderStatus: number
+  subtotal: number
+  discountAmount: number
+  subTotalWithDiscount: number
+  taxAmount: number
+  shippingAmount: number
+  orderTotal: number
+  shippingMethod: string | null
+  paymentMethod: string | null
+  paymentFeeAmount: number
+  subtotalString: string
+  discountAmountString: string
+  subtotalWithDiscountString: string
+  taxAmountString: string
+  shippingAmountString: string
+  paymentFeeAmountString: string
+  orderTotalString: string
+  orderItems: RawOrderItem[]
+  subOrderIds: number[] | null
+  isMasterOrder: boolean
+  orderNote: string | null
+}
+
+export interface RawCustomerInfoCustomer {
+  customerId: string
+  name: string
+  email: string | null
+  phone: string | null
+}
+export interface RawCustomerInfoAddress {
+  addressLine1: string | null
+  addressLine2: string | null
+  city: string | null
+  districtName: string | null
+  stateOrProvinceName: string | null
+  countryId: string | null
+  phone: string | null
+  zipCode: string | null
+}
+export interface RawCustomerInfo {
+  customer: RawCustomerInfoCustomer | null
+  address: RawCustomerInfoAddress | null
+}
+export interface OrderDetailRawEnvelope {
+  order: RawOrderEntity
+  customerInfo: RawCustomerInfo | null
+}
+export interface OrderDetailRawResponse {
+  code: string
+  success: boolean
+  message: string
+  data: OrderDetailRawEnvelope | null
+}
+
+// History list envelope (current backend format) -------------------------
+export interface RawHistoryItem {
+  id: number
+  orderId: number
+  oldStatus: number | null
+  newStatus: number | null
+  oldStatusText: string | null
+  newStatusText: string | null
+  note: string | null
+  paymentDelta: number | null
+  createdOn: string
+  createdById: string | null
+}
+export interface OrderHistoryListEnvelope {
+  total: number
+  page: number
+  pageSize: number
+  items: RawHistoryItem[]
+}
+export interface OrderHistoryListResponse {
+  code: string
+  success: boolean
+  message: string
+  data: OrderHistoryListEnvelope | null
 }
 
 export const ordersService = new OrdersService()

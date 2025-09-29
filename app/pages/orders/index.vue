@@ -120,7 +120,7 @@ function buildGridRequest() {
     },
     Sort: {
       Field: 'Id',
-      Reverse: false
+      Reverse: true
     }
   }
 }

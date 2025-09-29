@@ -2,15 +2,17 @@
 import { onMounted, ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ordersService } from '@/services/orders.service'
-import type { OrderDetail, OrderHistoryEvent } from '@/services/orders.service'
+import type { OrderDetail, OrderHistoryEvent, OrderDetailRawResponse, OrderHistoryListResponse } from '@/services/orders.service'
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
 
 const route = useRoute()
-const orderId = computed(() => route.params.id as string | number)
+// Use order code from param
+const orderCodeParam = computed(() => route.params.code as string)
 
 const loading = ref(false)
 const detail = ref<OrderDetail | null>(null)
 const history = ref<OrderHistoryEvent[] | null>(null)
+const justCreated = computed(() => route.query.created === '1')
 
 function formatCurrency(v?: number | null) {
   if (v == null || isNaN(v)) return '0đ'
@@ -33,12 +35,161 @@ const productTotalQuantity = computed(() => detail.value?.items.reduce((a, i) =>
 async function fetchData() {
   try {
     loading.value = true
-    const [d, h] = await Promise.all([
-      ordersService.getOrderById(orderId.value),
-      ordersService.getOrderHistory(orderId.value)
+    const rawCode = orderCodeParam.value || ''
+    // Remove leading # if present; backend accepts both numeric id or order code like HD000081
+    const codeForApi = rawCode.replace(/^#/, '')
+    // Fetch raw order + history (history may still be separate endpoint)
+    const [orderRes, historyRes] = await Promise.all([
+      ordersService.getOrderById(codeForApi),
+      ordersService.getOrderHistory(codeForApi)
     ])
-    if (d && 'success' in d) detail.value = d.data as OrderDetail | null
-    if (h && 'success' in h) history.value = h.data as OrderHistoryEvent[] | null
+    if (orderRes && 'success' in orderRes && (orderRes as OrderDetailRawResponse).success && orderRes.data) {
+      interface RawOrderItem {
+        id: number | string
+        productId: number | string
+        productName: string
+        productImage?: string | null
+        productPrice: number
+        quantity: number
+        total?: number
+        rowTotal?: number
+      }
+      interface RawOrder {
+        id: number | string
+        createdOn: string
+        orderStatusString?: string
+        orderItems?: RawOrderItem[]
+        subtotal?: number
+        discountAmount?: number
+        shippingAmount?: number
+        orderTotal?: number
+        paymentMethod?: string | null
+        shippingMethod?: string | null
+        orderNote?: string | null
+      }
+      interface RawCustomer {
+        customerId: string | number
+        name: string
+        phone?: string | null
+        email?: string | null
+      }
+      interface RawAddress {
+        addressLine1?: string
+        addressLine2?: string
+        city?: string
+        districtName?: string | null
+        stateOrProvinceName?: string | null
+        countryId?: string | null
+        phone?: string | null
+        zipCode?: string | null
+      }
+      interface RawPayload {
+        order: RawOrder
+  customerInfo?: { customer?: RawCustomer; address?: RawAddress }
+      }
+      const payload = orderRes.data as unknown as RawPayload
+      const o = payload.order
+      const c = payload.customerInfo?.customer
+      const addr = payload.customerInfo?.address
+      if (o) {
+        interface MappedItem {
+          id: number | string
+          productId: number | string
+          productName: string
+          quantity: number
+          unitPrice: number
+          lineTotal: number
+          thumbnailImageUrl?: string | null
+        }
+        let items: MappedItem[] = []
+        if (Array.isArray(o.orderItems)) {
+          items = o.orderItems.map((it): MappedItem => ({
+            id: it.id,
+            productId: it.productId,
+            productName: it.productName,
+            quantity: it.quantity,
+            unitPrice: it.productPrice,
+            lineTotal: (it.total ?? it.rowTotal ?? (it.productPrice * it.quantity)) || 0,
+            thumbnailImageUrl: it.productImage || null
+          }))
+        }
+        const totalQty = items.reduce((a, i) => a + (i.quantity || 0), 0)
+        const mappedCustomer = c
+          ? {
+              id: c.customerId,
+              name: c.name,
+              phone: c.phone || null,
+              email: c.email || null
+            }
+          : null
+        const mappedAddress = addr
+          ? {
+              contactName: c?.name || null,
+              phoneNumber: addr.phone || null,
+              email: c?.email || null,
+              addressLine1: addr.addressLine1 || null,
+              addressLine2: addr.addressLine2 || null,
+              country: addr.countryId || null,
+              stateOrProvince: addr.stateOrProvinceName || null,
+              district: addr.districtName || null,
+              city: addr.city || null,
+              zipCode: addr.zipCode || null
+            }
+          : null
+        detail.value = {
+          id: o.id,
+          orderCode: rawCode || `#${o.id}`,
+          status: o.orderStatusString || '',
+          processStatus: o.orderStatusString || '',
+          paymentStatus: o.orderStatusString || null,
+          createdOn: o.createdOn,
+          items,
+          customer: mappedCustomer,
+          address: mappedAddress,
+          payment: {
+            totalQuantity: totalQty,
+            subTotal: o.subtotal || 0,
+            discountAmount: o.discountAmount || 0,
+            shippingFeeAmount: o.shippingAmount || 0,
+            orderTotal: o.orderTotal || 0,
+            paidAmount: o.orderTotal || 0, // backend chưa trả paidAmount cụ thể
+            paymentMethod: o.paymentMethod || null,
+            paymentStatus: o.orderStatusString || null
+          },
+          note: o.orderNote || null,
+          meta: {
+            sourceName: null,
+            branchName: null,
+            staffInCharge: null,
+            creatorName: null,
+            orderDate: o.createdOn,
+            scheduledDate: null,
+            shippingMethod: o.shippingMethod || null,
+            deliveryOption: null,
+            expectedDeliveryDate: null,
+            tags: null
+          },
+          history: []
+        }
+      }
+    }
+    if (historyRes && 'success' in historyRes) {
+      const hr = historyRes as OrderHistoryListResponse
+      if (hr.success && hr.data) {
+  history.value = hr.data.items.map(h => ({
+          id: h.id,
+          createdOn: h.createdOn,
+          actorName: null,
+          message: h.note || h.newStatusText || 'Cập nhật trạng thái',
+          meta: {
+            oldStatus: h.oldStatusText,
+            newStatus: h.newStatusText
+          }
+        }))
+      } else {
+        history.value = []
+      }
+    }
   } finally {
     loading.value = false
   }
@@ -48,9 +199,9 @@ onMounted(fetchData)
 </script>
 
 <template>
-  <UDashboardPanel :id="`order-${orderId}`">
+  <UDashboardPanel :id="`order-${orderCodeParam}`">
     <template #header>
-      <UDashboardNavbar :title="detail?.orderCode || 'Đơn hàng'">
+      <UDashboardNavbar :title="detail?.orderCode || orderCodeParam || 'Đơn hàng'">
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
@@ -68,6 +219,34 @@ onMounted(fetchData)
     </template>
 
     <template #body>
+      <div
+        v-if="justCreated && detail"
+        class="mb-4 border border-green-200 bg-green-50 text-green-700 rounded px-4 py-3 text-sm flex items-start justify-between gap-4"
+      >
+        <div>
+          <p>
+            Đơn hàng <strong>{{ detail.orderCode }}</strong> đã được tạo thành công
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <UButton
+            color="primary"
+            size="xs"
+            variant="solid"
+            :to="'/orders/create'"
+          >
+            Tạo đơn hàng khác
+          </UButton>
+          <UButton
+            color="neutral"
+            size="xs"
+            variant="ghost"
+            @click="() => { (route.query as any).created = undefined }"
+          >
+            Đóng
+          </UButton>
+        </div>
+      </div>
       <div v-if="loading" class="p-6 text-center text-sm text-gray-500">
         Đang tải...
       </div>
@@ -75,14 +254,11 @@ onMounted(fetchData)
         Không tìm thấy đơn hàng.
       </div>
       <div v-else class="space-y-6">
-        <!-- Status timeline row -->
         <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
           <div class="xl:col-span-9 space-y-6">
-            <!-- Status timeline card -->
             <UCard>
               <BaseCardHeader title="Trạng thái" />
               <div class="mt-4 flex items-center flex-wrap gap-4 text-sm">
-                <!-- Simplified timeline -->
                 <div
                   v-for="(s, idx) in ['Đặt hàng', 'Đã xác nhận', 'Đã xử lý', 'Giao hàng', 'Hoàn thành']"
                   :key="s"
@@ -95,7 +271,6 @@ onMounted(fetchData)
               </div>
             </UCard>
 
-            <!-- Products card -->
             <UCard>
               <BaseCardHeader title="Đã xử lý giao hàng" />
               <div class="mt-4 overflow-x-auto">
@@ -155,7 +330,6 @@ onMounted(fetchData)
               </div>
             </UCard>
 
-            <!-- Payment summary card -->
             <UCard>
               <BaseCardHeader title="Đã thanh toán" />
               <div class="mt-4 text-sm space-y-2">
@@ -174,15 +348,13 @@ onMounted(fetchData)
               </div>
             </UCard>
 
-            <!-- Invoice status card -->
             <UCard>
               <BaseCardHeader title="Hóa đơn điện tử" />
-                <div class="mt-4 text-sm text-amber-600">
-                  Chưa yêu cầu hóa đơn điện tử
-                </div>
+              <div class="mt-4 text-sm text-amber-600">
+                Chưa yêu cầu hóa đơn điện tử
+              </div>
             </UCard>
 
-            <!-- History card -->
             <UCard>
               <BaseCardHeader title="Lịch sử đơn hàng" />
               <div class="mt-4 text-sm">
@@ -219,7 +391,6 @@ onMounted(fetchData)
             </UCard>
           </div>
 
-          <!-- Right side column -->
           <div class="xl:col-span-3 space-y-6">
             <UCard>
               <BaseCardHeader title="Nguồn đơn" />

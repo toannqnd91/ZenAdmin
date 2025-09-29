@@ -13,14 +13,14 @@ export default defineAppConfig({
     preference: 'light'
   },
   settings: {
-    title: 'Cơ Khí Tam Long',
-    description: 'Cơ Khí Tam Long - Nơi cung cấp các sản phẩm chất lượng cao',
+    title: 'Phụ Kiện Quỳnh Đạt',
+    description: 'Phụ Kiện Quỳnh Đạt - Nơi cung cấp các sản phẩm chất lượng cao',
     favicon: '/favicon.png',
     team: {
-      label: 'Cơ Khí Tam Long',
+      label: 'Phụ Kiện Quỳnh Đạt',
       avatar: {
         src: '',
-        alt: 'Cơ Khí Tam Long'
+        alt: 'Phụ Kiện Quỳnh Đạt'
       }
     }
   }
