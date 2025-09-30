@@ -343,11 +343,10 @@ function onTabChange(val: string) {
       <!-- Summary Card (formula style) -->
       <UPageCard variant="soft" class="bg-white rounded-lg">
         <div
-          class="flex flex-wrap items-start gap-x-10 gap-y-6 text-[14px] leading-tight
-                 md:items-center"
+          class="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-6 lg:gap-10 text-[13px] sm:text-[14px] leading-tight"
         >
           <!-- Opening Balance -->
-          <div class="flex flex-col justify-center min-w-[110px] shrink-0">
+          <div class="flex flex-col justify-center min-w-[90px] sm:min-w-[110px] shrink-0">
             <div class="text-[14px] text-gray-900 font-medium flex items-center gap-1">
               <span>Quỹ đầu kỳ</span>
               <UTooltip text="Số dư đầu kỳ" />
@@ -357,11 +356,11 @@ function onTabChange(val: string) {
             </div>
           </div>
           <!-- + separator -->
-          <div class="hidden md:inline-flex self-center items-center text-sm font-medium text-gray-400 px-2">
+          <div class="inline-flex shrink-0 self-center items-center text-sm font-medium text-gray-400 px-1 sm:px-2">
             +
           </div>
           <!-- Total Receipts -->
-          <div class="flex flex-col justify-center min-w-[120px] shrink-0">
+          <div class="flex flex-col justify-center min-w-[100px] sm:min-w-[120px] shrink-0">
             <div class="text-[14px] text-gray-900 font-medium flex items-center gap-1">
               <span>Tổng thu</span>
               <UTooltip text="Tổng số tiền đã thu" />
@@ -371,11 +370,11 @@ function onTabChange(val: string) {
             </div>
           </div>
           <!-- - separator -->
-          <div class="hidden md:inline-flex self-center items-center text-sm font-medium text-gray-400 px-2">
+          <div class="inline-flex shrink-0 self-center items-center text-sm font-medium text-gray-400 px-1 sm:px-2">
             -
           </div>
           <!-- Total Payments -->
-          <div class="flex flex-col justify-center min-w-[120px] shrink-0">
+          <div class="flex flex-col justify-center min-w-[100px] sm:min-w-[120px] shrink-0">
             <div class="text-[14px] text-gray-900 font-medium flex items-center gap-1">
               <span>Tổng chi</span>
               <UTooltip text="Tổng số tiền đã chi" />
@@ -385,11 +384,11 @@ function onTabChange(val: string) {
             </div>
           </div>
           <!-- = separator -->
-          <div class="hidden md:inline-flex self-center items-center text-sm font-medium text-gray-400 px-2">
+          <div class="inline-flex shrink-0 self-center items-center text-sm font-medium text-gray-400 px-1 sm:px-2">
             =
           </div>
           <!-- Closing Balance -->
-          <div class="flex flex-col justify-center min-w-[120px] shrink-0 order-first w-full md:order-none md:w-auto">
+          <div class="flex flex-col justify-center min-w-[100px] sm:min-w-[120px] shrink-0">
             <div class="text-[14px] text-gray-900 font-medium flex items-center gap-1">
               <span>Tồn quỹ</span>
               <UTooltip text="Số dư cuối cùng sau thu - chi" />
@@ -400,16 +399,16 @@ function onTabChange(val: string) {
           </div>
           <!-- Cash / Bank split -->
           <div
-            class="bg-sky-50 rounded-md px-6 py-4 flex flex-col justify-center min-w-[240px]
-                   w-full md:w-auto md:ml-auto"
+            class="bg-sky-50 rounded-md px-4 sm:px-5 py-4 flex flex-col justify-center w-full sm:w-auto shrink-0 min-w-0 max-w-[320px] sm:ml-auto mt-4 sm:mt-0 overflow-hidden"
           >
-            <div class="flex items-center justify-between gap-10">
+            <!-- Each row wraps if needed without increasing panel width -->
+            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 min-w-0">
               <span class="text-[14px] text-gray-900 font-medium">Quỹ tiền mặt:</span>
-              <span class="text-[16px] font-semibold">{{ formatCurrency(cashBalance) }}</span>
+              <span class="text-[16px] font-semibold text-right min-w-0">{{ formatCurrency(cashBalance) }}</span>
             </div>
-            <div class="flex items-center justify-between gap-10 mt-2">
+            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 mt-2 min-w-0">
               <span class="text-[14px] text-gray-900 font-medium">Quỹ tiền gửi:</span>
-              <span class="text-[16px] font-semibold">{{ formatCurrency(bankBalance) }}</span>
+              <span class="text-[16px] font-semibold text-right min-w-0">{{ formatCurrency(bankBalance) }}</span>
             </div>
           </div>
         </div>
@@ -554,5 +553,7 @@ function onTabChange(val: string) {
 <style scoped>
 /* Minor polish: lighter header text */
 thead th { color: #4b5563; }
+
+/* Summary bar now wraps on very small screens; spacing tightens via responsive gap utilities */
 </style>
 
