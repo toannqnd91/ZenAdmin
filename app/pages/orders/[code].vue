@@ -256,8 +256,10 @@ onMounted(fetchData)
       <div v-else class="space-y-6">
         <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
           <div class="xl:col-span-9 space-y-6">
-            <UCard>
-              <BaseCardHeader title="Trạng thái" />
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>
+                Trạng thái
+              </BaseCardHeader>
               <div class="mt-4 flex items-center flex-wrap gap-4 text-sm">
                 <div
                   v-for="(s, idx) in ['Đặt hàng', 'Đã xác nhận', 'Đã xử lý', 'Giao hàng', 'Hoàn thành']"
@@ -269,11 +271,13 @@ onMounted(fetchData)
                   <div v-if="idx < 4" class="mx-4 h-px w-10 bg-gray-300" />
                 </div>
               </div>
-            </UCard>
+            </UPageCard>
 
-            <UCard>
-              <BaseCardHeader title="Đã xử lý giao hàng" />
-              <div class="mt-4 overflow-x-auto">
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>
+                Đã xử lý giao hàng
+              </BaseCardHeader>
+              <div class="-mx-6 mt-4 overflow-x-auto">
                 <table class="w-full text-sm">
                   <thead>
                     <tr class="text-left text-gray-500">
@@ -328,10 +332,12 @@ onMounted(fetchData)
                   </tbody>
                 </table>
               </div>
-            </UCard>
+            </UPageCard>
 
-            <UCard>
-              <BaseCardHeader title="Đã thanh toán" />
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>
+                Đã thanh toán
+              </BaseCardHeader>
               <div class="mt-4 text-sm space-y-2">
                 <div class="flex justify-between">
                   <span>Tổng tiền hàng</span>
@@ -346,17 +352,21 @@ onMounted(fetchData)
                   <span>{{ formatCurrency(detail.payment?.paidAmount) }}</span>
                 </div>
               </div>
-            </UCard>
+            </UPageCard>
 
-            <UCard>
-              <BaseCardHeader title="Hóa đơn điện tử" />
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>
+                Hóa đơn điện tử
+              </BaseCardHeader>
               <div class="mt-4 text-sm text-amber-600">
                 Chưa yêu cầu hóa đơn điện tử
               </div>
-            </UCard>
+            </UPageCard>
 
-            <UCard>
-              <BaseCardHeader title="Lịch sử đơn hàng" />
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>
+                Lịch sử đơn hàng
+              </BaseCardHeader>
               <div class="mt-4 text-sm">
                 <div v-if="!history || !history.length" class="text-gray-500">
                   Không có lịch sử.
@@ -388,19 +398,23 @@ onMounted(fetchData)
                   </li>
                 </ul>
               </div>
-            </UCard>
+            </UPageCard>
           </div>
 
           <div class="xl:col-span-3 space-y-6">
-            <UCard>
-              <BaseCardHeader title="Nguồn đơn" />
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>
+                Nguồn đơn
+              </BaseCardHeader>
               <div class="mt-4 text-sm">
                 {{ detail.meta?.sourceName || 'POS' }}
               </div>
-            </UCard>
+            </UPageCard>
 
-            <UCard>
-              <BaseCardHeader title="Khách hàng" />
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>
+                Khách hàng
+              </BaseCardHeader>
               <div class="mt-4 text-sm space-y-2">
                 <div>
                   <div class="font-medium text-primary-600 cursor-pointer">
@@ -426,10 +440,12 @@ onMounted(fetchData)
                   {{ detail.customer?.phone }}
                 </div>
               </div>
-            </UCard>
+            </UPageCard>
 
-            <UCard>
-              <BaseCardHeader title="Ghi chú" />
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>
+                Ghi chú
+              </BaseCardHeader>
               <div
                 v-if="!detail.note"
                 class="mt-4 text-sm text-gray-500"
@@ -442,10 +458,12 @@ onMounted(fetchData)
               >
                 {{ detail.note }}
               </div>
-            </UCard>
+            </UPageCard>
 
-            <UCard>
-              <BaseCardHeader title="Thông tin bổ sung" />
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>
+                Thông tin bổ sung
+              </BaseCardHeader>
               <div class="mt-4 text-xs space-y-2 text-gray-600">
                 <div><span class="font-medium text-gray-700">Bán tại chi nhánh:</span> {{ detail.meta?.branchName || 'Cửa hàng chính' }}</div>
                 <div><span class="font-medium text-gray-700">Nhân viên phụ trách:</span> {{ detail.meta?.staffInCharge || '---' }}</div>
@@ -455,16 +473,16 @@ onMounted(fetchData)
                 <div>
                   <span class="font-medium text-gray-700">Tag:</span>
                   <div class="mt-1">
-                    <input
-                      type="text"
+                    <UInput
                       disabled
+                      size="xs"
                       placeholder="Tìm kiếm hoặc thêm mới tag"
-                      class="w-full text-xs px-2 py-1 border rounded bg-gray-50"
-                    >
+                      class="w-full text-xs"
+                    />
                   </div>
                 </div>
               </div>
-            </UCard>
+            </UPageCard>
           </div>
         </div>
       </div>
