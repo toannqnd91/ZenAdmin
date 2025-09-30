@@ -175,7 +175,7 @@ function onBarClick(evt: ChartClickEvent) {
 </script>
 
 <template>
-  <div class="bg-white rounded-md p-5 border border-dashed border-gray-200">
+  <div class="bg-white rounded-md p-5 border-gray-200">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
       <div class="font-semibold text-base">
         {{ title }}

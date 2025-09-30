@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import { customersService } from '@/services/customers.service'
-import { locationService } from '@/services/location.service'
+import { useLocations } from '@/composables/useLocations'
 
 interface CustomerDraft {
   firstName: string
@@ -24,12 +24,10 @@ interface CustomerDraft {
 interface CreatedCustomerMinimal { id?: number | string; customerCode?: string }
 
 const props = defineProps<{ modelValue: boolean }>()
-interface SavedCustomerPayload {
-  id: string | number
-  name: string
-  phone: string
-  code: string
-}
+interface SavedCustomerPayload { id: string | number; name: string; phone: string; code: string }
+
+// Location selections via shared composable
+interface GenericLocationItem { id?: number | string; name?: string; code?: string | number; division_type?: string; [k: string]: unknown }
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'saved', customer: SavedCustomerPayload): void
@@ -56,50 +54,23 @@ const draft = ref<CustomerDraft>({
   country: 'Vietnam',
   zipcode: ''
 })
-
 const showExtraInfo = ref(false)
 const error = ref('')
-
-// Location selections
-interface GenericItem {
-  id?: number | string
-  name?: string
-  code?: string
-  division_type?: string
-  [key: string]: unknown
-}
-const selectedProvince = ref<GenericItem | null>(null)
-const selectedWard = ref<GenericItem | null>(null)
+const selectedProvince = ref<GenericLocationItem | null>(null)
+const selectedWard = ref<GenericLocationItem | null>(null)
 const selectedProvinceCode = computed(() => {
   const code = selectedProvince.value?.code
   return (typeof code === 'string' || typeof code === 'number') ? code : null
 })
-
-async function fetchProvinces(search: string) {
-  try {
-    const res = await locationService.getProvinces()
-    const list = Array.isArray(res?.data) ? res.data : []
-    const q = (search || '').toLowerCase()
-  const mapped: GenericItem[] = list.map((p: any) => ({ id: p.id, name: p.name, code: p.code, division_type: p.division_type }))
-    return q ? mapped.filter(x => String(x.name).toLowerCase().includes(q)) : mapped
-  } catch {
-    return []
-  }
+const { getProvinces, getWards } = useLocations()
+async function fetchProvinces(search: string): Promise<GenericLocationItem[]> {
+  return getProvinces(search) as Promise<GenericLocationItem[]>
 }
-async function fetchWards(search: string) {
-  try {
-    const pcode = selectedProvinceCode.value
-    if (!pcode) return []
-    const res = await locationService.getWardsByProvinceCode(pcode as number | string)
-    const list = Array.isArray(res?.data) ? res.data : []
-    const q = (search || '').toLowerCase()
-  const mapped: GenericItem[] = list.map((w: any) => ({ id: w.id, name: w.name, code: w.code, division_type: w.division_type }))
-    return q ? mapped.filter(x => String(x.name).toLowerCase().includes(q)) : mapped
-  } catch {
-    return []
-  }
+async function fetchWards(search: string): Promise<GenericLocationItem[]> {
+  if (!selectedProvinceCode.value) return []
+  return getWards(search, selectedProvinceCode.value) as Promise<GenericLocationItem[]>
 }
-function onSelectProvince(item: GenericItem) {
+function onSelectProvince(item: GenericLocationItem) {
   selectedProvince.value = item
   draft.value.shipProvince = String(item?.name ?? '')
   selectedWard.value = null
@@ -111,7 +82,7 @@ function onClearProvince() {
   selectedWard.value = null
   draft.value.shipWard = ''
 }
-function onSelectWard(item: GenericItem) {
+function onSelectWard(item: GenericLocationItem) {
   selectedWard.value = item
   draft.value.shipWard = String(item?.name ?? '')
 }
@@ -261,7 +232,12 @@ function close() {
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-600 mb-1">Email</label>
-              <input v-model="draft.email" type="email" class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Nhập email">
+              <input
+                v-model="draft.email"
+                type="email"
+                class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Nhập email"
+              >
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-600 mb-1">Số điện thoại <span class="text-red-500">*</span></label>
@@ -290,63 +266,156 @@ function close() {
             <button type="button" class="text-primary-600 text-sm font-medium flex items-center gap-1" @click="showExtraInfo=!showExtraInfo">
               <span v-if="!showExtraInfo">Thông tin thêm</span>
               <span v-else>Ẩn thông tin thêm</span>
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path :d="showExtraInfo ? 'm18 15-6-6-6 6' : 'm6 9 6 6 6-6'" />
               </svg>
             </button>
             <div v-if="showExtraInfo" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Công ty</label>
-                <input v-model="draft.company" type="text" class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Nhập tên công ty">
+                <input
+                  v-model="draft.company"
+                  type="text"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nhập tên công ty"
+                >
               </div>
             </div>
           </div>
           <div>
-            <h4 class="text-base font-semibold mb-4">Địa chỉ nhận hàng</h4>
+            <h4 class="text-base font-semibold mb-4">
+              Địa chỉ nhận hàng
+            </h4>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Họ</label>
-                <input v-model="draft.shipLastName" type="text" class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Nhập họ">
+                <input
+                  v-model="draft.shipLastName"
+                  type="text"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nhập họ"
+                >
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Tên</label>
-                <input v-model="draft.shipFirstName" type="text" class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Nhập tên">
+                <input
+                  v-model="draft.shipFirstName"
+                  type="text"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nhập tên"
+                >
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Công ty</label>
-                <input v-model="draft.shipCompany" type="text" class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Nhập tên công ty">
+                <input
+                  v-model="draft.shipCompany"
+                  type="text"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nhập tên công ty"
+                >
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Số điện thoại</label>
-                <input v-model="draft.shipPhone" type="text" class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Nhập số điện thoại">
+                <input
+                  v-model="draft.shipPhone"
+                  type="text"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nhập số điện thoại"
+                >
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Postal/Zipcode</label>
-                <input v-model="draft.zipcode" type="text" class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Nhập Postal/Zipcode">
+                <input
+                  v-model="draft.zipcode"
+                  type="text"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nhập Postal/Zipcode"
+                >
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Quốc gia</label>
-                <input v-model="draft.country" type="text" class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-100 cursor-not-allowed" placeholder="Quốc gia" readonly>
+                <input
+                  v-model="draft.country"
+                  type="text"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-100 cursor-not-allowed"
+                  placeholder="Quốc gia"
+                  readonly
+                >
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Tỉnh/Thành phố</label>
-                <RemoteSearchSelect v-model="selectedProvince" :fetch-fn="fetchProvinces" placeholder="Chọn Tỉnh/Thành phố" label-field="name" clearable searchable :dropdown-max-height="320" :full-width="true" search-in-trigger @select="onSelectProvince" @clear="onClearProvince" />
+                <RemoteSearchSelect
+                  v-model="selectedProvince"
+                  :fetch-fn="fetchProvinces"
+                  placeholder="Chọn Tỉnh/Thành phố"
+                  label-field="name"
+                  clearable
+                  searchable
+                  :dropdown-max-height="320"
+                  :full-width="true"
+                  search-in-trigger
+                  @select="onSelectProvince"
+                  @clear="onClearProvince"
+                />
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Phường/Xã</label>
-                <RemoteSearchSelect v-model="selectedWard" :fetch-fn="fetchWards" :disabled="!selectedProvince" placeholder="Chọn Phường/Xã" label-field="name" clearable searchable :dropdown-max-height="320" :full-width="true" search-in-trigger @select="onSelectWard" @clear="onClearWard" />
+                <RemoteSearchSelect
+                  v-model="selectedWard"
+                  :fetch-fn="fetchWards"
+                  :disabled="!selectedProvince"
+                  placeholder="Chọn Phường/Xã"
+                  label-field="name"
+                  clearable
+                  searchable
+                  :dropdown-max-height="320"
+                  :full-width="true"
+                  search-in-trigger
+                  @select="onSelectWard"
+                  @clear="onClearWard"
+                />
               </div>
               <div class="md:col-span-2">
                 <label class="block text-xs font-medium text-gray-600 mb-1">Địa chỉ cụ thể</label>
-                <input v-model="draft.shipAddress" type="text" class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Nhập địa chỉ cụ thể">
+                <input
+                  v-model="draft.shipAddress"
+                  type="text"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nhập địa chỉ cụ thể"
+                >
               </div>
             </div>
           </div>
-          <p v-if="error" class="text-xs text-red-600">{{ error }}</p>
+          <p
+            v-if="error"
+            class="text-xs text-red-600"
+          >
+            {{ error }}
+          </p>
         </div>
         <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 flex-shrink-0">
-          <button type="button" class="h-9 px-4 rounded-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50" @click="close">Hủy</button>
-          <button type="button" class="h-9 px-5 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700" @click="save">Lưu</button>
+          <button
+            type="button"
+            class="h-9 px-4 rounded-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50"
+            @click="close"
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            class="h-9 px-5 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700"
+            @click="save"
+          >
+            Lưu
+          </button>
         </div>
       </div>
     </div>

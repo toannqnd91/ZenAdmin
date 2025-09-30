@@ -3,6 +3,7 @@ export const API_ENDPOINTS = {
   // Warehouse endpoints
   WAREHOUSES: '/Warehouse',
   WAREHOUSE_DEFAULT: '/Warehouse/default',
+  WAREHOUSE_CREATE: '/Warehouse',
   // File endpoints
   UPLOAD_FILE: '/File/Upload',
   UPLOAD_MULTIPLE_FILES: '/File/UploadMultiple',
@@ -85,7 +86,23 @@ export const API_ENDPOINTS = {
 
   // Brand endpoints
   BRANDS: '/brands',
-  BRAND_BY_ID: (id: number) => `/brands/${id}`
+  BRAND_BY_ID: (id: number) => `/brands/${id}`,
+  // Cash Book endpoints
+  CASHBOOK_FILTER: '/cashbook/filter',
+
+  // Legacy duplicates (migrating away from getApiEndpoints())
+  DASHBOARD_MENU_LEGACY: '/DashboardMenu',
+  LOGIN_LEGACY: '/Identity/login',
+  REFRESH_TOKEN_LEGACY: '/Identity/refresh',
+  NEWS_CATEGORIES_LEGACY: '/NewsCategories',
+  NEWS_LEGACY: '/News',
+  PRODUCT_CATEGORIES_LEGACY: '/product-categories',
+  PRODUCTS_LEGACY: '/Products',
+  UPLOAD_FILE_LEGACY: '/File/Upload',
+  UPLOAD_FILES_LEGACY: '/File/UploadMultiple',
+  DELETE_FILE_LEGACY: (fileName: string) => `/File/${fileName}`,
+  CAROUSEL_WIDGET_LEGACY: '/CarouselWidget',
+  CAROUSEL_WIDGET_BY_ID_LEGACY: (id: number) => `/CarouselWidget/${id}`
 } as const
 
 // Backward compatibility exports (deprecated)
@@ -99,23 +116,24 @@ export const getImageBaseUrl = () => {
   return config.public.imageBaseUrl
 }
 
+/**
+ * @deprecated Use API_ENDPOINTS directly. This helper will be removed once all call sites migrate.
+ */
 export const getApiEndpoints = () => {
   const config = useRuntimeConfig()
   const apiBaseUrl = config.public.apiBaseUrl
   return {
-    dashboardMenu: `${apiBaseUrl}/DashboardMenu`,
-    login: `${apiBaseUrl}/Identity/login`,
-    refreshToken: `${apiBaseUrl}/Identity/refresh`,
-    newsCategories: `${apiBaseUrl}/NewsCategories`,
-    news: `${apiBaseUrl}/News`,
-    productCategories: `${apiBaseUrl}/product-categories`,
-    products: `${apiBaseUrl}/Products`,
-    // File endpoints
-    uploadFile: `${apiBaseUrl}/File/Upload`,
-    uploadFiles: `${apiBaseUrl}/File/UploadMultiple`,
+    dashboardMenu: `${apiBaseUrl}${API_ENDPOINTS.DASHBOARD_MENU}`,
+    login: `${apiBaseUrl}${API_ENDPOINTS.LOGIN}`,
+    refreshToken: `${apiBaseUrl}${API_ENDPOINTS.REFRESH_TOKEN}`,
+    newsCategories: `${apiBaseUrl}${API_ENDPOINTS.NEWS_CATEGORIES}`,
+    news: `${apiBaseUrl}${API_ENDPOINTS.NEWS}`,
+    productCategories: `${apiBaseUrl}${API_ENDPOINTS.PRODUCT_CATEGORIES_LEGACY}`,
+    products: `${apiBaseUrl}${API_ENDPOINTS.PRODUCTS_LEGACY}`,
+    uploadFile: `${apiBaseUrl}${API_ENDPOINTS.UPLOAD_FILE}`,
+    uploadFiles: `${apiBaseUrl}${API_ENDPOINTS.UPLOAD_MULTIPLE_FILES}`,
     deleteFile: (fileName: string) => `${apiBaseUrl}/File/${fileName}`,
-    // Widget endpoints
-    carouselWidget: `${apiBaseUrl}/CarouselWidget`,
-    carouselWidgetById: (id: number) => `${apiBaseUrl}/CarouselWidget/${id}`
+    carouselWidget: `${apiBaseUrl}${API_ENDPOINTS.CAROUSEL_WIDGET}`,
+    carouselWidgetById: (id: number) => `${apiBaseUrl}${API_ENDPOINTS.CAROUSEL_WIDGET_BY_ID(id)}`
   }
 }

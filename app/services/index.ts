@@ -10,6 +10,7 @@ export { widgetsService, WidgetsService } from './widgets.service'
 export { orderSourceService, OrderSourceService } from './order-source.service'
 export { customersService, CustomersService } from './customers.service'
 export { ordersService, OrdersService } from './orders.service'
+export { cashBookService } from './cashbook.service'
 
 // Export types
 export type {
@@ -45,3 +46,11 @@ export type {
   CreatePosOrderRequest,
   CreatePosOrderItemRequest
 } from './orders.service'
+
+export type {
+  CashBookFilterRequest,
+  CashBookItem,
+  CashBookResponseData,
+  MethodBreakdownEntry,
+  DocumentKindBreakdown
+} from './cashbook.service'

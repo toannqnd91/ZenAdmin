@@ -1,8 +1,10 @@
-
 <script setup lang="ts">
+/* eslint-disable vue/html-indent */
 import { ref, onMounted } from 'vue'
 import BaseTable from '@/components/base/BaseTable.vue'
-import { warehouseService, type WarehouseItem } from '@/services/warehouse.service'
+import { warehouseService } from '@/services/warehouse.service'
+import type { WarehouseItem } from '@/services/warehouse.service'
+import AddWarehouseModal from '@/components/AddWarehouseModal.vue'
 
 const loading = ref(false)
 const warehouses = ref<WarehouseItem[]>([])
@@ -16,8 +18,8 @@ const columns = [
     { key: 'totalStock', label: 'Số lượng tồn kho' }
 ]
 
-// Cấu hình chiều rộng các cột theo thứ tự columns
-const colWidths: string[] = [null, '160px', '180px', '180px']
+// Cấu hình chiều rộng các cột theo thứ tự columns (chuỗi rỗng cho cột linh hoạt)
+const colWidths: string[] = ['', '160px', '180px', '180px']
 
 async function fetchWarehouses() {
     loading.value = true
@@ -31,12 +33,27 @@ async function fetchWarehouses() {
 }
 
 onMounted(fetchWarehouses)
+
+// Modal state
+const showAddWarehouseModal = ref(false)
+
+// Handler: open modal
+function onAddWarehouse() {
+    showAddWarehouseModal.value = true
+}
+
+function onWarehouseSaved(w: { id: string | number, name: string }) {
+    // Prepend new warehouse then refetch for full data (createdOn, counts)
+    warehouses.value = [{ id: Number(w.id), name: w.name } as WarehouseItem, ...warehouses.value]
+    // Fire and forget refresh
+    fetchWarehouses()
+}
 </script>
 
 <template>
     <UDashboardPanel id="warehouses" class="flex flex-col h-full">
         <template #header>
-            <UDashboardNavbar title="Kho hàng">
+            <UDashboardNavbar title="Chi nhánh / kho hàng">
                 <template #leading>
                     <UDashboardSidebarCollapse />
                 </template>
@@ -48,12 +65,13 @@ onMounted(fetchWarehouses)
                 <div class="flex-1 min-h-0">
                     <BaseTable
                         v-model:row-selection="rowSelection"
-                        :q="q"
+                        v-model:q="q"
                         :data="warehouses"
                         :loading="loading"
                         :columns="columns"
                         :col-widths="colWidths"
-                        title="Danh sách kho"
+                        title="Danh sách chi nhánh"
+                        :add-button="{ label: 'Thêm chi nhánh', handler: onAddWarehouse }"
                     >
                         <template #column-name="{ item }">
                             <div class="flex items-center gap-2">
@@ -76,4 +94,5 @@ onMounted(fetchWarehouses)
             </div>
         </template>
     </UDashboardPanel>
+    <AddWarehouseModal v-model="showAddWarehouseModal" @saved="onWarehouseSaved" />
 </template>
