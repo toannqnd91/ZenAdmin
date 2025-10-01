@@ -82,6 +82,9 @@ interface WarehouseLike {
 const splitLine = ref(false)
 const showProductSearch = ref(false)
 const productList = ref<ProductSearchItem[]>([])
+// Product search term (by name, SKU, barcode). Will be sent as Name in request body
+const productSearchTerm = ref('')
+let productSearchDebounce: number | null = null
 const loadingProducts = ref(false)
 const loadingMoreProducts = ref(false)
 const perPage = 15
@@ -462,7 +465,8 @@ async function fetchProducts(reset = false) {
   else loadingMoreProducts.value = true
   try {
     const res = await productService.getProducts({
-      search: undefined,
+      // Backend expects Search.QueryObject.Name -> map via productService.getProducts({ search: term })
+      search: productSearchTerm.value.trim() || undefined,
       hasOptions: false,
       pagination: { start: productPage.value * perPage, number: perPage },
       sort: { field: 'Id', reverse: true }
@@ -774,6 +778,15 @@ onMounted(async () => {
     // silently ignore profile errors; field will stay blank
   }
 })
+
+// Debounce search term changes to refetch products
+watch(productSearchTerm, () => {
+  if (!showProductSearch.value) return
+  if (productSearchDebounce) window.clearTimeout(productSearchDebounce)
+  productSearchDebounce = window.setTimeout(() => {
+    fetchProducts(true)
+  }, 350)
+})
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleF3)
   document.removeEventListener('mousedown', handleClickOutside)
@@ -950,6 +963,7 @@ function onAddCustomer() {
                 <div class="flex-1">
                   <input
                     ref="mainProductInputRef"
+                    v-model="productSearchTerm"
                     type="text"
                     :class="[
                       'w-full h-9 px-3 rounded-md border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500',
@@ -1464,7 +1478,7 @@ function onAddCustomer() {
                     </button>
                   </div>
                 </div>
-            </div>
+              </div>
             </UPageCard>
 
             <!-- E-invoice card (moved to left) -->

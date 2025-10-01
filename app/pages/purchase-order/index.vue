@@ -1,6 +1,7 @@
 // ...existing code...
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import AddImportCostModal from '@/components/AddImportCostModal.vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
 import { productService } from '@/services/product.service'
@@ -91,7 +92,9 @@ async function fetchWarehousesSelect(search: string): Promise<GenericItem[]> {
     return []
   }
 }
-function warehouseDisplay(item: GenericItem) { return String(item.name || '') }
+function warehouseDisplay(item: GenericItem) {
+  return String(item.name || '')
+}
 function warehouseSubtitle(item: GenericItem) {
   return item.address ? String(item.address) : ''
 }
@@ -187,15 +190,12 @@ function handleF3(e: KeyboardEvent) {
 
 // Discount modal state
 const showDiscountModal = ref(false)
-// State for import cost modal
+// State for import cost modal (use component)
 const showImportCostModal = ref(false)
-const importCosts = ref<ImportCost[]>([{ name: '', value: 0 }])
+const importCostsDraft = ref<ImportCost[]>([])
 
 function openImportCostModal() {
   showImportCostModal.value = true
-}
-function closeImportCostModal() {
-  showImportCostModal.value = false
 }
 function handleF7(e: KeyboardEvent) {
   if (e.key === 'F7') {
@@ -204,19 +204,10 @@ function handleF7(e: KeyboardEvent) {
   }
 }
 
-function addImportCost() {
-  importCosts.value.push({ name: '', value: 0 })
-}
-function removeImportCost(idx: number) {
-  if (importCosts.value.length > 1) importCosts.value.splice(idx, 1)
-}
-const totalImportCost = computed(() => importCosts.value.reduce((sum, c) => sum + (Number(c.value) || 0), 0))
-
-function applyImportCosts() {
-  const filtered = importCosts.value.filter(c => c.name && c.name.trim() !== '')
-  appliedImportCosts.value = filtered.map(c => ({ name: c.name, value: Number(c.value) || 0 }))
-  importCost.value = appliedImportCosts.value.reduce((sum, c) => sum + c.value, 0)
-  closeImportCostModal()
+function onImportCostsSaved(costs: ImportCost[]) {
+  appliedImportCosts.value = costs.map(c => ({ name: c.name, value: Number(c.value) || 0 }))
+  importCost.value = appliedImportCosts.value.reduce((s, c) => s + c.value, 0)
+  importCostsDraft.value = appliedImportCosts.value
 }
 
 function handleF6(e: KeyboardEvent) {
@@ -299,67 +290,12 @@ onBeforeUnmount(() => {
     <template #body>
       <div class="w-full max-w-6xl mx-auto px-4 lg:px-6">
         <div class="flex flex-col lg:flex-row gap-6">
-      <!-- Modal chi phí nhập hàng (F7) -->
-      <div 
-        v-if="showImportCostModal" 
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
-        @click="closeImportCostModal"
-      >
-        <div 
-          class="bg-white rounded-lg w-full max-w-2xl p-6 relative no-shadow-modal"
-          style="box-shadow:none!important; border:none!important; outline:none!important;"
-          @click.stop
-        >
-          <div class="text-2xl font-semibold mb-6">Thêm chi phí nhập hàng</div>
-          <div v-for="(cost, idx) in importCosts" :key="idx" class="grid grid-cols-12 gap-4 mb-2">
-            <div class="col-span-6 flex flex-col justify-end">
-              <label v-if="idx === 0" class="block text-gray-700 font-medium mb-1">Tên chi phí<span class="text-red-500">*</span></label>
-              <input v-model="cost.name" type="text" class="w-full h-9 px-4 rounded-lg border border-gray-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-primary-500" :placeholder="'Nhập tên chi phí'">
-            </div>
-            <div class="col-span-5 flex flex-col justify-end">
-              <label v-if="idx === 0" class="block text-gray-700 font-medium mb-1">Giá trị</label>
-              <div class="relative">
-                <input v-model.number="cost.value" type="number" class="w-full h-9 px-4 pr-8 rounded-lg border border-gray-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-primary-500 text-right">
-                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₫</span>
-              </div>
-            </div>
-            <div class="col-span-1 flex items-end justify-center">
-              <button v-if="importCosts.length > 1" class="text-gray-400 hover:text-gray-600 text-xl flex items-center justify-center h-9" style="padding:0" @click="removeImportCost(idx)">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-          </div>
-          <button class="flex items-center text-primary-600 text-base font-medium mb-4" @click="addImportCost">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-            Thêm chi phí
-          </button>
-          <div class="bg-blue-50 rounded-lg px-6 py-4 mb-6">
-            <span class="font-medium text-base">Tổng chi phí:</span>
-            <span class="float-right font-semibold text-base">{{ totalImportCost.toLocaleString() }}₫</span>
-          </div>
-          <div class="flex justify-end gap-3 mt-6">
-            <UButton
-              label="Hủy"
-              color="primary"
-              variant="soft"
-              class="px-6 h-9 font-medium"
-              @click="closeImportCostModal"
-            />
-            <UButton
-              label="Áp dụng"
-              color="primary"
-              class="px-6 h-9 font-semibold"
-              @click="applyImportCosts"
-            />
-          </div>
-              <button
-                class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
-                @click="closeImportCostModal"
-              >
-                &times;
-              </button>
-        </div>
-      </div>
+          <!-- Import cost modal component -->
+          <AddImportCostModal
+            v-model="showImportCostModal"
+            :initial-costs="importCostsDraft"
+            @saved="onImportCostsSaved"
+          />
           <!-- Cột trái -->
           <div class="flex-1 space-y-6">
             <UPageCard variant="soft" class="bg-white rounded-lg">
@@ -566,6 +502,7 @@ onBeforeUnmount(() => {
                   :debounce="300"
                   :clearable="true"
                   class="w-full"
+                  :full-width="true"
                 >
                   <template #add-action>
                     <button
@@ -632,7 +569,7 @@ onBeforeUnmount(() => {
                   open-key="F5"
                   :debounce="250"
                   :clearable="true"
-                  class="w-full"
+                  :full-width="true"
                 >
                   <template #item="{ item }">
                     <div class="flex-1">
