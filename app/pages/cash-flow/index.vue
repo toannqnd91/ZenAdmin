@@ -22,8 +22,8 @@ const tabCounts = computed<TabDef[]>(() => [
 ])
 
 // Filters state (stub)
-// Default to 'Toàn thời gian'
-const selectedDatePreset = ref<{ value: string, label: string } | null>({ value: 'all', label: 'Toàn thời gian' })
+// Không chọn mặc định (null) nhưng request sẽ hiểu là toàn thời gian
+const selectedDatePreset = ref<{ value: string, label: string } | null>(null)
 interface BranchOption {
   id: number
   name: string
@@ -207,12 +207,7 @@ function getRangeFromPreset(preset: { value: string, label: string } | null): { 
   return { from: from.toISOString(), to: to.toISOString() }
 }
 
-// If user clears the select (null), immediately revert to 'all' so UI still shows label
-watch(selectedDatePreset, (val) => {
-  if (!val) {
-    selectedDatePreset.value = { value: 'all', label: 'Toàn thời gian' }
-  }
-})
+// No auto-set to 'all'; null is treated as toàn thời gian internally
 
 function mapMethod(tab: TabKey): number {
   switch (tab) {
