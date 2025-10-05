@@ -3,8 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
-// TODO: replace with real service when available
-// import { receiptsService } from '@/services/receipts.service'
+import { cashBookService } from '@/services/cashbook.service'
 
 interface ReceiptDetail {
   id: string | number
@@ -22,11 +21,48 @@ interface ReceiptDetail {
   originalOrderCode?: string | null
 }
 
+interface ApiOriginalDocument {
+  kind: string
+  id: number | string
+  code: string
+  amount: number
+}
+interface ApiReceipt {
+  id: number | string
+  code: string
+  type: number
+  typeText: string
+  method: number
+  methodText: string
+  status: number
+  statusText: string
+  amount: number
+  amountText: string
+  description: string
+  category: string | null
+  partyType?: string | null
+  partyId?: string | null
+  partyName?: string | null
+  referenceModule?: string | null
+  referenceId?: string | null
+  orderId?: number | string | null
+  orderCode?: string | null
+  originalDocument?: ApiOriginalDocument | null
+  branchId?: number | string | null
+  warehouseId?: number | string | null
+  warehouseName?: string | null
+  affectBusinessResult?: boolean
+  occurredOn?: string | null
+  occurredOnDate?: string | null
+  createdById?: string | null
+  attachments?: unknown[]
+}
+
 const route = useRoute()
 const codeParam = computed(() => route.params.code as string)
 const loading = ref(false)
 const detail = ref<ReceiptDetail | null>(null)
-
+const errorMessage = ref('')
 function formatCurrency(v?: number | null) {
   if (v == null || isNaN(v)) return '0đ'
   return new Intl.NumberFormat('vi-VN').format(v) + 'đ'
@@ -43,26 +79,59 @@ function formatDate(iso?: string | null) {
   return `${dd}/${mm}/${yyyy} ${hh}:${mi}`
 }
 
+// Map backend methodText to localized display text
+const methodTextMap: Record<string, string> = {
+  TienMat: 'Tiền mặt',
+  ChuyenKhoan: 'Chuyển khoản',
+  POS: 'POS',
+  ViDienTu: 'Ví điện tử'
+}
+
 async function fetchData() {
+  if (!codeParam.value) return
   loading.value = true
+  errorMessage.value = ''
   try {
-    // Placeholder data until API integrated
-    detail.value = {
-      id: codeParam.value || 'RVN00000',
-      code: codeParam.value || 'RVN00000',
-      amount: 180000,
-      method: 'Tiền mặt',
-      description: `Thu tiền đơn hàng #1003`,
-      createdOn: new Date().toISOString(),
-      branchName: 'Cửa hàng chính',
-      reference: null,
-      customer: { id: null, name: '------' },
-      originalOrderCode: '#1003'
+    const res = await cashBookService.getByCode(codeParam.value)
+    if (!res.success || !res.data) {
+      throw new Error(res.message || 'Không lấy được dữ liệu')
     }
-  } finally { loading.value = false }
+    const d = res.data as unknown as ApiReceipt
+    detail.value = {
+      id: d.id,
+      code: d.code,
+      amount: d.amount,
+      method: methodTextMap[d.methodText] || d.methodText || '',
+      description: d.description,
+      createdOn: d.occurredOn || new Date().toISOString(),
+      branchName: (d.warehouseName || '').trim() || null,
+      reference: d.referenceId || null,
+      customer: { id: d.partyId || null, name: d.partyName || null },
+      originalOrderCode: d.originalDocument?.code || d.orderCode || null
+    }
+    // Pre-fill branch selector object if branchName present
+    if (detail.value.branchName) {
+      selectedBranch.value = { id: d.branchId || d.warehouseId || 0, name: detail.value.branchName }
+    }
+    // Set receipt date based on occurredOn if not already set
+    if (!receiptDate.value && d.occurredOn) {
+      try {
+        receiptDate.value = formatDateDDMMYYYY(new Date(d.occurredOn))
+      } catch {
+        // ignore parse error
+      }
+    }
+  } catch (e: unknown) {
+    const msg = typeof e === 'object' && e && 'message' in e ? (e as { message?: string }).message : undefined
+    errorMessage.value = msg || 'Lỗi không xác định'
+    detail.value = null
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(fetchData)
+watch(codeParam, fetchData)
 
 const evidenceFiles = ref<File[]>([])
 function handleDrop(e: DragEvent) {
@@ -92,11 +161,14 @@ function fileUrl(f: File) {
   return URL.createObjectURL(f)
 }
 
-// Shared label class to mirror /orders/create field styling
-const fieldLabelClass = 'block text-xs font-medium text-gray-600 mb-1'
+// (removed unused fieldLabelClass)
 
 // Branch select state (using RemoteSearchSelect for dropdown parity with orders/create)
-const selectedBranch = ref<any | null>(null)
+interface BranchOption {
+  id: number | string
+  name: string
+}
+const selectedBranch = ref<BranchOption | null>(null)
 
 async function fetchBranches(search: string) {
   // Placeholder static list; replace with warehouseService.getWarehouses or similar later
@@ -110,8 +182,8 @@ async function fetchBranches(search: string) {
 }
 
 watch(selectedBranch, (val) => {
-  if (detail.value && val && typeof val === 'object') {
-    detail.value.branchName = (val as any).name || null
+  if (detail.value && val) {
+    detail.value.branchName = val.name || null
   }
 })
 
@@ -126,25 +198,30 @@ function normalizeDDMMYYYY(s: string): string {
   if (!s) return ''
   const parts = s.split(/[./-]/)
   if (parts.length !== 3) return s
-  let [dd, mm, yyyy] = parts.map(p => p.trim())
+  const [dd, mm, yyyy] = parts.map(p => p.trim())
   if (!dd || !mm || !yyyy) return s
-  let d = Number(dd), m = Number(mm), y = Number(yyyy)
+  const d = Number(dd)
+  const m = Number(mm)
+  let y = Number(yyyy)
   if (y < 100) y += 2000
   if (!Number.isFinite(d) || !Number.isFinite(m) || !Number.isFinite(y)) return s
   if (d < 1 || d > 31 || m < 1 || m > 12 || y < 1000) return s
-  return `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${String(y).padStart(4,'0')}`
+  return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${String(y).padStart(4, '0')}`
 }
 const receiptDate = ref('')
 
 onMounted(() => {
   watch(detail, (v) => {
     if (v && !receiptDate.value) {
-      try { receiptDate.value = formatDateDDMMYYYY(new Date(v.createdOn)) } catch { /* ignore */ }
+      try {
+        receiptDate.value = formatDateDDMMYYYY(new Date(v.createdOn))
+      } catch {
+        // ignore
+      }
       if (v.branchName) selectedBranch.value = { id: 1, name: v.branchName }
     }
   }, { immediate: true })
 })
-
 </script>
 
 <template>
@@ -163,16 +240,33 @@ onMounted(() => {
     </template>
 
     <template #body>
-      <div v-if="loading" class="p-6 text-center text-sm text-gray-500">Đang tải...</div>
-      <div v-else-if="!detail" class="p-6 text-center text-sm text-gray-500">Không tìm thấy phiếu thu.</div>
+      <div v-if="errorMessage" class="p-6 text-center text-sm text-red-600 whitespace-pre-line">
+        {{ errorMessage }}
+      </div>
+      <div v-else-if="loading" class="p-6 text-center text-sm text-gray-500">
+        Đang tải...
+      </div>
+      <div v-else-if="!detail" class="p-6 text-center text-sm text-gray-500">
+        Không tìm thấy phiếu thu.
+      </div>
       <div v-else class="w-full max-w-screen-xl mx-auto px-4 lg:px-6 pb-12">
         <!-- Toolbar moved into body -->
         <div class="flex items-center justify-between gap-6 mb-6 flex-wrap">
           <div class="flex items-center gap-3 flex-shrink-0">
-            <UButton color="neutral" variant="soft" icon="i-heroicons-arrow-left" size="sm" :to="'/cash-flow'" />
+            <UButton
+              color="neutral"
+              variant="soft"
+              icon="i-heroicons-arrow-left"
+              size="sm"
+              :to="'/cash-flow'"
+            />
             <div class="flex flex-col">
-              <div class="text-xl font-semibold text-gray-900 leading-tight">{{ detail.code }}</div>
-              <div class="text-xs text-gray-500 mt-0.5">{{ formatDate(detail.createdOn) }}</div>
+              <div class="text-xl font-semibold text-gray-900 leading-tight">
+                {{ detail.code }}
+              </div>
+              <div class="text-xs text-gray-500 mt-0.5">
+                {{ formatDate(detail.createdOn) }}
+              </div>
             </div>
           </div>
           <div class="flex items-center gap-4 flex-shrink-0">
@@ -184,16 +278,33 @@ onMounted(() => {
               @click="printReceipt"
             >
               <span class="w-5 h-5 text-gray-600" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  class="w-5 h-5"
+                >
                   <path fill="currentColor" d="M18 6.25h-.25v-1.25a.75.75 0 0 0-.22-.53l-2-2a.75.75 0 0 0-.53-.22h-7a1.75 1.75 0 0 0-1.75 1.75v2.25h-.25a3.383 3.383 0 0 0-3.75 3.75v5.5a2.253 2.253 0 0 0 2.25 2.25h1.75v2.25a1.75 1.75 0 0 0 1.75 1.75h8a1.75 1.75 0 0 0 1.75-1.75v-2.25h1.75a2.253 2.253 0 0 0 2.25-2.25v-5.5a3.382 3.382 0 0 0-3.75-3.75m-10.25-2.25a.25.25 0 0 1 .25-.25h6.689l1.561 1.561v.939h-8.5zm8.5 16a.25.25 0 0 1-.25.25h-8a.25.25 0 0 1-.25-.25v-4.25h8.5zm4-4.5a.75.75 0 0 1-.75.75h-1.75v-1.25a.75.75 0 0 0-.75-.75h-10a.75.75 0 0 0-.75.75v1.25h-1.75a.75.75 0 0 1-.75-.75v-5.5c0-1.577.673-2.25 2.25-2.25h12c1.577 0 2.25.673 2.25 2.25zm-2.25-4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
                 </svg>
               </span>
               <span>In phiếu</span>
             </UButton>
             <div class="flex border border-gray-200 rounded-md overflow-hidden">
-              <UButton size="sm" color="neutral" variant="ghost" icon="i-heroicons-chevron-left" class="rounded-none" />
+              <UButton
+                size="sm"
+                color="neutral"
+                variant="ghost"
+                icon="i-heroicons-chevron-left"
+                class="rounded-none"
+              />
               <div class="w-px bg-gray-200" />
-              <UButton size="sm" color="neutral" variant="ghost" icon="i-heroicons-chevron-right" class="rounded-none" />
+              <UButton
+                size="sm"
+                color="neutral"
+                variant="ghost"
+                icon="i-heroicons-chevron-right"
+                class="rounded-none"
+              />
             </div>
           </div>
         </div>
@@ -202,19 +313,31 @@ onMounted(() => {
           <div class="flex flex-col gap-6">
             <!-- General info + amount -->
             <UPageCard variant="soft" class="bg-white rounded-lg">
-              <BaseCardHeader class="sr-only">Thông tin chung</BaseCardHeader>
+              <BaseCardHeader class="sr-only">
+                Thông tin chung
+              </BaseCardHeader>
               <div class="flex flex-col gap-6">
                 <div class="flex items-start justify-between gap-4">
                   <div class="flex items-start gap-3">
-                    <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-sm select-none">{{ detail.customer?.name ? detail.customer.name.charAt(0) : '?' }}</div>
+                    <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-sm select-none">
+                      {{ detail.customer?.name ? detail.customer.name.charAt(0) : '?' }}
+                    </div>
                     <div class="space-y-1">
-                      <p class="font-medium text-gray-900 leading-5">Thu tiền bán hàng</p>
-                      <p class="text-xs text-gray-500">Khách hàng</p>
+                      <p class="font-medium text-gray-900 leading-5">
+                        Thu tiền bán hàng
+                      </p>
+                      <p class="text-xs text-gray-500">
+                        Khách hàng
+                      </p>
                     </div>
                   </div>
                   <div class="text-right">
-                    <div class="text-emerald-600 font-semibold text-lg leading-tight">+{{ formatCurrency(detail.amount) }}</div>
-                    <div class="text-xs text-gray-500 mt-0.5">{{ detail.method }}</div>
+                    <div class="text-emerald-600 font-semibold text-lg leading-tight">
+                      +{{ formatCurrency(detail.amount) }}
+                    </div>
+                    <div class="text-xs text-gray-500 mt-0.5">
+                      {{ detail.method }}
+                    </div>
                   </div>
                 </div>
                 <div class="space-y-3">
@@ -243,23 +366,41 @@ onMounted(() => {
                 @drop.prevent="handleDrop"
               >
                 <div class="text-sm text-gray-600">
-                  Kéo thả hoặc <label class="text-primary-600 font-medium cursor-pointer hover:underline">
-                    <input type="file" class="hidden" multiple accept="image/*" @change="handleFileChange" />
+                  Kéo thả hoặc
+                  <label class="text-primary-600 font-medium cursor-pointer hover:underline">
+                    <input
+                      type="file"
+                      class="hidden"
+                      multiple
+                      accept="image/*"
+                      @change="handleFileChange"
+                    >
                     tải ảnh từ thiết bị
                   </label>
                 </div>
-                <p class="mt-1 text-xs text-gray-400">Dung lượng tối đa 2MB/ảnh , hỗ trợ JPEG hoặc PNG. Tối đa 10 ảnh</p>
+                <p class="mt-1 text-xs text-gray-400">
+                  Dung lượng tối đa 2MB/ảnh , hỗ trợ JPEG hoặc PNG. Tối đa 10 ảnh
+                </p>
                 <div v-if="evidenceFiles.length" class="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 text-left">
                   <div
                     v-for="(f, idx) in evidenceFiles"
                     :key="idx + f.name"
                     class="relative group border border-gray-200 rounded-md overflow-hidden bg-gray-50"
                   >
-                    <img :src="fileUrl(f)" class="w-full h-28 object-cover" />
-                    <button type="button" @click="removeFile(idx)" class="absolute top-1 right-1 bg-white/90 rounded-full p-1 shadow hover:bg-white">
+                    <img
+                      :src="fileUrl(f)"
+                      class="w-full h-28 object-cover"
+                    >
+                    <button
+                      type="button"
+                      class="absolute top-1 right-1 bg-white/90 rounded-full p-1 shadow hover:bg-white"
+                      @click="removeFile(idx)"
+                    >
                       <span class="i-heroicons-x-mark w-4 h-4 text-gray-600" />
                     </button>
-                    <div class="absolute bottom-0 left-0 right-0 bg-black/40 text-[10px] text-white px-1 py-0.5 truncate">{{ f.name }}</div>
+                    <div class="absolute bottom-0 left-0 right-0 bg-black/40 text-[10px] text-white px-1 py-0.5 truncate">
+                      {{ f.name }}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -306,7 +447,7 @@ onMounted(() => {
                   </div>
                   <div class="relative">
                     <input
-                      v-model="(detail as any).reference"
+                      v-model="detail.reference"
                       type="text"
                       placeholder="Nhập tham chiếu"
                       class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"

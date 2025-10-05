@@ -85,6 +85,12 @@ class CashBookService extends BaseService {
     // API envelope already parsed by BaseService; ensure success
     return res.data
   }
+
+  async getByCode(code: string) {
+    // Endpoint pattern: /cashbook/{code}
+    const endpoint = API_ENDPOINTS.CASHBOOK_DETAIL(code)
+    return this.get<unknown>(endpoint)
+  }
 }
 
 export const cashBookService = new CashBookService()

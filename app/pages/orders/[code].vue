@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ordersService } from '@/services/orders.service'
 import type { OrderDetail, OrderHistoryEvent, OrderDetailRawResponse, OrderHistoryListResponse } from '@/services/orders.service'
@@ -9,6 +9,7 @@ import IconInvoicePending from '@/components/icons/IconInvoicePending.vue'
 import IconChevronDown from '@/components/icons/IconChevronDown.vue'
 import IconReturn from '@/components/icons/IconReturn.vue'
 import IconPrintOrder from '@/components/icons/IconPrintOrder.vue'
+import ReceivePaymentModal from '@/components/orders/ReceivePaymentModal.vue'
 
 // Raw payload supporting multiple backend shapes
 interface RawOrderItem {
@@ -197,6 +198,7 @@ function isPaid(v?: string | null) {
 
 const paymentStatusDisplay = computed(() => normalizePaymentStatusRaw(detail.value?.paymentStatus || detail.value?.payment?.paymentStatus))
 
+
 function startReturn() {
   console.debug('startReturn clicked', detail.value?.orderCode)
 }
@@ -208,6 +210,29 @@ function prevOrder() {
 }
 function nextOrder() {
   console.debug('nextOrder')
+}
+
+// --- Receive Payment Modal (external component) ---
+const showReceivePayment = ref(false)
+const remainingAmount = computed(() => {
+  const paid = detail.value?.payment?.paidAmount || 0
+  const total = detail.value?.payment?.orderTotal || 0
+  return Math.max(0, total - paid)
+})
+interface ReceivePaymentPayload {
+  method: 'TienMat' | 'ChuyenKhoan'
+  amount: number
+  reference: string
+}
+function handleReceivePaymentSubmit(payload: ReceivePaymentPayload) {
+  if (!detail.value?.payment) return
+  detail.value.payment.paidAmount = (detail.value.payment.paidAmount || 0) + payload.amount
+  detail.value.payment.paymentMethod = payload.method
+  if ((detail.value.payment.orderTotal || 0) <= (detail.value.payment.paidAmount || 0)) {
+    detail.value.payment.paymentStatus = 'Đã thanh toán'
+  } else {
+    detail.value.payment.paymentStatus = 'Thanh toán một phần'
+  }
 }
 
 // Helpers for discount display
@@ -388,8 +413,12 @@ onMounted(fetchData)
           </UButton>
         </div>
       </div>
-      <div v-if="loading" class="p-6 text-center text-sm text-gray-500">Đang tải...</div>
-      <div v-else-if="!detail" class="p-6 text-center text-sm text-gray-500">Không tìm thấy đơn hàng.</div>
+      <div v-if="loading" class="p-6 text-center text-sm text-gray-500">
+        Đang tải...
+      </div>
+      <div v-else-if="!detail" class="p-6 text-center text-sm text-gray-500">
+        Không tìm thấy đơn hàng.
+      </div>
       <div v-else>
         <div class="w-full max-w-screen-xl mx-auto px-6">
           <div class="space-y-6">
@@ -403,7 +432,9 @@ onMounted(fetchData)
                   icon="i-heroicons-arrow-left"
                   size="sm"
                 />
-                <div class="text-xl font-semibold text-gray-900">{{ detail.orderCode }}</div>
+                <div class="text-xl font-semibold text-gray-900">
+                  {{ detail.orderCode }}
+                </div>
                 <div class="flex items-center gap-2">
                   <span v-for="pill in ['Đã thanh toán', 'Đã xử lý', 'Lưu trữ']" :key="pill" class="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-600">
                     <span class="w-2 h-2 rounded-full bg-gray-400" />
@@ -412,16 +443,43 @@ onMounted(fetchData)
                 </div>
               </div>
               <div class="flex items-center gap-4 flex-shrink-0">
-                <UButton color="neutral" variant="ghost" size="sm" class="font-medium inline-flex items-center gap-2" @click="startReturn">
+                <UButton
+                  color="neutral"
+                  variant="ghost"
+                  size="sm"
+                  class="font-medium inline-flex items-center gap-2"
+                  @click="startReturn"
+                >
                   <IconReturn class="w-4 h-4" />
                   Trả hàng
                 </UButton>
-                <UButton color="neutral" variant="ghost" size="sm" class="font-medium inline-flex items-center gap-2" @click="printOrder">
+                <UButton
+                  color="neutral"
+                  variant="ghost"
+                  size="sm"
+                  class="font-medium inline-flex items-center gap-2"
+                  @click="printOrder"
+                >
                   <IconPrintOrder class="w-4 h-4" />
                   In đơn hàng
                 </UButton>
-                <UDropdown :items="[[{ label: 'Hủy đơn', click: () => console.debug('cancel order') }],[{ label: 'Sao chép', click: () => console.debug('copy order') }]]" :popper="{ placement: 'bottom-end' }">
-                  <UButton color="neutral" variant="ghost" size="sm" trailing-icon="i-heroicons-chevron-down" class="font-medium">Thao tác khác</UButton>
+                <UDropdown
+                  :items="[[
+                    { label: 'Hủy đơn', click: () => console.debug('cancel order') }
+                  ], [
+                    { label: 'Sao chép', click: () => console.debug('copy order') }
+                  ]]"
+                  :popper="{ placement: 'bottom-end' }"
+                >
+                  <UButton
+                    color="neutral"
+                    variant="ghost"
+                    size="sm"
+                    trailing-icon="i-heroicons-chevron-down"
+                    class="font-medium"
+                  >
+                    Thao tác khác
+                  </UButton>
                 </UDropdown>
                 <div class="flex border border-gray-200 rounded-md overflow-hidden">
                   <UButton size="sm" color="neutral" variant="ghost" icon="i-heroicons-chevron-left" class="rounded-none" @click="prevOrder" />
@@ -620,6 +678,7 @@ onMounted(fetchData)
                       variant="solid"
                       size="md"
                       class="font-medium inline-flex items-center gap-2"
+                      @click="showReceivePayment = true"
                     >
                       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="2" y="6" width="20" height="12" rx="2" />
@@ -953,4 +1012,11 @@ onMounted(fetchData)
       </div>
     </template>
   </UDashboardPanel>
+
+  <ReceivePaymentModal
+    v-model="showReceivePayment"
+    :remaining-amount="remainingAmount"
+    @submit="handleReceivePaymentSubmit"
+  />
+
 </template>

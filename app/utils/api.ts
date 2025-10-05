@@ -94,6 +94,7 @@ export const API_ENDPOINTS = {
   BRAND_BY_ID: (id: number) => `/brands/${id}`,
   // Cash Book endpoints
   CASHBOOK_FILTER: '/cashbook/filter',
+  CASHBOOK_DETAIL: (code: string) => `/cashbook/${code}`,
 
   // Legacy duplicates (migrating away from getApiEndpoints())
   DASHBOARD_MENU_LEGACY: '/DashboardMenu',
