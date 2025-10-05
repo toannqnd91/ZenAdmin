@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import CashFlowTable from '@/components/cash-flow/CashFlowTable.vue'
 import { cashBookService } from '@/services'
@@ -295,6 +296,12 @@ function formatCurrency(v: number) {
 
 const pagedRows = computed(() => rows.value) // API already paginates
 
+const router = useRouter()
+function goToReceipt(code: string) {
+  if (!code) return
+  router.push(`/cash-flow/${code}`)
+}
+
 watch(() => pagination.value.pageSize, () => {
   pagination.value.pageIndex = 0
 })
@@ -423,6 +430,7 @@ function onTabChange(val: string) {
         @update:row-selection="val => rowSelection = val"
         @update:pagination="val => pagination = val"
         @update:tab="onTabChange"
+        @navigate-code="goToReceipt"
       >
         <template #filters-line>
           <div class="flex flex-wrap items-center w-full gap-4">

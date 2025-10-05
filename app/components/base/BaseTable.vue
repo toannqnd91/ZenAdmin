@@ -119,11 +119,16 @@ const props = withDefaults(defineProps<Props>(), {
 // Tab state
 
 // Tab state: click đổi tab, emit khi đổi
+// Track whether we've initialized the tab once to avoid overwriting user's selection
 const currentTab = ref<string | undefined>(props.tabs?.[0]?.value)
+let tabInitialized = false
 watch(
   () => props.tabs,
   (val) => {
-    if (val?.length) currentTab.value = val[0]?.value
+    if (!tabInitialized && val?.length) {
+      currentTab.value = val[0]?.value
+      tabInitialized = true
+    }
   },
   { immediate: true }
 )
@@ -844,24 +849,24 @@ const onRowDelete = (item: Record<string, unknown>) => {
           </tbody>
 
           <VueDraggable
-          v-if="props.draggable"
-          v-model="draggableItems"
-          tag="tbody"
-          :handle="'.' + (props.dragHandleClass || 'drag-handle')"
-          :ghost-class="'ghost'"
-          :chosen-class="'chosen'"
-          :drag-class="'drag'"
-          :animation="props.dragAnimation || 300"
-          class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700"
-          @start="onDragStart"
-          @end="onDragEnd"
-        >
-          <tr
-            v-for="item in draggableItems"
-            :key="String(item.id)"
-            class="group/row border-t border-gray-200 row-band"
-            :class="{ 'is-active': isSelected(String(item.id)), 'opacity-60': isDragging }"
+            v-if="props.draggable"
+            v-model="draggableItems"
+            tag="tbody"
+            :handle="'.' + (props.dragHandleClass || 'drag-handle')"
+            :ghost-class="'ghost'"
+            :chosen-class="'chosen'"
+            :drag-class="'drag'"
+            :animation="props.dragAnimation || 300"
+            class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700"
+            @start="onDragStart"
+            @end="onDragEnd"
           >
+            <tr
+              v-for="item in draggableItems"
+              :key="String(item.id)"
+              class="group/row border-t border-gray-200 row-band"
+              :class="{ 'is-active': isSelected(String(item.id)), 'opacity-60': isDragging }"
+            >
             <!-- Row checkbox -->
             <td v-if="props.selectable" class="py-4 align-middle">
               <div class="w-14 h-full flex items-center justify-start">

@@ -59,7 +59,8 @@ export interface OrderGridRequest {
   Search: {
     QueryObject: {
       Name: string | null
-      OrderStatus?: string | null
+      OrderStatus?: string | null // legacy (string-based)
+      Status?: number | null // new numeric enum filter
     }
   }
   Sort: {
@@ -80,21 +81,28 @@ export interface OrderGridItemAddress {
   address: string | null
 }
 
+export interface OrderGridCustomerRef {
+  code: string | null
+  name: string
+}
+
 export interface OrderGridItem {
   id: number
   orderCode: string
-  orderNumber: string // e.g. "#807"
   createdOn: string
-  customerName: string
-  sourceName: string | null
+  orderStatus: string
   orderTotal: number
   orderTotalString: string
   paidAmount: number
   paymentStatus: string
-  orderStatus: string
-  shippingMethod: string | null
-  orderSource: string | null
-  deliveryAddress: OrderGridItemAddress
+  customer: OrderGridCustomerRef | null
+  // Optional legacy / not always present fields
+  orderNumber?: string
+  customerName?: string
+  sourceName?: string | null
+  orderSource?: string | null
+  shippingMethod?: string | null
+  deliveryAddress?: OrderGridItemAddress
 }
 
 export interface OrderGridResponse {

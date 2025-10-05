@@ -52,11 +52,16 @@ export const API_ENDPOINTS = {
   PRODUCT_DELETE_MULTI: '/Product/delete-multiple',
 
   // Order endpoints
-  ORDER_SOURCES: '/Order/order-sources',
-  ORDER_GRID_EXTERNAL: '/Order/grid',
-  ORDER_CREATE_POS: '/Order/create-pos-order',
-  ORDER_BY_ID: (id: number | string) => `/Order/${id}`,
-  ORDER_HISTORY: (id: number | string) => `/Order/${id}/history`,
+  ORDER_SOURCES: '/OrdersRead/order-sources',
+  ORDER_GRID_EXTERNAL: '/OrdersRead/grid',
+  ORDER_CREATE_POS: '/OrdersMutation/create-pos-order',
+  ORDER_BY_ID: (id: number | string) => `/OrdersRead/${id}`,
+  ORDER_HISTORY: (id: number | string) => `/OrdersRead/${id}/history`,
+
+  // Inventory Transfer endpoints
+  INVENTORY_TRANSFERS: '/InventoryTransfers',
+  INVENTORY_TRANSFERS_GRID: '/InventoryTransfers/grid',
+  INVENTORY_TRANSFERS_COUNT_BY_STATUS: '/InventoryTransfers/count-by-status',
 
   // Supplier endpoints
   SUPPLIERS: '/Suppliers',
@@ -67,7 +72,7 @@ export const API_ENDPOINTS = {
   CUSTOMER_BY_ID_EXTERNAL: (id: string) => `/customer/${id}`,
   CUSTOMER_GROUPS_EXTERNAL: '/customergroups',
   CUSTOMER_ORDERS_EXTERNAL: (id: string) => `/customer/${id}/orders`,
-  ORDER_COUNT_BY_STATUS_EXTERNAL: '/Order/count-by-status',
+  ORDER_COUNT_BY_STATUS_EXTERNAL: '/OrdersRead/count-by-status',
 
   // Pages endpoints
   PAGES: '/pages',

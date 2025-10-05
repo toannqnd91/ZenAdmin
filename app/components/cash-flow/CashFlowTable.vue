@@ -41,6 +41,7 @@ const emit = defineEmits<{
   'update:rowSelection': [Record<string, boolean>]
   'update:pagination': [{ pageIndex: number, pageSize: number }]
   'update:tab': [string]
+  'navigate-code': [string]
 }>()
 
 // Table columns definition
@@ -89,8 +90,8 @@ const colWidths = [
     :col-widths="colWidths"
     title="Sổ quỹ"
     hide-title
-  :tabs="props.tabs"
-  tabs-style="underline"
+    :tabs="props.tabs"
+    tabs-style="underline"
     tabs-separate-line
     :total-pages="props.totalPages"
     :total-records="props.totalRecords"
@@ -117,8 +118,12 @@ const colWidths = [
     <template #tabs-line-actions>
       <slot name="tabs-line-actions" />
     </template>
-    <template #column-code="{ value }">
-      <button class="text-primary-600 font-medium hover:underline">
+    <template #column-code="{ value, item }">
+      <button
+        class="text-primary-600 font-medium hover:underline"
+        type="button"
+        @click="emit('navigate-code', (item as any).code)"
+      >
         {{ value }}
       </button>
     </template>

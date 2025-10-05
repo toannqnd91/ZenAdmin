@@ -10,10 +10,81 @@ import IconChevronDown from '@/components/icons/IconChevronDown.vue'
 import IconReturn from '@/components/icons/IconReturn.vue'
 import IconPrintOrder from '@/components/icons/IconPrintOrder.vue'
 
+// Raw payload supporting multiple backend shapes
+interface RawOrderItem {
+  id: number | string
+  productId: number | string
+  productName: string
+  productImage?: string | null
+  productPrice: number
+  quantity: number
+  total?: number
+  rowTotal?: number
+}
+interface RawOrder {
+  id: number | string
+  createdOn: string
+  orderStatusString?: string
+  orderItems?: RawOrderItem[]
+  subtotal?: number
+  discountAmount?: number
+  subTotalWithDiscount?: number
+  shippingAmount?: number
+  orderTotal?: number
+  paymentMethod?: string | null
+  shippingMethod?: string | null
+  orderNote?: string | null
+  paidAmount?: number
+  paymentStatus?: string | null
+  paymentStatusString?: string | null
+}
+interface RawCustomer {
+  customerId?: string | number
+  id?: string | number
+  code?: string | null
+  name: string
+  phone?: string | null
+  phoneNumber?: string | null
+  email?: string | null
+  totalSpent?: number
+  lastOrderCode?: string | number
+}
+interface RawAddress {
+  addressLine1?: string
+  addressLine2?: string
+  city?: string
+  districtName?: string | null
+  stateOrProvinceName?: string | null
+  countryId?: string | null
+  phone?: string | null
+  phoneNumber?: string | null
+  zipCode?: string | null
+  contactName?: string | null
+}
+interface RawPayload {
+  order: RawOrder
+  customerInfo?: { customer?: RawCustomer; address?: RawAddress }
+  customer?: RawCustomer
+  shippingAddress?: RawAddress
+}
+
 const route = useRoute()
 const orderCodeParam = computed(() => route.params.code as string)
 const loading = ref(false)
-const detail = ref<OrderDetail | null>(null)
+// Extend base OrderDetail with UI fields we augment (customer.code etc.)
+interface UIOrderCustomer {
+  id: string | number
+  name: string
+  phone?: string | null
+  email?: string | null
+  totalSpent?: number | null
+  lastOrderCode?: string | number | null
+  code?: string | null
+}
+interface UIOrderDetail extends OrderDetail {
+  customer: UIOrderCustomer | null
+}
+const detail = ref<UIOrderDetail | null>(null)
 const history = ref<OrderHistoryEvent[] | null>(null)
 const justCreated = computed(() => route.query.created === '1')
 // Removed productTotalQuantity (replaced by monetary subtotal display)
@@ -30,7 +101,7 @@ const stepTimes = computed<Record<string, string>>(() => {
     if (map[step]) continue
     const simplifiedStep = step.toLowerCase().replace(/^đã\s+/, '').trim()
     for (const ev of events) {
-      const candRawVal = (ev as any).meta?.newStatus || ev.message || ''
+      const candRawVal = (ev as { meta?: { newStatus?: string }; message?: string } | undefined)?.meta?.newStatus || (ev as any).message || ''
       const candRaw = typeof candRawVal === 'string' ? candRawVal.toLowerCase() : ''
       const simplifiedCand = candRaw.replace(/^đã\s+/, '').trim()
       if (simplifiedCand.includes(simplifiedStep) || simplifiedStep.includes(simplifiedCand)) {
@@ -43,10 +114,8 @@ const stepTimes = computed<Record<string, string>>(() => {
 })
 
 function connectorClass(idx: number) {
-  try {
-    const current = statusSteps[idx]
-    if (current && stepTimes.value[current]) return 'bg-emerald-100'
-  } catch {}
+  const current = statusSteps[idx]
+  if (current && stepTimes.value[current]) return 'bg-emerald-100'
   return 'bg-gray-200'
 }
 
@@ -82,21 +151,81 @@ function formatPaymentMethod(code?: string | null) {
   }
 }
 
-function startReturn() { console.debug('startReturn clicked', detail.value?.orderCode) }
-function printOrder() { window.print() }
-function prevOrder() { console.debug('prevOrder') }
-function nextOrder() { console.debug('nextOrder') }
-
-// Helpers for discount display (using 'any' because original OrderDetail type may not include extended fields)
-function getOriginalPrice(item: any) {
-  return typeof item.originalUnitPrice === 'number' ? item.originalUnitPrice : (typeof item.unitPrice === 'number' ? item.unitPrice : 0)
+// --- Payment status helpers (mirrors OrdersTable.vue) ---
+function normalizePaymentStatusRaw(v?: string | null): string {
+  if (!v) return ''
+  const val = v.trim()
+  if (!val) return ''
+  const lower = val.toLowerCase()
+  // Already Vietnamese canonical forms
+  if (lower.includes('hoàn tiền')) return 'Hoàn tiền'
+  if (lower.includes('thanh toán dư')) return 'Thanh toán dư'
+  if (lower.includes('một phần')) return 'Thanh toán một phần'
+  if (lower.includes('đã thanh toán')) return 'Đã thanh toán'
+  if (lower.includes('chưa thanh toán')) return 'Chưa thanh toán'
+  // English → Vietnamese
+  if (lower.includes('refunded')) return 'Hoàn tiền'
+  if (lower.includes('overpaid')) return 'Thanh toán dư'
+  if (lower.includes('partial')) return 'Thanh toán một phần'
+  // Unpaid must be mapped before generic paid detection
+  if (lower.includes('unpaid')) return 'Chưa thanh toán'
+  // Guard: ensure over/partial checked before generic paid
+  if (lower.includes('paid')) return 'Đã thanh toán'
+  return val // fallback original (maybe already localized differently)
 }
-function getDiscountAmount(item: any) {
+function isRefunded(v?: string | null) {
+  const val = (v || '').toLowerCase()
+  return val.includes('hoàn tiền') || val.includes('refunded')
+}
+function isOverPaid(v?: string | null) {
+  const val = (v || '').toLowerCase()
+  return val.includes('thanh toán dư') || val.includes('overpaid')
+}
+function isPartialPayment(v?: string | null) {
+  const val = (v || '').toLowerCase()
+  return val.includes('một phần') || val.includes('partial')
+}
+function isUnpaid(v?: string | null) {
+  const val = (v || '').toLowerCase()
+  return val.includes('chưa thanh toán') || val.includes('unpaid')
+}
+function isPaid(v?: string | null) {
+  const val = (v || '').toLowerCase()
+  if (isOverPaid(v) || isPartialPayment(v)) return false
+  return val.includes('đã thanh toán') || (val.includes('paid') && !val.includes('partial'))
+}
+
+const paymentStatusDisplay = computed(() => normalizePaymentStatusRaw(detail.value?.paymentStatus || detail.value?.payment?.paymentStatus))
+
+function startReturn() {
+  console.debug('startReturn clicked', detail.value?.orderCode)
+}
+function printOrder() {
+  window.print()
+}
+function prevOrder() {
+  console.debug('prevOrder')
+}
+function nextOrder() {
+  console.debug('nextOrder')
+}
+
+// Helpers for discount display
+interface PriceLike {
+  originalUnitPrice?: number
+  unitPrice?: number
+}
+function getOriginalPrice(item: PriceLike) {
+  return typeof item.originalUnitPrice === 'number'
+    ? item.originalUnitPrice
+    : (typeof item.unitPrice === 'number' ? item.unitPrice : 0)
+}
+function getDiscountAmount(item: PriceLike) {
   const orig = getOriginalPrice(item)
   const now = typeof item.unitPrice === 'number' ? item.unitPrice : orig
   return Math.max(0, orig - now)
 }
-function getDiscountPercent(item: any) {
+function getDiscountPercent(item: PriceLike) {
   const orig = getOriginalPrice(item)
   const amt = getDiscountAmount(item)
   return orig > 0 ? Math.round((amt * 100) / orig) : 0
@@ -112,15 +241,11 @@ async function fetchData() {
       ordersService.getOrderHistory(codeForApi)
     ])
     if (orderRes && 'success' in orderRes && (orderRes as OrderDetailRawResponse).success && orderRes.data) {
-      interface RawOrderItem { id: number | string; productId: number | string; productName: string; productImage?: string | null; productPrice: number; quantity: number; total?: number; rowTotal?: number }
-      interface RawOrder { id: number | string; createdOn: string; orderStatusString?: string; orderItems?: RawOrderItem[]; subtotal?: number; discountAmount?: number; shippingAmount?: number; orderTotal?: number; paymentMethod?: string | null; shippingMethod?: string | null; orderNote?: string | null }
-      interface RawCustomer { customerId: string | number; name: string; phone?: string | null; email?: string | null }
-      interface RawAddress { addressLine1?: string; addressLine2?: string; city?: string; districtName?: string | null; stateOrProvinceName?: string | null; countryId?: string | null; phone?: string | null; zipCode?: string | null }
-      interface RawPayload { order: RawOrder; customerInfo?: { customer?: RawCustomer; address?: RawAddress } }
       const payload = orderRes.data as unknown as RawPayload
       const o = payload.order
-      const c = payload.customerInfo?.customer
-      const addr = payload.customerInfo?.address
+      // Support both data.customer and data.customerInfo.customer shapes
+    const rawCustomer: RawCustomer | undefined = payload.customer || payload.customerInfo?.customer
+    const rawAddress: RawAddress | undefined = payload.shippingAddress || payload.customerInfo?.address
       if (o) {
         let items: Array<{
           id: number | string
@@ -159,9 +284,66 @@ async function fetchData() {
           })
         }
         const totalQty = items.reduce((a, i) => a + (i.quantity || 0), 0)
-        const mappedCustomer = c ? { id: c.customerId, name: c.name, phone: c.phone || null, email: c.email || null } : null
-        const mappedAddress = addr ? { contactName: c?.name || null, phoneNumber: addr.phone || null, email: c?.email || null, addressLine1: addr.addressLine1 || null, addressLine2: addr.addressLine2 || null, country: addr.countryId || null, stateOrProvince: addr.stateOrProvinceName || null, district: addr.districtName || null, city: addr.city || null, zipCode: addr.zipCode || null } : null
-        detail.value = { id: o.id, orderCode: rawCode || `#${o.id}`, status: o.orderStatusString || '', processStatus: o.orderStatusString || '', paymentStatus: o.orderStatusString || null, createdOn: o.createdOn, items, customer: mappedCustomer, address: mappedAddress, payment: { totalQuantity: totalQty, subTotal: o.subtotal || 0, discountAmount: o.discountAmount || 0, shippingFeeAmount: o.shippingAmount || 0, orderTotal: o.orderTotal || 0, paidAmount: o.orderTotal || 0, paymentMethod: o.paymentMethod || null, paymentStatus: o.orderStatusString || null }, note: o.orderNote || null, meta: { sourceName: null, branchName: null, staffInCharge: null, creatorName: null, orderDate: o.createdOn, scheduledDate: null, shippingMethod: o.shippingMethod || null, deliveryOption: null, expectedDeliveryDate: null, tags: null }, history: [] }
+        const mappedCustomer: UIOrderCustomer | null = rawCustomer
+          ? {
+              id: (rawCustomer.customerId ?? rawCustomer.id) as string | number,
+              name: rawCustomer.name,
+              phone: rawCustomer.phoneNumber || rawCustomer.phone || null,
+              email: rawCustomer.email || null,
+              totalSpent: rawCustomer.totalSpent ?? null,
+              lastOrderCode: (rawCustomer.lastOrderCode as string | number | undefined) ?? null,
+              code: rawCustomer.code || null
+            }
+          : null
+        const mappedAddress = rawAddress
+          ? {
+              contactName: rawAddress.contactName || rawCustomer?.name || null,
+              phoneNumber: rawAddress.phoneNumber || rawAddress.phone || rawCustomer?.phoneNumber || rawCustomer?.phone || null,
+              email: rawCustomer?.email || null,
+              addressLine1: rawAddress.addressLine1 || null,
+              addressLine2: rawAddress.addressLine2 || null,
+              country: rawAddress.countryId || null,
+              stateOrProvince: rawAddress.stateOrProvinceName || null,
+              district: rawAddress.districtName || null,
+              city: rawAddress.city || null,
+              zipCode: rawAddress.zipCode || null
+            }
+          : null
+        detail.value = {
+          id: o.id,
+          orderCode: rawCode || `#${o.id}`,
+          status: o.orderStatusString || '',
+          processStatus: o.orderStatusString || '',
+          paymentStatus: o.paymentStatus || o.paymentStatusString || o.orderStatusString || null,
+          createdOn: o.createdOn,
+          items,
+          customer: mappedCustomer,
+          address: mappedAddress,
+          payment: {
+            totalQuantity: totalQty,
+            subTotal: o.subtotal || 0,
+            discountAmount: o.discountAmount || 0,
+            shippingFeeAmount: o.shippingAmount || 0,
+            orderTotal: o.orderTotal || 0,
+            paidAmount: o.paidAmount || o.orderTotal || 0,
+            paymentMethod: o.paymentMethod || null,
+            paymentStatus: o.paymentStatus || o.paymentStatusString || o.orderStatusString || null
+          },
+          note: o.orderNote || null,
+          meta: {
+            sourceName: null,
+            branchName: null,
+            staffInCharge: null,
+            creatorName: null,
+            orderDate: o.createdOn,
+            scheduledDate: null,
+            shippingMethod: o.shippingMethod || null,
+            deliveryOption: null,
+            expectedDeliveryDate: null,
+            tags: null
+          },
+          history: []
+        }
       }
     }
     if (historyRes && 'success' in historyRes) {
@@ -171,6 +353,8 @@ async function fetchData() {
   } finally { loading.value = false }
 }
 onMounted(fetchData)
+
+// (Removed avatar initials logic as avatar/logo no longer displayed)
 </script>
 
 <template>
@@ -186,8 +370,22 @@ onMounted(fetchData)
       <div v-if="justCreated && detail" class="mb-4 border border-green-200 bg-green-50 text-green-700 rounded px-4 py-3 text-sm flex items-start justify-between gap-4">
         <div><p>Đơn hàng <strong>{{ detail.orderCode }}</strong> đã được tạo thành công</p></div>
         <div class="flex items-center gap-2">
-          <UButton color="primary" size="xs" variant="solid" :to="'/orders/create'">Tạo đơn hàng khác</UButton>
-          <UButton color="neutral" size="xs" variant="ghost" @click="() => { (route.query as any).created = undefined }">Đóng</UButton>
+          <UButton
+            color="primary"
+            size="xs"
+            variant="solid"
+            :to="'/orders/create'"
+          >
+            Tạo đơn hàng khác
+          </UButton>
+          <UButton
+            color="neutral"
+            size="xs"
+            variant="ghost"
+            @click="() => { (route.query as any).created = undefined }"
+          >
+            Đóng
+          </UButton>
         </div>
       </div>
       <div v-if="loading" class="p-6 text-center text-sm text-gray-500">Đang tải...</div>
@@ -198,7 +396,13 @@ onMounted(fetchData)
             <!-- Full-width toolbar (single line, horizontally scrollable if narrow) -->
             <div class="flex items-center justify-between gap-6 overflow-x-auto whitespace-nowrap pr-2">
               <div class="flex items-center gap-3 flex-shrink-0">
-                <UButton :to="'/orders'" color="neutral" variant="soft" icon="i-heroicons-arrow-left" size="sm" />
+                <UButton
+                  :to="'/orders'"
+                  color="neutral"
+                  variant="soft"
+                  icon="i-heroicons-arrow-left"
+                  size="sm"
+                />
                 <div class="text-xl font-semibold text-gray-900">{{ detail.orderCode }}</div>
                 <div class="flex items-center gap-2">
                   <span v-for="pill in ['Đã thanh toán', 'Đã xử lý', 'Lưu trữ']" :key="pill" class="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-600">
@@ -322,34 +526,221 @@ onMounted(fetchData)
                   </table>
                 </div>
               </UPageCard>
-              <!-- Payment -->
-              <UPageCard variant="soft" class="bg-white rounded-lg">
-                <BaseCardHeader>
-                  <span class="inline-flex items-center gap-2">
+              <!-- Quick Payment Summary (appears only if unpaid or partial) -->
+              <UPageCard
+                v-if="paymentStatusDisplay && (isUnpaid(paymentStatusDisplay) || isPartialPayment(paymentStatusDisplay))"
+                variant="soft"
+                class="bg-white rounded-lg"
+              >
+                <div class="text-sm">
+                  <div class="flex items-center gap-2 mb-4">
+                    <!-- Reuse icon logic but only show one icon here -->
                     <span class="inline-block w-5 h-5" aria-hidden="true">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        focusable="false"
-                        aria-hidden="true"
-                        class="w-5 h-5"
-                      >
-                        <path
-                          fill="#fff"
-                          stroke="#CFF6E7"
-                          stroke-width="4"
-                          d="M12 22c5.523 0 10-4.477 10-10s-4.477-10-10-10-10 4.477-10 10 4.477 10 10 10Z"
-                        />
-                        <path
-                          fill="#0DB473"
-                          fill-rule="evenodd"
-                          d="M4 12c0-4.416 3.584-8 8-8s8 3.584 8 8-3.584 8-8 8-8-3.584-8-8m6.4 1.736 5.272-5.272 1.128 1.136-6.4 6.4-3.2-3.2 1.128-1.128z"
-                          clip-rule="evenodd"
-                        />
-                      </svg>
+                      <template v-if="isPartialPayment(paymentStatusDisplay)">
+                        <svg
+                          class="w-5 h-5"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          aria-hidden="true"
+                        >
+                          <circle cx="12" cy="12" r="12" fill="#FFDF9B" />
+                          <path fill="#fff" fill-rule="evenodd" d="M19 12a7 7 0 1 0-14 0z" clip-rule="evenodd" />
+                          <path fill="#E49C06" d="M19 12v.75h.75v-.75zm-14 0h-.75v.75h.75zm7-6.25a6.25 6.25 0 0 1 6.25 6.25h1.5a7.75 7.75 0 0 0-7.75-7.75zm-6.25 6.25a6.25 6.25 0 0 1 6.25-6.25v-1.5a7.75 7.75 0 0 0-7.75 7.75zm-.75.75h14v-1.5h-14z" />
+                          <path fill="#E49C06" d="M19 12v-.75h.75v.75zm-14 0h-.75v-.75h.75zm7 7.75a8 8 0 0 1-.759-.037l.145-1.493q.303.03.614.03zm-2.25-.332a7.7 7.7 0 0 1-1.404-.582l.708-1.322q.537.288 1.13.469zm-2.667-1.427a8 8 0 0 1-1.074-1.074l1.16-.952q.391.475.866.867zm-1.919-2.336a7.7 7.7 0 0 1-.582-1.405l1.435-.435q.181.594.47 1.131zm-.877-2.896a8 8 0 0 1-.037-.759h1.5q0 .31.03.614zm.713-1.509h.7v1.5h-.7zm2.1 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h.7v1.5h-.7zm1.45.75q0 .385-.037.759l-1.493-.145q.03-.303.03-.614zm-.332 2.25q-.224.736-.582 1.405l-1.322-.709q.288-.537.469-1.13zm-1.427 2.667a8 8 0 0 1-1.074 1.074l-.952-1.16a6.3 6.3 0 0 0 .867-.866zm-2.336 1.919a7.7 7.7 0 0 1-1.405.582l-.435-1.435q.594-.181 1.131-.47zm-2.896.877a8 8 0 0 1-.759.037v-1.5q.31 0 .614-.03z" />
+                        </svg>
+                      </template>
+                      <template v-else>
+                        <svg
+                          class="w-5 h-5"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          aria-hidden="true"
+                        >
+                          <rect width="24" height="24" fill="#FFDF9B" rx="12" />
+                          <path fill="#fff" stroke="#E49C06" stroke-dasharray="2 2" stroke-width="1.5" d="M12 19a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z" />
+                        </svg>
+                      </template>
                     </span>
-                    <span>Đã thanh toán</span>
+                    <span class="text-base font-semibold text-gray-900">{{ paymentStatusDisplay }}</span>
+                  </div>
+                  <div class="space-y-2">
+                    <div class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
+                      <span class="text-gray-600">Tổng tiền hàng</span>
+                      <span v-if="detail.payment?.totalQuantity != null" class="text-gray-500 justify-self-center">{{ detail.payment.totalQuantity }} sản phẩm</span>
+                      <span v-else class="text-gray-500 justify-self-center"></span>
+                      <span class="font-medium justify-self-end">{{ formatCurrency(detail.items.reduce((a, i) => a + (i.lineTotal || 0), 0)) }}</span>
+                    </div>
+                    <div
+                      v-if="detail.payment?.discountAmount && detail.payment.discountAmount > 0"
+                      class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4"
+                    >
+                      <span class="text-gray-600">Khuyến mãi</span>
+                      <span></span>
+                      <span class="text-red-600 justify-self-end">-{{ formatCurrency(detail.payment.discountAmount) }}</span>
+                    </div>
+                    <div class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
+                      <span class="text-gray-600">Thành tiền</span>
+                      <span></span>
+                      <span class="font-semibold justify-self-end">{{ formatCurrency(detail.payment?.orderTotal) }}</span>
+                    </div>
+                    <div
+                      v-if="isPartialPayment(paymentStatusDisplay) && detail.payment?.paidAmount"
+                      class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4 pt-2 border-t border-gray-100"
+                    >
+                      <span class="text-gray-600">Khách đã trả</span>
+                      <span class="text-gray-500 justify-self-center">{{ formatPaymentMethod(detail.payment?.paymentMethod) }}</span>
+                      <span class="font-medium justify-self-end">{{ formatCurrency(detail.payment?.paidAmount) }}</span>
+                    </div>
+                    <div
+                      v-if="isPartialPayment(paymentStatusDisplay) && detail.payment?.paidAmount != null && detail.payment?.orderTotal != null"
+                      class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4"
+                    >
+                      <span class="text-gray-900 font-semibold">Khách còn phải trả</span>
+                      <span></span>
+                      <span class="text-gray-900 font-semibold justify-self-end">{{ formatCurrency(Math.max(0, (detail.payment?.orderTotal || 0) - (detail.payment?.paidAmount || 0))) }}</span>
+                    </div>
+                  </div>
+                  <div
+                    class="flex justify-end gap-3 pt-4"
+                    :class="isUnpaid(paymentStatusDisplay) ? 'mt-2 border-t border-gray-100 pt-4' : 'mt-2'"
+                  >
+                    <UButton
+                      color="neutral"
+                      variant="soft"
+                      size="md"
+                      class="font-medium inline-flex items-center gap-2"
+                      icon="i-heroicons-qr-code"
+                    >
+                      <span class="flex items-center gap-1">
+                        Lấy mã QR
+                      </span>
+                    </UButton>
+                    <UButton
+                      color="primary"
+                      variant="solid"
+                      size="md"
+                      class="font-medium inline-flex items-center gap-2"
+                    >
+                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="2" y="6" width="20" height="12" rx="2" />
+                        <path d="M6 10h4" />
+                        <path d="M6 14h8" />
+                        <path d="M14 10h4" />
+                      </svg>
+                      Nhận tiền
+                    </UButton>
+                  </div>
+                </div>
+              </UPageCard>
+              <!-- Payment (hidden when quick summary shown) -->
+              <UPageCard
+                v-if="!(paymentStatusDisplay && (isUnpaid(paymentStatusDisplay) || isPartialPayment(paymentStatusDisplay)))"
+                variant="soft"
+                class="bg-white rounded-lg"
+              >
+                <BaseCardHeader>
+                  <span class="inline-flex items-center gap-2 select-none">
+                    <template v-if="paymentStatusDisplay">
+                      <!-- Refunded -->
+                      <span v-if="isRefunded(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
+                        <svg class="w-5 h-5 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M3 10v6h6" />
+                          <path d="M21 14a9 9 0 0 1-15.3 6.3L3 16" />
+                          <path d="M3 10a9 9 0 0 1 15.3-6.3L21 8" />
+                        </svg>
+                      </span>
+                      <!-- Overpaid -->
+                      <span v-else-if="isOverPaid(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
+                        <svg class="w-5 h-5 text-violet-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                          <ellipse cx="12" cy="6" rx="7" ry="3" />
+                          <path d="M5 6v4c0 1.66 3.13 3 7 3s7-1.34 7-3V6" />
+                          <path d="M5 14v4c0 1.66 3.13 3 7 3s7-1.34 7-3v-4" />
+                        </svg>
+                      </span>
+                      <!-- Partial payment (provided) -->
+                      <span v-else-if="isPartialPayment(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
+                        <svg
+                          class="w-5 h-5"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          aria-hidden="true"
+                        >
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="12"
+                            fill="#FFDF9B"
+                          />
+                          <path
+                            fill="#fff"
+                            fill-rule="evenodd"
+                            d="M19 12a7 7 0 1 0-14 0z"
+                            clip-rule="evenodd"
+                          />
+                          <path
+                            fill="#E49C06"
+                            d="M19 12v.75h.75v-.75zm-14 0h-.75v.75h.75zm7-6.25a6.25 6.25 0 0 1 6.25 6.25h1.5a7.75 7.75 0 0 0-7.75-7.75zm-6.25 6.25a6.25 6.25 0 0 1 6.25-6.25v-1.5a7.75 7.75 0 0 0-7.75 7.75zm-.75.75h14v-1.5h-14z"
+                          />
+                          <path
+                            fill="#E49C06"
+                            d="M19 12v-.75h.75v.75zm-14 0h-.75v-.75h.75zm7 7.75a8 8 0 0 1-.759-.037l.145-1.493q.303.03.614.03zm-2.25-.332a7.7 7.7 0 0 1-1.404-.582l.708-1.322q.537.288 1.13.469zm-2.667-1.427a8 8 0 0 1-1.074-1.074l1.16-.952q.391.475.866.867zm-1.919-2.336a7.7 7.7 0 0 1-.582-1.405l1.435-.435q.181.594.47 1.131zm-.877-2.896a8 8 0 0 1-.037-.759h1.5q0 .31.03.614zm.713-1.509h.7v1.5h-.7zm2.1 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h.7v1.5h-.7zm1.45.75q0 .385-.037.759l-1.493-.145q.03-.303.03-.614zm-.332 2.25q-.224.736-.582 1.405l-1.322-.709q.288-.537.469-1.13zm-1.427 2.667a8 8 0 0 1-1.074 1.074l-.952-1.16a6.3 6.3 0 0 0 .867-.866zm-2.336 1.919a7.7 7.7 0 0 1-1.405.582l-.435-1.435q.594-.181 1.131-.47zm-2.896.877a8 8 0 0 1-.759.037v-1.5q.31 0 .614-.03z"
+                          />
+                        </svg>
+                      </span>
+                      <!-- Paid (provided) -->
+                      <span v-else-if="isPaid(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
+                        <svg
+                          class="w-5 h-5"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          aria-hidden="true"
+                        >
+                          <path
+                            fill="#fff"
+                            stroke="#CFF6E7"
+                            stroke-width="4"
+                            d="M12 22c5.523 0 10-4.477 10-10s-4.477-10-10-10-10 4.477-10 10 4.477 10 10 10Z"
+                          />
+                          <path
+                            fill="#0DB473"
+                            fill-rule="evenodd"
+                            d="M4 12c0-4.416 3.584-8 8-8s8 3.584 8 8-3.584 8-8 8-8-3.584-8-8m6.4 1.736 5.272-5.272 1.128 1.136-6.4 6.4-3.2-3.2 1.128-1.128z"
+                            clip-rule="evenodd"
+                          />
+                        </svg>
+                      </span>
+                      <!-- Unpaid (provided) -->
+                      <span v-else-if="isUnpaid(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
+                        <svg
+                          class="w-5 h-5"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          aria-hidden="true"
+                        >
+                          <rect
+                            width="24"
+                            height="24"
+                            fill="#FFDF9B"
+                            rx="12"
+                          />
+                          <path
+                            fill="#fff"
+                            stroke="#E49C06"
+                            stroke-dasharray="2 2"
+                            stroke-width="1.5"
+                            d="M12 19a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"
+                          />
+                        </svg>
+                      </span>
+                      <!-- Fallback dot -->
+                      <span v-else class="inline-block w-5 h-5">
+                        <span class="block w-5 h-5 rounded-full bg-gray-300" />
+                      </span>
+                      <span>{{ paymentStatusDisplay }}</span>
+                    </template>
+                    <template v-else>
+                      <span>—</span>
+                    </template>
                   </span>
                 </BaseCardHeader>
                 <div class="pb-3 text-sm space-y-2">
@@ -357,7 +748,7 @@ onMounted(fetchData)
                     <span class="text-gray-600">Tổng tiền hàng</span>
                     <span v-if="detail.payment?.totalQuantity != null" class="text-gray-500 justify-self-center">{{ detail.payment.totalQuantity }} sản phẩm</span>
                     <span v-else class="text-gray-500 justify-self-center"></span>
-                    <span class="font-medium justify-self-end">{{ formatCurrency(detail.payment?.subTotal || detail.items.reduce((a, i) => a + (getOriginalPrice(i) * i.quantity), 0)) }}</span>
+                    <span class="font-medium justify-self-end">{{ formatCurrency(detail.items.reduce((a, i) => a + (i.lineTotal || 0), 0)) }}</span>
                   </div>
                   <div
                     v-if="detail.payment?.discountAmount && detail.payment.discountAmount > 0"
@@ -428,62 +819,47 @@ onMounted(fetchData)
               <UPageCard variant="soft" class="bg-white rounded-lg">
                 <BaseCardHeader>Khách hàng</BaseCardHeader>
                 <div class="text-sm">
-                  <div class="space-y-6">
-                    <!-- Top summary -->
-                    <div class="space-y-2">
-                      <div>
-                        <div class="font-medium text-primary-600 cursor-pointer hover:underline">{{ detail.customer?.name || '---' }}</div>
-                      </div>
-                      <div class="flex justify-between items-start text-xs text-gray-600">
-                        <div>
-                          <span class="text-gray-600">Tổng chi tiêu</span>
-                          <span v-if="detail.payment?.totalQuantity != null" class="text-gray-400"> ({{ detail.payment?.totalQuantity }} đơn hàng)</span>
+                  <div class="space-y-4">
+                    <!-- Header with avatar -->
+                    <div class="flex items-start">
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span class="font-medium text-primary-600 hover:underline cursor-pointer truncate max-w-[160px]">
+                            {{ detail.customer?.name || '---' }}
+                          </span>
+                          <span
+                            v-if="detail.customer?.code"
+                            class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-[11px] font-medium text-gray-600"
+                          >{{ (detail.customer as any).code }}</span>
                         </div>
-                        <div class="text-gray-900 font-medium">{{ formatCurrency(detail.customer?.totalSpent || detail.payment?.subTotal || 0) }}</div>
+                        <div class="mt-1 flex flex-col gap-0.5 text-xs text-gray-600">
+                          <div v-if="detail.customer?.phone"><span class="font-medium text-gray-700">ĐT:</span> {{ detail.customer.phone }}</div>
+                          <div><span class="font-medium text-gray-700">Email:</span> {{ detail.customer?.email || 'Không có' }}</div>
+                        </div>
                       </div>
-                      <div class="flex justify-between items-center text-xs text-gray-600" v-if="detail.customer?.lastOrderCode">
-                        <span>Đơn gần nhất</span>
-                        <NuxtLink :to="`/orders/${detail.customer?.lastOrderCode}`" class="text-primary-600 font-medium hover:underline">#{{ detail.customer?.lastOrderCode }}</NuxtLink>
-                      </div>
-                    </div>
-                    
-                    <!-- Customer group -->
-                    <div class="space-y-1">
-                      <div class="text-xs font-medium text-gray-700">Nhóm khách hàng</div>
-                      <div class="text-xs text-gray-400">Không áp dụng nhóm khách hàng</div>
-                    </div>
-                    
-                    <!-- Contact info -->
-                    <div class="space-y-1">
-                      <div class="flex items-center justify-between">
-                        <div class="text-xs font-medium text-gray-700">Thông tin liên hệ</div>
-                        <UButton
-                          color="neutral"
-                          variant="ghost"
-                          size="2xs"
-                          aria-label="Sửa liên hệ"
-                        >
+                      <div class="flex flex-col gap-1">
+                        <UButton color="neutral" variant="ghost" size="xs" aria-label="Sửa khách hàng">
                           <IconEdit />
                         </UButton>
                       </div>
-                      <div class="text-xs text-gray-400">{{ detail.customer?.email || 'Không có email' }}</div>
-                      <div class="text-xs text-gray-900" v-if="detail.customer?.phone">{{ detail.customer?.phone }}</div>
                     </div>
-                    
-                    <!-- Shipping address -->
-                    <div class="space-y-1">
-                      <div class="flex items-center justify-between">
+                    <!-- Spend summary -->
+                    <div class="pt-3 border-t border-gray-100">
+                      <div class="flex items-start justify-between text-xs">
+                        <div class="text-gray-600 leading-snug">
+                          <div>Tổng chi tiêu</div>
+                          <div v-if="detail.payment?.totalQuantity != null" class="text-gray-400">({{ detail.payment.totalQuantity }} đơn hàng)</div>
+                        </div>
+                        <div class="text-gray-900 font-semibold text-sm">{{ formatCurrency(detail.customer?.totalSpent || detail.payment?.subTotal || 0) }}</div>
+                      </div>
+                    </div>
+                    <!-- Address -->
+                    <div class="pt-3 border-t border-gray-100">
+                      <div class="flex items-center justify-between mb-1">
                         <div class="text-xs font-medium text-gray-700">Địa chỉ giao hàng</div>
-                        <UButton
-                          color="neutral"
-                          variant="ghost"
-                          size="2xs"
-                          aria-label="Sửa địa chỉ giao hàng"
-                        >
-                          <IconEdit />
-                        </UButton>
+                        <UButton color="neutral" variant="ghost" size="xs" aria-label="Sửa địa chỉ giao hàng"><IconEdit /></UButton>
                       </div>
-                      <div class="text-xs text-gray-900 whitespace-pre-line">
+                      <div class="text-xs text-gray-700 whitespace-pre-line">
                         <template v-if="detail.address">
                           <div>{{ detail.address.contactName || detail.customer?.name }}</div>
                           <div v-if="detail.address.phoneNumber">{{ detail.address.phoneNumber }}</div>
@@ -496,9 +872,8 @@ onMounted(fetchData)
                         </template>
                       </div>
                     </div>
-                    
-                    <!-- Show more -->
-                    <div class="flex justify-center">
+                    <!-- Extra actions -->
+                    <div class="pt-3 border-t border-gray-100 flex justify-center">
                       <button type="button" class="text-primary-600 text-xs font-medium inline-flex items-center gap-1">
                         Xem thêm
                         <IconChevronDown class="w-4 h-4" />
