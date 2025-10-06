@@ -111,6 +111,10 @@ const stepTimes = computed<Record<string, string>>(() => {
       }
     }
   }
+  // If 'Đặt hàng' exists but 'Đã xác nhận' missing, promote createdOn to 'Đã xác nhận'
+  if (map['Đặt hàng'] && !map['Đã xác nhận']) {
+    map['Đã xác nhận'] = map['Đặt hàng']
+  }
   return map
 })
 
@@ -197,8 +201,6 @@ function isPaid(v?: string | null) {
 }
 
 const paymentStatusDisplay = computed(() => normalizePaymentStatusRaw(detail.value?.paymentStatus || detail.value?.payment?.paymentStatus))
-
-
 function startReturn() {
   console.debug('startReturn clicked', detail.value?.orderCode)
 }
@@ -269,8 +271,8 @@ async function fetchData() {
       const payload = orderRes.data as unknown as RawPayload
       const o = payload.order
       // Support both data.customer and data.customerInfo.customer shapes
-    const rawCustomer: RawCustomer | undefined = payload.customer || payload.customerInfo?.customer
-    const rawAddress: RawAddress | undefined = payload.shippingAddress || payload.customerInfo?.address
+      const rawCustomer: RawCustomer | undefined = payload.customer || payload.customerInfo?.customer
+      const rawAddress: RawAddress | undefined = payload.shippingAddress || payload.customerInfo?.address
       if (o) {
         let items: Array<{
           id: number | string
@@ -482,15 +484,31 @@ onMounted(fetchData)
                   </UButton>
                 </UDropdown>
                 <div class="flex border border-gray-200 rounded-md overflow-hidden">
-                  <UButton size="sm" color="neutral" variant="ghost" icon="i-heroicons-chevron-left" class="rounded-none" @click="prevOrder" />
+                  <UButton
+                    size="sm"
+                    color="neutral"
+                    variant="ghost"
+                    icon="i-heroicons-chevron-left"
+                    class="rounded-none"
+                    @click="prevOrder"
+                  />
                   <div class="w-px bg-gray-200" />
-                  <UButton size="sm" color="neutral" variant="ghost" icon="i-heroicons-chevron-right" class="rounded-none" @click="nextOrder" />
+                  <UButton
+                    size="sm"
+                    color="neutral"
+                    variant="ghost"
+                    icon="i-heroicons-chevron-right"
+                    class="rounded-none"
+                    @click="nextOrder"
+                  />
                 </div>
               </div>
             </div>
             <!-- Full-width status card -->
             <UPageCard variant="soft" class="bg-white rounded-lg">
-              <BaseCardHeader class="sr-only">Trạng thái</BaseCardHeader>
+              <BaseCardHeader class="sr-only">
+                Trạng thái
+              </BaseCardHeader>
               <div class="flex items-stretch w-full text-sm">
                 <template v-for="(s, idx) in statusSteps" :key="s">
                   <div class="flex items-center gap-2">
@@ -508,35 +526,35 @@ onMounted(fetchData)
               <!-- Left column -->
               <div class="flex-1 flex flex-col gap-6">
                 <!-- Shipped items (styled like /orders/create product table) -->
-              <UPageCard variant="soft" class="bg-white rounded-lg">
-                <BaseCardHeader>
-                  <span class="inline-flex items-center gap-2">
-                    <span class="inline-block w-5 h-5 align-middle" aria-hidden="true">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        focusable="false"
-                        aria-hidden="true"
-                        class="w-5 h-5"
-                      >
-                        <path
-                          fill="#fff"
-                          stroke="#CFF6E7"
-                          stroke-width="4"
-                          d="M12 22c5.523 0 10-4.477 10-10s-4.477-10-10-10-10 4.477-10 10 4.477 10 10 10Z"
-                        />
-                        <path
-                          fill="#0DB473"
-                          fill-rule="evenodd"
-                          d="M4 12c0-4.416 3.584-8 8-8s8 3.584 8 8-3.584 8-8 8-8-3.584-8-8m6.4 1.736 5.272-5.272 1.128 1.136-6.4 6.4-3.2-3.2 1.128-1.128z"
-                          clip-rule="evenodd"
-                        />
-                      </svg>
+                <UPageCard variant="soft" class="bg-white rounded-lg">
+                  <BaseCardHeader>
+                    <span class="inline-flex items-center gap-2">
+                      <span class="inline-block w-5 h-5 align-middle" aria-hidden="true">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          focusable="false"
+                          aria-hidden="true"
+                          class="w-5 h-5"
+                        >
+                          <path
+                            fill="#fff"
+                            stroke="#CFF6E7"
+                            stroke-width="4"
+                            d="M12 22c5.523 0 10-4.477 10-10s-4.477-10-10-10-10 4.477-10 10 4.477 10 10 10Z"
+                          />
+                          <path
+                            fill="#0DB473"
+                            fill-rule="evenodd"
+                            d="M4 12c0-4.416 3.584-8 8-8s8 3.584 8 8-3.584 8-8 8-8-3.584-8-8m6.4 1.736 5.272-5.272 1.128 1.136-6.4 6.4-3.2-3.2 1.128-1.128z"
+                            clip-rule="evenodd"
+                          />
+                        </svg>
+                      </span>
+                      <span>Đã xử lý giao hàng</span>
                     </span>
-                    <span>Đã xử lý giao hàng</span>
-                  </span>
-                </BaseCardHeader>
+                  </BaseCardHeader>
                 <div class="-mx-4 lg:-mx-6 overflow-x-auto">
                   <table class="min-w-full w-full text-sm border-separate border-spacing-0">
                     <thead>

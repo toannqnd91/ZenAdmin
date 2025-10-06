@@ -65,7 +65,7 @@ function submit() {
 <template>
   <BaseModal
     :model-value="open"
-    title="Thêm mới khách hàng"
+    title="Nhận tiền"
   >
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- Method -->

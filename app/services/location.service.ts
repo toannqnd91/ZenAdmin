@@ -1,4 +1,5 @@
 import { BaseService } from './base.service'
+import { API_ENDPOINTS } from '@/utils/api'
 
 export interface LocationItem {
   id: number | string
@@ -12,15 +13,14 @@ export class LocationService extends BaseService {
    * Lấy danh sách Tỉnh/Thành phố
    */
   async getProvinces() {
-    // Absolute URL so it bypasses apiBaseUrl
-    return this.get<LocationItem[]>('https://localhost:62939/api/v1/locations/provinces')
+    return this.get<LocationItem[]>(API_ENDPOINTS.LOCATIONS_PROVINCES)
   }
 
   /**
    * Lấy danh sách Xã/Phường theo Tỉnh/Thành phố
    */
   async getWardsByProvinceCode(provinceCode: number | string) {
-    return this.get<LocationItem[]>(`https://localhost:62939/api/v1/locations/provinces/${provinceCode}/wards`)
+    return this.get<LocationItem[]>(API_ENDPOINTS.LOCATIONS_WARDS_BY_PROVINCE(provinceCode))
   }
 
   // Backward-compatible alias (treat input as code per API contract)

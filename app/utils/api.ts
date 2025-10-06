@@ -96,6 +96,10 @@ export const API_ENDPOINTS = {
   CASHBOOK_FILTER: '/cashbook/filter',
   CASHBOOK_DETAIL: (code: string) => `/cashbook/${code}`,
 
+  // Location endpoints
+  LOCATIONS_PROVINCES: '/locations/provinces',
+  LOCATIONS_WARDS_BY_PROVINCE: (provinceCode: number | string) => `/locations/provinces/${provinceCode}/wards`,
+
   // Legacy duplicates (migrating away from getApiEndpoints())
   DASHBOARD_MENU_LEGACY: '/DashboardMenu',
   LOGIN_LEGACY: '/Identity/login',

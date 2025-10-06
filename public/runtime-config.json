@@ -1,5 +1,5 @@
 {
-  "apiBaseUrl": "https://phukienquynhdat-api.vnnsoft.com/api/v1",
-  "imageBaseUrl": "https://phukienquynhdat-api.vnnsoft.com",
+  "apiBaseUrl": "https://localhost:62939/api/v1",
+  "imageBaseUrl": "https://localhost:62939",
   "appTitle": "Phụ Kiện Quỳnh Đạt"
 }

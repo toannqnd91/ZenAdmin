@@ -2,7 +2,7 @@
 // Image URL logic like ProductsTable
 import { useRuntimeConfig } from '#imports'
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
-import AddCustomerModal from '@/components/AddCustomerModal.vue'
+import AddCustomerModal from '~/components/orders/AddCustomerModal.vue'
 import { useRouter } from 'vue-router'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'

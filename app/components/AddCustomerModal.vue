@@ -158,4 +158,154 @@ function close() { open.value = false }
 </script>
 
 <template>
+  <BaseModal v-model="open" title="Thêm mới khách hàng">
+    <!-- Basic info -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Họ <span class="text-red-500">*</span></label>
+        <input
+          v-model="draft.lastName"
+          type="text"
+          class="w-full h-9 px-3 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          :class="lastNameError ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'"
+          placeholder="Nhập họ"
+          @blur="touched.firstName = true"
+        >
+        <p v-if="lastNameError" class="text-xs text-red-600 mt-1">{{ lastNameError }}</p>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Tên <span class="text-red-500">*</span></label>
+        <input
+          v-model="draft.firstName"
+          type="text"
+          class="w-full h-9 px-3 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          :class="firstNameError ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'"
+          placeholder="Nhập tên"
+          @blur="touched.lastName = true"
+        >
+        <p v-if="firstNameError" class="text-xs text-red-600 mt-1">{{ firstNameError }}</p>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Email</label>
+        <input
+          v-model="draft.email"
+          type="email"
+          class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          placeholder="Nhập email"
+        >
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Số điện thoại <span class="text-red-500">*</span></label>
+        <div class="flex items-center gap-2">
+          <input
+            v-model="draft.phone"
+            type="text"
+            class="flex-1 h-9 px-3 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            :class="phoneError ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'"
+            placeholder="Nhập số điện thoại"
+            @blur="touched.phone = true"
+          >
+          <div class="h-9 px-2 flex items-center rounded-md border border-gray-300 bg-gray-50 text-xs">VN</div>
+        </div>
+        <p v-if="phoneError" class="text-xs text-red-600 mt-1">{{ phoneError }}</p>
+      </div>
+    </div>
+
+    <!-- Extra info toggle -->
+    <div>
+      <button type="button" class="text-primary-600 text-sm font-medium flex items-center gap-1" @click="showExtraInfo=!showExtraInfo">
+        <span v-if="!showExtraInfo">Thông tin thêm</span>
+        <span v-else>Ẩn thông tin thêm</span>
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path :d="showExtraInfo ? 'm18 15-6-6-6 6' : 'm6 9 6 6 6-6'" />
+        </svg>
+      </button>
+      <div v-if="showExtraInfo" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Công ty</label>
+          <input
+            v-model="draft.company"
+            type="text"
+            class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            placeholder="Nhập tên công ty"
+          >
+        </div>
+      </div>
+    </div>
+
+    <!-- Address -->
+    <div>
+      <h4 class="text-base font-semibold mb-4">Địa chỉ nhận hàng</h4>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Họ</label>
+          <input v-model="draft.shipLastName" type="text" class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Nhập họ">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Tên</label>
+          <input v-model="draft.shipFirstName" type="text" class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Nhập tên">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Công ty</label>
+          <input v-model="draft.shipCompany" type="text" class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Nhập tên công ty">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Số điện thoại</label>
+          <input v-model="draft.shipPhone" type="text" class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Nhập số điện thoại">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Postal/Zipcode</label>
+          <input v-model="draft.zipcode" type="text" class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Nhập Postal/Zipcode">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Quốc gia</label>
+          <input v-model="draft.country" type="text" class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-100 cursor-not-allowed" placeholder="Quốc gia" readonly>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Tỉnh/Thành phố</label>
+          <RemoteSearchSelect
+            v-model="selectedProvince"
+            :fetch-fn="fetchProvinces"
+            placeholder="Chọn Tỉnh/Thành phố"
+            label-field="name"
+            clearable
+            searchable
+            :dropdown-max-height="320"
+            :full-width="true"
+            search-in-trigger
+            @select="onSelectProvince"
+            @clear="onClearProvince"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Phường/Xã</label>
+          <RemoteSearchSelect
+            v-model="selectedWard"
+            :fetch-fn="fetchWards"
+            :disabled="!selectedProvince"
+            placeholder="Chọn Phường/Xã"
+            label-field="name"
+            clearable
+            searchable
+            :dropdown-max-height="320"
+            :full-width="true"
+            search-in-trigger
+            @select="onSelectWard"
+            @clear="onClearWard"
+          />
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-xs font-medium text-gray-600 mb-1">Địa chỉ cụ thể</label>
+          <input v-model="draft.shipAddress" type="text" class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Nhập địa chỉ cụ thể">
+        </div>
+      </div>
+    </div>
+
+    <p v-if="error" class="text-xs text-red-600">{{ error }}</p>
+
+    <template #footer>
+      <button type="button" class="h-9 px-4 rounded-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50" @click="close">Hủy</button>
+      <button type="button" class="h-9 px-5 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700" @click="save">Lưu</button>
+    </template>
+  </BaseModal>
 </template>
