@@ -1,9 +1,8 @@
 <script setup lang="ts">
 // Image URL logic like ProductsTable
-import { useRuntimeConfig } from '#imports'
+import { useRuntimeConfig, useToast } from '#imports'
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import AddCustomerModal from '~/components/orders/AddCustomerModal.vue'
-import { useRouter } from 'vue-router'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
@@ -14,7 +13,6 @@ import type { WarehouseItem } from '@/services/warehouse.service'
 import { orderSourceService } from '@/services/order-source.service'
 import type { OrderSourceItem } from '@/services/order-source.service'
 import { customersService, ordersService } from '@/services'
-import { useToast } from '#imports'
 import { useAuthService } from '@/composables/useAuthService'
 
 // Runtime config & helpers (restored)
@@ -101,7 +99,10 @@ const selectedBranch = ref<GenericItem | null>(null)
 // Staff in charge (current logged-in user)
 const { user: authUser, getProfile } = useAuthService()
 const staffInCharge = ref<string>('')
-type AuthUserLike = { display_name?: string; fullName?: string }
+interface AuthUserLike {
+  display_name?: string
+  fullName?: string
+}
 function extractDisplayName(u: unknown): string {
   if (u && typeof u === 'object') {
     const o = u as AuthUserLike
@@ -113,7 +114,13 @@ function extractDisplayName(u: unknown): string {
 
 // Add customer modal state (new component based)
 const showAddCustomerModal = ref(false)
-function onCustomerAdded(c: { id: string | number; name: string; phone: string; code: string }) {
+interface NewCustomerPayload {
+  id: string | number
+  name: string
+  phone: string
+  code: string
+}
+function onCustomerAdded(c: NewCustomerPayload) {
   if (customersCache.value) {
     customersCache.value = [{ id: c.id, fullName: c.name, phoneNumber: c.phone, customerCode: c.code } as CustomerRecord, ...customersCache.value]
   } else {
@@ -260,6 +267,43 @@ function mapDeliveryOptionToApi(opt: string): number {
 const creatingOrder = ref(false)
 const createError = ref<string | null>(null)
 const toast = useToast()
+// Define CreatePosOrderRequest (approximation based on payload usage)
+interface CreatePosOrderItem {
+  productId: string | number
+  quantity: number
+  productPrice: number
+  discountAmount: number
+  unitPrice: number
+}
+interface CreatePosOrderRequest {
+  items: CreatePosOrderItem[]
+  paymentMethod: number
+  warehouseId: string | number
+  customerId: string | number
+  deliveryAddress: {
+    contactName: string
+    phoneNumber: string
+    email: string | null
+    addressLine1: string
+    addressLine2: string
+    countryId: string
+    stateOrProvinceId: number | null
+    districtId: number | null
+    city: string
+    zipCode: string
+  }
+  payLater: boolean
+  paidAmount: number
+  orderSourceId: string | number | null
+  shippingFeeAmount: number
+  discountAmount: number
+  deliveryOption: number
+  shippingMethod: string | null
+  expectedDeliveryDate: string | null
+  orderNote: string | null
+  couponCode: string | null
+  applyCouponToEachItem: boolean
+}
 interface SimpleSelectable {
   id?: number | string
   name?: string
@@ -293,7 +337,7 @@ async function handleCreateOrder() {
   creatingOrder.value = true
   try {
     const itemsPayload = orderProducts.value.map(p => ({
-      productId: p.id as number | string, 
+      productId: p.id as number | string,
       quantity: p.quantity,
       productPrice: p.baseUnitPrice ?? p.unitPrice,
       discountAmount: p.appliedDiscountType ? (p.appliedDiscountType === 'amount' ? (p.appliedDiscountInput || 0) : 0) : 0,
@@ -334,9 +378,13 @@ async function handleCreateOrder() {
       applyCouponToEachItem: true
     }
     const res = await ordersService.createPosOrder(body)
-    const envelope = res as unknown as { code?: string | number; success?: boolean; message?: string }
+    const envelope = res as unknown as {
+      code?: string | number
+      success?: boolean
+      message?: string
+    }
     if (envelope.code === '201' || envelope.code === 201 || envelope.success) {
-      toast.add({ title: 'Tạo đơn thành công', description: envelope.message || '', color: 'green' })
+      toast.add({ title: 'Tạo đơn thành công', description: envelope.message || '', color: 'success' })
       // Reset một số field chính
       orderProducts.value = []
       discount.value = 0
@@ -345,12 +393,18 @@ async function handleCreateOrder() {
       paymentAmountDirty.value = false
       orderNote.value = ''
       couponCode.value = ''
+      // Clear persisted draft after successful creation
+      try {
+        localStorage.removeItem(DRAFT_KEY)
+      } catch {
+        // ignore storage cleanup error
+      }
     } else {
       throw new Error(envelope.message || 'Không rõ trạng thái phản hồi')
     }
   } catch (e) {
     createError.value = e instanceof Error ? e.message : 'Tạo đơn thất bại'
-    toast.add({ title: 'Tạo đơn thất bại', description: createError.value || '', color: 'red' })
+    toast.add({ title: 'Tạo đơn thất bại', description: createError.value || '', color: 'error' })
   } finally {
     creatingOrder.value = false
   }
@@ -396,7 +450,11 @@ async function fetchCustomers(search: string): Promise<CustomerOption[]> {
   }
 }
 // Paginated fetchMore for infinite scroll (continues pages when user scrolls)
-async function fetchMoreCustomers(search: string, page: number): Promise<CustomerOption[] | { items: CustomerOption[]; hasMore: boolean }> {
+interface FetchMoreCustomersResult {
+  items: CustomerOption[]
+  hasMore: boolean
+}
+async function fetchMoreCustomers(search: string, page: number): Promise<FetchMoreCustomersResult> {
   try {
     const trimmed = (search || '').trim()
     const pageSize = 15
@@ -406,13 +464,24 @@ async function fetchMoreCustomers(search: string, page: number): Promise<Custome
       sort: { field: 'Id', reverse: false }
     })
     const itemsRaw = Array.isArray(res?.data?.items) ? res.data.items : []
-    const mapped: CustomerOption[] = itemsRaw.map((cc: any) => ({
-      id: cc.id,
-      name: cc.fullName ?? cc.name ?? cc.customerName ?? '',
-      phone: cc.phoneNumber,
-      code: cc.customerCode,
-      avatarUrl: typeof cc.avatarUrl === 'string' ? cc.avatarUrl : null
-    }))
+    type CustomerLike = {
+      id: string | number
+      fullName?: string
+      name?: string
+      customerName?: string
+      phoneNumber?: string | null
+      customerCode?: string | null
+      avatarUrl?: string | null
+    }
+    const mapped: CustomerOption[] = itemsRaw.map((cc: CustomerLike) => {
+      return {
+        id: cc.id,
+        name: cc.fullName ?? cc.name ?? cc.customerName ?? '',
+        phone: cc.phoneNumber ?? undefined,
+        code: cc.customerCode ?? undefined,
+        avatarUrl: typeof cc.avatarUrl === 'string' ? cc.avatarUrl : null
+      }
+    })
     const totalPages = typeof res?.data?.numberOfPages === 'number' ? res.data.numberOfPages : null
     const hasMore = totalPages == null ? mapped.length === pageSize : page + 1 < totalPages
     return { items: mapped, hasMore }
@@ -725,6 +794,8 @@ function handleF3(e: KeyboardEvent) {
 
 onMounted(async () => {
   window.addEventListener('keydown', handleF3)
+  // Restore persisted draft (if any) BEFORE fetching defaults (so defaults only apply when empty)
+  restoreDraft()
   // Fetch sources and set POS as default if available
   try {
     const res = await orderSourceService.getOrderSources()
@@ -792,7 +863,94 @@ onBeforeUnmount(() => {
   document.removeEventListener('mousedown', handleClickOutside)
 })
 
-// Totals
+// ---------------- Draft persistence (localStorage) ----------------
+// Persist important form state so data is not lost on reload.
+// Thông tin được lưu: sản phẩm, khách hàng, nguồn đơn, chi nhánh, trạng thái & phương thức thanh toán,
+// số tiền, giảm giá, phí giao hàng, tuỳ chọn giao hàng, phương thức giao hàng, ngày đặt, ngày hẹn giao,
+// ghi chú đơn, mã coupon, tách dòng.
+// KHÔNG lưu: dữ liệu tạm của các modal đang mở, trạng thái loading.
+const DRAFT_KEY = 'orders:create:draft:v1'
+interface DraftState {
+  products: OrderProduct[]
+  selectedCustomer: GenericItem | null
+  selectedSource: GenericItem | null
+  selectedBranch: GenericItem | null
+  paymentStatus: typeof paymentStatus.value
+  paymentMethod: typeof paymentMethod.value
+  paymentAmount: number | null
+  paymentAmountDirty: boolean
+  discount: number
+  shippingFee: number
+  shippingOption: ShippingOption
+  shippingMethod: string | null
+  orderDate: string
+  scheduledDate: string
+  orderNote: string
+  couponCode: string
+  splitLine: boolean
+}
+
+function serializeDraft(): DraftState {
+  return {
+    products: JSON.parse(JSON.stringify(orderProducts.value)), // deep clone
+    selectedCustomer: selectedCustomer.value ? { ...selectedCustomer.value } : null,
+    selectedSource: selectedSource.value ? { ...selectedSource.value } : null,
+    selectedBranch: selectedBranch.value ? { ...selectedBranch.value } : null,
+    paymentStatus: paymentStatus.value,
+    paymentMethod: paymentMethod.value,
+    paymentAmount: paymentAmount.value,
+    paymentAmountDirty: paymentAmountDirty.value,
+    discount: discount.value,
+    shippingFee: shippingFee.value,
+    shippingOption: shippingOption.value,
+    shippingMethod: shippingMethod.value,
+    orderDate: orderDate.value,
+    scheduledDate: scheduledDate.value,
+    orderNote: orderNote.value,
+    couponCode: couponCode.value,
+    splitLine: splitLine.value
+  }
+}
+
+function restoreDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return
+    const parsed = JSON.parse(raw) as Partial<DraftState>
+    if (parsed.products && Array.isArray(parsed.products)) {
+      orderProducts.value = parsed.products.map(p => ({
+        ...p,
+        quantity: Number(p.quantity) || 1,
+        unitPrice: Number(p.unitPrice) || 0,
+        total: Number(p.total) || (Number(p.unitPrice) || 0) * (Number(p.quantity) || 1)
+      }))
+    }
+    if (parsed.selectedCustomer) selectedCustomer.value = parsed.selectedCustomer
+    if (parsed.selectedSource) selectedSource.value = parsed.selectedSource
+    if (parsed.selectedBranch) selectedBranch.value = parsed.selectedBranch
+    if (parsed.paymentStatus === 'paid' || parsed.paymentStatus === 'later') paymentStatus.value = parsed.paymentStatus
+    if (parsed.paymentMethod && typeof parsed.paymentMethod === 'string') {
+      paymentMethod.value = parsed.paymentMethod as PaymentMethod
+    }
+    if (typeof parsed.paymentAmount === 'number') paymentAmount.value = parsed.paymentAmount
+    if (typeof parsed.paymentAmountDirty === 'boolean') paymentAmountDirty.value = parsed.paymentAmountDirty
+    if (typeof parsed.discount === 'number') discount.value = parsed.discount
+    if (typeof parsed.shippingFee === 'number') shippingFee.value = parsed.shippingFee
+    if (parsed.shippingOption && ['carrier', 'self', 'delivered', 'later'].includes(parsed.shippingOption)) {
+      shippingOption.value = parsed.shippingOption as ShippingOption
+    }
+    if (typeof parsed.shippingMethod === 'string' || parsed.shippingMethod === null) shippingMethod.value = parsed.shippingMethod || null
+    if (typeof parsed.orderDate === 'string') orderDate.value = parsed.orderDate
+    if (typeof parsed.scheduledDate === 'string') scheduledDate.value = parsed.scheduledDate
+    if (typeof parsed.orderNote === 'string') orderNote.value = parsed.orderNote
+    if (typeof parsed.couponCode === 'string') couponCode.value = parsed.couponCode
+    if (typeof parsed.splitLine === 'boolean') splitLine.value = parsed.splitLine
+  } catch {
+    // ignore corrupt draft
+  }
+}
+
+// Totals moved ABOVE persistence watchers to ensure refs exist before watch
 const totalAmount = computed(() => orderProducts.value.reduce((sum, p) => sum + p.total, 0))
 const discount = ref(0)
 const shippingFee = ref(0)
@@ -801,6 +959,41 @@ const orderGrandTotal = computed(() => totalAmount.value - discount.value + ship
 function currency(n: number) {
   return n.toLocaleString() + '₫'
 }
+
+let saveTimeout: number | null = null
+function queueSaveDraft() {
+  if (saveTimeout) window.clearTimeout(saveTimeout)
+  saveTimeout = window.setTimeout(() => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(serializeDraft()))
+    } catch {
+      // storage full or denied
+    }
+  }, 400) // debounce
+}
+
+// Watchers to persist changes (after discount & shippingFee defined)
+watch([
+  orderProducts,
+  selectedCustomer,
+  selectedSource,
+  selectedBranch,
+  paymentStatus,
+  paymentMethod,
+  paymentAmount,
+  paymentAmountDirty,
+  discount,
+  shippingFee,
+  shippingOption,
+  shippingMethod,
+  orderDate,
+  scheduledDate,
+  orderNote,
+  couponCode,
+  splitLine
+], queueSaveDraft, { deep: true })
+
+// (Totals moved above)
 
 // Keep payment amount in sync with totals when 'Đã thanh toán'
 watch(paymentStatus, (s) => {
