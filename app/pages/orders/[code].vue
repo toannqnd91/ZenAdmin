@@ -224,18 +224,35 @@ const remainingAmount = computed(() => {
   return Math.max(0, total - paid)
 })
 interface ReceivePaymentPayload {
-  method: 'TienMat' | 'ChuyenKhoan'
+  method: 'TienMat' | 'ChuyenKhoan' | 'ViDienTu'
   amount: number
   reference: string
 }
-function handleReceivePaymentSubmit(payload: ReceivePaymentPayload) {
-  if (!detail.value?.payment) return
-  detail.value.payment.paidAmount = (detail.value.payment.paidAmount || 0) + payload.amount
-  detail.value.payment.paymentMethod = payload.method
-  if ((detail.value.payment.orderTotal || 0) <= (detail.value.payment.paidAmount || 0)) {
-    detail.value.payment.paymentStatus = 'Đã thanh toán'
-  } else {
-    detail.value.payment.paymentStatus = 'Thanh toán một phần'
+async function handleReceivePaymentSubmit(payload: ReceivePaymentPayload) {
+  const code = (orderCodeParam.value || '').replace(/^#/, '')
+  const methodMap: Record<ReceivePaymentPayload['method'], 1 | 2 | 3> = {
+    TienMat: 1,
+    ChuyenKhoan: 2,
+    ViDienTu: 3
+  }
+  try {
+    await ordersService.payOrder(code, {
+      amount: payload.amount,
+      method: methodMap[payload.method],
+      description: payload.reference,
+      autoCompleteWhenFullyPaid: true
+    })
+    // Refresh data to reflect latest payment status/history
+    await fetchData()
+    try {
+      const toast = useToast()
+      toast.add({ title: 'Đã nhận tiền', description: `Đã ghi nhận ${formatCurrency(payload.amount)}`, color: 'success' })
+    } catch {}
+  } catch (err) {
+    try {
+      const toast = useToast()
+      toast.add({ title: 'Nhận tiền thất bại', description: err instanceof Error ? err.message : 'Đã xảy ra lỗi', color: 'error' })
+    } catch {}
   }
 }
 

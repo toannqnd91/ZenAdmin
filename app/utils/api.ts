@@ -57,6 +57,8 @@ export const API_ENDPOINTS = {
   ORDER_CREATE_POS: '/OrdersMutation/create-pos-order',
   ORDER_BY_ID: (id: number | string) => `/OrdersRead/${id}`,
   ORDER_HISTORY: (id: number | string) => `/OrdersRead/${id}/history`,
+  // Order payments
+  ORDER_PAY: (orderCode: string) => `/orders/${orderCode}/pay`,
 
   // Inventory Transfer endpoints
   INVENTORY_TRANSFERS: '/InventoryTransfers',

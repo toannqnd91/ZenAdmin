@@ -46,6 +46,12 @@ export class OrdersService extends BaseService {
   async getOrderHistory(id: number | string) {
     return this.get<OrderHistoryListResponse | null>(API_ENDPOINTS.ORDER_HISTORY(id) + '?page=1&pageSize=20')
   }
+
+  // Pay order ------------------------------------------------------------
+  async payOrder(orderCode: string, body: PayOrderRequest) {
+    // Backend expects numeric method per user's sample
+    return this.post<PayOrderResponse | null>(API_ENDPOINTS.ORDER_PAY(orderCode), body)
+  }
 }
 
 // Types for order grid endpoint
@@ -346,6 +352,20 @@ export interface OrderHistoryListResponse {
   success: boolean
   message: string
   data: OrderHistoryListEnvelope | null
+}
+
+// Pay order types --------------------------------------------------------
+export interface PayOrderRequest {
+  amount: number
+  method: 1 | 2 | 3 // 1: TienMat, 2: ChuyenKhoan, 3: ViDienTu
+  description: string
+  autoCompleteWhenFullyPaid: boolean
+}
+export interface PayOrderResponse {
+  code: string
+  success: boolean
+  message: string
+  data: unknown
 }
 
 export const ordersService = new OrdersService()
