@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Image URL logic like ProductsTable
-import { useRuntimeConfig, useToast } from '#imports'
+import { useRuntimeConfig, useToast, useRouter } from '#imports'
+import type { ApiResponse } from '@/types/common'
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import AddCustomerModal from '~/components/orders/AddCustomerModal.vue'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
@@ -76,7 +77,7 @@ interface WarehouseLike {
 }
 
 // Primary reactive state (restored)
-// (router removed - not used currently)
+const router = useRouter()
 const splitLine = ref(false)
 const showProductSearch = ref(false)
 const productList = ref<ProductSearchItem[]>([])
@@ -398,6 +399,28 @@ async function handleCreateOrder() {
         localStorage.removeItem(DRAFT_KEY)
       } catch {
         // ignore storage cleanup error
+      }
+      // Điều hướng đến trang chi tiết đơn hàng bằng orderCode (theo backend)
+      try {
+        const rawResp = res as ApiResponse<unknown> | unknown
+        // Ưu tiên lấy orderCode từ data, fallback top-level nếu cần
+        let orderCode: string | null = null
+        if (rawResp && typeof rawResp === 'object') {
+          if ('data' in (rawResp as Record<string, unknown>)) {
+            const d = (rawResp as ApiResponse<Record<string, unknown> | null>).data
+            const oc = d && typeof d === 'object' ? (d as Record<string, unknown>)['orderCode'] : null
+            if (typeof oc === 'string' && oc.trim()) orderCode = oc.trim()
+          }
+          if (!orderCode) {
+            const ocTop = (rawResp as Record<string, unknown>)['orderCode']
+            if (typeof ocTop === 'string' && ocTop.trim()) orderCode = ocTop.trim()
+          }
+        }
+        if (orderCode) {
+          router.push({ path: `/orders/${encodeURIComponent(orderCode)}`, query: { created: '1' } })
+        }
+      } catch {
+        // ignore navigation errors; user stays on create page with success toast
       }
     } else {
       throw new Error(envelope.message || 'Không rõ trạng thái phản hồi')

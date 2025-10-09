@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { onMounted, ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ordersService } from '@/services/orders.service'
 import type { OrderDetail, OrderHistoryEvent, OrderDetailRawResponse, OrderHistoryListResponse } from '@/services/orders.service'
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
@@ -64,12 +64,13 @@ interface RawAddress {
 }
 interface RawPayload {
   order: RawOrder
-  customerInfo?: { customer?: RawCustomer; address?: RawAddress }
+  customerInfo?: unknown
   customer?: RawCustomer
   shippingAddress?: RawAddress
 }
 
 const route = useRoute()
+const router = useRouter()
 const orderCodeParam = computed(() => route.params.code as string)
 const loading = ref(false)
 // Extend base OrderDetail with UI fields we augment (customer.code etc.)
@@ -79,7 +80,7 @@ interface UIOrderCustomer {
   phone?: string | null
   email?: string | null
   totalSpent?: number | null
-  lastOrderCode?: string | number | null
+  lastOrderCode?: string | null
   code?: string | null
 }
 interface UIOrderDetail extends OrderDetail {
@@ -102,7 +103,8 @@ const stepTimes = computed<Record<string, string>>(() => {
     if (map[step]) continue
     const simplifiedStep = step.toLowerCase().replace(/^đã\s+/, '').trim()
     for (const ev of events) {
-      const candRawVal = (ev as { meta?: { newStatus?: string }; message?: string } | undefined)?.meta?.newStatus || (ev as any).message || ''
+      const metaVal = ev?.meta && typeof ev.meta === 'object' ? (ev.meta as Record<string, unknown>)['newStatus'] : undefined
+      const candRawVal = (typeof metaVal === 'string' ? metaVal : ev?.message) || ''
       const candRaw = typeof candRawVal === 'string' ? candRawVal.toLowerCase() : ''
       const simplifiedCand = candRaw.replace(/^đã\s+/, '').trim()
       if (simplifiedCand.includes(simplifiedStep) || simplifiedStep.includes(simplifiedCand)) {
@@ -271,8 +273,20 @@ async function fetchData() {
       const payload = orderRes.data as unknown as RawPayload
       const o = payload.order
       // Support both data.customer and data.customerInfo.customer shapes
-      const rawCustomer: RawCustomer | undefined = payload.customer || payload.customerInfo?.customer
-      const rawAddress: RawAddress | undefined = payload.shippingAddress || payload.customerInfo?.address
+      let rawCustomer: RawCustomer | undefined = payload.customer
+      let rawAddress: RawAddress | undefined = payload.shippingAddress
+      if (!rawCustomer || !rawAddress) {
+        const ci = payload.customerInfo as unknown
+        if (ci && typeof ci === 'object') {
+          const obj = ci as Record<string, unknown>
+          if (!rawCustomer && obj.customer && typeof obj.customer === 'object') {
+            rawCustomer = obj.customer as RawCustomer
+          }
+          if (!rawAddress && obj.address && typeof obj.address === 'object') {
+            rawAddress = obj.address as RawAddress
+          }
+        }
+      }
       if (o) {
         let items: Array<{
           id: number | string
@@ -318,7 +332,7 @@ async function fetchData() {
               phone: rawCustomer.phoneNumber || rawCustomer.phone || null,
               email: rawCustomer.email || null,
               totalSpent: rawCustomer.totalSpent ?? null,
-              lastOrderCode: (rawCustomer.lastOrderCode as string | number | undefined) ?? null,
+              lastOrderCode: rawCustomer.lastOrderCode != null ? String(rawCustomer.lastOrderCode) : null,
               code: rawCustomer.code || null
             }
           : null
@@ -382,6 +396,12 @@ async function fetchData() {
 onMounted(fetchData)
 
 // (Removed avatar initials logic as avatar/logo no longer displayed)
+
+function dismissCreatedBanner() {
+  // Remove `created` from query and replace URL without reloading
+  const { created: _omit, ...rest } = route.query as Record<string, string | string[] | undefined>
+  router.replace({ path: route.path, query: rest })
+}
 </script>
 
 <template>
@@ -394,27 +414,6 @@ onMounted(fetchData)
       </UDashboardNavbar>
     </template>
     <template #body>
-      <div v-if="justCreated && detail" class="mb-4 border border-green-200 bg-green-50 text-green-700 rounded px-4 py-3 text-sm flex items-start justify-between gap-4">
-        <div><p>Đơn hàng <strong>{{ detail.orderCode }}</strong> đã được tạo thành công</p></div>
-        <div class="flex items-center gap-2">
-          <UButton
-            color="primary"
-            size="xs"
-            variant="solid"
-            :to="'/orders/create'"
-          >
-            Tạo đơn hàng khác
-          </UButton>
-          <UButton
-            color="neutral"
-            size="xs"
-            variant="ghost"
-            @click="() => { (route.query as any).created = undefined }"
-          >
-            Đóng
-          </UButton>
-        </div>
-      </div>
       <div v-if="loading" class="p-6 text-center text-sm text-gray-500">
         Đang tải...
       </div>
@@ -504,6 +503,59 @@ onMounted(fetchData)
                 </div>
               </div>
             </div>
+
+            <div
+              v-if="justCreated && detail"
+              class="mb-4 rounded-md bg-emerald-50 px-4 py-3 relative border-t-2"
+              style="border-left: none; border-right: none; border-bottom: none; border-top-color: oklch(0.64 0.21 156.08);"
+            >
+              <button
+                type="button"
+                aria-label="Đóng"
+                class="absolute top-3 right-3 text-emerald-700/70 hover:text-emerald-800"
+                @click="dismissCreatedBanner"
+              >
+                &times;
+              </button>
+              <div class="flex items-center gap-3 text-emerald-800">
+                <span class="inline-block w-5 h-5" aria-hidden="true">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    class="w-5 h-5"
+                  >
+                    <path
+                      fill="#fff"
+                      stroke="#CFF6E7"
+                      stroke-width="4"
+                      d="M12 22c5.523 0 10-4.477 10-10s-4.477-10-10-10-10 4.477-10 10 4.477 10 10 10Z"
+                    />
+                    <path
+                      fill="#0DB473"
+                      fill-rule="evenodd"
+                      d="M4 12c0-4.416 3.584-8 8-8s8 3.584 8 8-3.584 8-8 8-8-3.584-8-8m6.4 1.736 5.272-5.272 1.128 1.136-6.4 6.4-3.2-3.2 1.128-1.128z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                </span>
+                <p class="text-sm">
+                  Đơn hàng <strong class="text-emerald-900">{{ detail.orderCode }}</strong> đã được tạo thành công
+                </p>
+              </div>
+              <div class="mt-3 ml-8">
+                <UButton
+                  color="primary"
+                  variant="soft"
+                  size="sm"
+                  :to="'/orders/create'"
+                  class="font-medium"
+                >
+                  Tạo đơn hàng khác
+                </UButton>
+              </div>
+            </div>
+
             <!-- Full-width status card -->
             <UPageCard variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader class="sr-only">

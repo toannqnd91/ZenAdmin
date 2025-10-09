@@ -1,4 +1,12 @@
 // nuxt.config.ts
+// Option A: ONLY .env decides the URLs. No code fallback domains.
+// Provide either:
+//   NUXT_PUBLIC_API_BASE_URL & NUXT_PUBLIC_IMAGE_BASE_URL
+// Or just:
+//   NUXT_PUBLIC_BASE_ORIGIN (then /api/v1 will be appended for apiBaseUrl)
+const baseOrigin = process.env.NUXT_PUBLIC_BASE_ORIGIN?.replace(/\/$/, '')
+const derivedApi = baseOrigin ? `${baseOrigin}/api/v1` : ''
+
 export default defineNuxtConfig({
   modules: ['@nuxt/eslint', '@nuxt/ui-pro', '@vueuse/nuxt'],
 
@@ -10,8 +18,10 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL,
-      imageBaseUrl: process.env.NUXT_PUBLIC_IMAGE_BASE_URL,
+      // Final resolved API base (single source). Allows overriding fully or just base origin.
+      apiBaseUrl: (process.env.NUXT_PUBLIC_API_BASE_URL || derivedApi || '').replace(/\/$/, ''),
+      imageBaseUrl: (process.env.NUXT_PUBLIC_IMAGE_BASE_URL || baseOrigin || '').replace(/\/$/, ''),
+      appTitle: process.env.NUXT_PUBLIC_APP_TITLE || 'Zen Dashboard',
       testUser: process.env.NUXT_PUBLIC_TEST_USER || 'tester@example.com'
     },
     // server-only secret (accessible on server via useRuntimeConfig().testPassword)
@@ -30,7 +40,6 @@ export default defineNuxtConfig({
     optimizeDeps: { include: ['tinymce'] },
     ssr: { noExternal: ['@tinymce/tinymce-vue'] },
     server: {
-      host: '0.0.0.0',
       allowedHosts: ['web.vnnsoft.com']
     },
     // quan trọng để breakpoint trong .vue/.ts phía client hoạt động
