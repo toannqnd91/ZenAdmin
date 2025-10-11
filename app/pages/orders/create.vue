@@ -387,6 +387,7 @@ async function handleCreateOrder() {
     if (envelope.code === '201' || envelope.code === 201 || envelope.success) {
       toast.add({ title: 'Tạo đơn thành công', description: envelope.message || '', color: 'success' })
       // Reset một số field chính
+      suppressDraftSave.value = true
       orderProducts.value = []
       discount.value = 0
       shippingFee.value = 0
@@ -394,12 +395,15 @@ async function handleCreateOrder() {
       paymentAmountDirty.value = false
       orderNote.value = ''
       couponCode.value = ''
+      // Clear selected customer so it does not persist to the next order
+      selectedCustomer.value = null
       // Clear persisted draft after successful creation
       try {
         localStorage.removeItem(DRAFT_KEY)
       } catch {
         // ignore storage cleanup error
       }
+      suppressDraftSave.value = false
       // Điều hướng đến trang chi tiết đơn hàng bằng orderCode (theo backend)
       try {
         const rawResp = res as ApiResponse<unknown> | unknown
@@ -893,6 +897,8 @@ onBeforeUnmount(() => {
 // ghi chú đơn, mã coupon, tách dòng.
 // KHÔNG lưu: dữ liệu tạm của các modal đang mở, trạng thái loading.
 const DRAFT_KEY = 'orders:create:draft:v1'
+// Prevent saving draft while programmatically resetting state
+const suppressDraftSave = ref(false)
 interface DraftState {
   products: OrderProduct[]
   selectedCustomer: GenericItem | null
@@ -985,6 +991,7 @@ function currency(n: number) {
 
 let saveTimeout: number | null = null
 function queueSaveDraft() {
+  if (suppressDraftSave.value) return
   if (saveTimeout) window.clearTimeout(saveTimeout)
   saveTimeout = window.setTimeout(() => {
     try {
