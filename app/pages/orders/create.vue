@@ -4,6 +4,7 @@ import { useRuntimeConfig, useToast, useRouter } from '#imports'
 import type { ApiResponse } from '@/types/common'
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import AddCustomerModal from '~/components/orders/AddCustomerModal.vue'
+import AddProductModal from '~/components/orders/AddProductModal.vue'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
@@ -92,6 +93,20 @@ const totalProductPages = ref<number | null>(null)
 const productSearchPopupRef = ref<HTMLElement | null>(null)
 const mainProductInputRef = ref<HTMLInputElement | null>(null)
 const orderProducts = ref<OrderProduct[]>([])
+
+// Local UI state for product add modal
+const showAddProductModal = ref(false)
+
+function handleProductCreated() {
+  // Close modal and refresh product list (reset)
+  showAddProductModal.value = false
+  // Re-fetch product list so new product appears in search
+  try {
+    fetchProducts(true)
+  } catch {
+    // ignore
+  }
+}
 
 const selectedCustomer = ref<GenericItem | null>(null)
 const selectedSource = ref<GenericItem | null>(null)
@@ -1215,7 +1230,7 @@ function onAddCustomer() {
                       &times;
                     </button>
                     <div class="flex items-center gap-2 mb-2 p-4 pb-0">
-                      <button class="flex items-center text-primary-600 text-sm font-medium hover:underline" style="padding:0">
+                      <button class="flex items-center text-primary-600 text-sm font-medium hover:underline" style="padding:0" @click.stop="showAddProductModal = true">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           class="w-5 h-5 mr-1"
@@ -1979,6 +1994,7 @@ function onAddCustomer() {
     </template>
   </UDashboardPanel>
   <AddCustomerModal v-model="showAddCustomerModal" @saved="onCustomerAdded" />
+  <AddProductModal v-model:open="showAddProductModal" @created="handleProductCreated" />
 </template>
 
 <style scoped>
