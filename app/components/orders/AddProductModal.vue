@@ -87,23 +87,43 @@ function openFileDialog() {
 async function onSubmit() {
   loading.value = true
   try {
-    const productData = {
+    // Build productImages array from previews (simulate upload)
+    const productImages = imagePreviews.value.map(url => ({
+      id: 0,
+      caption: '',
+      mediaUrl: url
+    }))
+    const payload = {
       name: form.value.name,
-      description: form.value.description,
-      content: form.value.content,
-      price: form.value.price || undefined,
-      sku: form.value.sku || undefined,
-      isInStock: true,
-      isFeatured: false
+      sku: form.value.sku || '',
+      gtin: '',
+      barcode: form.value.barcode || '',
+      price: form.value.price ?? 0,
+      costPrice: form.value.cost ?? 0,
+      unitName: form.value.unit || '',
+      categoryId: selectedGroup.value?.id ? Number(selectedGroup.value.id) : null,
+      thumbnailImageUrl: (imagePreviews.value[0] && imagePreviews.value[0].endsWith('.jpg')) ? imagePreviews.value[0] : (imagePreviews.value[0] ? imagePreviews.value[0] + '.jpg' : ''),
+      stock: form.value.stock ?? 0,
+      warehouseId: null,
+      productImages
     }
-    const response = await productService.createProduct(productData)
-    if (response.success) {
+    const response = await productService.createQuickProduct(payload)
+    if (response.success && response.data && response.data.id) {
       toast.add({ title: 'Thành công', description: 'Sản phẩm đã được tạo thành công' })
+      // Emit full product info for parent to add to orderProducts
+      emit('created', {
+        id: response.data.id,
+        name: payload.name,
+        sku: payload.sku,
+        price: payload.price,
+        stockQuantity: payload.stock,
+        thumbnailImageUrl: payload.thumbnailImageUrl
+      })
       form.value = { name: '', description: '', content: '', price: undefined, sku: '', cost: undefined, stock: undefined, unit: '' }
+      imagePreviews.value = []
       open.value = false
-      emit('created', response.data)
     } else {
-      throw new Error(response.message)
+      throw new Error(response.message || 'Tạo sản phẩm thất bại')
     }
   } catch (err) {
     console.error(err)

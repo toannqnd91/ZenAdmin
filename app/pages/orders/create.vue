@@ -97,10 +97,18 @@ const orderProducts = ref<OrderProduct[]>([])
 // Local UI state for product add modal
 const showAddProductModal = ref(false)
 
-function handleProductCreated() {
-  // Close modal and refresh product list (reset)
+function handleProductCreated(newProduct) {
   showAddProductModal.value = false
-  // Re-fetch product list so new product appears in search
+  if (newProduct && newProduct.id) {
+    orderProducts.value.unshift({
+      ...newProduct,
+      quantity: 1,
+      unitPrice: newProduct.price || 0,
+      baseUnitPrice: newProduct.price || 0,
+      total: newProduct.price || 0,
+      discountReason: undefined
+    })
+  }
   try {
     fetchProducts(true)
   } catch {
@@ -1327,7 +1335,7 @@ function onAddCustomer() {
                               {{ prod.normalizedName }}
                             </div>
                             <div class="text-xs text-gray-500">
-                              SKU: {{ prod.sku }}
+                              SKU: {{ prod.sku || '-' }}
                             </div>
                           </div>
                         </div>
@@ -1986,7 +1994,7 @@ function onAddCustomer() {
     </template>
   </UDashboardPanel>
   <AddCustomerModal v-model="showAddCustomerModal" @saved="onCustomerAdded" />
-  <AddProductModal v-model:open="showAddProductModal" @created="handleProductCreated" />
+  <AddProductModal v-model:open="showAddProductModal" @created="handleProductCreated($event)" />
 </template>
 
 <style scoped>

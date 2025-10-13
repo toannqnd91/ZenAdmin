@@ -1,5 +1,6 @@
 // API Endpoints configuration
 export const API_ENDPOINTS = {
+  PRODUCT_QUICK_CREATE: '/Product/quick-create',
   // Warehouse endpoints
   WAREHOUSES: '/Warehouse',
   WAREHOUSE_DEFAULT: '/Warehouse/default',

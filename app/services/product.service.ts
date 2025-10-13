@@ -112,6 +112,13 @@ export class ProductService extends BaseService {
   }
 
   /**
+   * Quick create product (for AddProductModal)
+   */
+  async createQuickProduct(data: any) {
+    return this.post<any>(API_ENDPOINTS.PRODUCT_QUICK_CREATE, data)
+  }
+
+  /**
    * Get all product categories
    */
   async getCategories(options?: {
