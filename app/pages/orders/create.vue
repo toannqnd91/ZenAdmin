@@ -1130,7 +1130,7 @@ watch([shippingFeeInput], () => {
 const triedSubmit = ref(false)
 const hasProducts = computed(() => orderProducts.value.length > 0)
 const hasSource = computed(() => !!selectedSource.value)
-const hasCustomer = computed(() => !!selectedCustomer.value)
+// const hasCustomer = computed(() => !!selectedCustomer.value)
 const hasBranch = computed(() => !!selectedBranch.value)
 
 function saveDraft() { /* TODO */ }
@@ -1822,8 +1822,8 @@ function onAddCustomer() {
                   :searchable="true"
                   :search-in-trigger="true"
                   infinite-scroll
-                  :class="[{ 'border border-red-400 rounded-md': triedSubmit && !hasCustomer }]"
-                  :aria-invalid="(triedSubmit && !hasCustomer) ? 'true' : 'false'"
+                  :class="'w-full'"
+                  :aria-invalid="false"
                 >
                   <template #add-action>
                     <button
@@ -1878,9 +1878,7 @@ function onAddCustomer() {
                     </div>
                   </template>
                 </RemoteSearchSelect>
-                <p v-if="triedSubmit && !hasCustomer" class="mt-2 text-xs text-red-600">
-                  Vui lòng chọn khách hàng
-                </p>
+                <!-- Không cần chọn khách hàng, không hiển thị lỗi -->
               </div>
             </UPageCard>
             <UPageCard id="branch-card" variant="soft" class="bg-white rounded-lg">
