@@ -226,6 +226,7 @@ export interface CreateCustomerResponse {
   success: boolean
   message: string
   data: {
-    id: number | string
+    customerId: string
+    customerCode: string
   } | null
 }
