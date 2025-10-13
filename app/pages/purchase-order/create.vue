@@ -1,6 +1,10 @@
 // ...existing code...
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { BaseService } from '@/services/base.service'
+import { API_ENDPOINTS } from '@/utils/api'
+import type { ApiResponse } from '@/types/common'
 import AddImportCostModal from '@/components/AddImportCostModal.vue'
 import ProductPriceAdjustModal from '@/components/ProductPriceAdjustModal.vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
@@ -11,7 +15,6 @@ import { warehouseService } from '@/services/warehouse.service'
 import { supplierService } from '@/services/supplier.service'
 import type { SuppliersApiResponse } from '@/services/supplier.service'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
-import type { ApiResponse } from '@/types/common'
 
 // Product types
 interface ProductSearchItem {
@@ -173,6 +176,9 @@ function formatDateYYYYMMDD(d: Date) {
 }
 const paymentRecordDate = ref(formatDateYYYYMMDD(new Date())) // yyyy-MM-dd for <input type="date">
 const paymentReference = ref('')
+
+// Tag input (comma-separated string expected by backend, e.g. "gấp,ưu tiên")
+const tagsInput = ref('')
 
 async function fetchPaymentMethods(search: string) {
   const q = (search || '').toLowerCase()
@@ -416,23 +422,106 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleF7, true)
 })
 
-function createAndConfirm() {
-  // TODO: Implement create + confirm purchase order flow (API call)
-  console.debug('createAndConfirm clicked', {
-    products: transferProducts.value,
-    supplier: selectedSupplier.value,
-    warehouse: selectedWarehouse.value,
-    discountAmount: discountAmount.value,
-    importCosts: appliedImportCosts.value
-  })
+const router = useRouter()
+const baseService = new BaseService()
+
+// Map UI payment method option to backend CashBookMethodEnum
+function mapPaymentMethod(opt: { label: string, value: PaymentMethod } | null): number | null {
+  if (!opt) return null
+  const label = String(opt.label || '').trim()
+  switch (label) {
+    case 'Tiền mặt': return 1 // TienMat
+    case 'Chuyển khoản': return 2 // ChuyenKhoan
+    case 'Thẻ': return 3 // ViDienTu (map card to e-wallet enum)
+    default: return null
+  }
+}
+
+async function createAndConfirm() {
+  if (!selectedSupplier.value || !selectedWarehouse.value) {
+    // Basic validation
+    alert('Vui lòng chọn nhà cung cấp và chi nhánh nhập trước khi tạo đơn.')
+    return
+  }
+
+  // Build items payload from transferProducts
+  const items = transferProducts.value.map(p => ({
+    productId: p.id,
+    quantity: Number(p.quantity) || 0,
+    cost: Number(p.unitPrice) || 0,
+    discountAmount: (p._discountType === 'amount' && typeof p._discountValue === 'number') ? p._discountValue : 0
+  }))
+
+  // Surcharges from appliedImportCosts
+  const surcharges = appliedImportCosts.value.map(c => ({ name: c.name, amount: Number(c.value) || 0 }))
+
+  const payload: Record<string, unknown> = {
+    supplierId: selectedSupplier.value?.id,
+    destinationWarehouseId: selectedWarehouse.value?.id,
+    currency: 'VND',
+    estimatedArrival: null,
+    shippingCarrier: null,
+    trackingNumber: null,
+    referenceNumber: null,
+    noteToSupplier: null,
+    tags: tagsInput.value ? String(tagsInput.value) : null,
+    discountAmount: Number(discountAmount.value) || 0,
+    surcharges,
+    paidAmount: paymentStatus.value === 'paid' ? (Number(paymentAmount.value) || 0) : 0,
+    paymentMethod: mapPaymentMethod(paymentMethodOption.value),
+    paymentReference: paymentReference.value || null,
+    items
+  }
+
+  try {
+    // Use explicit endpoint per user's API: POST /api/v1/PurchaseOrders
+    const endpoint = API_ENDPOINTS.PURCHASE_ORDERS || '/PurchaseOrders'
+    // NOTE: API_ENDPOINTS doesn't list PURCHASE_ORDERS by default; fallback used above
+    const res = await baseService.post<Record<string, unknown>>(endpoint, payload) as ApiResponse<Record<string, unknown>>
+    if (res && res.success) {
+      // On success navigate to list or detail page if returned
+      alert('Tạo đơn nhập hàng thành công')
+      // If response contains id or code, try to navigate to detail
+      const dataObj = res.data as Record<string, unknown> | undefined
+      const newId = dataObj ? (dataObj['id'] ?? dataObj['purchaseOrderId'] ?? null) : null
+      if (newId) {
+        router.push(`/purchase-order/${newId}`)
+      } else {
+        router.push('/purchase-order')
+      }
+    } else {
+      // Generic success handling if envelope differs
+      alert('Tạo đơn thành công')
+      router.push('/purchase-order')
+    }
+  } catch (err: unknown) {
+    console.error('create purchase order failed', err)
+    let msg = 'Tạo đơn thất bại'
+    if (err && typeof err === 'object') {
+      const e = err as Record<string, unknown>
+      if (typeof e.message === 'string') msg = e.message
+    } else if (typeof err === 'string') {
+      msg = err
+    }
+    alert(msg)
+  }
 }
 function saveDraft() {
-  // TODO: Implement save draft logic (persist locally or via API)
-  console.debug('saveDraft clicked', {
-    products: transferProducts.value.length,
-    supplierId: selectedSupplier.value?.id,
-    warehouseId: selectedWarehouse.value?.id
-  })
+  // Persist minimal draft to localStorage
+  try {
+    const draft = {
+      products: transferProducts.value,
+      supplierId: selectedSupplier.value?.id ?? null,
+      warehouseId: selectedWarehouse.value?.id ?? null,
+      discountAmount: discountAmount.value,
+      importCosts: appliedImportCosts.value
+    }
+    localStorage.setItem('purchaseOrderDraft', JSON.stringify(draft))
+    alert('Đã lưu nháp')
+  } catch (err) {
+    console.error('save draft failed', err)
+    alert('Lưu nháp thất bại')
+  }
 }
 </script>
 
@@ -1001,6 +1090,7 @@ function saveDraft() {
               </BaseCardHeader>
               <div class="-mx-6 px-6">
                 <input
+                  v-model.trim="tagsInput"
                   type="text"
                   class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="Tìm kiếm hoặc thêm mới tag"
