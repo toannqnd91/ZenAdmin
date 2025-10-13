@@ -341,10 +341,7 @@ async function handleCreateOrder() {
     createError.value = 'Chưa chọn chi nhánh/kho'
     return
   }
-  if (!selectedCustomer.value) {
-    createError.value = 'Chưa chọn khách hàng'
-    return
-  }
+  // Không require khách hàng, nếu không chọn sẽ là khách lẻ
   if (orderProducts.value.length === 0) {
     createError.value = 'Chưa chọn sản phẩm'
     return
@@ -1140,19 +1137,16 @@ function saveDraft() { /* TODO */ }
 async function createAndConfirm() {
   triedSubmit.value = true
   const missingProducts = !hasProducts.value
-  const missingCustomer = !hasCustomer.value
   const missingSource = !hasSource.value
   const missingBranch = !hasBranch.value
 
-  if (missingProducts || missingCustomer || missingSource || missingBranch) {
+  if (missingProducts || missingSource || missingBranch) {
     nextTick(() => {
       const target = missingProducts
         ? (document.querySelector('#products-card') as HTMLElement | null)
-        : missingCustomer
-          ? (document.querySelector('#customer-card') as HTMLElement | null)
-          : missingSource
-            ? (document.querySelector('#source-card') as HTMLElement | null)
-            : (document.querySelector('#branch-card') as HTMLElement | null)
+        : missingSource
+          ? (document.querySelector('#source-card') as HTMLElement | null)
+          : (document.querySelector('#branch-card') as HTMLElement | null)
       target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       if (missingProducts) openProductSearch()
     })
