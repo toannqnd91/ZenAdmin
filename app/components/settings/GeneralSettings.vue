@@ -49,18 +49,14 @@ const save = () => {
 </script>
 
 <template>
+  <!-- eslint-disable vue/max-attributes-per-line, vue/html-closing-bracket-newline, vue/singleline-html-element-content-newline, vue/html-indent, vue/first-attribute-linebreak, vue/html-self-closing -->
   <div class="space-y-4">
     <!-- Thông tin cửa hàng -->
-    <UCard>
-      <template #header>
-        <h2 class="text-lg font-semibold">
-          Thông tin cửa hàng
-        </h2>
-      </template>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Logo uploader -->
-        <div>
+    <UPageCard title="Thông tin cửa hàng" variant="soft" class="bg-white rounded-lg">
+      <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <!-- Logo uploader (Row 1, Col 1) -->
+  <div>
           <label class="block text-sm font-medium mb-2">Logo</label>
           <div
             :class="[
@@ -72,7 +68,7 @@ const save = () => {
             @drop="onDrop"
           >
             <div v-if="state.logo" class="flex items-center justify-center">
-              <img :src="state.logo" alt="logo preview" class="h-24 w-24 object-contain" />
+              <img :src="state.logo" alt="logo preview" class="h-24 w-24 object-contain">
             </div>
             <div v-else>
               <p class="text-sm text-gray-600">
@@ -88,36 +84,39 @@ const save = () => {
             <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="onChooseFile">
           </div>
         </div>
-
-        <!-- Right column basic fields -->
-        <div class="grid grid-cols-1 gap-4">
+  <!-- Right column basic fields (Row 2, Col 2 at md+) -->
+  <div class="grid grid-cols-1 gap-4 md:col-start-2 md:row-start-2">
           <div>
             <label class="block text-sm font-medium mb-1">Tên kinh doanh</label>
-            <UInput v-model="state.businessName" placeholder="Nhập tên kinh doanh" />
+            <input v-model="state.businessName" type="text" placeholder="Nhập tên kinh doanh" class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500">
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Tỉnh/Thành phố</label>
-            <UInput v-model="state.province" placeholder="Chọn tỉnh thành" />
+            <input v-model="state.province" type="text" placeholder="Chọn tỉnh thành" class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500">
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Email gửi thông báo</label>
-            <UInput v-model="state.notifyEmail" placeholder="Nhập email" />
+            <input v-model="state.notifyEmail" type="email" placeholder="Nhập email" class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500">
           </div>
         </div>
 
-        <!-- Left column more fields -->
-        <div class="grid grid-cols-1 gap-4">
+  <!-- Left column more fields (Row 2, Col 1 at md+) -->
+  <div class="grid grid-cols-1 gap-4 md:col-start-1 md:row-start-2">
           <div>
             <label class="block text-sm font-medium mb-1">Tên cửa hàng<span class="text-red-500">*</span></label>
-            <UInput v-model="state.storeName" placeholder="Nhập tên cửa hàng" />
+            <input v-model="state.storeName" type="text" placeholder="Nhập tên cửa hàng" class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500">
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Quốc gia</label>
-            <USelect v-model="state.country" :options="['Vietnam', 'Thailand', 'Singapore']" />
+            <select v-model="state.country" class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900">
+              <option value="Vietnam">Vietnam</option>
+              <option value="Thailand">Thailand</option>
+              <option value="Singapore">Singapore</option>
+            </select>
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Email quản trị <span class="text-gray-400">(i)</span></label>
-            <UInput v-model="state.adminEmail" placeholder="Nhập email" />
+            <input v-model="state.adminEmail" type="email" placeholder="Nhập email" class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500">
           </div>
         </div>
 
@@ -125,34 +124,34 @@ const save = () => {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-2">
           <div>
             <label class="block text-sm font-medium mb-1">Điện thoại</label>
-            <UInput v-model="state.phone" placeholder="Nhập số điện thoại" />
+            <input v-model="state.phone" type="tel" placeholder="Nhập số điện thoại" class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500">
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Địa chỉ</label>
-            <UInput v-model="state.address" placeholder="Nhập địa chỉ" />
+            <input v-model="state.address" type="text" placeholder="Nhập địa chỉ" class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500">
           </div>
         </div>
+        </div>
       </div>
-    </UCard>
+    </UPageCard>
 
     <!-- Tiêu chuẩn & định dạng -->
-    <UCard>
-      <template #header>
-        <h2 class="text-lg font-semibold">
-          Tiêu chuẩn & định dạng
-        </h2>
-      </template>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <UPageCard title="Tiêu chuẩn & định dạng" variant="soft" class="bg-white rounded-lg">
+      <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-medium mb-1">Múi giờ</label>
-          <USelect
-            v-model="state.timezone"
-            :options="['(UTC+07:00) Bangkok, Hanoi, Jakarta', '(UTC+08:00) Singapore']"
-          />
+          <select v-model="state.timezone" class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900">
+            <option value="(UTC+07:00) Bangkok, Hanoi, Jakarta">(UTC+07:00) Bangkok, Hanoi, Jakarta</option>
+            <option value="(UTC+08:00) Singapore">(UTC+08:00) Singapore</option>
+          </select>
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Khối lượng mặc định</label>
-          <USelect v-model="state.weightUnit" :options="['Gram (g)', 'Kilogram (kg)']" />
+          <select v-model="state.weightUnit" class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900">
+            <option value="Gram (g)">Gram (g)</option>
+            <option value="Kilogram (kg)">Kilogram (kg)</option>
+          </select>
         </div>
         <div>
           <div class="flex items-center justify-between">
@@ -161,44 +160,40 @@ const save = () => {
               Thay đổi định dạng
             </NuxtLink>
           </div>
-          <USelect v-model="state.currency" :options="['Việt Nam đồng (VND)', 'Đô la Mỹ (USD)']" />
+          <select v-model="state.currency" class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900">
+            <option value="Việt Nam đồng (VND)">Việt Nam đồng (VND)</option>
+            <option value="Đô la Mỹ (USD)">Đô la Mỹ (USD)</option>
+          </select>
+        </div>
         </div>
       </div>
-    </UCard>
+    </UPageCard>
 
     <!-- Định dạng mã đơn hàng -->
-    <UCard>
-      <template #header>
-        <h2 class="text-lg font-semibold">
-          Định dạng mã đơn hàng
-        </h2>
-      </template>
+    <UPageCard title="Định dạng mã đơn hàng" variant="soft" class="bg-white rounded-lg">
+      <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
       <p class="text-sm text-gray-600 mb-3">
         Đơn hàng mặc định bắt đầu là #1001, bạn có thể thay đổi tiền tố hoặc hậu tố gợi ý giống như "BN1001" hoặc "1001-AD"
       </p>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-medium mb-1">Tiền tố</label>
-          <UInput v-model="state.orderPrefix" placeholder="#" />
+          <input v-model="state.orderPrefix" type="text" placeholder="#" class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500">
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Hậu tố</label>
-          <UInput v-model="state.orderSuffix" placeholder="Nhập hậu tố" />
+          <input v-model="state.orderSuffix" type="text" placeholder="Nhập hậu tố" class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500">
         </div>
       </div>
       <p class="text-xs text-gray-500 mt-3">
         Mã đơn hàng sẽ được áp dụng: #1001, #1002, ...
       </p>
-    </UCard>
+      </div>
+    </UPageCard>
 
     <!-- Cấu hình quản lý kho -->
-    <UCard>
-      <template #header>
-        <h2 class="text-lg font-semibold">
-          Cấu hình quản lý kho
-        </h2>
-      </template>
-
+    <UPageCard title="Cấu hình quản lý kho" variant="soft" class="bg-white rounded-lg">
+      <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
       <div class="space-y-4">
         <!-- Group 1: Warehouse mode -->
         <div>
@@ -279,7 +274,8 @@ const save = () => {
           </div>
         </div>
       </div>
-    </UCard>
+      </div>
+    </UPageCard>
 
     <div class="flex justify-end">
       <UButton color="primary" @click="save">
