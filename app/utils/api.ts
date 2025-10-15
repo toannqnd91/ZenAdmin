@@ -66,6 +66,9 @@ export const API_ENDPOINTS = {
   INVENTORY_TRANSFERS_GRID: '/InventoryTransfers/grid',
   INVENTORY_TRANSFERS_COUNT_BY_STATUS: '/InventoryTransfers/count-by-status',
 
+  // Purchase Orders endpoints
+  PURCHASE_ORDERS_GRID: '/PurchaseOrders/grid',
+
   // Supplier endpoints
   SUPPLIERS: '/Suppliers',
   // Customer endpoints

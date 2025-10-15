@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import PurchaseOrderTable from '@/components/purchase-order/PurchaseOrderTable.vue'
+import { purchaseOrderService } from '@/services/purchase-order.service'
 
 const router = useRouter()
 
@@ -29,7 +30,7 @@ const q = ref('')
 const selectedSupplier = ref(null)
 const selectedStatus = ref(null)
 
-const selectedDatePreset = ref<{ value: string; label: string } | null>(null)
+const selectedDatePreset = ref<{ value: string, label: string } | null>(null)
 
 async function fetchDatePresets(qs: string) {
     const items = [
@@ -39,7 +40,7 @@ async function fetchDatePresets(qs: string) {
         { value: 'last30d', label: '30 ngày qua' }
     ]
     const qq = (qs || '').toLowerCase()
-    return qq ? items.filter((i) => i.label.toLowerCase().includes(qq)) : items
+    return qq ? items.filter(i => i.label.toLowerCase().includes(qq)) : items
 }
 
 async function fetchStatuses(qs: string) {
@@ -49,7 +50,7 @@ async function fetchStatuses(qs: string) {
         { code: 'completed', name: 'Hoàn thành' }
     ]
     const qq = (qs || '').toLowerCase()
-    return qq ? items.filter((i) => i.name.toLowerCase().includes(qq) || i.code.includes(qq)) : items
+    return qq ? items.filter(i => i.name.toLowerCase().includes(qq) || i.code.includes(qq)) : items
 }
 
 async function fetchSuppliers(q: string) {
@@ -58,7 +59,7 @@ async function fetchSuppliers(q: string) {
         { id: 2, name: 'Nhà cung cấp B' }
     ]
     const qq = q.toLowerCase()
-    return qq ? items.filter((i) => i.name.toLowerCase().includes(qq)) : items
+    return qq ? items.filter(i => i.name.toLowerCase().includes(qq)) : items
 }
 
 interface PurchaseOrderRow {
@@ -70,37 +71,89 @@ interface PurchaseOrderRow {
     total: number
 }
 
-const rows = ref<PurchaseOrderRow[]>([
-    {
-        id: '1',
-        code: 'PO-001',
-        date: '2025-10-10',
-        supplier: 'Nhà cung cấp A',
-        status: 'Đang giao dịch',
-        total: 1000000
-    },
-    {
-        id: '2',
-        code: 'PO-002',
-        date: '2025-10-09',
-        supplier: 'Nhà cung cấp B',
-        status: 'Hoàn thành',
-        total: 2000000
-    }
-])
+const rows = ref<PurchaseOrderRow[]>([])
 
 const loading = ref(false)
 
 const pagination = ref({ pageIndex: 0, pageSize: 20 })
-const totalRecords = ref(2)
-const totalPages = computed(() => 1)
+const totalRecords = ref(0)
+const totalPages = computed(() => Math.max(1, Math.ceil(totalRecords.value / pagination.value.pageSize)))
 
-const totalOrders = computed(() => rows.value.length)
-const totalAmount = computed(() => rows.value.reduce((sum, r) => sum + r.total, 0))
-
-function formatCurrency(v: number) {
-    return v.toLocaleString('vi-VN') + 'đ'
+function mapStatusText(s: string | number | null | undefined): string {
+    // Map backend enum/code to Vietnamese labels
+    const key = typeof s === 'number' ? String(s) : (s || '').toString()
+    switch (key) {
+        case '0':
+        case 'Draft':
+            return 'Nháp'
+        case '1':
+        case 'Submitted':
+            return 'Đã gửi'
+        case '2':
+        case 'PartiallyReceived':
+            return 'Nhận một phần'
+        case '3':
+        case 'Received':
+            return 'Đã nhận'
+        case '4':
+        case 'Cancelled':
+            return 'Đã hủy'
+        default:
+            return key
+    }
 }
+
+function formatDate(iso: string | null | undefined) {
+    if (!iso) return ''
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return ''
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+async function fetchGrid(_reset = false) {
+    loading.value = true
+    try {
+        const res = await purchaseOrderService.getGrid({
+            pagination: {
+                start: pagination.value.pageIndex * pagination.value.pageSize,
+                number: pagination.value.pageSize,
+                numberOfPages: 10
+            },
+            search: { name: q.value || null },
+            sort: { field: 'Id', reverse: true }
+        })
+        const data = res?.data
+        const items = (data?.items || []) as Array<{
+            code?: string
+            id?: string | number
+            createdOn?: string
+            supplierName?: string
+            status?: string | number
+            total?: number
+        }>
+        totalRecords.value = data?.totalRecord || 0
+            rows.value = items.map(it => ({
+                id: String(it.code || it.id || ''),
+                code: `#${String(it.code || it.id || '')}`,
+                date: formatDate(it.createdOn || ''),
+                supplier: it.supplierName || '',
+                status: mapStatusText(it.status ?? ''),
+                total: Number(it.total || 0)
+            }))
+    } catch (e) {
+        console.error('fetch purchase orders grid failed', e)
+        rows.value = []
+        totalRecords.value = 0
+    } finally {
+        loading.value = false
+    }
+}
+
+onMounted(() => {
+    fetchGrid(true)
+})
+watch([q, () => pagination.value.pageIndex, () => pagination.value.pageSize], () => fetchGrid())
 
 function goToOrder(code: string) {
     if (!code) return
