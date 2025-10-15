@@ -22,6 +22,8 @@ export interface ProductItem {
   id: number
   name: string
   sku: string
+  priceMin: number | null
+  priceMax?: number | null
   hasOptions: boolean
   isVisibleIndividually: boolean
   isFeatured: boolean

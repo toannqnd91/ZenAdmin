@@ -13,7 +13,7 @@ import SettingsSidebar from '@/components/SettingsSidebar.vue'
     </template>
 
     <template #body>
-      <div class="settings-scroll">
+      <div>
         <div class="w-full max-w-screen-xl mx-auto px-6 py-6">
           <div class="grid grid-cols-12 gap-4">
             <!-- Vertical sidebar navigation -->
@@ -33,9 +33,9 @@ import SettingsSidebar from '@/components/SettingsSidebar.vue'
 
 <style scoped>
 .settings-scroll {
-  overflow-y: scroll; /* always show scrollbar */
+  overflow: auto scroll;
   scrollbar-width: thin;
   position: relative;
-  height: calc(100vh - 52px); /* account for top navbar height */
+  height: calc(100% - 52px);
 }
 </style>

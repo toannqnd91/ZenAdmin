@@ -7,7 +7,10 @@ type Variation = { id: string | number, stockQuantity: number | null }
 type ProductItem = {
   id: string | number
   name: string
+  sku?: string | null
   thumbnailImageUrl?: string | null
+  priceMin?: number | null
+  priceMax?: number | null
   categories?: Category[]
   status?: 'Public' | 'Draft'
   source?: string
@@ -49,6 +52,11 @@ const columns: TableColumn[] = [
   {
     key: 'name',
     label: 'Tên sản phẩm',
+    class: 'py-3 text-left font-medium'
+  },
+  {
+    key: 'price',
+    label: 'Giá',
     class: 'py-3 text-left font-medium'
   },
   {
@@ -98,6 +106,7 @@ const getThumbnail = (raw: Record<string, unknown>) => {
   return url
 }
 const getItemName = (raw: Record<string, unknown>) => String((raw as LooseItem).name ?? '')
+const getItemSku = (raw: Record<string, unknown>) => String((raw as { sku?: string | null }).sku ?? '')
 const onImgError = (e: Event) => {
   const t = e.target as HTMLImageElement | null
   if (t) t.src = '/no-image.svg'
@@ -134,6 +143,12 @@ const invText = (p: ProductItem) => {
   if (p.stockQuantity == null) return { line1: 'Unlimited', variants: `${Array.isArray(p.variations) ? p.variations.length : 1} variants`, danger: false }
   return { line1: `${p.stockQuantity} in stock`, variants: `${Array.isArray(p.variations) ? p.variations.length : 1} variants`, danger: false }
 }
+
+function formatVNDNumber(v?: number | null) {
+  if (v == null) return ''
+  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(v)
+}
+const currencySuffix = 'đ'
 </script>
 
 <template>
@@ -169,9 +184,30 @@ const invText = (p: ProductItem) => {
             @error="onImgError"
           >
         </div>
-        <div class="text-[15px] text-gray-900 font-medium">
-          {{ getItemName(item) }}
+        <div class="flex flex-col">
+          <div class="text-[15px] text-gray-900 font-medium">
+            {{ getItemName(item) }}
+          </div>
+          <div class="text-xs text-gray-500">
+            SKU: {{ getItemSku(item) || '—' }}
+          </div>
         </div>
+      </div>
+    </template>
+
+    <!-- Custom status column -->
+    <!-- Custom price column -->
+    <template #column-price="{ item }">
+      <div class="text-gray-900 font-medium">
+        <template v-if="item.priceMin != null && item.priceMax != null && item.priceMin !== item.priceMax">
+          {{ formatVNDNumber(item.priceMin as number) }}-{{ formatVNDNumber(item.priceMax as number) }}{{ currencySuffix }}
+        </template>
+        <template v-else-if="item.priceMin != null">
+          {{ formatVNDNumber(item.priceMin as number) }}{{ currencySuffix }}
+        </template>
+        <template v-else>
+          —
+        </template>
       </div>
     </template>
 
