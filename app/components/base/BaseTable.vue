@@ -9,6 +9,7 @@ export interface TableColumn {
   class?: string
   sortable?: boolean
   render?: (item: Record<string, unknown>) => unknown
+  align?: 'left' | 'center' | 'right'
 }
 
 export interface TableAction {
@@ -307,6 +308,18 @@ const getColumnValue = (item: Record<string, unknown>, column: TableColumn) => {
     return column.render(item)
   }
   return item[column.key]
+}
+
+// Resolve text alignment utility based on column.align
+const getAlignClass = (align?: 'left' | 'center' | 'right') => {
+  switch (align) {
+    case 'center':
+      return 'text-center'
+    case 'right':
+      return 'text-right'
+    default:
+      return 'text-left'
+  }
 }
 
 /* Row action menu helpers */
@@ -652,7 +665,11 @@ const onRowDelete = (item: Record<string, unknown>) => {
           <colgroup>
             <col v-if="props.selectable" class="w-14">
             <template v-if="props.colWidths && props.colWidths.length === columns.length">
-              <col v-for="(w, idx) in props.colWidths" :key="'colw'+idx" :style="{ width: w }">
+              <col
+                v-for="(w, idx) in props.colWidths"
+                :key="'colw'+idx"
+                :style="w ? { width: w } : undefined"
+              >
             </template>
             <template v-else>
               <col
@@ -718,7 +735,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
               <th
                 v-for="column in columns"
                 :key="column.key"
-                :class="column.class || 'py-3 text-left font-medium'"
+                :class="[column.class || '', 'py-3 font-medium', getAlignClass(column.align)]"
               >
                 {{ column.label }}
               </th>
@@ -773,7 +790,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
               <td
                 v-for="column in columns"
                 :key="column.key"
-                class="py-4"
+                :class="['py-4', getAlignClass(column.align)]"
               >
                 <slot
                   :name="`column-${column.key}`"
@@ -905,7 +922,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
             <td
               v-for="column in columns"
               :key="column.key"
-              class="py-4"
+              :class="['py-4', getAlignClass(column.align)]"
             >
               <slot
                 :name="`column-${column.key}`"

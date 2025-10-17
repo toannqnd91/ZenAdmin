@@ -60,7 +60,7 @@ const save = () => {
           <label class="block text-sm font-medium mb-2">Logo</label>
           <div
             :class="[
-              'border-2 border-dashed rounded-md bg-white text-center p-4 md:p-6 select-none',
+              'border border-dashed rounded-md bg-white text-center p-4 md:p-6 select-none',
               isOver ? 'border-primary-500 bg-primary-50' : 'border-gray-300'
             ]"
             @dragover.prevent="isOver = true"

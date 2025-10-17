@@ -10,9 +10,9 @@ const currentTab = computed(() => String(route.query.tab || 'general'))
 <template>
   <!-- This page is rendered inside the right-hand content area defined in pages/settings.vue -->
   <div>
-    <h1 class="text-2xl font-semibold mb-6">
+    <!-- <h1 class="text-xl font-semibold mb-3">
       {{ currentTab === 'general' ? 'Cấu hình chung' : currentTab === 'notifications' ? 'Thông báo' : 'Cài đặt' }}
-    </h1>
+    </h1> -->
     <div v-if="currentTab === 'general'">
       <GeneralSettings />
     </div>

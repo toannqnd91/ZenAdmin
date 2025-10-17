@@ -51,16 +51,18 @@ export const useAuthService = () => {
         }
         
         // Store in localStorage/cookies (consistent with useAuth)
+        // In development, avoid secure cookies so they work over http://localhost
+        const isProd = !import.meta.dev
         const accessTokenCookie = useCookie('access_token', {
           httpOnly: false,
-          secure: true,
+          secure: isProd,
           sameSite: 'strict',
           maxAge: 60 * 60 * 24 * 7 // 7 days
         })
         
         const refreshTokenCookie = useCookie('refresh_token', {
           httpOnly: true,
-          secure: true,
+          secure: isProd,
           sameSite: 'strict',
           maxAge: 60 * 60 * 24 * 30 // 30 days
         })
@@ -144,7 +146,13 @@ export const useAuthService = () => {
         user.value = response.data.user
         
         // Update access token cookie (encode like useAuth)
-        const accessTokenCookie = useCookie('access_token')
+        const isProd = !import.meta.dev
+        const accessTokenCookie = useCookie('access_token', {
+          httpOnly: false,
+          secure: isProd,
+          sameSite: 'strict',
+          maxAge: 60 * 60 * 24 * 7 // 7 days
+        })
         const encodedToken = process.client ? btoa(response.data.accessToken) : Buffer.from(response.data.accessToken).toString('base64')
         accessTokenCookie.value = encodedToken
         

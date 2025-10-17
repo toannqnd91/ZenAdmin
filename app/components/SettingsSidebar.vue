@@ -25,7 +25,7 @@ const links = [
 </script>
 
 <template>
-  <div class="space-y-1 p-2 rounded-xl bg-white border border-gray-200">
+  <div class="space-y-1 p-2 rounded-xl bg-white border-gray-200">
     <ul>
       <li v-for="item in links" :key="item.value">
         <NuxtLink
