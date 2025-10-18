@@ -20,7 +20,8 @@ const links = [
   { label: 'Mẫu in', value: 'print-templates', icon: 'i-lucide-printer' },
   { label: 'Gói dịch vụ', value: 'plans', icon: 'i-lucide-badge-dollar-sign' },
   { label: 'Nhật ký hoạt động', value: 'audit-log', icon: 'i-lucide-history' },
-  { label: 'Metafield', value: 'metafields', icon: 'i-lucide-table-properties' }
+  { label: 'Metafield', value: 'metafields', icon: 'i-lucide-table-properties' },
+  { label: 'Chatbot AI và tính năng AI', value: 'ai', icon: 'i-lucide-bot' }
 ]
 </script>
 
