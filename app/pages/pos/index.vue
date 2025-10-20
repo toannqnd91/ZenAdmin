@@ -134,8 +134,12 @@ const q = ref('')
                   <path d="M3 7h18M3 12h18M3 17h18" />
                 </svg>
               </div>
-              <div class="mb-1">Bạn chưa thêm sản phẩm nào</div>
-              <div class="text-sm">Ấn <span class="px-1 rounded bg-gray-200">F3</span> để tìm kiếm nhanh sản phẩm</div>
+              <div class="mb-1">
+                Bạn chưa thêm sản phẩm nào
+              </div>
+              <div class="text-sm">
+                Ấn <span class="px-1 rounded bg-gray-200">F3</span> để tìm kiếm nhanh sản phẩm
+              </div>
             </div>
           </div>
           <!-- Right summary panel -->
@@ -158,12 +162,18 @@ const q = ref('')
             </div>
 
             <div class="p-3 text-sm text-gray-700 space-y-1">
-              <div class="flex justify-between"><span>Tổng tiền hàng (0 sản phẩm)</span><span>0đ</span></div>
-              <div class="flex justify-between text-primary-600"><button class="inline-flex items-center gap-1">
-                <span>Giảm giá</span>
-                <span class="text-[10px] px-1 rounded bg-blue-100 text-blue-700">F6</span>
-              </button><span>0đ</span></div>
-              <div class="flex justify-between font-semibold text-gray-900"><span>Khách phải trả</span><span>0đ</span></div>
+              <div class="flex justify-between">
+                <span>Tổng tiền hàng (0 sản phẩm)</span><span>0đ</span>
+              </div>
+              <div class="flex justify-between text-primary-600">
+                <button class="inline-flex items-center gap-1">
+                  <span>Giảm giá</span>
+                  <span class="text-[10px] px-1 rounded bg-blue-100 text-blue-700">F6</span>
+                </button><span>0đ</span>
+              </div>
+              <div class="flex justify-between font-semibold text-gray-900">
+                <span>Khách phải trả</span><span>0đ</span>
+              </div>
             </div>
 
             <div class="mt-auto p-3 space-y-2">
@@ -171,15 +181,21 @@ const q = ref('')
                 <input type="checkbox" class="rounded border-gray-300" checked>
                 <span>In hoá đơn tự động  <span class="text-[10px] px-1 rounded bg-gray-100 text-gray-600">F10</span></span>
               </label>
-              <button class="h-11 w-full rounded bg-primary-600 hover:bg-primary-700 text-white font-semibold">Thanh toán  <span class="text-[10px] px-1 rounded bg-blue-100 text-white/90 ml-1">F9</span></button>
+              <button class="h-11 w-full rounded bg-primary-600 hover:bg-primary-700 text-white font-semibold">
+                Thanh toán  <span class="text-[10px] px-1 rounded bg-blue-100 text-white/90 ml-1">F9</span>
+              </button>
             </div>
           </div>
         </div>
 
         <!-- Bottom toolbar -->
         <div class="h-16 border-t px-3 flex items-center gap-3 text-sm">
-          <button class="h-9 inline-flex items-center gap-2 rounded border border-amber-300 bg-amber-50 px-3 text-amber-800">Sapo Invoice <span class="text-xs font-medium text-amber-700">Cần thiết lập mẫu hoá đơn</span></button>
-          <button class="h-9 inline-flex items-center gap-2 rounded border border-sky-300 bg-sky-50 px-3 text-sky-800">Quản lý công nợ <span class="text-xs font-medium text-sky-700">Chưa thêm khách hàng</span></button>
+          <button class="h-9 inline-flex items-center gap-2 rounded border border-amber-300 bg-amber-50 px-3 text-amber-800">
+            Sapo Invoice <span class="text-xs font-medium text-amber-700">Cần thiết lập mẫu hoá đơn</span>
+          </button>
+          <button class="h-9 inline-flex items-center gap-2 rounded border border-sky-300 bg-sky-50 px-3 text-sky-800">
+            Quản lý công nợ <span class="text-xs font-medium text-sky-700">Chưa thêm khách hàng</span>
+          </button>
           <div class="flex-1 min-w-0">
             <input type="text" placeholder="Nhập ghi chú đơn hàng" class="w-full h-9 rounded border border-gray-300 px-3">
           </div>
@@ -198,7 +214,9 @@ const q = ref('')
               </svg>
             </button>
           </div>
-          <button class="h-9 inline-flex items-center gap-2 rounded border border-gray-300 px-3 hover:bg-gray-50">Sản phẩm tuỳ chỉnh  <span class="text-[10px] px-1 rounded bg-gray-100 text-gray-600">F2</span></button>
+          <button class="h-9 inline-flex items-center gap-2 rounded border border-gray-300 px-3 hover:bg-gray-50">
+            Sản phẩm tuỳ chỉnh  <span class="text-[10px] px-1 rounded bg-gray-100 text-gray-600">F2</span>
+          </button>
         </div>
       </main>
     </div>

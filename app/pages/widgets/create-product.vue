@@ -47,6 +47,7 @@ function onCancel() {
   router.back()
 }
 </script>
+
 <template>
   <UDashboardPanel class="flex flex-col h-full">
     <template #header>
@@ -58,8 +59,10 @@ function onCancel() {
     </template>
     <template #body>
       <UCard class="w-full mt-6">
-        <UForm @submit="onSave" class="space-y-6">
-          <div class="text-3xl font-light mb-8">Create Product Widget</div>
+        <UForm class="space-y-6" @submit="onSave">
+          <div class="text-3xl font-light mb-8">
+            Create Product Widget
+          </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Widget Name</label>
             <div class="col-span-10 w-full">
@@ -87,7 +90,13 @@ function onCancel() {
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Display Order</label>
             <div class="col-span-10 w-full">
-              <UInput v-model="displayOrder" type="number" min="0" placeholder="0" class="w-full" />
+              <UInput
+                v-model="displayOrder"
+                type="number"
+                min="0"
+                placeholder="0"
+                class="w-full"
+              />
             </div>
           </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
@@ -99,7 +108,12 @@ function onCancel() {
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Number of Products</label>
             <div class="col-span-10 w-full">
-              <UInput v-model="numberOfProducts" type="number" min="1" class="w-full" />
+              <UInput
+                v-model="numberOfProducts"
+                type="number"
+                min="1"
+                class="w-full"
+              />
             </div>
           </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
@@ -109,15 +123,19 @@ function onCancel() {
             </div>
           </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
-            <div class="col-span-2"></div>
+            <div class="col-span-2" />
             <div class="col-span-10 w-full flex items-center">
               <UCheckbox v-model="isFeaturedOnly" class="mr-2" />
               <span>Is Featured Products Only</span>
             </div>
           </div>
           <div class="flex gap-2 mt-4">
-            <UButton icon="i-lucide-check" color="primary" type="submit">Save</UButton>
-            <UButton color="neutral" variant="soft" @click="onCancel">Cancel</UButton>
+            <UButton icon="i-lucide-check" color="primary" type="submit">
+              Save
+            </UButton>
+            <UButton color="neutral" variant="soft" @click="onCancel">
+              Cancel
+            </UButton>
           </div>
         </UForm>
       </UCard>

@@ -1,4 +1,3 @@
-
 import { BaseService } from './base.service'
 import { API_ENDPOINTS } from '@/utils/api'
 
@@ -38,35 +37,35 @@ export class BrandService extends BaseService {
       search: searchObj,
       sort: options?.sort
     })
-  return this.post<Brand[]>(API_ENDPOINTS.BRANDS, body)
+    return this.post<Brand[]>(API_ENDPOINTS.BRANDS, body)
   }
 
   /**
    * Get single brand by ID
    */
   async getBrandById(id: number) {
-  return this.get<Brand>(API_ENDPOINTS.BRAND_BY_ID(id))
+    return this.get<Brand>(API_ENDPOINTS.BRAND_BY_ID(id))
   }
 
   /**
    * Create new brand
    */
   async createBrand(data: CreateBrandRequest) {
-  return this.post<Brand>(API_ENDPOINTS.BRANDS, data)
+    return this.post<Brand>(API_ENDPOINTS.BRANDS, data)
   }
 
   /**
    * Update brand
    */
   async updateBrand(data: UpdateBrandRequest) {
-  return this.put<Brand>(API_ENDPOINTS.BRAND_BY_ID(data.id), data)
+    return this.put<Brand>(API_ENDPOINTS.BRAND_BY_ID(data.id), data)
   }
 
   /**
    * Delete brand
    */
   async deleteBrand(id: number) {
-  return this.delete(API_ENDPOINTS.BRAND_BY_ID(id))
+    return this.delete(API_ENDPOINTS.BRAND_BY_ID(id))
   }
 }
 

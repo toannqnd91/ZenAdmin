@@ -1,4 +1,3 @@
-
 <script setup lang="ts">
 import type { TableColumn } from '@/components/base/BaseTable.vue'
 import BaseTable from '@/components/base/BaseTable.vue'
@@ -73,13 +72,13 @@ const handleRowClick = (item: NewsItem) => {
     :row-click-handler="handleRowClick"
     :total-pages="props.totalPages"
     :total-records="props.totalRecords"
+    class=""
     @update:q="emit('update:q', $event)"
     @update:row-selection="emit('update:rowSelection', $event)"
     @update:pagination="emit('update:pagination', $event)"
     @row-edit="emit('edit', $event)"
     @row-delete="emit('delete', $event)"
     @delete="emit('delete-multi', $event)"
-    class=""
   >
     <!-- Custom title column with image and desc -->
     <template #column-title="{ item }">

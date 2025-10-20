@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
-import type { StepperItem } from '@nuxt/ui'
-import type { FormError, FormSubmitEvent } from '@nuxt/ui'
-
+import type { StepperItem, FormError, FormSubmitEvent } from '@nuxt/ui'
 
 const { isNotificationsSlideoverOpen } = useDashboard()
 
@@ -37,7 +35,6 @@ const validate = (state: any): FormError[] => {
   if (!state.password) errors.push({ name: 'password', message: 'Required' })
   return errors
 }
-
 </script>
 
 <template>
@@ -69,11 +66,17 @@ const validate = (state: any): FormError[] => {
 
       <div class="flex flex-col gap-4 sm:gap-6 lg:gap-12 w-full lg:max-w-6xl mx-auto">
         <!-- Form đăng ký -->
-        <UForm :validate="validate" :state="state" class="space-y-4" @submit="onSubmit">
-
+        <UForm
+          :validate="validate"
+          :state="state"
+          class="space-y-4"
+          @submit="onSubmit"
+        >
           <!-- Thông tin cơ bản -->
           <div>
-            <h2 class="font-bold text-base mb-2">Thông tin cơ bản</h2>
+            <h2 class="font-bold text-base mb-2">
+              Thông tin cơ bản
+            </h2>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div class="flex flex-col">
                 <label for="middleName" class="font-medium mb-1">Họ đệm</label>
@@ -89,14 +92,21 @@ const validate = (state: any): FormError[] => {
               </div>
               <div class="flex flex-col">
                 <label for="idIssuedDate" class="font-medium mb-1">Ngày cấp</label>
-                <UInput id="idIssuedDate" v-model="state.idIssuedDate" type="date" placeholder="Ngày cấp" />
+                <UInput
+                  id="idIssuedDate"
+                  v-model="state.idIssuedDate"
+                  type="date"
+                  placeholder="Ngày cấp"
+                />
               </div>
             </div>
           </div>
 
           <!-- Thông tin bổ sung -->
           <div>
-            <h2 class="font-bold text-base mb-2">Thông tin bổ sung</h2>
+            <h2 class="font-bold text-base mb-2">
+              Thông tin bổ sung
+            </h2>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
               <UInput label="Ngày sinh" type="date" required />
               <USelect label="Giới tính" :options="['Nam', 'Nữ', 'Khác']" required />
@@ -116,7 +126,9 @@ const validate = (state: any): FormError[] => {
 
           <!-- Thông tin liên hệ -->
           <div>
-            <h2 class="font-bold text-base mb-2">Thông tin liên hệ</h2>
+            <h2 class="font-bold text-base mb-2">
+              Thông tin liên hệ
+            </h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <UInput label="Địa chỉ nhận thư báo" required />
               <UButton label="Lấy giống hộ khẩu thường trú" color="primary" variant="soft" />
@@ -135,7 +147,9 @@ const validate = (state: any): FormError[] => {
 
           <!-- Thông tin học tập lớp 12 -->
           <div>
-            <h2 class="font-bold text-base mb-2">Thông tin học tập lớp 12</h2>
+            <h2 class="font-bold text-base mb-2">
+              Thông tin học tập lớp 12
+            </h2>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
               <USelect label="Chọn tỉnh/TP" :options="[]" required />
               <USelect label="Chọn quận/huyện" :options="[]" required />
@@ -151,8 +165,6 @@ const validate = (state: any): FormError[] => {
           </div>
         </UForm>
       </div>
-
-
     </template>
   </UDashboardPanel>
 </template>

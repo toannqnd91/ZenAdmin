@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useFileUpload } from '@/composables/useFileUpload'
 
-defineProps<{ endpoint?: string; multiple?: boolean }>()
+defineProps<{ endpoint?: string, multiple?: boolean }>()
 const emit = defineEmits<{ (e: 'uploaded', files: any): void }>()
 
 const files = ref<File[]>([])
@@ -29,7 +29,12 @@ async function handleUpload() {
 
 <template>
   <div class="space-y-2">
-    <input type="file" :multiple="multiple" @change="handleChange" />
-    <UButton :loading="loading" label="Upload" color="primary" @click="handleUpload" />
+    <input type="file" :multiple="multiple" @change="handleChange">
+    <UButton
+      :loading="loading"
+      label="Upload"
+      color="primary"
+      @click="handleUpload"
+    />
   </div>
 </template>

@@ -15,7 +15,6 @@ watch(userRoles, (val) => {
 const route = useRoute()
 const toast = useToast()
 
-
 const open = ref(false)
 const sidebarCollapsed = computed(() => open.value === false)
 

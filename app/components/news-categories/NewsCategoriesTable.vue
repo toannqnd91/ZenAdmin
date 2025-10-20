@@ -70,7 +70,7 @@ const handleRowClick = (item: NewsCategory) => {
         </div>
       </div>
     </template>
-  <!-- Đã bỏ cột mô tả, chỉ show trong name -->
+    <!-- Đã bỏ cột mô tả, chỉ show trong name -->
     <!-- Row actions slot nếu cần -->
     <template #row-actions="{ item }">
       <slot name="row-actions" :item="item">

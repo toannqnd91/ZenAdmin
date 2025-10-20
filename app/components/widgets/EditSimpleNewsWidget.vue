@@ -63,7 +63,7 @@ onMounted(async () => {
       publishStart.value = w.publishStart ? new Date(w.publishStart).toISOString().slice(0, 16) : ''
       publishEnd.value = w.publishEnd ? new Date(w.publishEnd).toISOString().slice(0, 16) : ''
       displayOrder.value = String(w.displayOrder ?? '0')
-      products.value = (w.news || []).map((n) => ({
+      products.value = (w.news || []).map(n => ({
         id: n.id,
         name: n.name,
         isPublished: n.isPublished,
@@ -158,7 +158,6 @@ function onCancel() {
 }
 </script>
 
-
 <template>
   <UCard class="w-full mt-6">
     <UForm
@@ -176,7 +175,9 @@ function onCancel() {
       <div class="text-3xl font-light mb-8">
         Edit Simple News Widget
       </div>
-      <div v-if="loading" class="p-4 text-gray-500">Đang tải dữ liệu...</div>
+      <div v-if="loading" class="p-4 text-gray-500">
+        Đang tải dữ liệu...
+      </div>
       <div v-else>
         <div class="grid grid-cols-12 gap-4 items-center mb-2">
           <label class="col-span-2 text-right pr-2">Widget Name</label>
@@ -291,8 +292,12 @@ function onCancel() {
   >
     <template #body>
       <div class="max-h-96 overflow-y-auto">
-        <div v-if="newsLoading" class="p-4 text-gray-500">Đang tải tin tức...</div>
-        <div v-else-if="newsError" class="p-4 text-error">{{ newsError }}</div>
+        <div v-if="newsLoading" class="p-4 text-gray-500">
+          Đang tải tin tức...
+        </div>
+        <div v-else-if="newsError" class="p-4 text-error">
+          {{ newsError }}
+        </div>
         <div v-else>
           <div
             v-for="news in modalNews"

@@ -2,7 +2,7 @@
 </script>
 
 <template>
-    <div>
-        <h1>Discounts</h1>
-    </div>
+  <div>
+    <h1>Discounts</h1>
+  </div>
 </template>

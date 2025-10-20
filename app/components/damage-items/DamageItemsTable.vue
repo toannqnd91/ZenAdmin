@@ -1,17 +1,14 @@
 <script setup lang="ts">
 import BaseTable from '@/components/base/BaseTable.vue'
 
-interface PurchaseOrderRow {
+interface DamageItemRow {
   id: string | number
   code: string
   date: string
-  branchName: string
+  warehouseName: string
   statusLabel: string
-  receiveStatus: string
-  supplierName: string
+  approvedOn: string
   createdByName: string
-  totalQuantity: number
-  total: number
 }
 
 interface TableTab {
@@ -19,7 +16,6 @@ interface TableTab {
   value: string
   count?: number
 }
-
 interface AddButton {
   label: string
   href?: string
@@ -27,7 +23,7 @@ interface AddButton {
 }
 
 const props = defineProps<{
-  data: PurchaseOrderRow[]
+  data: DamageItemRow[]
   loading?: boolean
   q: string
   rowSelection: Record<string, boolean>
@@ -47,65 +43,31 @@ const emit = defineEmits<{
 }>()
 
 const columns = [
-  { key: 'code', label: 'Mã đơn nhập', sortable: true },
+  { key: 'code', label: 'Mã phiếu hủy', sortable: true },
   { key: 'date', label: 'Ngày tạo', sortable: true },
-  { key: 'branchName', label: 'Chi nhánh nhập', sortable: true },
+  { key: 'warehouseName', label: 'Chi nhánh', sortable: true },
   { key: 'statusLabel', label: 'Trạng thái', sortable: true },
-  { key: 'receiveStatus', label: 'Trạng thái nhập', sortable: true },
-  { key: 'supplierName', label: 'Nhà cung cấp', sortable: true },
-  { key: 'createdByName', label: 'Nhân viên tạo', sortable: true },
-  { key: 'totalQuantity', label: 'Số lượng nhập', sortable: true, align: 'right' as const },
-  { key: 'total', label: 'Giá trị đơn', sortable: true, align: 'right' as const }
+  { key: 'approvedOn', label: 'Ngày duyệt', sortable: true },
+  { key: 'createdByName', label: 'Người tạo', sortable: true }
 ]
 const colWidths = [
-  '140px', // code
+  '160px', // code
   '170px', // date
-  '180px', // branch
-  '140px', // status label
-  '140px', // receive status
-  '160px', // supplier
-  '160px', // created by
-  '120px', // total qty
-  '160px' // total money
+  '200px', // warehouse
+  '140px', // status
+  '170px', // approved
+  '180px' // created by
 ]
-
-function formatMoney(v: number | string) {
-  if (v == null || v === '') return ''
-  const num = typeof v === 'string' ? Number(v) : v
-  if (isNaN(num)) return ''
-  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(num) + 'đ'
-}
 
 function statusPillClass(label: string) {
   const key = (label || '').toLowerCase()
-  if (key.includes('giao dịch') || key.includes('processing')) {
+  if (key.includes('đang') || key.includes('processing')) {
     return 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200'
   }
-  if (key.includes('hoàn thành') || key.includes('complete')) {
+  if (key.includes('hoàn thành') || key.includes('approved') || key.includes('complete')) {
     return 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200'
   }
   return 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200'
-}
-
-function receivePillClass(label: string) {
-  const key = (label || '').toLowerCase()
-  if (key.includes('chưa nhập') || key.includes('not') || key.includes('pending')) {
-    return 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200'
-  }
-  if (key.includes('đã nhập') || key.includes('received')) {
-    return 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200'
-  }
-  if (key.includes('một phần') || key.includes('partial')) {
-    return 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200'
-  }
-  return 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200'
-}
-
-function formatNumber(v: number | string) {
-  if (v == null || v === '') return ''
-  const num = typeof v === 'string' ? Number(v) : v
-  if (isNaN(num)) return ''
-  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(num)
 }
 </script>
 
@@ -118,7 +80,7 @@ function formatNumber(v: number | string) {
     :pagination="props.pagination"
     :columns="columns"
     :col-widths="colWidths"
-    title="Đơn mua hàng"
+    title="Phiếu hủy hàng"
     hide-title
     :tabs="props.tabs"
     tabs-style="underline"
@@ -132,7 +94,7 @@ function formatNumber(v: number | string) {
     body-padding="px-6"
     header-padding-x="px-6"
     footer-padding="px-6 pb-4"
-    search-placeholder="Tìm mã đơn, nhà cung cấp"
+    search-placeholder="Tìm mã phiếu, chi nhánh"
     hide-search
     @update:q="val => emit('update:q', val)"
     @update:row-selection="val => emit('update:row-selection', val)"
@@ -156,17 +118,6 @@ function formatNumber(v: number | string) {
     </template>
     <template #column-statusLabel="{ value }">
       <span :class="statusPillClass(String(value || ''))">{{ value }}</span>
-    </template>
-    <template #column-receiveStatus="{ value }">
-      <span :class="receivePillClass(String(value || ''))">{{ value }}</span>
-    </template>
-    <template #column-totalQuantity="{ value }">
-      <span class="tabular-nums">{{ formatNumber(value as string | number) }}</span>
-    </template>
-    <template #column-total="{ value }">
-      <span class="font-semibold tabular-nums text-sky-700">
-        {{ formatMoney(value as string | number) }}
-      </span>
     </template>
   </BaseTable>
 </template>

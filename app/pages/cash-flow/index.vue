@@ -559,4 +559,3 @@ thead th { color: #4b5563; }
 
 /* Summary bar now wraps on very small screens; spacing tightens via responsive gap utilities */
 </style>
-

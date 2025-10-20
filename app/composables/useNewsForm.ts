@@ -47,7 +47,7 @@ export const useNewsForm = (newsId?: number) => {
     if (event) {
       event.preventDefault()
     }
-    
+
     const tag = tagInput.value.trim()
     if (tag && !formData.value.tags?.includes(tag)) {
       if (!formData.value.tags) formData.value.tags = []
@@ -124,9 +124,9 @@ export const useNewsForm = (newsId?: number) => {
   const handleImageUpload = async (event: Event) => {
     const target = event.target as HTMLInputElement
     const file = target.files?.[0]
-    
+
     if (!file) return
-    
+
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml']
     if (!allowedTypes.includes(file.type)) {
@@ -135,7 +135,7 @@ export const useNewsForm = (newsId?: number) => {
       target.value = ''
       return
     }
-    
+
     // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       console.error('Kích thước file không được vượt quá 2MB')
@@ -143,24 +143,24 @@ export const useNewsForm = (newsId?: number) => {
       target.value = ''
       return
     }
-    
+
     imageFile.value = file
-    
+
     // Create preview
     const reader = new FileReader()
     reader.onload = (e) => {
       imagePreview.value = e.target?.result as string
     }
     reader.readAsDataURL(file)
-    
+
     // Upload file
     try {
       isUploadingImage.value = true
       const response = await fileService.uploadFile(file, 'news')
-      
+
       if (response && response.success && response.data) {
         const fileData = Array.isArray(response.data) ? response.data[0] : response.data
-        
+
         if (fileData && fileData.fileName) {
           formData.value.imageUrl = fileData.fileName
           console.log('Upload ảnh thành công! FileName:', fileData.fileName)
@@ -203,30 +203,30 @@ export const useNewsForm = (newsId?: number) => {
   // Form validation
   const validateForm = () => {
     errors.value = {}
-    
+
     if (!formData.value.title.trim()) {
       errors.value.title = 'Tiêu đề là bắt buộc'
     }
-    
+
     if (!formData.value.desc.trim()) {
       errors.value.desc = 'Mô tả ngắn là bắt buộc'
     }
-    
+
     if (!formData.value.content.trim()) {
       errors.value.content = 'Nội dung là bắt buộc'
     }
-    
+
     if (!formData.value.categoryIds.length) {
       errors.value.categoryIds = 'Vui lòng chọn ít nhất một danh mục'
     }
-    
+
     return Object.keys(errors.value).length === 0
   }
 
   // Load news data for editing
   const loadNewsData = async () => {
     if (!newsId) return
-    
+
     isLoading.value = true
     try {
       const response = await newsService.getNewsById(newsId)
@@ -240,7 +240,7 @@ export const useNewsForm = (newsId?: number) => {
           tags: news.tags || [],
           categoryIds: news.categories.map(c => c.id)
         }
-        
+
         // Set image preview if exists
         if (news.imageUrl) {
           originalImageUrl.value = news.imageUrl
@@ -257,26 +257,26 @@ export const useNewsForm = (newsId?: number) => {
   // Submit form (create or update)
   const submitForm = async () => {
     if (!validateForm()) return
-    
+
     isSubmitting.value = true
-    
+
     try {
       console.log('Form data before sending:', formData.value)
-      
+
       let response
       if (newsId) {
         // Update mode
         response = await newsService.updateNews(newsId, formData.value)
       } else {
-  // Ensure desc plain text trimmed (summary editor runs in plainText mode)
-  formData.value.desc = formData.value.desc.trim()
+        // Ensure desc plain text trimmed (summary editor runs in plainText mode)
+        formData.value.desc = formData.value.desc.trim()
         // Create mode
         response = await newsService.createNews(formData.value)
       }
-      
+
       if (response.success) {
         console.log(newsId ? 'Cập nhật tin tức thành công!' : 'Tạo tin tức thành công!')
-        
+
         // Redirect to news list
         await navigateTo('/news')
       } else {
@@ -303,16 +303,16 @@ export const useNewsForm = (newsId?: number) => {
     isSubmitting,
     isLoading,
     errors,
-    
+
     // Publication
     publicationStatus,
     statusItems,
-    
+
     // Tags
     tagInput,
     addTag,
     removeTag,
-    
+
     // Categories
     categories,
     isDropdownOpen,
@@ -321,10 +321,10 @@ export const useNewsForm = (newsId?: number) => {
     selectedCategories,
     toggleCategory,
     removeCategory,
-  isCategoriesLoading: computed(() => categoriesPending.value),
-  categoriesError,
-  refreshCategories,
-    
+    isCategoriesLoading: computed(() => categoriesPending.value),
+    categoriesError,
+    refreshCategories,
+
     // Image upload
     isUploadingImage,
     imageFile,
@@ -335,12 +335,12 @@ export const useNewsForm = (newsId?: number) => {
     removeImage,
     restoreOriginalImage,
     clickFileInput,
-    
+
     // Form methods
     validateForm,
     submitForm,
     loadNewsData,
-    
+
     // Computed
     isEditMode: computed(() => !!newsId)
   }

@@ -36,11 +36,11 @@ export const tableLayouts = {
 export const useTableLayout = () => {
   // Tạo class CSS từ cấu hình layout
   const getColumnClass = (
-    column: { key: string; class?: string },
+    column: { key: string, class?: string },
     layout?: TableLayoutConfig
   ): string => {
     const baseClass = column.class || 'py-3 text-left font-medium'
-    
+
     if (!layout || !layout[column.key]) {
       return baseClass
     }
@@ -63,7 +63,7 @@ export const useTableLayout = () => {
 
   // Áp dụng layout cho danh sách columns
   const applyLayout = (
-    columns: Array<{ key: string; label: string; class?: string }>,
+    columns: Array<{ key: string, label: string, class?: string }>,
     layoutType: keyof typeof tableLayouts
   ) => {
     const layout = tableLayouts[layoutType]

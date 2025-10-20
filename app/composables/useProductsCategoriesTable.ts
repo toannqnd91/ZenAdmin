@@ -24,10 +24,10 @@ export interface ProductCategoriesApiResponse {
 export const useProductsCategoriesTable = async () => {
   const toast = useToast()
   const { accessToken } = useAuthService()
-  
+
   // Template refs
   const table = useTemplateRef('table')
-  
+
   // Reactive state
   const q = ref('')
   const rowSelection = ref({})
@@ -180,19 +180,19 @@ export const useProductsCategoriesTable = async () => {
     q,
     rowSelection,
     table,
-    
+
     // Data
     categories: readonly(categories),
     filtered,
     loading: readonly(loading),
     error: readonly(error),
-    
+
     // Table config
     columns,
-    
+
     // Methods
     getRowItems,
-    
+
     // Computed for table API access
     tableApi: computed(() => (table.value as any)?.tableApi)
   }

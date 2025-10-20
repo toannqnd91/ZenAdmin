@@ -57,7 +57,7 @@ onMounted(async () => {
       publishStart.value = w.publishStart || ''
       publishEnd.value = w.publishEnd || ''
       displayOrder.value = String(w.displayOrder)
-      
+
       // Lấy setting từ API response
       if (w.setting) {
         numberOfNews.value = w.setting.numberOfNews
@@ -112,8 +112,10 @@ function onCancel() {
 
 <template>
   <UCard class="w-full mt-6">
-    <form @submit.prevent="onUpdateNewsWidget" class="space-y-6">
-      <div class="text-3xl font-light mb-8">Cập nhật News Widget</div>
+    <form class="space-y-6" @submit.prevent="onUpdateNewsWidget">
+      <div class="text-3xl font-light mb-8">
+        Cập nhật News Widget
+      </div>
       <div class="grid grid-cols-12 gap-4 items-center mb-2">
         <label class="col-span-2 text-right pr-2">Tên Widget</label>
         <div class="col-span-10 w-full">
@@ -146,37 +148,62 @@ function onCancel() {
       <div class="grid grid-cols-12 gap-4 items-center mb-2">
         <label class="col-span-2 text-right pr-2">Thứ tự hiển thị</label>
         <div class="col-span-10 w-full">
-          <UInput v-model="displayOrder" type="number" min="0" placeholder="0" class="w-full" />
+          <UInput
+            v-model="displayOrder"
+            type="number"
+            min="0"
+            placeholder="0"
+            class="w-full"
+          />
         </div>
       </div>
       <div class="grid grid-cols-12 gap-4 items-center mb-2">
         <label class="col-span-2 text-right pr-2">Danh mục</label>
         <div class="col-span-10 w-full">
-          <USelect v-model="category" :items="categoryOptions" placeholder="Chọn danh mục" class="w-full" />
+          <USelect
+            v-model="category"
+            :items="categoryOptions"
+            placeholder="Chọn danh mục"
+            class="w-full"
+          />
         </div>
       </div>
       <div class="grid grid-cols-12 gap-4 items-center mb-2">
         <label class="col-span-2 text-right pr-2">Số lượng tin</label>
         <div class="col-span-10 w-full">
-          <UInput v-model="numberOfNews" type="number" min="1" class="w-full" />
+          <UInput
+            v-model="numberOfNews"
+            type="number"
+            min="1"
+            class="w-full"
+          />
         </div>
       </div>
       <div class="grid grid-cols-12 gap-4 items-center mb-2">
         <label class="col-span-2 text-right pr-2">Sắp xếp theo</label>
         <div class="col-span-10 w-full">
-          <USelect v-model="orderBy" :items="orderByOptions" placeholder="Chọn kiểu sắp xếp" class="w-full" />
+          <USelect
+            v-model="orderBy"
+            :items="orderByOptions"
+            placeholder="Chọn kiểu sắp xếp"
+            class="w-full"
+          />
         </div>
       </div>
       <div class="grid grid-cols-12 gap-4 items-center mb-2">
-        <div class="col-span-2"></div>
+        <div class="col-span-2" />
         <div class="col-span-10 w-full flex items-center">
           <UCheckbox v-model="isFeaturedOnly" class="mr-2" />
           <span>Chỉ lấy tin nổi bật</span>
         </div>
       </div>
       <div class="flex gap-2 mt-4">
-        <UButton icon="i-lucide-check" color="primary" type="submit">Cập nhật</UButton>
-        <UButton color="neutral" variant="soft" @click="onCancel">Hủy</UButton>
+        <UButton icon="i-lucide-check" color="primary" type="submit">
+          Cập nhật
+        </UButton>
+        <UButton color="neutral" variant="soft" @click="onCancel">
+          Hủy
+        </UButton>
       </div>
     </form>
   </UCard>

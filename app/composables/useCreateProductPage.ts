@@ -100,15 +100,15 @@ export function useCreateProductPage() {
         values: (a.values || []).map(v => ({ key: v, display: null }))
       }))
 
-  // const normalizeImageUrl = (url: string) => {
-  //   if (!url) return ''
-  //   if (url.startsWith('http://') || url.startsWith('https://')) return url
-  //   const fname = url.replace(/^\/image\//, '')
-  //   return `${imageBaseUrl}/image/${fname}`
-  // }
+      // const normalizeImageUrl = (url: string) => {
+      //   if (!url) return ''
+      //   if (url.startsWith('http://') || url.startsWith('https://')) return url
+      //   const fname = url.replace(/^\/image\//, '')
+      //   return `${imageBaseUrl}/image/${fname}`
+      // }
 
-  const validWarehouseIds = warehouses.value.map(w => w.id)
-  const variations = (variants.value || []).map((v) => {
+      const validWarehouseIds = warehouses.value.map(w => w.id)
+      const variations = (variants.value || []).map((v) => {
         const vRec = (v || {}) as { name?: string, options?: Record<string, string>, price?: number }
         const name = String(vRec.name || '')
         const opts = (vRec.options || {}) as Record<string, string>
@@ -151,19 +151,19 @@ export function useCreateProductPage() {
       })
 
       // Build productImages array from imagePreviews, only filename for mediaUrl
-  const productImages = (imagePreviews.value || []).map(img => ({
+      const productImages = (imagePreviews.value || []).map(img => ({
         caption: 'Image Caption',
         mediaUrl: typeof img === 'string' ? img.split('/').pop() || img : img
       }))
 
       // Remove imageUrls from formData before submit
       if ('imageUrls' in formData.value) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  delete (formData.value as any).imageUrls
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        delete (formData.value as any).imageUrls
       }
 
       // Patch submitForm to accept productImages at root
-  const ok = await submitForm({ options, variations, productImages })
+      const ok = await submitForm({ options, variations, productImages })
       if (ok) {
         console.log('Sản phẩm đã được tạo thành công.')
       }
@@ -400,8 +400,8 @@ export function useCreateProductPage() {
   })
 
   // Store per-variant data: per-warehouse price (with custom flag) + per-warehouse stock
-  interface VariantWarehousePrice { value: number; custom: boolean }
-  interface VariantRecord { prices: Record<number, VariantWarehousePrice>; stocks: Record<number, number> }
+  interface VariantWarehousePrice { value: number, custom: boolean }
+  interface VariantRecord { prices: Record<number, VariantWarehousePrice>, stocks: Record<number, number> }
   const variantData = ref<Record<string, VariantRecord>>({})
 
   // Internal list of variant keys ("Color / Size" etc.)
@@ -418,7 +418,7 @@ export function useCreateProductPage() {
         return
       }
       // Build cartesian product of attribute values
-  const lists = attrs.map(a => Array.isArray(a.values) ? a.values.map((v: unknown) => String(v)) : [])
+      const lists = attrs.map(a => Array.isArray(a.values) ? a.values.map((v: unknown) => String(v)) : [])
       let product: string[][] = []
       for (const list of lists) {
         if (product.length === 0) {

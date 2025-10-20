@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { usePagesService } from '@/composables/usePagesService'
+
 const { isNotificationsSlideoverOpen } = useDashboard()
 const {
   q,

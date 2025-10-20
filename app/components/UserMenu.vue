@@ -11,12 +11,10 @@ const { user: userInfo, logout } = useAuthService()
 
 const showLogoutConfirm = ref(false)
 
-
 function onConfirmLogout() {
   logout()
   showLogoutConfirm.value = false
 }
-
 
 const colors = (appConfig.ui?.colorPalette as string[]) || ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose']
 const neutrals = ['slate', 'gray', 'zinc', 'neutral', 'stone']
@@ -31,7 +29,7 @@ const neutrals = ['slate', 'gray', 'zinc', 'neutral', 'stone']
 
 const user = computed(() => {
   console.log('UserMenu - userInfo.value:', userInfo.value)
-  
+
   return {
     name: userInfo.value?.display_name || userInfo.value?.fullName || 'User',
     avatar: {
@@ -40,7 +38,6 @@ const user = computed(() => {
     }
   }
 })
-
 
 const items = computed<DropdownMenuItem[][]>(() => ([[{
   type: 'label',

@@ -25,15 +25,15 @@ onMounted(async () => {
     console.log('Loading widget zones...')
     const response = await widgetsService.getWidgetZones()
     console.log('Widget zones response:', response)
-    
+
     if (response.success && response.data) {
       widgetZones.value = response.data
-      
+
       // Try different option formats for USelect
       widgetZoneItems.value = response.data.map((zone: WidgetZone) => zone.name)
-      
+
       console.log('Widget zone items:', widgetZoneItems.value)
-      
+
       // Set default value to first zone if available
       if (response.data.length > 0) {
         widgetZone.value = response.data[0]?.name || undefined
@@ -87,10 +87,10 @@ async function onFileChange(file: File | null, idx: number) {
 
 async function onSave() {
   if (isSubmitting.value) return
-  
+
   try {
     isSubmitting.value = true
-    
+
     // Validate required fields
     if (!widgetName.value.trim()) {
       alert('Widget Name is required')
@@ -105,29 +105,29 @@ async function onSave() {
     // Helper function to convert dd/MM/yyyy HH:mm to ISO string
     function convertToISO(dateTimeStr: string): string {
       if (!dateTimeStr) return new Date().toISOString()
-      
+
       try {
         // Parse dd/MM/yyyy HH:mm format
         const parts = dateTimeStr.split(' ')
         if (parts.length !== 2) throw new Error('Invalid format')
-        
+
         const [datePart, timePart] = parts
         if (!datePart || !timePart) throw new Error('Missing date or time part')
-        
+
         const dateParts = datePart.split('/')
         const timeParts = timePart.split(':')
-        
+
         if (dateParts.length !== 3 || timeParts.length !== 2) {
           throw new Error('Invalid date/time format')
         }
-        
+
         const [day, month, year] = dateParts
         const [hours, minutes] = timeParts
-        
+
         if (!day || !month || !year || !hours || !minutes) {
           throw new Error('Missing date/time components')
         }
-        
+
         const date = new Date(
           parseInt(year),
           parseInt(month) - 1, // Month is 0-indexed
@@ -135,14 +135,14 @@ async function onSave() {
           parseInt(hours),
           parseInt(minutes)
         )
-        
+
         return date.toISOString()
       } catch {
         console.error('Invalid date format:', dateTimeStr)
         return new Date().toISOString()
       }
     }
-    
+
     // Map data to API format
     const selectedZone = widgetZones.value.find(zone => zone.name === widgetZone.value)
     if (!selectedZone) {
@@ -167,9 +167,9 @@ async function onSave() {
         sortOrder: index
       }))
     }
-    
+
     const response = await widgetsService.createCarouselWidget(requestData)
-    
+
     if (response.success) {
       alert('Carousel widget created successfully!')
       router.push('/widgets')
@@ -188,6 +188,7 @@ function onCancel() {
   router.back()
 }
 </script>
+
 <template>
   <UDashboardPanel class="flex flex-col h-full">
     <template #header>
@@ -199,8 +200,10 @@ function onCancel() {
     </template>
     <template #body>
       <UCard class="w-full mt-6">
-        <form @submit.prevent="onSave" class="space-y-6">
-          <div class="text-3xl font-light mb-8">Create Carousel Widget</div>
+        <form class="space-y-6" @submit.prevent="onSave">
+          <div class="text-3xl font-light mb-8">
+            Create Carousel Widget
+          </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Widget Name</label>
             <div class="col-span-10 w-full">
@@ -247,7 +250,13 @@ function onCancel() {
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Display Order</label>
             <div class="col-span-10 w-full">
-              <UInput v-model="displayOrder" type="number" min="0" placeholder="0" class="w-full" />
+              <UInput
+                v-model="displayOrder"
+                type="number"
+                min="0"
+                placeholder="0"
+                class="w-full"
+              />
             </div>
           </div>
           <UDivider label="Items" class="my-4" />
@@ -267,8 +276,8 @@ function onCancel() {
                       color="error"
                       variant="soft"
                       size="xs"
-                      @click="() => removeItem(idx)"
                       title="Remove item"
+                      @click="() => removeItem(idx)"
                     />
                   </div>
                 </div>
@@ -303,9 +312,9 @@ function onCancel() {
                       </div>
                       <button
                         type="button"
-                        @click="() => { item.image = null; item.imageUrl = '' }"
                         class="absolute top-2 right-2 flex items-center justify-center w-8 h-8 bg-white/80 hover:bg-white text-red-500 rounded-full shadow group-hover:opacity-100 opacity-80 transition"
                         title="Xoá ảnh"
+                        @click="() => { item.image = null; item.imageUrl = '' }"
                       >
                         <UIcon name="i-lucide-x" class="w-4 h-4" />
                       </button>
@@ -333,8 +342,12 @@ function onCancel() {
             </div>
           </div>
           <div class="flex gap-2 mt-4">
-            <UButton icon="i-lucide-check" color="primary" type="submit">Save</UButton>
-            <UButton color="neutral" variant="soft" @click="onCancel">Cancel</UButton>
+            <UButton icon="i-lucide-check" color="primary" type="submit">
+              Save
+            </UButton>
+            <UButton color="neutral" variant="soft" @click="onCancel">
+              Cancel
+            </UButton>
           </div>
         </form>
       </UCard>

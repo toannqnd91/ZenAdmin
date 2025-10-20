@@ -110,7 +110,7 @@ const toggleExpand = (itemId: number) => {
   } else {
     expandedItems.value.add(itemId)
   }
-  
+
   // Refresh the flattened list
   if (menuResponse.value?.success && menuResponse.value.data) {
     currentLinks.value = flattenMenuItems(menuResponse.value.data)
@@ -235,11 +235,11 @@ const onDragEnd = async (event: SortableEvent) => {
   window.removeEventListener('mousemove', onPointerMove)
   window.removeEventListener('pointermove', onPointerMove)
   window.removeEventListener('touchmove', onPointerMove)
-  
+
   // Kiểm tra nếu có thay đổi vị trí
   if (event.oldIndex !== undefined && event.newIndex !== undefined && event.oldIndex !== event.newIndex) {
     const draggedLink = currentLinks.value[event.newIndex]
-    
+
     if (draggedLink) {
       try {
         // Tính level mục tiêu: ưu tiên theo kéo ngang (previewLevel)
@@ -261,7 +261,7 @@ const onDragEnd = async (event: SortableEvent) => {
           }
         }
         const newLevel = targetLevel
-        
+
         // Cập nhật thông tin hierarchy cho draggedLink
         draggedLink.parentId = newParentId ?? undefined
         draggedLink.level = newLevel
@@ -289,7 +289,7 @@ const onDragEnd = async (event: SortableEvent) => {
 
         await linksService.reorderMenuItemsV2(items)
         console.log('Successfully saved new order to API')
-        
+
         // Refresh để cập nhật hierarchy từ server
         await refreshMenuData()
       } catch (error) {
@@ -501,7 +501,7 @@ onBeforeUnmount(() => {
                 </tr>
               </VueDraggable>
             </table>
-            
+
             <!-- Add new link button -->
             <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
               <button

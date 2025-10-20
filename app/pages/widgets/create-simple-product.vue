@@ -30,6 +30,7 @@ function manageProducts() {
   alert('Open product manager!')
 }
 </script>
+
 <template>
   <UDashboardPanel class="flex flex-col h-full">
     <template #header>
@@ -41,8 +42,10 @@ function manageProducts() {
     </template>
     <template #body>
       <UCard class="w-full mt-6">
-        <UForm @submit="onSave" class="space-y-6">
-          <div class="text-3xl font-light mb-8">Create Simple Product Widget</div>
+        <UForm class="space-y-6" @submit="onSave">
+          <div class="text-3xl font-light mb-8">
+            Create Simple Product Widget
+          </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Widget Name</label>
             <div class="col-span-10 w-full">
@@ -70,13 +73,21 @@ function manageProducts() {
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Display Order</label>
             <div class="col-span-10 w-full">
-              <UInput v-model="displayOrder" type="number" min="0" placeholder="0" class="w-full" />
+              <UInput
+                v-model="displayOrder"
+                type="number"
+                min="0"
+                placeholder="0"
+                class="w-full"
+              />
             </div>
           </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Products</label>
             <div class="col-span-10 w-full">
-              <UButton color="primary" variant="outline" @click="manageProducts">Manage Products</UButton>
+              <UButton color="primary" variant="outline" @click="manageProducts">
+                Manage Products
+              </UButton>
             </div>
           </div>
           <!-- Table -->
@@ -84,24 +95,38 @@ function manageProducts() {
             <table class="min-w-full text-sm border-separate border-spacing-0">
               <thead>
                 <tr class="bg-gray-50">
-                  <th class="px-4 py-2 text-left font-semibold">Name</th>
-                  <th class="px-4 py-2 text-left font-semibold">Is Published</th>
+                  <th class="px-4 py-2 text-left font-semibold">
+                    Name
+                  </th>
+                  <th class="px-4 py-2 text-left font-semibold">
+                    Is Published
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="!products.length">
-                  <td colspan="2" class="px-4 py-2 text-gray-400">No products selected</td>
+                  <td colspan="2" class="px-4 py-2 text-gray-400">
+                    No products selected
+                  </td>
                 </tr>
                 <tr v-for="(prod, idx) in products" :key="idx">
-                  <td class="px-4 py-2">{{ prod.name }}</td>
-                  <td class="px-4 py-2">{{ prod.isPublished ? 'Yes' : 'No' }}</td>
+                  <td class="px-4 py-2">
+                    {{ prod.name }}
+                  </td>
+                  <td class="px-4 py-2">
+                    {{ prod.isPublished ? 'Yes' : 'No' }}
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div class="flex gap-2 mt-4">
-            <UButton icon="i-lucide-check" color="primary" type="submit">Save</UButton>
-            <UButton color="neutral" variant="soft" @click="onCancel">Cancel</UButton>
+            <UButton icon="i-lucide-check" color="primary" type="submit">
+              Save
+            </UButton>
+            <UButton color="neutral" variant="soft" @click="onCancel">
+              Cancel
+            </UButton>
           </div>
         </UForm>
       </UCard>

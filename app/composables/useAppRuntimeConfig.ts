@@ -52,7 +52,7 @@ export function useAppRuntimeConfig() {
     // Merge with precedence: dynamic overrides env/nuxt when present
     state.apiBaseUrl = dyn.apiBaseUrl || state.apiBaseUrl
     state.imageBaseUrl = dyn.imageBaseUrl || state.imageBaseUrl
-  state.appTitle = (dyn.appTitle as string | undefined) || state.appTitle || (nuxtCfg.public as any)?.appTitle
+    state.appTitle = (dyn.appTitle as string | undefined) || state.appTitle || (nuxtCfg.public as any)?.appTitle
     state.loaded = true
     return state
   }

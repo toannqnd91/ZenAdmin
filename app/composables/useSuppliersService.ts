@@ -12,7 +12,7 @@ export const useSuppliersService = () => {
     loading.value = true
     error.value = null
     try {
-  const res = await supplierService.getSuppliers() as unknown as ApiResponse<SuppliersApiResponse['data']>
+      const res = await supplierService.getSuppliers() as unknown as ApiResponse<SuppliersApiResponse['data']>
       if (res.success && res.data && Array.isArray(res.data.items)) {
         data.value = res.data.items.filter((s: Supplier) => !s.isDeleted)
       } else {

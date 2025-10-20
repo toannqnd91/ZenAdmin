@@ -58,13 +58,13 @@ const loadDetail = async () => {
       page.state.formData.allowNegativeStock = !!data.allowOutOfStock
       // Set warehouseStocks from inventory if present
       if (Array.isArray(data.inventory)) {
-        const stocks = {};
+        const stocks = {}
         for (const inv of data.inventory) {
           if (inv && typeof inv.warehouseId === 'number') {
-            stocks[inv.warehouseId] = Number(inv.quantity) || 0;
+            stocks[inv.warehouseId] = Number(inv.quantity) || 0
           }
         }
-        page.state.formData.warehouseStocks = stocks;
+        page.state.formData.warehouseStocks = stocks
       }
       interface ProductImage { mediaUrl?: string | null }
       const imgs = Array.isArray(data.productImages)

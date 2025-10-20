@@ -1,4 +1,3 @@
-
 import { BaseService } from './base.service'
 import { API_ENDPOINTS } from '@/utils/api'
 
@@ -25,7 +24,7 @@ export class PagesService extends BaseService {
       search: { Name: options?.search ?? null },
       sort: options?.sort
     })
-  return this.post<{ items: PageItem[], totalRecord: number, numberOfPages: number }>(API_ENDPOINTS.PAGES, body)
+    return this.post<{ items: PageItem[], totalRecord: number, numberOfPages: number }>(API_ENDPOINTS.PAGES, body)
   }
 }
 

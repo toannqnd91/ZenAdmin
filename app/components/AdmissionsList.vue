@@ -41,7 +41,7 @@ function getTimeLeft(target: string) {
 }
 
 const admissionsWithStatus = computed(() =>
-  (admissions ?? []).map(admission => {
+  (admissions ?? []).map((admission) => {
     const current = now.value
     const endDate = parseDate(admission.endDate)
     const resultDate = parseDate(admission.resultAnnouncement)
@@ -82,7 +82,6 @@ const admissionsWithStatus = computed(() =>
 )
 </script>
 
-
 <template>
   <ul role="list" class="divide-y divide-default">
     <li
@@ -122,7 +121,7 @@ const admissionsWithStatus = computed(() =>
               {{ item.statusObj.date.toLocaleDateString('vi-VN') }})
             </span>
           </p>
-          <p class="text-muted truncate" v-else>
+          <p v-else class="text-muted truncate">
             Tuyển sinh kết thúc
           </p>
         </div>
@@ -150,7 +149,6 @@ const admissionsWithStatus = computed(() =>
           Đã Đóng
         </UBadge>
       </div>
-
     </li>
   </ul>
 </template>

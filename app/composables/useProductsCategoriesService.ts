@@ -22,7 +22,7 @@ export interface ProductCategoriesApiResponse {
 
 export const useProductsCategoriesService = (options?: { server?: boolean }) => {
   const { accessToken } = useAuthService()
-  
+
   // Fetch data from API using POST with required body
   const { data: response, error, pending: loading } = useApiFetch<ProductCategoriesApiResponse>(
     getApiEndpoints().productCategories,
@@ -58,13 +58,13 @@ export const useProductsCategoriesService = (options?: { server?: boolean }) => 
     if (!response.value) {
       return []
     }
-    
+
     // Response has structure: { code, success, message, data }
     const apiResponse = response.value as unknown as ProductCategoriesApiResponse
     if (apiResponse.success && apiResponse.data) {
       return apiResponse.data.filter((category: ProductCategory) => !category.isDeleted)
     }
-    
+
     return []
   })
 

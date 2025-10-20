@@ -3,7 +3,6 @@ import type { TableColumn } from '@/components/base/BaseTable.vue'
 import BaseTable from '@/components/base/BaseTable.vue'
 import type { WidgetInstance } from '@/composables/useWidgets'
 
-
 interface Props {
   data: WidgetInstance[]
   loading: boolean
@@ -34,7 +33,7 @@ const colWidths = [
   '18%', // widgetType
   '18%', // widgetZone
   '18%', // publishStart
-  '18%'  // publishEnd
+  '18%' // publishEnd
 ]
 
 // Row click navigation removed — clicking a row will no longer navigate
@@ -44,7 +43,7 @@ const colWidths = [
   <BaseTable
     :q="q"
     :row-selection="rowSelection"
-    
+
     :data="data as unknown as Record<string, unknown>[]"
     :loading="loading"
     title="Danh sách widget"
@@ -52,12 +51,12 @@ const colWidths = [
     :col-widths="colWidths"
     :add-button-dropdown-items="addButtonDropdownItems"
     search-placeholder="Tìm kiếm widget..."
-  :draggable="true"
-  drag-handle-class="drag-handle"
-  :drag-animation="200"
-  @update:q="emit('update:q', $event)"
-  @update:row-selection="emit('update:rowSelection', $event)"
-  @reorder="(newOrder) => emit('reorder', newOrder)"
+    :draggable="true"
+    drag-handle-class="drag-handle"
+    :drag-animation="200"
+    @update:q="emit('update:q', $event)"
+    @update:row-selection="emit('update:rowSelection', $event)"
+    @reorder="(newOrder) => emit('reorder', newOrder)"
   >
     <template #column-name="{ value }">
       <div class="flex items-center">

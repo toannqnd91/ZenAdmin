@@ -175,12 +175,12 @@ export const useProducts = () => {
     error,
     table,
     data,
-    
+
     // Methods
     truncateText,
     getFirstImageUrl,
     getRowItems,
-    
+
     // TanStack Table
     getPaginationRowModel
   }

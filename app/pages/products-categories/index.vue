@@ -15,7 +15,7 @@ const pagination = ref({ pageIndex: 0, pageSize: 10 })
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
-        
+
         <!-- <template #right>
           <ProductsCategoriesAddModal />
         </template> -->

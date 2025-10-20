@@ -1,6 +1,7 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'default' })
 import { useAppTitle } from '@/composables/useAppSettings'
+
+definePageMeta({ layout: 'default' })
 const appTitle = useAppTitle()
 useHead({ title: `Chỉnh sửa tin tức - ${appTitle}` })
 const route = useRoute()

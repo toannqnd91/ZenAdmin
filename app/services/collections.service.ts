@@ -3,9 +3,9 @@ import { API_ENDPOINTS } from '@/utils/api'
 import type { Collection } from '@/composables/useCollectionsService'
 
 export interface CollectionListResponse {
-  items: Collection[];
-  totalRecord: number;
-  numberOfPages: number;
+  items: Collection[]
+  totalRecord: number
+  numberOfPages: number
 }
 
 export interface CollectionListOptions {
@@ -27,7 +27,7 @@ export class CollectionsService extends BaseService {
       search: searchObj,
       sort: options?.sort
     })
-  return this.post<CollectionListResponse>(API_ENDPOINTS.COLLECTIONS, body)
+    return this.post<CollectionListResponse>(API_ENDPOINTS.COLLECTIONS, body)
   }
 }
 

@@ -27,7 +27,7 @@ const items = ref([
 // Helper function to convert ISO string to dd/MM/yyyy HH:mm format
 function formatDateTimeForInput(isoString: string): string {
   if (!isoString) return ''
-  
+
   try {
     const date = new Date(isoString)
     const day = date.getDate().toString().padStart(2, '0')
@@ -35,7 +35,7 @@ function formatDateTimeForInput(isoString: string): string {
     const year = date.getFullYear()
     const hours = date.getHours().toString().padStart(2, '0')
     const minutes = date.getMinutes().toString().padStart(2, '0')
-    
+
     return `${day}/${month}/${year} ${hours}:${minutes}`
   } catch {
     return ''
@@ -46,31 +46,31 @@ function formatDateTimeForInput(isoString: string): string {
 onMounted(async () => {
   try {
     isLoading.value = true
-    
+
     // Load widget zones
     const zonesResponse = await widgetsService.getWidgetZones()
     if (zonesResponse.success && zonesResponse.data) {
       widgetZones.value = zonesResponse.data
       widgetZoneItems.value = zonesResponse.data.map((zone: WidgetZone) => zone.name)
     }
-    
+
     // Load widget data
     console.log('Loading carousel widget data for ID:', widgetId)
     const response = await widgetsService.getCarouselWidget(widgetId)
-    
+
     if (response.success && response.data) {
       const data = response.data
-      
+
       // Populate form with existing data
       widgetName.value = data.name
       publishStart.value = formatDateTimeForInput(data.publishStart)
       publishEnd.value = formatDateTimeForInput(data.publishEnd)
       displayOrder.value = data.displayOrder
-      
+
       // Find widget zone name by ID
       const selectedZone = widgetZones.value.find(zone => zone.id === data.widgetZoneId)
       widgetZone.value = selectedZone?.name
-      
+
       // Populate items
       if (data.items && data.items.length > 0) {
         items.value = data.items.map(item => ({
@@ -322,9 +322,9 @@ function onCancel() {
                   </div>
                   <button
                     type="button"
-                    @click="removeImage(idx)"
                     class="absolute top-2 right-2 flex items-center justify-center w-8 h-8 bg-white/80 hover:bg-white text-red-500 rounded-full shadow group-hover:opacity-100 opacity-80 transition"
                     title="Xoá ảnh"
+                    @click="removeImage(idx)"
                   >
                     <UIcon name="i-lucide-x" class="w-4 h-4" />
                   </button>

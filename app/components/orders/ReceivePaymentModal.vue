@@ -15,7 +15,7 @@ const props = withDefaults(defineProps<Props>(), {
 type PaymentMethodStr = 'TienMat' | 'ChuyenKhoan' | 'ViDienTu'
 const emit = defineEmits<{
   'update:modelValue': [boolean]
-  submit: [{ method: PaymentMethodStr; amount: number; reference: string }]
+  'submit': [{ method: PaymentMethodStr, amount: number, reference: string }]
 }>()
 
 const open = ref<boolean>(props.modelValue)
@@ -32,7 +32,7 @@ const paymentMethodOptions = [
 ]
 // Adapter for RemoteSearchSelect (expects object modelValue and fetch function)
 const selectedMethodItem = computed(() => paymentMethodOptions.find(opt => opt.value === method.value) || null)
-function onSelectMethod(item: { label: string; value: string } | null) {
+function onSelectMethod(item: { label: string, value: string } | null) {
   method.value = (item?.value as PaymentMethodStr) || 'TienMat'
 }
 function fetchPaymentMethods(_search: string) {

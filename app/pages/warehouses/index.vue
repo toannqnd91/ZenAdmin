@@ -12,24 +12,24 @@ const q = ref('')
 const rowSelection = ref<Record<string, boolean>>({})
 
 const columns = [
-    { key: 'name', label: 'Tên kho' },
-    { key: 'createdOn', label: 'Ngày tạo' },
-    { key: 'productCount', label: 'Số lượng sản phẩm' },
-    { key: 'totalStock', label: 'Số lượng tồn kho' }
+  { key: 'name', label: 'Tên kho' },
+  { key: 'createdOn', label: 'Ngày tạo' },
+  { key: 'productCount', label: 'Số lượng sản phẩm' },
+  { key: 'totalStock', label: 'Số lượng tồn kho' }
 ]
 
 // Cấu hình chiều rộng các cột theo thứ tự columns (chuỗi rỗng cho cột linh hoạt)
 const colWidths: string[] = ['', '160px', '180px', '180px']
 
 async function fetchWarehouses() {
-    loading.value = true
-    try {
-        const res = await warehouseService.getWarehouses()
-        warehouses.value = Array.isArray(res?.data) ? res.data : []
-    } catch {
-        warehouses.value = []
-    }
-    loading.value = false
+  loading.value = true
+  try {
+    const res = await warehouseService.getWarehouses()
+    warehouses.value = Array.isArray(res?.data) ? res.data : []
+  } catch {
+    warehouses.value = []
+  }
+  loading.value = false
 }
 
 onMounted(fetchWarehouses)
@@ -39,14 +39,14 @@ const showAddWarehouseModal = ref(false)
 
 // Handler: open modal
 function onAddWarehouse() {
-    showAddWarehouseModal.value = true
+  showAddWarehouseModal.value = true
 }
 
 function onWarehouseSaved(w: { id: string | number, name: string }) {
-    // Prepend new warehouse then refetch for full data (createdOn, counts)
-    warehouses.value = [{ id: Number(w.id), name: w.name } as WarehouseItem, ...warehouses.value]
-    // Fire and forget refresh
-    fetchWarehouses()
+  // Prepend new warehouse then refetch for full data (createdOn, counts)
+  warehouses.value = [{ id: Number(w.id), name: w.name } as WarehouseItem, ...warehouses.value]
+  // Fire and forget refresh
+  fetchWarehouses()
 }
 </script>
 

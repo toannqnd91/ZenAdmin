@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { widgetsService } from '@/services/widgets.service'
@@ -100,7 +99,7 @@ function handleFileChange(e: Event, idx: number) {
   reader.readAsDataURL(file)
 }
 </script>
- 
+
 <template>
   <UDashboardPanel class="flex flex-col h-full">
     <template #header>

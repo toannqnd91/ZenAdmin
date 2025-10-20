@@ -140,11 +140,11 @@ export const useNews = () => {
     error,
     table,
     data,
-    
+
     // Methods
     truncateText,
     getRowItems,
-    
+
     // TanStack Table
     getPaginationRowModel
   }

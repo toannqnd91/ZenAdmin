@@ -7,7 +7,7 @@ import type { Row } from '@tanstack/table-core'
 export const useNewsCategoriesService = () => {
   const toast = useToast()
   const { accessToken } = useAuthService()
-  
+
   // Reactive state
   const q = ref('')
   const rowSelection = ref({})
@@ -99,12 +99,12 @@ export const useNewsCategoriesService = () => {
     q,
     rowSelection,
     pagination,
-    
+
     // Data
     categories: readonly(categories),
     loading: readonly(loading),
     error: readonly(error),
-    
+
     // Methods
     getRowItems
   }

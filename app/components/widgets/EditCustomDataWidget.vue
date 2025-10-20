@@ -26,7 +26,7 @@ const items = ref([
 // Helper function to convert ISO string to yyyy-MM-dd HH:mm format
 function formatDateTimeForInput(isoString: string): string {
   if (!isoString) return ''
-  
+
   try {
     const date = new Date(isoString)
     const year = date.getFullYear()
@@ -34,7 +34,7 @@ function formatDateTimeForInput(isoString: string): string {
     const day = date.getDate().toString().padStart(2, '0')
     const hours = date.getHours().toString().padStart(2, '0')
     const minutes = date.getMinutes().toString().padStart(2, '0')
-    
+
     return `${year}-${month}-${day} ${hours}:${minutes}`
   } catch {
     return ''
@@ -44,14 +44,14 @@ function formatDateTimeForInput(isoString: string): string {
 async function fetchWidget() {
   try {
     isLoading.value = true
-    
+
     // Load widget zones
     const zonesResponse = await widgetsService.getWidgetZones()
     if (zonesResponse.success && zonesResponse.data) {
       widgetZones.value = zonesResponse.data
       widgetZoneItems.value = zonesResponse.data.map((zone: WidgetZone) => zone.name)
     }
-    
+
     // Load widget data
     const response = await widgetsService.getCustomDataWidget(Number(widgetId))
     if (response.success && response.data) {
@@ -61,7 +61,7 @@ async function fetchWidget() {
       publishEnd.value = formatDateTimeForInput(data.publishEnd)
       displayOrder.value = data.displayOrder
       items.value = data.items || []
-      
+
       // Find widget zone name by ID
       const selectedZone = widgetZones.value.find(zone => zone.id === data.widgetZoneId)
       widgetZone.value = selectedZone?.name
@@ -151,7 +151,9 @@ async function onFileChange(file: File | null, idx: number) {
       </p>
     </div>
     <form v-else class="space-y-6" @submit.prevent="onUpdate">
-      <div class="text-3xl font-light mb-8">Edit Custom Data Widget</div>
+      <div class="text-3xl font-light mb-8">
+        Edit Custom Data Widget
+      </div>
       <div class="grid grid-cols-12 gap-4 items-center mb-2">
         <label class="col-span-2 text-right pr-2">Widget ID</label>
         <div class="col-span-10 w-full">
@@ -190,7 +192,12 @@ async function onFileChange(file: File | null, idx: number) {
       <div class="grid grid-cols-12 gap-4 items-center mb-2">
         <label class="col-span-2 text-right pr-2">Display Order</label>
         <div class="col-span-10 w-full">
-          <UInput v-model="displayOrder" type="number" min="0" class="w-full" />
+          <UInput
+            v-model="displayOrder"
+            type="number"
+            min="0"
+            class="w-full"
+          />
         </div>
       </div>
       <div class="my-4">
@@ -204,7 +211,15 @@ async function onFileChange(file: File | null, idx: number) {
                   <UInput v-model="item.caption" placeholder="Caption" class="w-full" />
                 </div>
                 <div class="col-span-2 flex justify-end">
-                  <UButton v-if="items.length > 1" icon="i-lucide-x" color="error" variant="soft" size="xs" title="Remove item" @click="(e) => { removeItem(idx) }" />
+                  <UButton
+                    v-if="items.length > 1"
+                    icon="i-lucide-x"
+                    color="error"
+                    variant="soft"
+                    size="xs"
+                    title="Remove item"
+                    @click="(e) => { removeItem(idx) }"
+                  />
                 </div>
               </div>
               <div class="grid grid-cols-12 gap-2 items-center mb-2">
@@ -228,7 +243,12 @@ async function onFileChange(file: File | null, idx: number) {
               <div class="grid grid-cols-12 gap-2 items-center mb-2">
                 <label class="col-span-2 text-right pr-2">Sort Order</label>
                 <div class="col-span-10 w-full ml-0">
-                  <UInput v-model="item.sortOrder" type="number" min="0" class="w-full" />
+                  <UInput
+                    v-model="item.sortOrder"
+                    type="number"
+                    min="0"
+                    class="w-full"
+                  />
                 </div>
               </div>
               <div class="grid grid-cols-12 gap-2 items-center mb-2">
@@ -244,9 +264,9 @@ async function onFileChange(file: File | null, idx: number) {
                     </div>
                     <button
                       type="button"
-                      @click="() => { item.image = null; item.imageUrl = '' }"
                       class="absolute top-2 right-2 flex items-center justify-center w-8 h-8 bg-white/80 hover:bg-white text-red-500 rounded-full shadow group-hover:opacity-100 opacity-80 transition"
                       title="Xoá ảnh"
+                      @click="() => { item.image = null; item.imageUrl = '' }"
                     >
                       <UIcon name="i-lucide-x" class="w-4 h-4" />
                     </button>
@@ -262,7 +282,16 @@ async function onFileChange(file: File | null, idx: number) {
                 </div>
               </div>
             </div>
-            <UButton icon="i-lucide-plus" color="primary" variant="ghost" size="xs" class="mt-2" @click="(e) => { items.push({ caption: '', subCaption: '', linkText: '', targetUrl: '', sortOrder: items.length, image: null, imageUrl: '' }) }">Add more</UButton>
+            <UButton
+              icon="i-lucide-plus"
+              color="primary"
+              variant="ghost"
+              size="xs"
+              class="mt-2"
+              @click="(e) => { items.push({ caption: '', subCaption: '', linkText: '', targetUrl: '', sortOrder: items.length, image: null, imageUrl: '' }) }"
+            >
+              Add more
+            </UButton>
           </div>
         </div>
       </div>

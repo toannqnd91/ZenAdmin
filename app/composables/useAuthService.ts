@@ -5,7 +5,7 @@ import type { LoginRequest } from '@/types/common'
 export const useAuthService = () => {
   const toast = useToast()
   const router = useRouter()
-  
+
   // State
   const loading = ref(false)
   const user = ref<any>(null)
@@ -24,15 +24,15 @@ export const useAuthService = () => {
     try {
       // Use the correct format that worked: {email, password}
       const response = await authService.login(credentials)
-      
+
       console.log('Full API response:', response)
-      
+
       // Check if response has accessToken (success) or success flag
       if ((response as any).success || (response as any).accessToken) {
         // Store tokens - check both data structure formats
         const tokenData = (response as any).data || response
         accessToken.value = tokenData.accessToken
-        
+
         // Decode JWT token to get user info
         if (tokenData.accessToken && tokenData.accessToken.includes('.')) {
           try {
@@ -49,7 +49,7 @@ export const useAuthService = () => {
         } else {
           user.value = tokenData.user || { fullName: 'User' } // fallback if no token data
         }
-        
+
         // Store in localStorage/cookies (consistent with useAuth)
         // In development, avoid secure cookies so they work over http://localhost
         const isProd = !import.meta.dev
@@ -59,7 +59,7 @@ export const useAuthService = () => {
           sameSite: 'strict',
           maxAge: 60 * 60 * 24 * 7 // 7 days
         })
-        
+
         const refreshTokenCookie = useCookie('refresh_token', {
           httpOnly: true,
           secure: isProd,
@@ -68,7 +68,7 @@ export const useAuthService = () => {
         })
 
         // Encode token like useAuth does
-        const encodedToken = process.client ? btoa(tokenData.accessToken) : Buffer.from(tokenData.accessToken).toString('base64')
+        const encodedToken = import.meta.client ? btoa(tokenData.accessToken) : Buffer.from(tokenData.accessToken).toString('base64')
         accessTokenCookie.value = encodedToken
         refreshTokenCookie.value = tokenData.refreshToken
 
@@ -86,13 +86,13 @@ export const useAuthService = () => {
       }
     } catch (err) {
       error.value = err instanceof Error ? err : new Error('Đăng nhập thất bại')
-      
+
       toast.add({
         title: 'Lỗi đăng nhập',
         description: error.value.message,
         color: 'error'
       })
-      
+
       throw error.value
     } finally {
       loading.value = false
@@ -111,11 +111,11 @@ export const useAuthService = () => {
       // Clear local state
       accessToken.value = null
       user.value = null
-      
+
       // Clear cookies (consistent with useAuth)
       const accessTokenCookie = useCookie('access_token')
       const refreshTokenCookie = useCookie('refresh_token')
-      
+
       accessTokenCookie.value = null
       refreshTokenCookie.value = null
 
@@ -126,25 +126,25 @@ export const useAuthService = () => {
 
       // Redirect to login
       await router.push('/login')
-      
+
       loading.value = false
     }
   }
 
   async function refreshToken() {
     const refreshTokenCookie = useCookie('refresh_token')
-    
+
     if (!refreshTokenCookie.value) {
       throw new Error('No refresh token available')
     }
 
     try {
       const response = await authService.refreshToken(refreshTokenCookie.value)
-      
+
       if (response.success) {
         accessToken.value = response.data.accessToken
         user.value = response.data.user
-        
+
         // Update access token cookie (encode like useAuth)
         const isProd = !import.meta.dev
         const accessTokenCookie = useCookie('access_token', {
@@ -153,9 +153,9 @@ export const useAuthService = () => {
           sameSite: 'strict',
           maxAge: 60 * 60 * 24 * 7 // 7 days
         })
-        const encodedToken = process.client ? btoa(response.data.accessToken) : Buffer.from(response.data.accessToken).toString('base64')
+        const encodedToken = import.meta.client ? btoa(response.data.accessToken) : Buffer.from(response.data.accessToken).toString('base64')
         accessTokenCookie.value = encodedToken
-        
+
         return response.data
       } else {
         throw new Error(response.message)
@@ -170,7 +170,7 @@ export const useAuthService = () => {
   async function getProfile() {
     try {
       const response = await authService.getProfile()
-      
+
       if (response.success) {
         user.value = response.data
         return response.data
@@ -186,14 +186,14 @@ export const useAuthService = () => {
   // Initialize from cookies (consistent with useAuth)
   function initialize() {
     const accessTokenCookie = useCookie('access_token')
-    
+
     console.log('Initialize - accessTokenCookie.value:', accessTokenCookie.value)
-    
+
     if (accessTokenCookie.value) {
       // Decode token like useAuth stores it
       try {
         let token = accessTokenCookie.value
-        
+
         // First decode from base64 if needed
         try {
           const decodedFromBase64 = import.meta.client ? atob(accessTokenCookie.value) : Buffer.from(accessTokenCookie.value, 'base64').toString('utf8')
@@ -202,10 +202,10 @@ export const useAuthService = () => {
           // If base64 decode fails, use original value
           token = accessTokenCookie.value
         }
-        
+
         accessToken.value = token
         console.log('Initialize - final token:', token)
-        
+
         // Decode JWT token to get user info
         if (token && typeof token === 'string' && token.includes('.')) {
           const parts = token.split('.')

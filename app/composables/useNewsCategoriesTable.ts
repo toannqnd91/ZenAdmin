@@ -8,15 +8,15 @@ import type { NewsCategoriesApiResponse, NewsCategory } from '@/types/newsCatego
 export const useNewsCategoriesTable = async () => {
   const toast = useToast()
   const { accessToken } = useAuthService()
-  
+
   // Resolve components
   const UCheckbox = resolveComponent('UCheckbox')
   const UDropdownMenu = resolveComponent('UDropdownMenu')
   const UButton = resolveComponent('UButton')
-  
+
   // Template refs
   const table = useTemplateRef('table')
-  
+
   // Reactive state
   const q = ref('')
   const rowSelection = ref({})
@@ -169,19 +169,19 @@ export const useNewsCategoriesTable = async () => {
     q,
     rowSelection,
     table,
-    
+
     // Data
     categories: readonly(categories),
     filtered,
     loading: readonly(loading),
     error: readonly(error),
-    
+
     // Table config
     columns,
-    
+
     // Methods
     getRowItems,
-    
+
     // Computed for table API access
     tableApi: computed(() => (table.value as any)?.tableApi)
   }

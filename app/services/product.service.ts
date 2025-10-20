@@ -135,7 +135,7 @@ export class ProductService extends BaseService {
       },
       sort: options?.sort
     })
-    
+
     return this.post<ProductCategory[]>(API_ENDPOINTS.PRODUCT_CATEGORIES, body)
   }
 

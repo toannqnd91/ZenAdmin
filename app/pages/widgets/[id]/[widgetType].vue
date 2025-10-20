@@ -46,15 +46,15 @@ if (!validWidgetTypes.includes(widgetType.toLowerCase())) {
     <template #body>
       <component
         :is="
-          widgetType === 'carousel-widget' ? EditCarouselWidget :
-          widgetType === 'category-widget' ? EditCategoryWidget :
-          widgetType === 'html-widget' ? EditHtmlWidget :
-          widgetType === 'custom-data-widget' ? EditCustomDataWidget :
-          widgetType === 'simple-news-widget' ? EditSimpleNewsWidget :
-          widgetType === 'news-widget' ? EditNewsWidget :
-          null
+          widgetType === 'carousel-widget' ? EditCarouselWidget
+          : widgetType === 'category-widget' ? EditCategoryWidget
+            : widgetType === 'html-widget' ? EditHtmlWidget
+              : widgetType === 'custom-data-widget' ? EditCustomDataWidget
+                : widgetType === 'simple-news-widget' ? EditSimpleNewsWidget
+                  : widgetType === 'news-widget' ? EditNewsWidget
+                    : null
         "
-        v-if="['carousel-widget','category-widget','html-widget','custom-data-widget','simple-news-widget','news-widget'].includes(widgetType)"
+        v-if="['carousel-widget', 'category-widget', 'html-widget', 'custom-data-widget', 'simple-news-widget', 'news-widget'].includes(widgetType)"
       />
       <div v-else class="w-full mt-6">
         <UCard class="w-full">

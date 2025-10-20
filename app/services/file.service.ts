@@ -16,7 +16,7 @@ export class FileService extends BaseService {
     try {
       console.log('Starting file upload:', { fileName: file.name, fileSize: file.size, folder })
       console.log('API Base URL:', this.getBaseURL())
-      
+
       const response = await this.request<ApiFileUploadResponse>(API_ENDPOINTS.UPLOAD_FILE, {
         method: 'POST',
         body: formData,
@@ -25,7 +25,7 @@ export class FileService extends BaseService {
           'Content-Type': ''
         }
       })
-      
+
       console.log('Upload successful:', response)
       // Return the full API response (not just data) for component compatibility
       return response
@@ -41,17 +41,17 @@ export class FileService extends BaseService {
         errorName: err?.name,
         fullError: JSON.stringify(error, Object.getOwnPropertyNames(error))
       })
-      
+
       // Check if it's a network error
       if (err?.message?.includes('fetch')) {
         throw new Error(`Network error uploading "${file.name}": Check internet connection and server availability`)
       }
-      
+
       // Check if it's an API error
       if (err?.message?.includes('API Error:')) {
         throw new Error(`Server error uploading "${file.name}": ${err.message}`)
       }
-      
+
       // Re-throw with more context
       const errorMsg = err?.message || String(error) || 'Unknown error'
       throw new Error(`File upload failed for "${file.name}": ${errorMsg}`)
@@ -79,7 +79,7 @@ export class FileService extends BaseService {
           'Content-Type': ''
         }
       })
-      
+
       // Return the full API response (not just data) for component compatibility
       return response
     } catch (error) {
@@ -103,21 +103,21 @@ export class FileService extends BaseService {
     if (fileName === null) {
       return null
     }
-    
+
     // If fileName is undefined, empty, or "string", return default image
     if (!fileName || fileName === '' || fileName === 'string') {
       return '/no-image.svg'
     }
-    
+
     // If fileName is already a full URL, return it directly
     if (fileName.startsWith('http://') || fileName.startsWith('https://')) {
       return fileName
     }
-    
+
     // Get image base URL from runtime config
     const config = useRuntimeConfig()
     const imageBaseUrl = config.public.imageBaseUrl
-    
+
     // If it's just a filename, construct the full URL
     return `${imageBaseUrl}/image/${fileName}`
   }

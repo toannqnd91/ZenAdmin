@@ -2,7 +2,6 @@
 import SettingsSidebar from '@/components/SettingsSidebar.vue'
 </script>
 
-
 <template>
   <UDashboardPanel
     id="settings"

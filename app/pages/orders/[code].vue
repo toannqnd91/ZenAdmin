@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ordersService } from '@/services/orders.service'
 import type { OrderDetail, OrderHistoryEvent, OrderDetailRawResponse, OrderHistoryListResponse } from '@/services/orders.service'
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
@@ -9,6 +9,7 @@ import IconInvoicePending from '@/components/icons/IconInvoicePending.vue'
 import IconChevronDown from '@/components/icons/IconChevronDown.vue'
 import IconReturn from '@/components/icons/IconReturn.vue'
 import IconPrintOrder from '@/components/icons/IconPrintOrder.vue'
+import IconSuccess from '@/components/icons/IconSuccess.vue'
 import ReceivePaymentModal from '@/components/orders/ReceivePaymentModal.vue'
 
 // Raw payload supporting multiple backend shapes
@@ -70,9 +71,9 @@ interface RawPayload {
 }
 
 const route = useRoute()
-const router = useRouter()
 const orderCodeParam = computed(() => route.params.code as string)
 const loading = ref(false)
+
 // Extend base OrderDetail with UI fields we augment (customer.code etc.)
 interface UIOrderCustomer {
   id: string | number
@@ -88,17 +89,13 @@ interface UIOrderDetail extends OrderDetail {
 }
 const detail = ref<UIOrderDetail | null>(null)
 const history = ref<OrderHistoryEvent[] | null>(null)
-const justCreated = computed(() => route.query.created === '1')
-// Removed productTotalQuantity (replaced by monetary subtotal display)
-const statusSteps = ['Đặt hàng', 'Đã xác nhận', 'Đã xử lý', 'Giao hàng', 'Hoàn thành']
 
-// Map each status step to the first timestamp it appears in history (or createdOn for the first step)
+const statusSteps = ['Đặt hàng', 'Đã xác nhận', 'Đã xử lý', 'Giao hàng', 'Hoàn thành']
 const stepTimes = computed<Record<string, string>>(() => {
   const map: Record<string, string> = {}
   if (!detail.value) return map
   const events = (history.value || []).slice().sort((a, b) => new Date(a.createdOn).getTime() - new Date(b.createdOn).getTime())
   for (const step of statusSteps) {
-    // Created time for the very first step
     if (step === 'Đặt hàng' && detail.value.createdOn) map[step] = detail.value.createdOn
     if (map[step]) continue
     const simplifiedStep = step.toLowerCase().replace(/^đã\s+/, '').trim()
@@ -113,7 +110,6 @@ const stepTimes = computed<Record<string, string>>(() => {
       }
     }
   }
-  // If 'Đặt hàng' exists but 'Đã xác nhận' missing, promote createdOn to 'Đã xác nhận'
   if (map['Đặt hàng'] && !map['Đã xác nhận']) {
     map['Đã xác nhận'] = map['Đặt hàng']
   }
@@ -142,7 +138,6 @@ function formatDateTime(iso?: string | null) {
   return `${dd}/${mm}/${yy} ${hh}:${mi}`
 }
 
-// Map payment method backend codes to display labels
 function formatPaymentMethod(code?: string | null) {
   if (!code) return 'Tiền mặt'
   switch (code) {
@@ -150,59 +145,42 @@ function formatPaymentMethod(code?: string | null) {
     case 'TIENMAT':
       return 'Tiền mặt'
     case 'ChuyenKhoan':
-    case 'CHUYENKHOAN':
-    case 'ChuyenKhoanNganHang':
+    case 'BANK':
       return 'Chuyển khoản'
+    case 'ViDienTu':
+    case 'WALLET':
+      return 'Ví điện tử'
     default:
-      return code
+      return 'Tiền mặt'
   }
 }
 
-// --- Payment status helpers (mirrors OrdersTable.vue) ---
-function normalizePaymentStatusRaw(v?: string | null): string {
-  if (!v) return ''
-  const val = v.trim()
-  if (!val) return ''
-  const lower = val.toLowerCase()
-  // Already Vietnamese canonical forms
-  if (lower.includes('hoàn tiền')) return 'Hoàn tiền'
-  if (lower.includes('thanh toán dư')) return 'Thanh toán dư'
-  if (lower.includes('một phần')) return 'Thanh toán một phần'
-  if (lower.includes('đã thanh toán')) return 'Đã thanh toán'
-  if (lower.includes('chưa thanh toán')) return 'Chưa thanh toán'
-  // English → Vietnamese
-  if (lower.includes('refunded')) return 'Hoàn tiền'
-  if (lower.includes('overpaid')) return 'Thanh toán dư'
-  if (lower.includes('partial')) return 'Thanh toán một phần'
-  // Unpaid must be mapped before generic paid detection
-  if (lower.includes('unpaid')) return 'Chưa thanh toán'
-  // Guard: ensure over/partial checked before generic paid
-  if (lower.includes('paid')) return 'Đã thanh toán'
-  return val // fallback original (maybe already localized differently)
+const paymentStatusDisplay = computed(() => {
+  const raw = (detail.value?.paymentStatus || detail.value?.payment?.paymentStatus || '').toString()
+  return raw || 'Chưa thanh toán'
+})
+function isPartialPayment(s: string) {
+  const v = s.toLowerCase()
+  return v.includes('partial') || v.includes('một phần') || v.includes('mot phan')
 }
-function isRefunded(v?: string | null) {
-  const val = (v || '').toLowerCase()
-  return val.includes('hoàn tiền') || val.includes('refunded')
+function isPaid(s: string) {
+  const v = s.toLowerCase()
+  return v.includes('paid') || v.includes('đã thanh toán') || v.includes('da thanh toan')
 }
-function isOverPaid(v?: string | null) {
-  const val = (v || '').toLowerCase()
-  return val.includes('thanh toán dư') || val.includes('overpaid')
+function isUnpaid(s: string) {
+  const v = s.toLowerCase()
+  return v.includes('unpaid') || v.includes('chưa thanh toán') || v.includes('chua thanh toan')
 }
-function isPartialPayment(v?: string | null) {
-  const val = (v || '').toLowerCase()
-  return val.includes('một phần') || val.includes('partial')
+function isOverPaid(s: string) {
+  const v = s.toLowerCase()
+  return v.includes('over') || v.includes('thừa') || v.includes('thua')
 }
-function isUnpaid(v?: string | null) {
-  const val = (v || '').toLowerCase()
-  return val.includes('chưa thanh toán') || val.includes('unpaid')
-}
-function isPaid(v?: string | null) {
-  const val = (v || '').toLowerCase()
-  if (isOverPaid(v) || isPartialPayment(v)) return false
-  return val.includes('đã thanh toán') || (val.includes('paid') && !val.includes('partial'))
+function isRefunded(s: string) {
+  const v = s.toLowerCase()
+  return v.includes('refund') || v.includes('hoàn') || v.includes('hoan')
 }
 
-const paymentStatusDisplay = computed(() => normalizePaymentStatusRaw(detail.value?.paymentStatus || detail.value?.payment?.paymentStatus))
+// Action toolbar helpers
 function startReturn() {
   console.debug('startReturn clicked', detail.value?.orderCode)
 }
@@ -230,11 +208,7 @@ interface ReceivePaymentPayload {
 }
 async function handleReceivePaymentSubmit(payload: ReceivePaymentPayload) {
   const code = (orderCodeParam.value || '').replace(/^#/, '')
-  const methodMap: Record<ReceivePaymentPayload['method'], 1 | 2 | 3> = {
-    TienMat: 1,
-    ChuyenKhoan: 2,
-    ViDienTu: 3
-  }
+  const methodMap: Record<ReceivePaymentPayload['method'], 1 | 2 | 3> = { TienMat: 1, ChuyenKhoan: 2, ViDienTu: 3 }
   try {
     await ordersService.payOrder(code, {
       amount: payload.amount,
@@ -242,17 +216,16 @@ async function handleReceivePaymentSubmit(payload: ReceivePaymentPayload) {
       description: payload.reference,
       autoCompleteWhenFullyPaid: true
     })
-    // Refresh data to reflect latest payment status/history
     await fetchData()
     try {
       const toast = useToast()
       toast.add({ title: 'Đã nhận tiền', description: `Đã ghi nhận ${formatCurrency(payload.amount)}`, color: 'success' })
-    } catch {}
+    } catch (_err) { void _err }
   } catch (err) {
     try {
       const toast = useToast()
       toast.add({ title: 'Nhận tiền thất bại', description: err instanceof Error ? err.message : 'Đã xảy ra lỗi', color: 'error' })
-    } catch {}
+    } catch (_err) { void _err }
   }
 }
 
@@ -261,10 +234,21 @@ interface PriceLike {
   originalUnitPrice?: number
   unitPrice?: number
 }
+
+type UIOrderItem = {
+  id: number | string
+  productId: number | string
+  productName: string
+  quantity: number
+  unitPrice: number
+  originalUnitPrice: number
+  discountAmount: number
+  discountPercent: number
+  lineTotal: number
+  thumbnailImageUrl: string | null
+}
 function getOriginalPrice(item: PriceLike) {
-  return typeof item.originalUnitPrice === 'number'
-    ? item.originalUnitPrice
-    : (typeof item.unitPrice === 'number' ? item.unitPrice : 0)
+  return typeof item.originalUnitPrice === 'number' ? item.originalUnitPrice : (typeof item.unitPrice === 'number' ? item.unitPrice : 0)
 }
 function getDiscountAmount(item: PriceLike) {
   const orig = getOriginalPrice(item)
@@ -289,39 +273,20 @@ async function fetchData() {
     if (orderRes && 'success' in orderRes && (orderRes as OrderDetailRawResponse).success && orderRes.data) {
       const payload = orderRes.data as unknown as RawPayload
       const o = payload.order
-      // Support both data.customer and data.customerInfo.customer shapes
       let rawCustomer: RawCustomer | undefined = payload.customer
       let rawAddress: RawAddress | undefined = payload.shippingAddress
       if (!rawCustomer || !rawAddress) {
         const ci = payload.customerInfo as unknown
         if (ci && typeof ci === 'object') {
           const obj = ci as Record<string, unknown>
-          if (!rawCustomer && obj.customer && typeof obj.customer === 'object') {
-            rawCustomer = obj.customer as RawCustomer
-          }
-          if (!rawAddress && obj.address && typeof obj.address === 'object') {
-            rawAddress = obj.address as RawAddress
-          }
+          if (!rawCustomer && obj.customer && typeof obj.customer === 'object') rawCustomer = obj.customer as RawCustomer
+          if (!rawAddress && obj.address && typeof obj.address === 'object') rawAddress = obj.address as RawAddress
         }
       }
       if (o) {
-        let items: Array<{
-          id: number | string
-          productId: number | string
-          productName: string
-          quantity: number
-          unitPrice: number
-          originalUnitPrice: number
-          discountAmount: number
-          discountPercent: number
-          lineTotal: number
-          thumbnailImageUrl: string | null
-        }> = []
+        let items: UIOrderItem[] = []
         if (Array.isArray(o.orderItems)) {
           items = o.orderItems.map((it) => {
-            // API meaning clarification:
-            // productPrice: base/niêm yết
-            // rowTotal (or total): tổng tiền dòng sau giảm => đơn giá thực tế = rowTotal / quantity
             const qty = it.quantity || 1
             const originalPrice = it.productPrice
             const effectivePrice = (it.rowTotal && qty > 0) ? (it.rowTotal / qty) : it.productPrice
@@ -408,17 +373,11 @@ async function fetchData() {
       const hr = historyRes as OrderHistoryListResponse
       history.value = hr.success && hr.data ? hr.data.items.map(h => ({ id: h.id, createdOn: h.createdOn, actorName: null, message: h.note || h.newStatusText || 'Cập nhật trạng thái', meta: { oldStatus: h.oldStatusText, newStatus: h.newStatusText } })) : []
     }
-  } finally { loading.value = false }
+  } finally {
+    loading.value = false
+  }
 }
 onMounted(fetchData)
-
-// (Removed avatar initials logic as avatar/logo no longer displayed)
-
-function dismissCreatedBanner() {
-  // Remove `created` from query and replace URL without reloading
-  const { created: _omit, ...rest } = route.query as Record<string, string | string[] | undefined>
-  router.replace({ path: route.path, query: rest })
-}
 </script>
 
 <template>
@@ -520,59 +479,6 @@ function dismissCreatedBanner() {
                 </div>
               </div>
             </div>
-
-            <div
-              v-if="justCreated && detail"
-              class="mb-4 rounded-md bg-emerald-50 px-4 py-3 relative border-t-2"
-              style="border-left: none; border-right: none; border-bottom: none; border-top-color: oklch(0.64 0.21 156.08);"
-            >
-              <button
-                type="button"
-                aria-label="Đóng"
-                class="absolute top-3 right-3 text-emerald-700/70 hover:text-emerald-800"
-                @click="dismissCreatedBanner"
-              >
-                &times;
-              </button>
-              <div class="flex items-center gap-3 text-emerald-800">
-                <span class="inline-block w-5 h-5" aria-hidden="true">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    class="w-5 h-5"
-                  >
-                    <path
-                      fill="#fff"
-                      stroke="#CFF6E7"
-                      stroke-width="4"
-                      d="M12 22c5.523 0 10-4.477 10-10s-4.477-10-10-10-10 4.477-10 10 4.477 10 10 10Z"
-                    />
-                    <path
-                      fill="#0DB473"
-                      fill-rule="evenodd"
-                      d="M4 12c0-4.416 3.584-8 8-8s8 3.584 8 8-3.584 8-8 8-8-3.584-8-8m6.4 1.736 5.272-5.272 1.128 1.136-6.4 6.4-3.2-3.2 1.128-1.128z"
-                      clip-rule="evenodd"
-                    />
-                  </svg>
-                </span>
-                <p class="text-sm">
-                  Đơn hàng <strong class="text-emerald-900">{{ detail.orderCode }}</strong> đã được tạo thành công
-                </p>
-              </div>
-              <div class="mt-3 ml-8">
-                <UButton
-                  color="primary"
-                  variant="soft"
-                  size="sm"
-                  :to="'/orders/create'"
-                  class="font-medium"
-                >
-                  Tạo đơn hàng khác
-                </UButton>
-              </div>
-            </div>
-
             <!-- Full-width status card -->
             <UPageCard variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader class="sr-only">
@@ -624,95 +530,335 @@ function dismissCreatedBanner() {
                       <span>Đã xử lý giao hàng</span>
                     </span>
                   </BaseCardHeader>
-                <div class="-mx-4 lg:-mx-6 overflow-x-auto">
-                  <table class="min-w-full w-full text-sm border-separate border-spacing-0">
-                    <thead>
-                      <tr class="bg-gray-50">
-                        <th class="px-6 py-2 text-left font-semibold">Sản phẩm</th>
-                        <th class="px-6 py-2 text-left font-semibold">Số lượng</th>
-                        <th class="px-6 py-2 text-left font-semibold">Đơn giá</th>
-                        <th class="px-6 py-2 text-left font-semibold text-right">Thành tiền</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr
-                        v-for="item in detail.items"
-                        :key="item.id"
+                  <div class="-mx-4 lg:-mx-6 overflow-x-auto">
+                    <table class="min-w-full w-full text-sm border-separate border-spacing-0">
+                      <thead>
+                        <tr class="bg-gray-50">
+                          <th class="px-6 py-2 text-left font-semibold">
+                            Sản phẩm
+                          </th>
+                          <th class="px-6 py-2 text-left font-semibold">
+                            Số lượng
+                          </th>
+                          <th class="px-6 py-2 text-left font-semibold">
+                            Đơn giá
+                          </th>
+                          <th class="px-6 py-2 text-left font-semibold text-right">
+                            Thành tiền
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr
+                          v-for="item in detail.items"
+                          :key="item.id"
+                        >
+                          <td class="px-6 py-2 align-top">
+                            <div class="flex items-center gap-2">
+                              <img
+                                :src="item.thumbnailImageUrl || '/no-image.svg'"
+                                class="w-10 h-10 rounded bg-gray-100 object-cover flex-shrink-0"
+                              >
+                              <div>
+                                <div class="font-medium text-gray-800">
+                                  {{ item.productName }}
+                                </div>
+                                <!-- Placeholder for potential secondary name / normalizedName if available in future -->
+                                <div class="text-xs text-gray-500">
+                                  SKU: {{ item.productId }}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td class="px-6 py-2 align-top">
+                            {{ item.quantity }}
+                          </td>
+                          <td class="px-6 py-2 align-top">
+                            <div class="flex flex-col">
+                              <span class="text-primary-600 font-semibold leading-snug">{{ formatCurrency(item.unitPrice) }}</span>
+                              <div v-if="getDiscountAmount(item) > 0" class="text-xs text-gray-500 leading-snug">
+                                <span class="line-through mr-2">{{ formatCurrency(getOriginalPrice(item)) }}</span>
+                                <span class="text-red-600 mr-1">-{{ formatCurrency(getDiscountAmount(item)).replace('đ', '') }}</span>
+                                <span class="text-red-600">(-{{ getDiscountPercent(item) }}%)</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td class="px-6 py-2 align-top text-right">
+                            <span class="font-semibold">{{ formatCurrency(item.lineTotal) }}</span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </UPageCard>
+                <!-- Quick Payment Summary (appears only if unpaid or partial) -->
+                <UPageCard
+                  v-if="paymentStatusDisplay && (isUnpaid(paymentStatusDisplay) || isPartialPayment(paymentStatusDisplay))"
+                  variant="soft"
+                  class="bg-white rounded-lg"
+                >
+                  <div class="text-sm">
+                    <div class="flex items-center gap-2 mb-4">
+                      <!-- Reuse icon logic but only show one icon here -->
+                      <span class="inline-block w-5 h-5" aria-hidden="true">
+                        <template v-if="isPartialPayment(paymentStatusDisplay)">
+                          <svg
+                            class="w-5 h-5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            aria-hidden="true"
+                          >
+                            <circle
+                              cx="12"
+                              cy="12"
+                              r="12"
+                              fill="#FFDF9B"
+                            />
+                            <path
+                              fill="#fff"
+                              fill-rule="evenodd"
+                              d="M19 12a7 7 0 1 0-14 0z"
+                              clip-rule="evenodd"
+                            />
+                            <path
+                              fill="#E49C06"
+                              d="M19 12v.75h.75v-.75zm-14 0h-.75v.75h.75zm7-6.25a6.25 6.25 0 0 1 6.25 6.25h1.5a7.75 7.75 0 0 0-7.75-7.75zm-6.25 6.25a6.25 6.25 0 0 1 6.25-6.25v-1.5a7.75 7.75 0 0 0-7.75 7.75zm-.75.75h14v-1.5h-14z"
+                            />
+                            <path
+                              fill="#E49C06"
+                              d="M19 12v-.75h.75v.75zm-14 0h-.75v-.75h.75zm7 7.75a8 8 0 0 1-.759-.037l.145-1.493q.303.03.614.03zm-2.25-.332a7.7 7.7 0 0 1-1.404-.582l.708-1.322q.537.288 1.13.469zm-2.667-1.427a8 8 0 0 1-1.074-1.074l1.16-.952q.391.475.866.867zm-1.919-2.336a7.7 7.7 0 0 1-.582-1.405l1.435-.435q.181.594.47 1.131zm-.877-2.896a8 8 0 0 1-.037-.759h1.5q0 .31.03.614zm.713-1.509h.7v1.5h-.7zm2.1 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h.7v1.5h-.7zm1.45.75q0 .385-.037.759l-1.493-.145q.03-.303.03-.614zm-.332 2.25q-.224.736-.582 1.405l-1.322-.709q.288-.537.469-1.13zm-1.427 2.667a8 8 0 0 1-1.074 1.074l-.952-1.16a6.3 6.3 0 0 0 .867-.866zm-2.336 1.919a7.7 7.7 0 0 1-1.405.582l-.435-1.435q.594-.181 1.131-.47zm-2.896.877a8 8 0 0 1-.759.037v-1.5q.31 0 .614-.03z"
+                            />
+                          </svg>
+                        </template>
+                        <template v-else>
+                          <svg
+                            class="w-5 h-5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            aria-hidden="true"
+                          >
+                            <rect
+                              width="24"
+                              height="24"
+                              fill="#FFDF9B"
+                              rx="12"
+                            />
+                            <path
+                              fill="#fff"
+                              stroke="#E49C06"
+                              stroke-dasharray="2 2"
+                              stroke-width="1.5"
+                              d="M12 19a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"
+                            />
+                          </svg>
+                        </template>
+                      </span>
+                      <span class="text-base font-semibold text-gray-900">{{ paymentStatusDisplay }}</span>
+                    </div>
+                    <div class="space-y-2">
+                      <div class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
+                        <span class="text-gray-600">Tổng tiền hàng</span>
+                        <span v-if="detail.payment?.totalQuantity != null" class="text-gray-500 justify-self-center">{{ detail.payment.totalQuantity }} sản phẩm</span>
+                        <span v-else class="text-gray-500 justify-self-center" />
+                        <span class="font-medium justify-self-end">{{ formatCurrency(detail.items.reduce((a, i) => a + (i.lineTotal || 0), 0)) }}</span>
+                      </div>
+                      <div
+                        v-if="detail.payment?.discountAmount && detail.payment.discountAmount > 0"
+                        class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4"
                       >
-                        <td class="px-6 py-2 align-top">
-                          <div class="flex items-center gap-2">
-                            <img
-                              :src="item.thumbnailImageUrl || '/no-image.svg'"
-                              class="w-10 h-10 rounded bg-gray-100 object-cover flex-shrink-0"
-                            >
-                            <div>
-                              <div class="font-medium text-gray-800">{{ item.productName }}</div>
-                              <!-- Placeholder for potential secondary name / normalizedName if available in future -->
-                              <div class="text-xs text-gray-500">SKU: {{ item.productId }}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td class="px-6 py-2 align-top">{{ item.quantity }}</td>
-                        <td class="px-6 py-2 align-top">
-                          <div class="flex flex-col">
-                            <span class="text-primary-600 font-semibold leading-snug">{{ formatCurrency(item.unitPrice) }}</span>
-                            <div v-if="getDiscountAmount(item) > 0" class="text-xs text-gray-500 leading-snug">
-                              <span class="line-through mr-2">{{ formatCurrency(getOriginalPrice(item)) }}</span>
-                              <span class="text-red-600 mr-1">-{{ formatCurrency(getDiscountAmount(item)).replace('đ', '') }}</span>
-                              <span class="text-red-600">(-{{ getDiscountPercent(item) }}%)</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td class="px-6 py-2 align-top text-right">
-                          <span class="font-semibold">{{ formatCurrency(item.lineTotal) }}</span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </UPageCard>
-              <!-- Quick Payment Summary (appears only if unpaid or partial) -->
-              <UPageCard
-                v-if="paymentStatusDisplay && (isUnpaid(paymentStatusDisplay) || isPartialPayment(paymentStatusDisplay))"
-                variant="soft"
-                class="bg-white rounded-lg"
-              >
-                <div class="text-sm">
-                  <div class="flex items-center gap-2 mb-4">
-                    <!-- Reuse icon logic but only show one icon here -->
-                    <span class="inline-block w-5 h-5" aria-hidden="true">
-                      <template v-if="isPartialPayment(paymentStatusDisplay)">
+                        <span class="text-gray-600">Khuyến mãi</span>
+                        <span />
+                        <span class="text-red-600 justify-self-end">-{{ formatCurrency(detail.payment.discountAmount) }}</span>
+                      </div>
+                      <div class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
+                        <span class="text-gray-600">Thành tiền</span>
+                        <span />
+                        <span class="font-semibold justify-self-end">{{ formatCurrency(detail.payment?.orderTotal) }}</span>
+                      </div>
+                      <div
+                        v-if="isPartialPayment(paymentStatusDisplay) && detail.payment?.paidAmount"
+                        class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4 pt-2 border-t border-gray-100"
+                      >
+                        <span class="text-gray-600">Khách đã trả</span>
+                        <span class="text-gray-500 justify-self-center">{{ formatPaymentMethod(detail.payment?.paymentMethod) }}</span>
+                        <span class="font-medium justify-self-end">{{ formatCurrency(detail.payment?.paidAmount) }}</span>
+                      </div>
+                      <div
+                        v-if="isPartialPayment(paymentStatusDisplay) && detail.payment?.paidAmount != null && detail.payment?.orderTotal != null"
+                        class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4"
+                      >
+                        <span class="text-gray-900 font-semibold">Khách còn phải trả</span>
+                        <span />
+                        <span class="text-gray-900 font-semibold justify-self-end">{{ formatCurrency(Math.max(0, (detail.payment?.orderTotal || 0) - (detail.payment?.paidAmount || 0))) }}</span>
+                      </div>
+                    </div>
+                    <div
+                      class="flex justify-end gap-3 pt-4"
+                      :class="isUnpaid(paymentStatusDisplay) ? 'mt-2 border-t border-gray-100 pt-4' : 'mt-2'"
+                    >
+                      <UButton
+                        color="neutral"
+                        variant="soft"
+                        size="md"
+                        class="font-medium inline-flex items-center gap-2"
+                        icon="i-heroicons-qr-code"
+                      >
+                        <span class="flex items-center gap-1">
+                          Lấy mã QR
+                        </span>
+                      </UButton>
+                      <UButton
+                        color="primary"
+                        variant="solid"
+                        size="md"
+                        class="font-medium inline-flex items-center gap-2"
+                        @click="showReceivePayment = true"
+                      >
                         <svg
-                          class="w-5 h-5"
+                          class="w-4 h-4"
                           viewBox="0 0 24 24"
                           fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.7"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
                           aria-hidden="true"
                         >
-                          <circle cx="12" cy="12" r="12" fill="#FFDF9B" />
-                          <path fill="#fff" fill-rule="evenodd" d="M19 12a7 7 0 1 0-14 0z" clip-rule="evenodd" />
-                          <path fill="#E49C06" d="M19 12v.75h.75v-.75zm-14 0h-.75v.75h.75zm7-6.25a6.25 6.25 0 0 1 6.25 6.25h1.5a7.75 7.75 0 0 0-7.75-7.75zm-6.25 6.25a6.25 6.25 0 0 1 6.25-6.25v-1.5a7.75 7.75 0 0 0-7.75 7.75zm-.75.75h14v-1.5h-14z" />
-                          <path fill="#E49C06" d="M19 12v-.75h.75v.75zm-14 0h-.75v-.75h.75zm7 7.75a8 8 0 0 1-.759-.037l.145-1.493q.303.03.614.03zm-2.25-.332a7.7 7.7 0 0 1-1.404-.582l.708-1.322q.537.288 1.13.469zm-2.667-1.427a8 8 0 0 1-1.074-1.074l1.16-.952q.391.475.866.867zm-1.919-2.336a7.7 7.7 0 0 1-.582-1.405l1.435-.435q.181.594.47 1.131zm-.877-2.896a8 8 0 0 1-.037-.759h1.5q0 .31.03.614zm.713-1.509h.7v1.5h-.7zm2.1 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h.7v1.5h-.7zm1.45.75q0 .385-.037.759l-1.493-.145q.03-.303.03-.614zm-.332 2.25q-.224.736-.582 1.405l-1.322-.709q.288-.537.469-1.13zm-1.427 2.667a8 8 0 0 1-1.074 1.074l-.952-1.16a6.3 6.3 0 0 0 .867-.866zm-2.336 1.919a7.7 7.7 0 0 1-1.405.582l-.435-1.435q.594-.181 1.131-.47zm-2.896.877a8 8 0 0 1-.759.037v-1.5q.31 0 .614-.03z" />
+                          <rect
+                            x="2"
+                            y="6"
+                            width="20"
+                            height="12"
+                            rx="2"
+                          />
+                          <path d="M6 10h4" />
+                          <path d="M6 14h8" />
+                          <path d="M14 10h4" />
                         </svg>
+                        Nhận tiền
+                      </UButton>
+                    </div>
+                  </div>
+                </UPageCard>
+                <!-- Payment (hidden when quick summary shown) -->
+                <UPageCard
+                  v-if="!(paymentStatusDisplay && (isUnpaid(paymentStatusDisplay) || isPartialPayment(paymentStatusDisplay)))"
+                  variant="soft"
+                  class="bg-white rounded-lg"
+                >
+                  <BaseCardHeader>
+                    <span class="inline-flex items-center gap-2 select-none">
+                      <template v-if="paymentStatusDisplay">
+                        <!-- Refunded -->
+                        <span v-if="isRefunded(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
+                          <svg
+                            class="w-5 h-5 text-rose-600"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <path d="M3 10v6h6" />
+                            <path d="M21 14a9 9 0 0 1-15.3 6.3L3 16" />
+                            <path d="M3 10a9 9 0 0 1 15.3-6.3L21 8" />
+                          </svg>
+                        </span>
+                        <!-- Overpaid -->
+                        <span v-else-if="isOverPaid(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
+                          <svg
+                            class="w-5 h-5 text-violet-600"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.6"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <ellipse
+                              cx="12"
+                              cy="6"
+                              rx="7"
+                              ry="3"
+                            />
+                            <path d="M5 6v4c0 1.66 3.13 3 7 3s7-1.34 7-3V6" />
+                            <path d="M5 14v4c0 1.66 3.13 3 7 3s7-1.34 7-3v-4" />
+                          </svg>
+                        </span>
+                        <!-- Partial payment (provided) -->
+                        <span v-else-if="isPartialPayment(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
+                          <svg
+                            class="w-5 h-5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            aria-hidden="true"
+                          >
+                            <circle
+                              cx="12"
+                              cy="12"
+                              r="12"
+                              fill="#FFDF9B"
+                            />
+                            <path
+                              fill="#fff"
+                              fill-rule="evenodd"
+                              d="M19 12a7 7 0 1 0-14 0z"
+                              clip-rule="evenodd"
+                            />
+                            <path
+                              fill="#E49C06"
+                              d="M19 12v.75h.75v-.75zm-14 0h-.75v.75h.75zm7-6.25a6.25 6.25 0 0 1 6.25 6.25h1.5a7.75 7.75 0 0 0-7.75-7.75zm-6.25 6.25a6.25 6.25 0 0 1 6.25-6.25v-1.5a7.75 7.75 0 0 0-7.75 7.75zm-.75.75h14v-1.5h-14z"
+                            />
+                            <path
+                              fill="#E49C06"
+                              d="M19 12v-.75h.75v.75zm-14 0h-.75v-.75h.75zm7 7.75a8 8 0 0 1-.759-.037l.145-1.493q.303.03.614.03zm-2.25-.332a7.7 7.7 0 0 1-1.404-.582l.708-1.322q.537.288 1.13.469zm-2.667-1.427a8 8 0 0 1-1.074-1.074l1.16-.952q.391.475.866.867zm-1.919-2.336a7.7 7.7 0 0 1-.582-1.405l1.435-.435q.181.594.47 1.131zm-.877-2.896a8 8 0 0 1-.037-.759h1.5q0 .31.03.614zm.713-1.509h.7v1.5h-.7zm2.1 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h.7v1.5h-.7zm1.45.75q0 .385-.037.759l-1.493-.145q.03-.303.03-.614zm-.332 2.25q-.224.736-.582 1.405l-1.322-.709q.288-.537.469-1.13zm-1.427 2.667a8 8 0 0 1-1.074 1.074l-.952-1.16a6.3 6.3 0 0 0 .867-.866zm-2.336 1.919a7.7 7.7 0 0 1-1.405.582l-.435-1.435q.594-.181 1.131-.47zm-2.896.877a8 8 0 0 1-.759.037v-1.5q.31 0 .614-.03z"
+                            />
+                          </svg>
+                        </span>
+                        <!-- Paid (provided) -->
+                        <span v-else-if="isPaid(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
+                          <IconSuccess />
+                        </span>
+                        <!-- Unpaid (provided) -->
+                        <span v-else-if="isUnpaid(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
+                          <svg
+                            class="w-5 h-5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            aria-hidden="true"
+                          >
+                            <rect
+                              width="24"
+                              height="24"
+                              fill="#FFDF9B"
+                              rx="12"
+                            />
+                            <path
+                              fill="#fff"
+                              stroke="#E49C06"
+                              stroke-dasharray="2 2"
+                              stroke-width="1.5"
+                              d="M12 19a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"
+                            />
+                          </svg>
+                        </span>
+                        <!-- Fallback dot -->
+                        <span v-else class="inline-block w-5 h-5">
+                          <span class="block w-5 h-5 rounded-full bg-gray-300" />
+                        </span>
+                        <span>{{ paymentStatusDisplay }}</span>
                       </template>
                       <template v-else>
-                        <svg
-                          class="w-5 h-5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          aria-hidden="true"
-                        >
-                          <rect width="24" height="24" fill="#FFDF9B" rx="12" />
-                          <path fill="#fff" stroke="#E49C06" stroke-dasharray="2 2" stroke-width="1.5" d="M12 19a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z" />
-                        </svg>
+                        <span>—</span>
                       </template>
                     </span>
-                    <span class="text-base font-semibold text-gray-900">{{ paymentStatusDisplay }}</span>
-                  </div>
-                  <div class="space-y-2">
+                  </BaseCardHeader>
+                  <div class="pb-3 text-sm space-y-2">
                     <div class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
                       <span class="text-gray-600">Tổng tiền hàng</span>
                       <span v-if="detail.payment?.totalQuantity != null" class="text-gray-500 justify-self-center">{{ detail.payment.totalQuantity }} sản phẩm</span>
-                      <span v-else class="text-gray-500 justify-self-center"></span>
+                      <span v-else class="text-gray-500 justify-self-center" />
                       <span class="font-medium justify-self-end">{{ formatCurrency(detail.items.reduce((a, i) => a + (i.lineTotal || 0), 0)) }}</span>
                     </div>
                     <div
@@ -720,382 +866,277 @@ function dismissCreatedBanner() {
                       class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4"
                     >
                       <span class="text-gray-600">Khuyến mãi</span>
-                      <span></span>
+                      <span />
                       <span class="text-red-600 justify-self-end">-{{ formatCurrency(detail.payment.discountAmount) }}</span>
                     </div>
                     <div class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
                       <span class="text-gray-600">Thành tiền</span>
-                      <span></span>
+                      <span />
                       <span class="font-semibold justify-self-end">{{ formatCurrency(detail.payment?.orderTotal) }}</span>
                     </div>
-                    <div
-                      v-if="isPartialPayment(paymentStatusDisplay) && detail.payment?.paidAmount"
-                      class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4 pt-2 border-t border-gray-100"
-                    >
-                      <span class="text-gray-600">Khách đã trả</span>
+                  </div>
+                  <div class="border-t border-gray-100 py-3 text-sm">
+                    <div class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
+                      <span class="text-gray-700 font-medium">Khách đã trả</span>
                       <span class="text-gray-500 justify-self-center">{{ formatPaymentMethod(detail.payment?.paymentMethod) }}</span>
                       <span class="font-medium justify-self-end">{{ formatCurrency(detail.payment?.paidAmount) }}</span>
                     </div>
-                    <div
-                      v-if="isPartialPayment(paymentStatusDisplay) && detail.payment?.paidAmount != null && detail.payment?.orderTotal != null"
-                      class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4"
-                    >
-                      <span class="text-gray-900 font-semibold">Khách còn phải trả</span>
-                      <span></span>
-                      <span class="text-gray-900 font-semibold justify-self-end">{{ formatCurrency(Math.max(0, (detail.payment?.orderTotal || 0) - (detail.payment?.paidAmount || 0))) }}</span>
-                    </div>
                   </div>
-                  <div
-                    class="flex justify-end gap-3 pt-4"
-                    :class="isUnpaid(paymentStatusDisplay) ? 'mt-2 border-t border-gray-100 pt-4' : 'mt-2'"
-                  >
-                    <UButton
-                      color="neutral"
-                      variant="soft"
-                      size="md"
-                      class="font-medium inline-flex items-center gap-2"
-                      icon="i-heroicons-qr-code"
-                    >
-                      <span class="flex items-center gap-1">
-                        Lấy mã QR
-                      </span>
-                    </UButton>
-                    <UButton
-                      color="primary"
-                      variant="solid"
-                      size="md"
-                      class="font-medium inline-flex items-center gap-2"
-                      @click="showReceivePayment = true"
-                    >
-                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <rect x="2" y="6" width="20" height="12" rx="2" />
-                        <path d="M6 10h4" />
-                        <path d="M6 14h8" />
-                        <path d="M14 10h4" />
-                      </svg>
-                      Nhận tiền
-                    </UButton>
-                  </div>
-                </div>
-              </UPageCard>
-              <!-- Payment (hidden when quick summary shown) -->
-              <UPageCard
-                v-if="!(paymentStatusDisplay && (isUnpaid(paymentStatusDisplay) || isPartialPayment(paymentStatusDisplay)))"
-                variant="soft"
-                class="bg-white rounded-lg"
-              >
-                <BaseCardHeader>
-                  <span class="inline-flex items-center gap-2 select-none">
-                    <template v-if="paymentStatusDisplay">
-                      <!-- Refunded -->
-                      <span v-if="isRefunded(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
-                        <svg class="w-5 h-5 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M3 10v6h6" />
-                          <path d="M21 14a9 9 0 0 1-15.3 6.3L3 16" />
-                          <path d="M3 10a9 9 0 0 1 15.3-6.3L21 8" />
-                        </svg>
-                      </span>
-                      <!-- Overpaid -->
-                      <span v-else-if="isOverPaid(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
-                        <svg class="w-5 h-5 text-violet-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                          <ellipse cx="12" cy="6" rx="7" ry="3" />
-                          <path d="M5 6v4c0 1.66 3.13 3 7 3s7-1.34 7-3V6" />
-                          <path d="M5 14v4c0 1.66 3.13 3 7 3s7-1.34 7-3v-4" />
-                        </svg>
-                      </span>
-                      <!-- Partial payment (provided) -->
-                      <span v-else-if="isPartialPayment(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
-                        <svg
-                          class="w-5 h-5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          aria-hidden="true"
-                        >
-                          <circle
-                            cx="12"
-                            cy="12"
-                            r="12"
-                            fill="#FFDF9B"
-                          />
-                          <path
-                            fill="#fff"
-                            fill-rule="evenodd"
-                            d="M19 12a7 7 0 1 0-14 0z"
-                            clip-rule="evenodd"
-                          />
-                          <path
-                            fill="#E49C06"
-                            d="M19 12v.75h.75v-.75zm-14 0h-.75v.75h.75zm7-6.25a6.25 6.25 0 0 1 6.25 6.25h1.5a7.75 7.75 0 0 0-7.75-7.75zm-6.25 6.25a6.25 6.25 0 0 1 6.25-6.25v-1.5a7.75 7.75 0 0 0-7.75 7.75zm-.75.75h14v-1.5h-14z"
-                          />
-                          <path
-                            fill="#E49C06"
-                            d="M19 12v-.75h.75v.75zm-14 0h-.75v-.75h.75zm7 7.75a8 8 0 0 1-.759-.037l.145-1.493q.303.03.614.03zm-2.25-.332a7.7 7.7 0 0 1-1.404-.582l.708-1.322q.537.288 1.13.469zm-2.667-1.427a8 8 0 0 1-1.074-1.074l1.16-.952q.391.475.866.867zm-1.919-2.336a7.7 7.7 0 0 1-.582-1.405l1.435-.435q.181.594.47 1.131zm-.877-2.896a8 8 0 0 1-.037-.759h1.5q0 .31.03.614zm.713-1.509h.7v1.5h-.7zm2.1 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h.7v1.5h-.7zm1.45.75q0 .385-.037.759l-1.493-.145q.03-.303.03-.614zm-.332 2.25q-.224.736-.582 1.405l-1.322-.709q.288-.537.469-1.13zm-1.427 2.667a8 8 0 0 1-1.074 1.074l-.952-1.16a6.3 6.3 0 0 0 .867-.866zm-2.336 1.919a7.7 7.7 0 0 1-1.405.582l-.435-1.435q.594-.181 1.131-.47zm-2.896.877a8 8 0 0 1-.759.037v-1.5q.31 0 .614-.03z"
-                          />
-                        </svg>
-                      </span>
-                      <!-- Paid (provided) -->
-                      <span v-else-if="isPaid(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
-                        <svg
-                          class="w-5 h-5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          aria-hidden="true"
-                        >
-                          <path
-                            fill="#fff"
-                            stroke="#CFF6E7"
-                            stroke-width="4"
-                            d="M12 22c5.523 0 10-4.477 10-10s-4.477-10-10-10-10 4.477-10 10 4.477 10 10 10Z"
-                          />
-                          <path
-                            fill="#0DB473"
-                            fill-rule="evenodd"
-                            d="M4 12c0-4.416 3.584-8 8-8s8 3.584 8 8-3.584 8-8 8-8-3.584-8-8m6.4 1.736 5.272-5.272 1.128 1.136-6.4 6.4-3.2-3.2 1.128-1.128z"
-                            clip-rule="evenodd"
-                          />
-                        </svg>
-                      </span>
-                      <!-- Unpaid (provided) -->
-                      <span v-else-if="isUnpaid(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
-                        <svg
-                          class="w-5 h-5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          aria-hidden="true"
-                        >
-                          <rect
-                            width="24"
-                            height="24"
-                            fill="#FFDF9B"
-                            rx="12"
-                          />
-                          <path
-                            fill="#fff"
-                            stroke="#E49C06"
-                            stroke-dasharray="2 2"
-                            stroke-width="1.5"
-                            d="M12 19a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"
-                          />
-                        </svg>
-                      </span>
-                      <!-- Fallback dot -->
-                      <span v-else class="inline-block w-5 h-5">
-                        <span class="block w-5 h-5 rounded-full bg-gray-300" />
-                      </span>
-                      <span>{{ paymentStatusDisplay }}</span>
-                    </template>
-                    <template v-else>
-                      <span>—</span>
-                    </template>
-                  </span>
-                </BaseCardHeader>
-                <div class="pb-3 text-sm space-y-2">
-                  <div class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
-                    <span class="text-gray-600">Tổng tiền hàng</span>
-                    <span v-if="detail.payment?.totalQuantity != null" class="text-gray-500 justify-self-center">{{ detail.payment.totalQuantity }} sản phẩm</span>
-                    <span v-else class="text-gray-500 justify-self-center"></span>
-                    <span class="font-medium justify-self-end">{{ formatCurrency(detail.items.reduce((a, i) => a + (i.lineTotal || 0), 0)) }}</span>
-                  </div>
-                  <div
-                    v-if="detail.payment?.discountAmount && detail.payment.discountAmount > 0"
-                    class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4"
-                  >
-                    <span class="text-gray-600">Khuyến mãi</span>
-                    <span></span>
-                    <span class="text-red-600 justify-self-end">-{{ formatCurrency(detail.payment.discountAmount) }}</span>
-                  </div>
-                  <div class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
-                    <span class="text-gray-600">Thành tiền</span>
-                    <span></span>
-                    <span class="font-semibold justify-self-end">{{ formatCurrency(detail.payment?.orderTotal) }}</span>
-                  </div>
-                </div>
-                <div class="border-t border-gray-100 py-3 text-sm">
-                  <div class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
-                    <span class="text-gray-700 font-medium">Khách đã trả</span>
-                    <span class="text-gray-500 justify-self-center">{{ formatPaymentMethod(detail.payment?.paymentMethod) }}</span>
-                    <span class="font-medium justify-self-end">{{ formatCurrency(detail.payment?.paidAmount) }}</span>
-                  </div>
-                </div>
-              </UPageCard>
-              <!-- E-invoice -->
-              <UPageCard variant="soft" class="bg-white rounded-lg">
-                <div class="flex items-start justify-between gap-4">
+                </UPageCard>
+                <!-- E-invoice -->
+                <UPageCard variant="soft" class="bg-white rounded-lg">
+                  <div class="flex items-start justify-between gap-4">
                     <div class="flex items-start gap-3">
                       <span class="inline-flex items-center justify-center w-6 h-6" aria-hidden="true">
                         <IconInvoicePending class="w-6 h-6" />
                       </span>
                       <div>
-                        <p class="font-medium text-gray-900 leading-6">Chưa yêu cầu hóa đơn điện tử</p>
-                        <p class="mt-1 text-sm text-gray-600">Đơn hàng chưa có yêu cầu hóa đơn điện tử. Vui lòng thêm thông tin để tạo hóa đơn điện tử</p>
+                        <p class="font-medium text-gray-900 leading-6">
+                          Chưa yêu cầu hóa đơn điện tử
+                        </p>
+                        <p class="mt-1 text-sm text-gray-600">
+                          Đơn hàng chưa có yêu cầu hóa đơn điện tử. Vui lòng thêm thông tin để tạo hóa đơn điện tử
+                        </p>
                       </div>
                     </div>
                     <div class="pt-1">
-                      <button type="button" class="text-primary-600 text-sm font-medium whitespace-nowrap hover:underline">Yêu cầu hóa đơn</button>
-                    </div>
-                  </div>
-              </UPageCard>
-              <!-- History -->
-              <UPageCard variant="soft" class="bg-white rounded-lg">
-                <BaseCardHeader>Lịch sử đơn hàng</BaseCardHeader>
-                <div class="text-sm">
-                  <div v-if="!history || !history.length" class="text-gray-500">Không có lịch sử.</div>
-                  <ul v-else class="space-y-3">
-                    <li v-for="h in history" :key="h.id || h.createdOn" class="flex gap-3">
-                      <div class="flex flex-col items-center">
-                        <div class="w-2 h-2 rounded-full bg-primary-500 mt-1" />
-                        <div class="flex-1 w-px bg-gray-200" />
-                      </div>
-                      <div>
-                        <div class="text-xs text-gray-500">{{ formatDateTime(h.createdOn) }}</div>
-                        <div class="text-gray-800">{{ h.message }}</div>
-                        <div v-if="h.actorName" class="text-xs text-gray-400">{{ h.actorName }}</div>
-                      </div>
-                    </li>
-                  </ul>
-                </div>
-              </UPageCard>
-            </div>
-            <!-- Right column -->
-            <div class="w-full lg:w-80 space-y-6 flex-shrink-0">
-              <UPageCard variant="soft" class="bg-white rounded-lg">
-                <BaseCardHeader>Nguồn đơn</BaseCardHeader>
-                <div class="text-sm">{{ detail.meta?.sourceName || 'POS' }}</div>
-              </UPageCard>
-              <UPageCard variant="soft" class="bg-white rounded-lg">
-                <BaseCardHeader>Khách hàng</BaseCardHeader>
-                <div class="text-sm">
-                  <div class="space-y-4">
-                    <!-- Header with avatar -->
-                    <div class="flex items-start">
-                      <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 flex-wrap">
-                          <span class="font-medium text-primary-600 hover:underline cursor-pointer truncate max-w-[160px]">
-                            {{ detail.customer?.name || '---' }}
-                          </span>
-                          <span
-                            v-if="detail.customer?.code"
-                            class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-[11px] font-medium text-gray-600"
-                          >{{ (detail.customer as any).code }}</span>
-                        </div>
-                        <div class="mt-1 flex flex-col gap-0.5 text-xs text-gray-600">
-                          <div v-if="detail.customer?.phone"><span class="font-medium text-gray-700">ĐT:</span> {{ detail.customer.phone }}</div>
-                          <div><span class="font-medium text-gray-700">Email:</span> {{ detail.customer?.email || 'Không có' }}</div>
-                        </div>
-                      </div>
-                      <div class="flex flex-col gap-1">
-                        <UButton color="neutral" variant="ghost" size="xs" aria-label="Sửa khách hàng">
-                          <IconEdit />
-                        </UButton>
-                      </div>
-                    </div>
-                    <!-- Spend summary -->
-                    <div class="pt-3 border-t border-gray-100">
-                      <div class="flex items-start justify-between text-xs">
-                        <div class="text-gray-600 leading-snug">
-                          <div>Tổng chi tiêu</div>
-                          <div v-if="detail.payment?.totalQuantity != null" class="text-gray-400">({{ detail.payment.totalQuantity }} đơn hàng)</div>
-                        </div>
-                        <div class="text-gray-900 font-semibold text-sm">{{ formatCurrency(detail.customer?.totalSpent || detail.payment?.subTotal || 0) }}</div>
-                      </div>
-                    </div>
-                    <!-- Address -->
-                    <div class="pt-3 border-t border-gray-100">
-                      <div class="flex items-center justify-between mb-1">
-                        <div class="text-xs font-medium text-gray-700">Địa chỉ giao hàng</div>
-                        <UButton color="neutral" variant="ghost" size="xs" aria-label="Sửa địa chỉ giao hàng"><IconEdit /></UButton>
-                      </div>
-                      <div class="text-xs text-gray-700 whitespace-pre-line">
-                        <template v-if="detail.address">
-                          <div>{{ detail.address.contactName || detail.customer?.name }}</div>
-                          <div v-if="detail.address.phoneNumber">{{ detail.address.phoneNumber }}</div>
-                          <div>
-                            {{ [detail.address.addressLine1, detail.address.city, detail.address.country].filter(Boolean).join(', ') || 'Vietnam' }}
-                          </div>
-                        </template>
-                        <template v-else>
-                          Chưa có địa chỉ giao hàng
-                        </template>
-                      </div>
-                    </div>
-                    <!-- Extra actions -->
-                    <div class="pt-3 border-t border-gray-100 flex justify-center">
-                      <button type="button" class="text-primary-600 text-xs font-medium inline-flex items-center gap-1">
-                        Xem thêm
-                        <IconChevronDown class="w-4 h-4" />
+                      <button type="button" class="text-primary-600 text-sm font-medium whitespace-nowrap hover:underline">
+                        Yêu cầu hóa đơn
                       </button>
                     </div>
                   </div>
-                </div>
-              </UPageCard>
-              <UPageCard variant="soft" class="bg-white rounded-lg">
-                <BaseCardHeader>Ghi chú</BaseCardHeader>
-                <div v-if="!detail.note" class="text-sm text-gray-500">Chưa có ghi chú</div>
-                <div v-else class="text-sm whitespace-pre-line">{{ detail.note }}</div>
-              </UPageCard>
-              <UPageCard variant="soft" class="bg-white rounded-lg">
-                <BaseCardHeader>Thông tin bổ sung</BaseCardHeader>
-                <div class="text-sm">
-                  <div class="space-y-6">
-                    <!-- Branch -->
-                    <div class="space-y-1">
-                      <div class="font-medium text-gray-800">Bán tại chi nhánh</div>
-                      <div class="text-gray-600">{{ detail.meta?.branchName || 'Cửa hàng chính' }}</div>
+                </UPageCard>
+                <!-- History -->
+                <UPageCard variant="soft" class="bg-white rounded-lg">
+                  <BaseCardHeader>
+                    Lịch sử đơn hàng
+                  </BaseCardHeader>
+                  <div class="text-sm">
+                    <div v-if="!history || !history.length" class="text-gray-500">
+                      Không có lịch sử.
                     </div>
-                    
-                    <!-- Staff in charge -->
-                    <div class="space-y-1">
-                      <div class="flex items-center justify-between">
-                        <div class="font-medium text-gray-800">Nhân viên phụ trách</div>
-                        <button type="button" class="text-gray-400 hover:text-gray-600" aria-label="Sửa nhân viên phụ trách">
-                          <IconEdit class="w-4 h-4" />
-                        </button>
+                    <ul v-else class="space-y-3">
+                      <li v-for="h in history" :key="h.id || h.createdOn" class="flex gap-3">
+                        <div class="flex flex-col items-center">
+                          <div class="w-2 h-2 rounded-full bg-primary-500 mt-1" />
+                          <div class="flex-1 w-px bg-gray-200" />
+                        </div>
+                        <div>
+                          <div class="text-xs text-gray-500">
+                            {{ formatDateTime(h.createdOn) }}
+                          </div>
+                          <div class="text-gray-800">
+                            {{ h.message }}
+                          </div>
+                          <div v-if="h.actorName" class="text-xs text-gray-400">
+                            {{ h.actorName }}
+                          </div>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                </UPageCard>
+              </div>
+              <!-- Right column -->
+              <div class="w-full lg:w-80 space-y-6 flex-shrink-0">
+                <UPageCard variant="soft" class="bg-white rounded-lg">
+                  <BaseCardHeader>
+                    Nguồn đơn
+                  </BaseCardHeader>
+                  <div class="text-sm">
+                    {{ detail.meta?.sourceName || 'POS' }}
+                  </div>
+                </UPageCard>
+                <UPageCard variant="soft" class="bg-white rounded-lg">
+                  <BaseCardHeader>
+                    Khách hàng
+                  </BaseCardHeader>
+                  <div class="text-sm">
+                    <div class="space-y-4">
+                      <!-- Header with avatar -->
+                      <div class="flex items-start">
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-primary-600 hover:underline cursor-pointer truncate max-w-[160px]">
+                              {{ detail.customer?.name || '---' }}
+                            </span>
+                            <span
+                              v-if="detail.customer?.code"
+                              class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-[11px] font-medium text-gray-600"
+                            >
+                              {{ (detail.customer as any).code }}
+                            </span>
+                          </div>
+                          <div class="mt-1 flex flex-col gap-0.5 text-xs text-gray-600">
+                            <div v-if="detail.customer?.phone">
+                              <span class="font-medium text-gray-700">ĐT:</span>
+                              {{ detail.customer.phone }}
+                            </div>
+                            <div>
+                              <span class="font-medium text-gray-700">Email:</span>
+                              {{ detail.customer?.email || 'Không có' }}
+                            </div>
+                          </div>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                          <UButton
+                            color="neutral"
+                            variant="ghost"
+                            size="xs"
+                            aria-label="Sửa khách hàng"
+                          >
+                            <IconEdit />
+                          </UButton>
+                        </div>
                       </div>
-                      <div class="text-gray-600">{{ detail.meta?.staffInCharge || 'Phạm Văn Toàn' }}</div>
-                    </div>
-                    
-                    <!-- Creator -->
-                    <div class="space-y-1">
-                      <div class="font-medium text-gray-800">Nhân viên tạo đơn</div>
-                      <div class="text-gray-600">{{ detail.meta?.creatorName || 'Phạm Văn Toàn' }}</div>
-                    </div>
-                    
-                    <!-- Order date -->
-                    <div class="space-y-1">
-                      <div class="font-medium text-gray-800">Ngày đặt hàng</div>
-                      <div class="text-gray-600">{{ formatDateTime(detail.meta?.orderDate) }}</div>
-                    </div>
-                    
-                    <!-- Scheduled date -->
-                    <div class="space-y-1">
-                      <div class="flex items-center justify-between">
-                        <div class="font-medium text-gray-800">Ngày hẹn giao</div>
-                        <button type="button" class="text-gray-400 hover:text-gray-600" aria-label="Sửa ngày hẹn giao">
-                          <IconEdit class="w-4 h-4" />
-                        </button>
+                      <!-- Spend summary -->
+                      <div class="pt-3 border-t border-gray-100">
+                        <div class="flex items-start justify-between text-xs">
+                          <div class="text-gray-600 leading-snug">
+                            <div>Tổng chi tiêu</div>
+                            <div v-if="detail.payment?.totalQuantity != null" class="text-gray-400">
+                              ({{ detail.payment.totalQuantity }} đơn hàng)
+                            </div>
+                          </div>
+                          <div class="text-gray-900 font-semibold text-sm">
+                            {{ formatCurrency(detail.customer?.totalSpent || detail.payment?.subTotal || 0) }}
+                          </div>
+                        </div>
                       </div>
-                      <div class="text-gray-600">{{ formatDateTime(detail.meta?.scheduledDate) || 'Chưa có ngày hẹn giao' }}</div>
-                    </div>
-                    
-                    <!-- Tags -->
-                    <div class="space-y-1">
-                      <label class="block text-xs font-medium text-gray-600">Tag</label>
-                      <input
-                        type="text"
-                        placeholder="Tìm kiếm hoặc thêm mới tag"
-                        class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                      <div class="text-right mt-1">
-                        <button type="button" class="text-primary-600 text-xs font-medium hover:underline">Danh sách tag</button>
+                      <!-- Address -->
+                      <div class="pt-3 border-t border-gray-100">
+                        <div class="flex items-center justify-between mb-1">
+                          <div class="text-xs font-medium text-gray-700">
+                            Địa chỉ giao hàng
+                          </div>
+                          <UButton
+                            color="neutral"
+                            variant="ghost"
+                            size="xs"
+                            aria-label="Sửa địa chỉ giao hàng"
+                          >
+                            <IconEdit />
+                          </UButton>
+                        </div>
+                        <div class="text-xs text-gray-700 whitespace-pre-line">
+                          <template v-if="detail.address">
+                            <div>{{ detail.address.contactName || detail.customer?.name }}</div>
+                            <div v-if="detail.address.phoneNumber">
+                              {{ detail.address.phoneNumber }}
+                            </div>
+                            <div>
+                              {{ [detail.address.addressLine1, detail.address.city, detail.address.country].filter(Boolean).join(', ') || 'Vietnam' }}
+                            </div>
+                          </template>
+                          <template v-else>
+                            Chưa có địa chỉ giao hàng
+                          </template>
+                        </div>
+                      </div>
+                      <!-- Extra actions -->
+                      <div class="pt-3 border-t border-gray-100 flex justify-center">
+                        <button type="button" class="text-primary-600 text-xs font-medium inline-flex items-center gap-1">
+                          Xem thêm
+                          <IconChevronDown class="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   </div>
-                </div>
-              </UPageCard>
+                </UPageCard>
+                <UPageCard variant="soft" class="bg-white rounded-lg">
+                  <BaseCardHeader>Ghi chú</BaseCardHeader>
+                  <div v-if="!detail.note" class="text-sm text-gray-500">
+                    Chưa có ghi chú
+                  </div>
+                  <div v-else class="text-sm whitespace-pre-line">
+                    {{ detail.note }}
+                  </div>
+                </UPageCard>
+                <UPageCard variant="soft" class="bg-white rounded-lg">
+                  <BaseCardHeader>Thông tin bổ sung</BaseCardHeader>
+                  <div class="text-sm">
+                    <div class="space-y-6">
+                      <!-- Branch -->
+                      <div class="space-y-1">
+                        <div class="font-medium text-gray-800">
+                          Bán tại chi nhánh
+                        </div>
+                        <div class="text-gray-600">
+                          {{ detail.meta?.branchName || 'Cửa hàng chính' }}
+                        </div>
+                      </div>
+
+                      <!-- Staff in charge -->
+                      <div class="space-y-1">
+                        <div class="flex items-center justify-between">
+                          <div class="font-medium text-gray-800">
+                            Nhân viên phụ trách
+                          </div>
+                          <button type="button" class="text-gray-400 hover:text-gray-600" aria-label="Sửa nhân viên phụ trách">
+                            <IconEdit class="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div class="text-gray-600">
+                          {{ detail.meta?.staffInCharge || 'Phạm Văn Toàn' }}
+                        </div>
+                      </div>
+
+                      <!-- Creator -->
+                      <div class="space-y-1">
+                        <div class="font-medium text-gray-800">
+                          Nhân viên tạo đơn
+                        </div>
+                        <div class="text-gray-600">
+                          {{ detail.meta?.creatorName || 'Phạm Văn Toàn' }}
+                        </div>
+                      </div>
+
+                      <!-- Order date -->
+                      <div class="space-y-1">
+                        <div class="font-medium text-gray-800">
+                          Ngày đặt hàng
+                        </div>
+                        <div class="text-gray-600">
+                          {{ formatDateTime(detail.meta?.orderDate) }}
+                        </div>
+                      </div>
+
+                      <!-- Scheduled date -->
+                      <div class="space-y-1">
+                        <div class="flex items-center justify-between">
+                          <div class="font-medium text-gray-800">
+                            Ngày hẹn giao
+                          </div>
+                          <button type="button" class="text-gray-400 hover:text-gray-600" aria-label="Sửa ngày hẹn giao">
+                            <IconEdit class="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div class="text-gray-600">
+                          {{ formatDateTime(detail.meta?.scheduledDate) || 'Chưa có ngày hẹn giao' }}
+                        </div>
+                      </div>
+
+                      <!-- Tags -->
+                      <div class="space-y-1">
+                        <label class="block text-xs font-medium text-gray-600">Tag</label>
+                        <input
+                          type="text"
+                          placeholder="Tìm kiếm hoặc thêm mới tag"
+                          class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        >
+                        <div class="text-right mt-1">
+                          <button type="button" class="text-primary-600 text-xs font-medium hover:underline">
+                            Danh sách tag
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </UPageCard>
+              </div>
             </div>
           </div>
         </div>
-      </div>
       </div>
     </template>
   </UDashboardPanel>
@@ -1105,5 +1146,4 @@ function dismissCreatedBanner() {
     :remaining-amount="remainingAmount"
     @submit="handleReceivePaymentSubmit"
   />
-
 </template>

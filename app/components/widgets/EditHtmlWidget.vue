@@ -20,7 +20,7 @@ onMounted(async () => {
   try {
     isLoading.value = true
     console.log('Loading HTML widget data for ID:', widgetId)
-    
+
     // Mock data
     widgetName.value = 'Sample HTML Widget'
     widgetZone.value = 'Footer'
@@ -37,10 +37,10 @@ onMounted(async () => {
 
 async function onUpdate() {
   if (isSubmitting.value) return
-  
+
   try {
     isSubmitting.value = true
-    
+
     if (!widgetName.value.trim()) {
       alert('Widget Name is required')
       return
@@ -84,33 +84,33 @@ function onCancel() {
             Loading widget data...
           </p>
         </div>
-        
+
         <form v-else class="space-y-6" @submit.prevent="onUpdate">
           <div class="text-3xl font-light mb-8">
             Edit HTML Widget
           </div>
-          
+
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Widget ID</label>
             <div class="col-span-10 w-full">
               <UInput :value="widgetId" disabled class="w-full" />
             </div>
           </div>
-          
+
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Widget Name</label>
             <div class="col-span-10 w-full">
               <UInput v-model="widgetName" placeholder="Enter widget name" class="w-full" />
             </div>
           </div>
-          
+
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Widget Zone</label>
             <div class="col-span-10 w-full">
               <UInput v-model="widgetZone" placeholder="Widget zone" class="w-full" />
             </div>
           </div>
-          
+
           <div class="grid grid-cols-12 gap-4 items-start mb-2">
             <label class="col-span-2 text-right pr-2 pt-2">HTML Content</label>
             <div class="col-span-10 w-full">
@@ -121,7 +121,7 @@ function onCancel() {
               />
             </div>
           </div>
-          
+
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Publish Start</label>
             <div class="col-span-10 w-full">
@@ -132,7 +132,7 @@ function onCancel() {
               />
             </div>
           </div>
-          
+
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Publish End</label>
             <div class="col-span-10 w-full">
@@ -143,7 +143,7 @@ function onCancel() {
               />
             </div>
           </div>
-          
+
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Display Order</label>
             <div class="col-span-10 w-full">
@@ -156,7 +156,7 @@ function onCancel() {
               />
             </div>
           </div>
-          
+
           <div class="flex gap-2 mt-4">
             <UButton
               icon="i-lucide-save"

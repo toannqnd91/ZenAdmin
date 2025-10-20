@@ -7,7 +7,7 @@ type FetchFn = (search: string) => Promise<GenericItem[]>
 interface Props {
   modelValue: GenericItem | GenericItem[] | null
   fetchFn: FetchFn
-  fetchMoreFn?: (search: string, page: number) => Promise<GenericItem[] | { items: GenericItem[]; hasMore: boolean }>
+  fetchMoreFn?: (search: string, page: number) => Promise<GenericItem[] | { items: GenericItem[], hasMore: boolean }>
   placeholder?: string
   labelField?: string
   getDisplayText?: (item: GenericItem) => string

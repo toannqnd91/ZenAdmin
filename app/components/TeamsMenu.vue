@@ -23,7 +23,8 @@ const goHome = () => {
 <template>
   <div
     class="flex items-center justify-center gap-2 py-2 cursor-pointer"
-    @click="goHome">
+    @click="goHome"
+  >
     <UAvatar
       :src="team.avatar.src"
       :alt="team.avatar.alt"

@@ -38,14 +38,14 @@ export abstract class BaseService {
   ): Promise<ApiResponse<T>> {
     const baseURL = this.getBaseURL()
     const url = endpoint.startsWith('http') ? endpoint : `${baseURL}${endpoint}`
-    
+
     // Log request details
     console.log('[BaseService] API Request:', {
       method: options.method || 'GET',
       url,
       body: this.getBodyForLogging(options.body)
     })
-    
+
     try {
       const response = await httpInterceptor.request(url, options)
 

@@ -12,7 +12,7 @@ useHead({
     { key: 'theme-color', name: 'theme-color', content: color }
   ],
   link: [
-    { rel: 'icon', href: settings.favicon },
+    { rel: 'icon', href: settings.favicon }
     // { rel: 'apple-touch-icon', href: settings.favicon },
     // { rel: 'mask-icon', href: settings.favicon, color: '#5bbad5' }
   ],

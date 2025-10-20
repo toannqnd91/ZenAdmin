@@ -15,7 +15,7 @@ const { data: menuResponse } = await useAsyncData('links', async () => {
 // Transform API data to display format
 const menuItems = computed(() => {
   if (!menuResponse.value?.success || !menuResponse.value.data) return []
-  
+
   return menuResponse.value.data.map((item: LinkData) => ({
     id: item.sortOrder,
     name: item.name,
@@ -38,7 +38,7 @@ const menuItems = computed(() => {
     <template #body>
       <div class="w-full">
         <!-- Combined Section: Header + Table in one bordered container -->
-  <div class="bg-white dark:bg-gray-900 overflow-hidden">
+        <div class="bg-white dark:bg-gray-900 overflow-hidden">
           <!-- Header Section -->
           <div class="p-6 border-b border-gray-200 dark:border-gray-700">
             <h1 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">

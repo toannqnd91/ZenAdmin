@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 
-interface ImportCostDraft { name: string; value: number | string }
-interface ImportCostPayload { name: string; value: number }
+interface ImportCostDraft { name: string, value: number | string }
+interface ImportCostPayload { name: string, value: number }
 
 const props = withDefaults(defineProps<{
   modelValue: boolean
@@ -87,7 +87,9 @@ function close() { open.value = false }
           <h3 class="text-lg font-semibold">
             <span id="add-import-cost-title">Thêm chi phí nhập hàng</span>
           </h3>
-          <button class="text-gray-400 hover:text-gray-600" @click="close">&times;</button>
+          <button class="text-gray-400 hover:text-gray-600" @click="close">
+            &times;
+          </button>
         </div>
         <div class="flex-1 overflow-y-auto px-6 py-5 space-y-6 text-sm modal-body-scroll">
           <div class="space-y-4">

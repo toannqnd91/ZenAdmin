@@ -33,7 +33,7 @@ export function useAppTitle() {
   const staticTitle = useAppSettings()?.title || 'App'
   const { state, ensureLoaded } = useAppRuntimeConfig()
   const titleRef = ref<string>(staticTitle)
-  if (process.client) {
+  if (import.meta.client) {
     ensureLoaded().then(() => {
       if (state.appTitle) titleRef.value = state.appTitle
     })

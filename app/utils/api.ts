@@ -69,6 +69,9 @@ export const API_ENDPOINTS = {
   // Purchase Orders endpoints
   PURCHASE_ORDERS_GRID: '/PurchaseOrders/grid',
 
+  // Damage Items endpoints
+  DAMAGE_ITEMS_GRID: '/DamageItems/grid',
+
   // Supplier endpoints
   SUPPLIERS: '/Suppliers',
   // Customer endpoints

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { widgetsService } from '~/services/widgets.service'
@@ -74,7 +73,6 @@ onMounted(async () => {
     console.error('Error loading widget zones:', error)
   }
 })
-
 
 async function onSave() {
   // Validate required fields
@@ -303,8 +301,12 @@ function removeNews(idx: number) {
   >
     <template #body>
       <div class="max-h-96 overflow-y-auto">
-        <div v-if="newsLoading" class="p-4 text-gray-500">Đang tải tin tức...</div>
-        <div v-else-if="newsError" class="p-4 text-error">{{ newsError }}</div>
+        <div v-if="newsLoading" class="p-4 text-gray-500">
+          Đang tải tin tức...
+        </div>
+        <div v-else-if="newsError" class="p-4 text-error">
+          {{ newsError }}
+        </div>
         <div v-else>
           <div
             v-for="news in modalNews"

@@ -13,7 +13,7 @@ export const useNewsService = () => {
   const pagination = ref({ pageIndex: 0, pageSize: 15 })
   const totalRecords = ref(0)
   const totalPages = ref(0)
-  
+
   // Data state
   const news = ref<News[]>([])
   const categories = ref<NewsCategory[]>([])
@@ -24,22 +24,22 @@ export const useNewsService = () => {
   // Computed
   const filteredNews = computed(() => {
     let filtered = news.value
-    
+
     // Filter by search query
     if (q.value) {
       filtered = filtered.filter(item =>
-        item.title.toLowerCase().includes(q.value.toLowerCase()) ||
-        item.desc.toLowerCase().includes(q.value.toLowerCase()) // Changed from description to desc
+        item.title.toLowerCase().includes(q.value.toLowerCase())
+        || item.desc.toLowerCase().includes(q.value.toLowerCase()) // Changed from description to desc
       )
     }
-    
+
     // Filter by category - now check categories array
     if (selectedCategoryId.value) {
       filtered = filtered.filter(item =>
         item.categories && item.categories.some(cat => cat.id === selectedCategoryId.value)
       )
     }
-    
+
     return filtered
   })
 
@@ -54,9 +54,9 @@ export const useNewsService = () => {
     error.value = null
 
     try {
-  // console.debug('[useNewsService] Fetching news with token:', accessToken.value ? 'Token available' : 'No token')
+      // console.debug('[useNewsService] Fetching news with token:', accessToken.value ? 'Token available' : 'No token')
 
-  // console.debug('Access Token:', accessToken.value)
+      // console.debug('Access Token:', accessToken.value)
 
       const response = await newsService.getNews(options)
       if (response.success && response.data) {
@@ -233,7 +233,7 @@ export const useNewsService = () => {
     }
   }
 
-  async function createCategory(data: { name: string; description: string; imageUrl?: string; icon?: string }) {
+  async function createCategory(data: { name: string, description: string, imageUrl?: string, icon?: string }) {
     categoriesLoading.value = true
 
     try {

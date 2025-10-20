@@ -63,7 +63,7 @@ async function onRowMultiDelete(ids: (string | number)[]) {
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
-        
+
         <template #right>
           <UColorModeButton />
           <UTooltip text="Notifications" :shortcuts="['N']">

@@ -103,10 +103,22 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
         >
         <span
           class="custom-checkbox-ui mr-2 flex items-center justify-center"
-          :class="{ 'checked': rememberMe }"
+          :class="{ checked: rememberMe }"
         >
-          <svg v-if="rememberMe" width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M3 7L6 10L11 4" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <svg
+            v-if="rememberMe"
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+          >
+            <path
+              d="M3 7L6 10L11 4"
+              stroke="#2563eb"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
           </svg>
         </span>
         Remember me
@@ -152,7 +164,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
             Continue with Google
           </span>
         </UButton>
-        
+
         <!-- YouTube Button -->
         <UButton
           variant="outline"
@@ -170,7 +182,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
             Continue with Youtube
           </span>
         </UButton>
-        
+
         <!-- Facebook Button -->
         <UButton
           variant="outline"

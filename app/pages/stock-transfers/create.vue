@@ -217,7 +217,6 @@ async function submitTransfer() {
                     <label class="block text-sm font-medium mb-1">Kho xuất</label>
                     <BaseDropdownSelect
                       :model-value="origin"
-                      @update:model-value="handleOriginChange"
                       :options="warehouses.map(w => ({ id: w.id, label: w.name, value: w.id }))"
                       :loading="loadingWarehouses"
                       placeholder="Chọn kho xuất"
@@ -226,14 +225,14 @@ async function submitTransfer() {
                         const found = warehouses.value.find(w => w.id === val)
                         return found ? found.name : ''
                       }"
+                      @update:model-value="handleOriginChange"
                     />
                   </div>
-                  <div class="hidden md:block bg-gray-200 mx-0 my-2" style="min-width:0.5px; width:0.5px; min-height:48px"></div>
+                  <div class="hidden md:block bg-gray-200 mx-0 my-2" style="min-width:0.5px; width:0.5px; min-height:48px" />
                   <div class="flex-1 flex flex-col pl-0 md:pl-6">
                     <label class="block text-sm font-medium mb-1">Kho nhập</label>
                     <BaseDropdownSelect
                       :model-value="destination"
-                      @update:model-value="handleDestinationChange"
                       :options="warehouses.map(w => ({ id: w.id, label: w.name, value: w.id }))"
                       :loading="loadingWarehouses"
                       placeholder="Chọn kho nhập"
@@ -242,6 +241,7 @@ async function submitTransfer() {
                         const found = warehouses.value.find(w => w.id === val)
                         return found ? found.name : ''
                       }"
+                      @update:model-value="handleDestinationChange"
                     />
                   </div>
                 </div>
@@ -271,8 +271,8 @@ async function submitTransfer() {
                   >
                   <div
                     v-if="showProductSearch"
-                    class="absolute left-0 top-full z-50 w-full bg-white rounded-lg shadow-lg mt-2 max-h-[420px] overflow-auto border border-gray-200"
                     ref="productSearchPopupRef"
+                    class="absolute left-0 top-full z-50 w-full bg-white rounded-lg shadow-lg mt-2 max-h-[420px] overflow-auto border border-gray-200"
                   >
                     <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600" @click="closeProductSearch">&times;</button>
                     <div class="flex items-center gap-2 mb-2 p-4 pb-0">
@@ -286,7 +286,7 @@ async function submitTransfer() {
                       <div v-if="productList.length === 0" class="text-center py-8 text-gray-500">Không có sản phẩm</div>
                       <div v-else class="p-4 pt-2">
                         <div v-for="item in productList" :key="item.id" class="product-popup-row flex items-center py-3 gap-4 cursor-pointer" :style="'border-bottom: 1px solid rgb(232,234,235);'+(item === productList[productList.length-1] ? 'border-bottom: none;' : '')" @click="addProductToTransfer(item)">
-                          <img :src="item.thumbnailImageUrl ? '/path/to/' + item.thumbnailImageUrl : '/no-image.svg'" class="w-12 h-12 rounded bg-gray-100 object-cover" />
+                          <img :src="item.thumbnailImageUrl ? '/path/to/' + item.thumbnailImageUrl : '/no-image.svg'" class="w-12 h-12 rounded bg-gray-100 object-cover">
                           <div class="flex-1">
                             <div class="font-medium">{{ item.name }}</div>
                             <div v-if="item.normalizedName" class="text-xs text-gray-500">{{ item.normalizedName }}</div>
@@ -314,14 +314,14 @@ async function submitTransfer() {
                       <th class="px-6 py-2 text-left font-semibold">Số lượng</th>
                       <th class="px-6 py-2 text-left font-semibold">Đơn giá</th>
                       <th class="px-6 py-2 text-left font-semibold">Thành tiền</th>
-                      <th class="px-6 py-2 text-left font-semibold"></th>
+                      <th class="px-6 py-2 text-left font-semibold" />
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-for="(prod, idx) in transferProducts" :key="prod.sku || prod.id">
                       <td class="px-6 py-2">
                         <div class="flex items-center gap-2">
-                          <img :src="prod.thumbnailImageUrl ? '/path/to/' + prod.thumbnailImageUrl : '/no-image.svg'" class="w-10 h-10 rounded bg-gray-100 object-cover" />
+                          <img :src="prod.thumbnailImageUrl ? '/path/to/' + prod.thumbnailImageUrl : '/no-image.svg'" class="w-10 h-10 rounded bg-gray-100 object-cover">
                           <div>
                             <div class="font-medium">{{ prod.name }}</div>
                             <div class="text-xs text-gray-500">{{ prod.normalizedName }}</div>
@@ -330,7 +330,7 @@ async function submitTransfer() {
                         </div>
                       </td>
                       <td class="px-6 py-2">
-                        <input type="number" min="1" v-model.number="prod.quantity" class="w-16 h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" @input="updateProductTotal(idx)" />
+                        <input v-model.number="prod.quantity" type="number" min="1" class="w-16 h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" @input="updateProductTotal(idx)">
                       </td>
                       <td class="px-6 py-2">
                         <span class="text-primary-600 font-semibold">{{ prod.unitPrice.toLocaleString() }}₫</span>
@@ -384,7 +384,7 @@ async function submitTransfer() {
                     v-model="dateCreated"
                     type="date"
                     class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
+                  >
                 </div>
                 <div>
                   <label class="block text-xs mb-1">Tên tham chiếu</label>
@@ -393,7 +393,7 @@ async function submitTransfer() {
                     type="text"
                     class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="Nhập tên tham chiếu"
-                  />
+                  >
                 </div>
               </div>
             </UPageCard>

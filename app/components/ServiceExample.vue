@@ -1,46 +1,52 @@
 <template>
   <div>
     <h2>Service Repository Pattern Example</h2>
-    
+
     <!-- Products Section -->
     <UCard class="mb-4">
       <template #header>
         <div class="flex justify-between items-center">
           <h3>Products (Using Service)</h3>
-          <UButton @click="createSampleProduct" :loading="loading">
+          <UButton :loading="loading" @click="createSampleProduct">
             Create Sample Product
           </UButton>
         </div>
       </template>
-      
+
       <div class="space-y-2">
-        <UInput 
-          v-model="q" 
+        <UInput
+          v-model="q"
           placeholder="Search products..."
           icon="i-lucide-search"
         />
-        
+
         <div v-if="loading" class="text-center py-4">
           <UIcon name="i-lucide-loader-2" class="animate-spin" />
           Loading products...
         </div>
-        
+
         <div v-else-if="error" class="text-red-500">
           Error: {{ error.message }}
         </div>
-        
+
         <div v-else class="grid gap-2">
           <UCard v-for="product in filteredProducts" :key="product.id" class="p-3">
             <div class="flex justify-between items-start">
               <div>
-                <h4 class="font-medium">{{ product.name }}</h4>
-                <p class="text-sm text-gray-600">{{ truncateText(product.description) }}</p>
+                <h4 class="font-medium">
+                  {{ product.name }}
+                </h4>
+                <p class="text-sm text-gray-600">
+                  {{ truncateText(product.description) }}
+                </p>
                 <p class="text-sm font-medium text-green-600">
                   {{ product.price ? `$${product.price}` : 'Free' }}
                 </p>
               </div>
               <div class="flex gap-2">
-                <UButton size="xs" @click="editProduct(product)">Edit</UButton>
+                <UButton size="xs" @click="editProduct(product)">
+                  Edit
+                </UButton>
                 <UButton size="xs" color="error" @click="deleteProductItem(product.id)">
                   Delete
                 </UButton>
@@ -56,44 +62,50 @@
       <template #header>
         <div class="flex justify-between items-center">
           <h3>News (Using Service)</h3>
-          <UButton @click="createSampleNews" :loading="newsLoading">
+          <UButton :loading="newsLoading" @click="createSampleNews">
             Create Sample News
           </UButton>
         </div>
       </template>
-      
+
       <div class="space-y-2">
         <div class="flex gap-2">
-          <UInput 
-            v-model="newsQuery" 
+          <UInput
+            v-model="newsQuery"
             placeholder="Search news..."
             icon="i-lucide-search"
             class="flex-1"
           />
-          <USelect 
-            v-model="selectedCategory" 
+          <USelect
+            v-model="selectedCategory"
             :options="categoryOptions"
             placeholder="All Categories"
           />
         </div>
-        
+
         <div v-if="newsLoading" class="text-center py-4">
           <UIcon name="i-lucide-loader-2" class="animate-spin" />
           Loading news...
         </div>
-        
+
         <div v-else class="grid gap-2">
           <UCard v-for="newsItem in filteredNews" :key="newsItem.id" class="p-3">
             <div class="flex justify-between items-start">
               <div>
-                <h4 class="font-medium">{{ newsItem.title }}</h4>
-                <p class="text-sm text-gray-600">{{ truncateContent(newsItem.description) }}</p>
+                <h4 class="font-medium">
+                  {{ newsItem.title }}
+                </h4>
+                <p class="text-sm text-gray-600">
+                  {{ truncateContent(newsItem.description) }}
+                </p>
                 <p class="text-xs text-gray-500">
                   {{ formatDate(newsItem.publishDate) }} • {{ newsItem.category?.name }}
                 </p>
               </div>
               <div class="flex gap-2">
-                <UButton size="xs" @click="editNews(newsItem)">Edit</UButton>
+                <UButton size="xs" @click="editNews(newsItem)">
+                  Edit
+                </UButton>
                 <UButton size="xs" color="error" @click="deleteNewsItem(newsItem.id)">
                   Delete
                 </UButton>
@@ -123,7 +135,7 @@ const {
   truncateText
 } = useProductsService()
 
-// News  
+// News
 const {
   q: newsQuery,
   selectedCategoryId,

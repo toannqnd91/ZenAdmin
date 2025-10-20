@@ -154,7 +154,7 @@ async function save() {
     }
     const svc = await import('@/services/warehouse.service')
     const res = await svc.warehouseService.createWarehouse(payload)
-  const rData = (res as unknown as { data?: CreatedWarehouseMinimal })?.data || (res as unknown as CreatedWarehouseMinimal)
+    const rData = (res as unknown as { data?: CreatedWarehouseMinimal })?.data || (res as unknown as CreatedWarehouseMinimal)
     const createdId = (rData && rData.id) ? rData.id : Date.now()
     emit('saved', { id: createdId, name: draft.value.name.trim() })
     open.value = false

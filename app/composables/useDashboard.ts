@@ -7,7 +7,7 @@ const _useDashboard = () => {
   const route = useRoute()
   const router = useRouter()
   const toast = useToast()
-  
+
   const isNotificationsSlideoverOpen = ref(false)
 
   // Dashboard menu state
@@ -78,7 +78,7 @@ const _useDashboard = () => {
               }
             }]
           })
-          
+
           // Redirect to login after a short delay
           setTimeout(() => {
             router.push('/login')
@@ -118,11 +118,11 @@ const _useDashboard = () => {
       }
     } catch (err) {
       console.error('Failed to fetch dashboard stats:', err)
-      
+
       if (err instanceof Error && err.message.includes('Authentication required')) {
         router.push('/login')
       }
-      
+
       throw err
     }
   }
@@ -143,11 +143,11 @@ const _useDashboard = () => {
       }
     } catch (err) {
       console.error('Failed to fetch dashboard overview:', err)
-      
+
       if (err instanceof Error && err.message.includes('Authentication required')) {
         router.push('/login')
       }
-      
+
       throw err
     }
   }
@@ -206,7 +206,7 @@ const _useDashboard = () => {
   })
 
   // Debug watchers in development
-  if (process.dev) {
+  if (import.meta.dev) {
     watch(menuData, (val) => {
       console.log('Dashboard menu data:', val)
     }, { immediate: true, deep: true })
@@ -225,7 +225,7 @@ const _useDashboard = () => {
   return {
     // Navigation state
     isNotificationsSlideoverOpen,
-    
+
     // Menu state
     menuData: readonly(menuData),
     menuItems,

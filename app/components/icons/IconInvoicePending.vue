@@ -6,7 +6,12 @@
     focusable="false"
     aria-hidden="true"
   >
-    <rect width="24" height="24" fill="#FFDF9B" rx="12" />
+    <rect
+      width="24"
+      height="24"
+      fill="#FFDF9B"
+      rx="12"
+    />
     <path
       fill="#fff"
       stroke="#E49C06"
@@ -16,6 +21,7 @@
     />
   </svg>
 </template>
+
 <script setup lang="ts">
 // Pending invoice icon (amber).
 </script>
