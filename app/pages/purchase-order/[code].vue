@@ -199,13 +199,13 @@ function goBack() {
                       <th class="px-6 py-2 text-left font-semibold">
                         Sản phẩm
                       </th>
-                      <th class="px-6 py-2 text-left font-semibold">
+                      <th class="px-6 py-2 text-right font-semibold">
                         Số lượng
                       </th>
-                      <th class="px-6 py-2 text-left font-semibold">
+                      <th class="px-6 py-2 text-right font-semibold">
                         Đơn giá
                       </th>
-                      <th class="px-6 py-2 text-left font-semibold">
+                      <th class="px-6 py-2 text-right font-semibold">
                         Thành tiền
                       </th>
                     </tr>
@@ -230,20 +230,20 @@ function goBack() {
                           </div>
                         </div>
                       </td>
-                      <td class="px-6 py-2">
+                      <td class="px-6 py-2 text-right whitespace-nowrap tabular-nums">
                         {{ it.qty }}
                       </td>
-                      <td class="px-6 py-2">
+                      <td class="px-6 py-2 text-right whitespace-nowrap tabular-nums">
                         {{ currency(it.unitPrice) }}
                       </td>
-                      <td class="px-6 py-2">
+                      <td class="px-6 py-2 text-right whitespace-nowrap tabular-nums">
                         <span class="font-semibold">{{ currency(it.total) }}</span>
                       </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-              <div class="px-6 pb-4 pt-3 flex justify-end">
+              <div class="pb-4 flex justify-end">
                 <UButton label="Nhập kho" color="primary" />
               </div>
             </UPageCard>
@@ -271,7 +271,7 @@ function goBack() {
 
                 <!-- Progress strip -->
                 <div class="mt-3">
-                  <div class="w-full rounded-md overflow-hidden border border-gray-200 bg-gray-50">
+                  <div class="w-full rounded-md overflow-hidden border-gray-200 bg-gray-50">
                     <div class="flex text-xs">
                       <div class="px-3 py-2 bg-gray-100 text-gray-700 flex-1">
                         Tiền cần trả NCC: <span class="font-medium">{{ currency(detail?.totals.needToPay || 0) }}</span>

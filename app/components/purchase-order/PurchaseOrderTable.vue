@@ -48,7 +48,6 @@ const emit = defineEmits<{
 
 const columns = [
   { key: 'code', label: 'Mã đơn nhập', sortable: true },
-  { key: 'date', label: 'Ngày tạo', sortable: true },
   { key: 'branchName', label: 'Chi nhánh nhập', sortable: true },
   { key: 'statusLabel', label: 'Trạng thái', sortable: true },
   { key: 'receiveStatus', label: 'Trạng thái nhập', sortable: true },
@@ -58,15 +57,14 @@ const columns = [
   { key: 'total', label: 'Giá trị đơn', sortable: true, align: 'right' as const }
 ]
 const colWidths = [
-  '140px', // code
-  '170px', // date
-  '180px', // branch
-  '140px', // status label
-  '140px', // receive status
-  '160px', // supplier
-  '160px', // created by
-  '120px', // total qty
-  '160px' // total money
+  '100px', // Mã đơn (kèm ngày tạo bên dưới)
+  '120px', // Chi nhánh nhập
+  '120px', // Trạng thái
+  '120px', // Trạng thái nhập
+  '100px', // Nhà cung cấp
+  '100px', // Nhân viên tạo
+  '100px', // Số lượng nhập
+  '100px' // Giá trị đơn
 ]
 
 function formatMoney(v: number | string) {
@@ -146,13 +144,16 @@ function formatNumber(v: number | string) {
       <slot name="tabs-line-actions" />
     </template>
     <template #column-code="{ value, item }">
-      <button
-        class="text-primary-600 font-medium hover:underline"
-        type="button"
-        @click="emit('navigate-code', (item as any).code as string)"
-      >
-        {{ value }}
-      </button>
+      <div class="flex flex-col">
+        <button
+          class="text-primary-600 font-medium hover:underline text-left"
+          type="button"
+          @click="emit('navigate-code', (item as any).code as string)"
+        >
+          #{{ value }}
+        </button>
+        <span v-if="(item as any).date" class="text-xs text-gray-500 mt-0.5">{{ (item as any).date }}</span>
+      </div>
     </template>
     <template #column-statusLabel="{ value }">
       <span :class="statusPillClass(String(value || ''))">{{ value }}</span>

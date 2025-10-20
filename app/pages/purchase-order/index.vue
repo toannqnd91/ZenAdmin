@@ -65,6 +65,7 @@ async function fetchSuppliers(q: string) {
 interface PurchaseOrderRow {
   id: string
   code: string
+  // date shown under code
   date: string
   branchName: string
   statusLabel: string
