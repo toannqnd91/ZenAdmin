@@ -3,8 +3,10 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
+import StatusSuccessLabel from '@/components/base/StatusSuccessLabel.vue'
 import IconInvoicePending from '@/components/icons/IconInvoicePending.vue'
 import { purchaseOrderService, type PurchaseOrderByCodeDTO, type PurchaseOrderItemDTO } from '@/services/purchase-order.service'
+import ConfirmPaymentModal from '@/components/purchase-order/ConfirmPaymentModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,6 +25,7 @@ interface DetailItem {
 }
 
 interface PurchaseOrderDetail {
+  id?: number | string
   code: string
   createdOn: string
   statusLabel: string
@@ -70,6 +73,19 @@ const paymentHeaderText = computed(() => {
   return 'Đã thanh toán'
 })
 
+// Receive status derived from status label coming from API
+const isReceived = computed(() => {
+  const label = String(detail.value?.statusLabel || '').toLowerCase()
+  // Match common phrases that indicate goods have been received/imported or order completed
+  return (
+    label.includes('đã nhập kho')
+    || label.includes('đã nhận')
+    || label.includes('received')
+    || label.includes('hoàn thành')
+    || label.includes('complete')
+  )
+})
+
 function formatDate(iso: string) {
   if (!iso) return ''
   const d = new Date(iso)
@@ -107,6 +123,7 @@ async function loadDetail() {
     // Map API response to view model
     const items: PurchaseOrderItemDTO[] = Array.isArray(d.items) ? d.items : []
     detail.value = {
+      id: d.id != null ? Number(d.id) : undefined,
       code: String(d.code || code.value),
       createdOn: String(d.createdOn || ''),
       statusLabel: String(d.statusLabel || d.status || ''),
@@ -156,6 +173,41 @@ onMounted(loadDetail)
 
 function goBack() {
   router.push('/purchase-order')
+}
+
+// Receive (bulk) all items into warehouse
+const receiving = ref(false)
+async function onReceiveAll() {
+  if (!detail.value?.id) {
+    // Fallback: if API for by-code doesn't return id, show message
+    const toast = useToast()
+    toast.add({ title: 'Không thể nhập kho', description: 'Thiếu ID của đơn nhập hàng', color: 'error' })
+    return
+  }
+  receiving.value = true
+  try {
+    const res = await purchaseOrderService.receive(detail.value.id)
+    if (!res?.success) throw new Error(res?.message || 'Nhập kho thất bại')
+    const toast = useToast()
+    toast.add({ title: 'Đã nhập kho', description: `Các sản phẩm trong đơn ${detail.value.code} đã được nhập kho.`, color: 'success' })
+    await loadDetail()
+  } catch (e) {
+    const err = e as { message?: string }
+    const toast = useToast()
+    toast.add({ title: 'Nhập kho thất bại', description: err?.message || 'Có lỗi xảy ra khi nhập kho', color: 'error' })
+  } finally {
+    receiving.value = false
+  }
+}
+
+// Payment modal state & handlers
+const showPaymentModal = ref(false)
+function onSubmitPayment(payload: { method: string, amount: number, reference: string, date: string }) {
+  // TODO: Call API to confirm payment for purchase order
+  const toast = useToast()
+  toast.add({ title: 'Đã nhận thông tin thanh toán', description: `Số tiền: ${new Intl.NumberFormat('vi-VN').format(payload.amount)}đ`, color: 'success' })
+  // Optionally refresh data from server when API is wired
+  // await loadDetail()
 }
 </script>
 
@@ -229,13 +281,18 @@ function goBack() {
           <div class="flex flex-col lg:flex-row gap-6">
             <!-- Left column -->
             <div class="flex-1 space-y-6">
-            <!-- Not yet received -->
+            <!-- Items receive status -->
             <UPageCard variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>
-                <span class="inline-flex items-center gap-2">
-                  <IconInvoicePending class="w-5 h-5" />
-                  <span>Chưa nhập kho</span>
-                </span>
+                <template v-if="isReceived">
+                  <StatusSuccessLabel label="Đã nhập kho" />
+                </template>
+                <template v-else>
+                  <span class="inline-flex items-center gap-2">
+                    <IconInvoicePending class="w-5 h-5" />
+                    <span>Chưa nhập kho</span>
+                  </span>
+                </template>
               </BaseCardHeader>
               <div class="-mx-6 mt-2">
                 <table class="min-w-full w-full text-sm border-separate border-spacing-0">
@@ -288,20 +345,21 @@ function goBack() {
                   </tbody>
                 </table>
               </div>
-              <div class="flex justify-end">
-                <UButton label="Nhập kho" color="primary" />
+              <div v-if="!isReceived" class="flex justify-end">
+                <UButton label="Nhập kho" color="primary" :loading="receiving" :disabled="receiving" @click="onReceiveAll" />
               </div>
             </UPageCard>
 
             <!-- Payment summary -->
             <UPageCard variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>
-                <span class="inline-flex items-center gap-2">
+                <StatusSuccessLabel v-if="outstanding === 0" label="Đã thanh toán" />
+                <span v-else class="inline-flex items-center gap-2">
                   <UIcon name="i-lucide-sparkles" class="w-5 h-5 text-amber-500" />
                   <span>{{ paymentHeaderText }}</span>
                 </span>
               </BaseCardHeader>
-              <div class="-mx-6 px-6 pb-0 text-sm">
+              <div class="-mx-6 px-6 pb-2 text-sm">
                 <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 py-1.5">
                   <div class="text-gray-600">Tổng tiền</div>
                   <div class="text-right text-gray-900 font-semibold">
@@ -317,9 +375,25 @@ function goBack() {
                   <div class="text-right font-semibold">{{ currency(detail?.totals.needToPay || 0) }}</div>
                 </div>
 
-                <!-- Bottom action row -->
-                <div class="flex items-center justify-end border-t border-gray-100 mt-1 py-2">
-                  <UButton v-if="outstanding > 0" label="Xác nhận thanh toán" color="primary" />
+                <!-- Bottom summary row: always visible -->
+                <div
+                  class="mt-2 rounded-md bg-blue-50 px-4 py-2 text-sm grid grid-cols-3 gap-4 items-center"
+                >
+                  <div>
+                    Tiền cần trả NCC:
+                    <span class="font-semibold">{{ currency(detail?.totals.needToPay || 0) }}</span>
+                  </div>
+                  <div>
+                    Đã trả:
+                    <span class="font-semibold">{{ currency(detail?.totals.paid || 0) }}</span>
+                  </div>
+                  <div class="text-right">
+                    Còn phải trả:
+                    <span class="font-semibold" :class="outstanding > 0 ? 'text-red-600' : 'text-emerald-600'">{{ currency(outstanding) }}</span>
+                  </div>
+                </div>
+                <div v-if="outstanding > 0" class="mt-2 flex justify-end pt-2">
+                  <UButton label="Xác nhận thanh toán" color="primary" @click="showPaymentModal = true" />
                 </div>
               </div>
             </UPageCard>
@@ -443,4 +517,11 @@ function goBack() {
       </div>
     </template>
   </UDashboardPanel>
+
+  <!-- Confirm Payment Modal -->
+  <ConfirmPaymentModal
+    v-model="showPaymentModal"
+    :remaining-amount="outstanding"
+    @submit="onSubmitPayment"
+  />
 </template>

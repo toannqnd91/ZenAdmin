@@ -46,6 +46,7 @@ export interface PurchaseOrderItemDTO {
 }
 
 export interface PurchaseOrderByCodeDTO {
+  id?: number
   code: string
   createdOn: string
   status?: string
@@ -88,6 +89,11 @@ export class PurchaseOrderService extends BaseService {
   async getByCode(code: string) {
     // API returns envelope { code, success, message, data }
     return this.get<PurchaseOrderByCodeDTO>(API_ENDPOINTS.PURCHASE_ORDER_BY_CODE(code))
+  }
+
+  async receive(id: number | string) {
+    // POST /api/v1/PurchaseOrders/{id}/receive
+    return this.post<unknown>(API_ENDPOINTS.PURCHASE_ORDER_RECEIVE(id))
   }
 }
 

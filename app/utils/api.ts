@@ -69,6 +69,7 @@ export const API_ENDPOINTS = {
   // Purchase Orders endpoints
   PURCHASE_ORDERS_GRID: '/PurchaseOrders/grid',
   PURCHASE_ORDER_BY_CODE: (code: string) => `/PurchaseOrders/by-code/${code}`,
+  PURCHASE_ORDER_RECEIVE: (id: number | string) => `/PurchaseOrders/${id}/receive`,
 
   // Damage Items endpoints
   DAMAGE_ITEMS_GRID: '/DamageItems/grid',
