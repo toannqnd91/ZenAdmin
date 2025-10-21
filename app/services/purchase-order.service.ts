@@ -35,6 +35,36 @@ export interface PurchaseOrderGridData {
   numberOfPages: number
 }
 
+// Detail by code DTOs
+export interface PurchaseOrderItemDTO {
+  id: number | string
+  productName: string
+  sku?: string | null
+  quantity: number
+  cost: number
+  lineTotal?: number
+}
+
+export interface PurchaseOrderByCodeDTO {
+  code: string
+  createdOn: string
+  status?: string
+  statusLabel?: string
+  supplierName: string
+  warehouseName: string
+  createdByName: string
+  estimatedArrival?: string | null
+  referenceNumber?: string | null
+  noteToSupplier?: string | null
+  tags?: string[] | null
+  subtotal: number
+  discount: number
+  shippingCost: number
+  total: number
+  paidAmount: number
+  items: PurchaseOrderItemDTO[]
+}
+
 export class PurchaseOrderService extends BaseService {
   async getGrid(options?: {
     pagination?: { start: number, number: number, numberOfPages?: number }
@@ -53,6 +83,11 @@ export class PurchaseOrderService extends BaseService {
     })
     // BaseService.post already wraps with ApiResponse<T>, so T should be the inner data shape
     return this.post<PurchaseOrderGridData>(API_ENDPOINTS.PURCHASE_ORDERS_GRID, body)
+  }
+
+  async getByCode(code: string) {
+    // API returns envelope { code, success, message, data }
+    return this.get<PurchaseOrderByCodeDTO>(API_ENDPOINTS.PURCHASE_ORDER_BY_CODE(code))
   }
 }
 

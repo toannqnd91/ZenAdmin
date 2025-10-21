@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
 import IconInvoicePending from '@/components/icons/IconInvoicePending.vue'
+import { purchaseOrderService, type PurchaseOrderByCodeDTO, type PurchaseOrderItemDTO } from '@/services/purchase-order.service'
 
 const route = useRoute()
 const router = useRouter()
@@ -50,6 +51,24 @@ interface PurchaseOrderDetail {
 }
 
 const detail = ref<PurchaseOrderDetail | null>(null)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Payment-related computed values
+const totalItemsCount = computed(() => {
+  if (!detail.value) return 0
+  return (detail.value.items || []).reduce((s, it) => s + (Number(it.qty) || 0), 0)
+})
+const outstanding = computed(() => {
+  if (!detail.value) return 0
+  const need = Number(detail.value.totals.needToPay || 0)
+  const paid = Number(detail.value.totals.paid || 0)
+  return Math.max(need - paid, 0)
+})
+const paymentHeaderText = computed(() => {
+  if (outstanding.value > 0) return 'Chưa thanh toán'
+  return 'Đã thanh toán'
+})
 
 function formatDate(iso: string) {
   if (!iso) return ''
@@ -78,40 +97,58 @@ function statusPillClass(label: string) {
   return 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200'
 }
 
-function loadDetail() {
-  // Placeholder data – wire to API when available
-  const now = new Date()
-  detail.value = {
-    code: code.value,
-    createdOn: now.toISOString(),
-    statusLabel: 'Đang giao dịch',
-    supplier: {
-      name: 'ncc 01',
-      phone: null,
-      email: null,
-      address: null,
-      slug: 'ncc-01'
-    },
-    warehouseName: 'Cửa hàng chính',
-    assignee: 'Phạm Văn Toàn',
-    expectedDate: null,
-    reference: null,
-    note: '',
-    tags: [],
-    items: [
-      { id: 1, name: 'sản phẩm 03', qty: 100, unitPrice: 100000, total: 10000000, image: null }
-    ],
-    totals: {
-      subtotal: 10000000,
-      discount: 0,
-      importCost: 0,
-      needToPay: 10000000,
-      paid: 10000000
-    },
-    history: [
-      { time: formatDate(now.toISOString()), actor: 'Phạm Văn Toàn', text: 'Thanh toán cho đơn nhập hàng' },
-      { time: formatDate(now.toISOString()), actor: 'Phạm Văn Toàn', text: 'Thêm mới đơn nhập hàng' }
-    ]
+async function loadDetail() {
+  loading.value = true
+  error.value = null
+  try {
+    const res = await purchaseOrderService.getByCode(code.value)
+    if (!res?.success) throw new Error(res?.message || 'Lỗi tải dữ liệu')
+    const d = res.data as PurchaseOrderByCodeDTO
+    // Map API response to view model
+    const items: PurchaseOrderItemDTO[] = Array.isArray(d.items) ? d.items : []
+    detail.value = {
+      code: String(d.code || code.value),
+      createdOn: String(d.createdOn || ''),
+      statusLabel: String(d.statusLabel || d.status || ''),
+      supplier: {
+        name: String(d.supplierName || ''),
+        phone: null,
+        email: null,
+        address: null,
+        slug: null
+      },
+      warehouseName: String(d.warehouseName || ''),
+      assignee: String(d.createdByName || ''),
+      expectedDate: d.estimatedArrival || null,
+      reference: d.referenceNumber || null,
+      note: d.noteToSupplier || null,
+      tags: Array.isArray(d.tags) ? d.tags : [],
+      items: items.map(it => ({
+        id: it.id,
+        name: String(it.productName || ''),
+        sku: it.sku || null,
+        normalizedName: null,
+        qty: Number(it.quantity || 0),
+        unitPrice: Number(it.cost || 0),
+        total: Number(it.lineTotal || (Number(it.quantity || 0) * Number(it.cost || 0))),
+        image: null
+      })),
+      totals: {
+        subtotal: Number(d.subtotal || 0),
+        discount: Number(d.discount || 0),
+        importCost: Number(d.shippingCost || 0),
+        needToPay: Number(d.total || 0),
+        paid: Number(d.paidAmount || 0)
+      },
+      history: [
+        { time: formatDate(d.createdOn), actor: String(d.createdByName || ''), text: 'Tạo đơn nhập hàng' }
+      ]
+    }
+  } catch (e) {
+    const err = e as { message?: string }
+    error.value = err?.message || 'Không tải được chi tiết đơn nhập hàng'
+  } finally {
+    loading.value = false
   }
 }
 
@@ -123,6 +160,7 @@ function goBack() {
 </script>
 
 <template>
+  <!-- eslint-disable vue/max-attributes-per-line, vue/html-closing-bracket-newline, vue/singleline-html-element-content-newline, vue/html-indent, vue/first-attribute-linebreak, vue/html-self-closing -->
   <UDashboardPanel id="purchase-order-detail">
     <template #header>
       <UDashboardNavbar>
@@ -181,9 +219,16 @@ function goBack() {
     </template>
     <template #body>
       <div class="w-full max-w-screen-xl mx-auto px-6 py-6">
-        <div class="flex flex-col lg:flex-row gap-6">
-          <!-- Left column -->
-          <div class="flex-1 space-y-6">
+        <div v-if="loading" class="py-10 text-center text-gray-500">
+          Đang tải...
+        </div>
+        <div v-else-if="error" class="py-10 text-center text-red-600">
+          {{ error }}
+        </div>
+        <template v-else>
+          <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Left column -->
+            <div class="flex-1 space-y-6">
             <!-- Not yet received -->
             <UPageCard variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>
@@ -243,47 +288,38 @@ function goBack() {
                   </tbody>
                 </table>
               </div>
-              <div class="pb-4 flex justify-end">
+              <div class="flex justify-end">
                 <UButton label="Nhập kho" color="primary" />
               </div>
             </UPageCard>
 
             <!-- Payment summary -->
             <UPageCard variant="soft" class="bg-white rounded-lg">
-              <BaseCardHeader>Đã thanh toán</BaseCardHeader>
-              <div class="-mx-6 px-6 pb-4 space-y-2 text-sm">
-                <div class="flex items-center justify-between min-h-[28px]">
-                  <span class="text-gray-600">Tổng tiền <span class="text-xs text-gray-500">{{ (detail?.items.length || 0) }} sản phẩm</span></span>
-                  <span class="text-gray-900 font-semibold">{{ currency(detail?.totals.subtotal || 0) }}</span>
-                </div>
-                <div class="flex items-center justify-between min-h-[28px]">
-                  <span class="text-gray-600">Giảm giá</span>
-                  <span class="text-gray-900">{{ detail?.totals.discount ? currency(detail?.totals.discount) : '0₫' }}</span>
-                </div>
-                <div class="flex items-center justify-between min-h-[28px]">
-                  <span class="text-gray-600">Chi phí nhập hàng</span>
-                  <span class="text-gray-900">{{ detail?.totals.importCost ? currency(detail?.totals.importCost) : '0₫' }}</span>
-                </div>
-                <div class="flex items-center justify-between min-h-[32px] font-semibold border-t border-gray-100 pt-2">
-                  <span>Cần trả NCC</span>
-                  <span>{{ currency(detail?.totals.needToPay || 0) }}</span>
+              <BaseCardHeader>
+                <span class="inline-flex items-center gap-2">
+                  <UIcon name="i-lucide-sparkles" class="w-5 h-5 text-amber-500" />
+                  <span>{{ paymentHeaderText }}</span>
+                </span>
+              </BaseCardHeader>
+              <div class="-mx-6 px-6 pb-0 text-sm">
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 py-1.5">
+                  <div class="text-gray-600">Tổng tiền</div>
+                  <div class="text-right text-gray-900 font-semibold">
+                    <span class="mr-2 text-xs font-normal text-gray-500">{{ totalItemsCount }} sản phẩm</span>
+                    {{ currency(detail?.totals.subtotal || 0) }}
+                  </div>
+                  <div class="text-gray-600">Giảm giá</div>
+                  <div class="text-right text-gray-900">{{ (detail?.totals.discount || 0) > 0 ? currency(detail?.totals.discount) : '------' }}</div>
+                  <div class="text-gray-600">Chi phí nhập hàng</div>
+                  <div class="text-right text-gray-900">{{ (detail?.totals.importCost || 0) > 0 ? currency(detail?.totals.importCost) : '------' }}</div>
+                  <div class="col-span-2 border-t border-gray-100 pt-1" />
+                  <div class="font-semibold">Tiền cần trả NCC</div>
+                  <div class="text-right font-semibold">{{ currency(detail?.totals.needToPay || 0) }}</div>
                 </div>
 
-                <!-- Progress strip -->
-                <div class="mt-3">
-                  <div class="w-full rounded-md overflow-hidden border-gray-200 bg-gray-50">
-                    <div class="flex text-xs">
-                      <div class="px-3 py-2 bg-gray-100 text-gray-700 flex-1">
-                        Tiền cần trả NCC: <span class="font-medium">{{ currency(detail?.totals.needToPay || 0) }}</span>
-                      </div>
-                      <div class="px-3 py-2 bg-primary-50 text-primary-700">
-                        Đã trả: <span class="font-medium">{{ currency(detail?.totals.paid || 0) }}</span>
-                      </div>
-                      <div class="px-3 py-2 bg-rose-50 text-rose-700">
-                        Còn phải trả: <span class="font-medium">{{ currency((detail?.totals.needToPay || 0) - (detail?.totals.paid || 0)) }}</span>
-                      </div>
-                    </div>
-                  </div>
+                <!-- Bottom action row -->
+                <div class="flex items-center justify-end border-t border-gray-100 mt-1 py-2">
+                  <UButton v-if="outstanding > 0" label="Xác nhận thanh toán" color="primary" />
                 </div>
               </div>
             </UPageCard>
@@ -313,11 +349,11 @@ function goBack() {
                 </div>
               </div>
             </UPageCard>
-          </div>
+            </div>
 
-          <!-- Right column -->
-          <div class="w-full lg:w-80 space-y-6">
-            <UPageCard variant="soft" class="bg-white rounded-lg">
+            <!-- Right column -->
+            <div class="w-full lg:w-80 space-y-6">
+              <UPageCard variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>Nhà cung cấp</BaseCardHeader>
               <div class="-mx-6 px-6 pb-4">
                 <div class="flex items-start gap-3">
@@ -338,7 +374,7 @@ function goBack() {
               </div>
             </UPageCard>
 
-            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <UPageCard variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>Thông tin bổ sung</BaseCardHeader>
               <div class="-mx-6 px-6 space-y-4">
                 <div>
@@ -385,7 +421,7 @@ function goBack() {
               </div>
             </UPageCard>
 
-            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <UPageCard variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>Ghi chú</BaseCardHeader>
               <div class="-mx-6 px-6 pb-4">
                 <textarea
@@ -395,14 +431,15 @@ function goBack() {
                 />
               </div>
             </UPageCard>
+            </div>
           </div>
-        </div>
 
-        <div class="flex items-center justify-end mt-10 border-t border-transparent pt-4">
-          <button class="h-9 px-5 rounded-md bg-gray-200 text-gray-500 text-sm font-medium cursor-not-allowed" disabled>
-            Lưu
-          </button>
-        </div>
+          <div class="flex items-center justify-end mt-10 border-t border-transparent pt-4">
+            <button class="h-9 px-5 rounded-md bg-gray-200 text-gray-500 text-sm font-medium cursor-not-allowed" disabled>
+              Lưu
+            </button>
+          </div>
+        </template>
       </div>
     </template>
   </UDashboardPanel>

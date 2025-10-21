@@ -305,7 +305,7 @@ watch(selectedOrderSource, (val) => {
         <h2 class="text-2xl font-semibold mb-7">
           Chào mừng trở lại, {{ user?.display_name || 'Người dùng' }} 🎉
         </h2>
-        <TrialBanner :days-left="5" class="mb-6" />
+        <TrialBanner :days-left="3" class="mb-6" />
 
         <!-- Overview Card -->
         <div class="bg-white rounded-md p-6">

@@ -13,14 +13,14 @@ export default defineAppConfig({
     preference: 'light'
   },
   settings: {
-    title: 'Phụ Kiện Quỳnh Đạt',
-    description: 'Phụ Kiện Quỳnh Đạt - Nơi cung cấp các sản phẩm chất lượng cao',
+    title: 'Tùng Phong',
+    description: 'Tùng Phong - Nơi cung cấp các sản phẩm chất lượng cao',
     favicon: '/favicon.png',
     team: {
-      label: 'Phụ Kiện Quỳnh Đạt',
+      label: 'Tùng Phong',
       avatar: {
         src: '',
-        alt: 'Phụ Kiện Quỳnh Đạt'
+        alt: 'Tùng Phong'
       }
     }
   }

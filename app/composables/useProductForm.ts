@@ -100,7 +100,7 @@ export const useProductForm = () => {
       // Clear the input so selecting the same file again triggers change
       try {
         input.value = ''
-      } catch (_e) {
+      } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
         // some browsers may restrict setting value; ignore
       }
     } finally {
@@ -147,24 +147,25 @@ export const useProductForm = () => {
       // collectionIds: array of selected collection ids, or null if none
       // collectionIds: mảng các id bộ sưu tập đã chọn, hoặc null nếu không chọn cái nào
       let collectionIds: number[] | null = null
-      if ('selectedCollections' in formData.value && Array.isArray((formData.value as any).selectedCollections)) {
-        const arr = (formData.value as any).selectedCollections as number[]
+      if ('selectedCollections' in formData.value && Array.isArray((formData.value as unknown as { selectedCollections?: number[] }).selectedCollections)) {
+        const arr = (formData.value as unknown as { selectedCollections?: number[] }).selectedCollections || []
         collectionIds = arr.length ? arr : null
-      } else if ('collectionIds' in formData.value && Array.isArray((formData.value as any).collectionIds)) {
-        const arr = (formData.value as any).collectionIds as number[]
+      } else if ('collectionIds' in formData.value && Array.isArray((formData.value as unknown as { collectionIds?: number[] }).collectionIds)) {
+        const arr = (formData.value as unknown as { collectionIds?: number[] }).collectionIds || []
         collectionIds = arr.length ? arr : null
       }
 
       // variations: nếu là update thì thêm Id vào từng variation nếu có, create thì giữ nguyên không có Id
       let variations = extras?.variations || []
       if (isUpdate && Array.isArray(variations)) {
-        variations = variations.map((v: any, idx: number) => {
+        variations = variations.map((v: unknown, _idx: number) => {
           // Nếu variation đã có id thì giữ, nếu không thì bỏ qua
-          if (v && v.id) return v
+          const vv = v as { id?: number | null, name?: string }
+          if (vv && vv.id) return v
           // Tìm id từ data gốc nếu có (nếu cần có thể truyền vào qua extras)
-          if (v && v.name && Array.isArray((formData.value as any).originalVariations)) {
-            const found = (formData.value as any).originalVariations.find((ori: any) => ori.name === v.name)
-            if (found && found.id) return { ...v, id: found.id }
+          if (vv && vv.name && Array.isArray((formData.value as unknown as { originalVariations?: Array<{ id?: number | null, name: string }> }).originalVariations)) {
+            const found = (formData.value as unknown as { originalVariations?: Array<{ id?: number | null, name: string }> }).originalVariations!.find(ori => ori.name === vv.name)
+            if (found && found.id) return Object.assign({}, v as Record<string, unknown>, { id: found.id })
           }
           return v
         })
@@ -275,6 +276,14 @@ export const useProductForm = () => {
       if (!res.success) {
         const msg = res.message || 'Đã có lỗi xảy ra'
         throw new Error(msg)
+      }
+      // When creating, set returned id back on formData so callers can navigate
+      if (!isUpdate) {
+        const data = res.data as { id?: number, productId?: number } | undefined
+        const createdId = data && (typeof data.productId === 'number' ? data.productId : (typeof data.id === 'number' ? data.id : 0))
+        if (createdId && createdId > 0) {
+          formData.value.id = createdId
+        }
       }
       return true
     } finally {

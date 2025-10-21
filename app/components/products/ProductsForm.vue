@@ -1,6 +1,7 @@
+
 <script setup lang="ts">
 import { reactive, ref, computed, nextTick, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useCreateProductPage } from '@/composables/useCreateProductPage'
 import { productService } from '@/services/product.service'
 import { useApiConfig } from '@/composables/useApiConfig'
@@ -26,6 +27,10 @@ const isLoading = ref(false)
 const fetchError = ref('')
 const { imageBaseUrl } = useApiConfig()
 const router = useRouter()
+const route = useRoute()
+
+// Show banner when redirected after creating a product
+const showCreatedBanner = ref(false)
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type ProductDetail = any
@@ -58,7 +63,7 @@ const loadDetail = async () => {
       page.state.formData.allowNegativeStock = !!data.allowOutOfStock
       // Set warehouseStocks from inventory if present
       if (Array.isArray(data.inventory)) {
-        const stocks = {}
+        const stocks: Record<number, number> = {}
         for (const inv of data.inventory) {
           if (inv && typeof inv.warehouseId === 'number') {
             stocks[inv.warehouseId] = Number(inv.quantity) || 0
@@ -126,8 +131,16 @@ onMounted(() => {
   void loadDetail()
 })
 
+onMounted(() => {
+  // Show only for edit page and when redirected with ?created=1
+  showCreatedBanner.value = isEdit.value && route.query.created === '1'
+})
+
 const onSubmit = async () => {
-  await page.actions._onSubmit()
+  const newId = await page.actions._onSubmit()
+  if (!isEdit.value && newId && newId > 0) {
+    await router.push({ path: `/products/${newId}/update`, query: { created: '1' } })
+  }
 }
 const cancel = () => {
   void router.push('/products')
@@ -164,6 +177,22 @@ const cancel = () => {
       <div v-if="isEdit && isLoading" class="py-10 text-center text-gray-500">Đang tải...</div>
       <div v-else-if="isEdit && fetchError" class="py-10 text-error">{{ fetchError }}</div>
       <div v-else class="w-full max-w-6xl mx-auto px-4 lg:px-6">
+        <!-- Created success banner (full width, top green bar, match sample) -->
+        <div v-if="showCreatedBanner" class="relative mb-4 rounded-md bg-emerald-50 text-emerald-800 border-0 border-t-4 border-t-emerald-500 p-4">
+          <div class="flex items-start gap-3">
+            <UIcon name="i-lucide-check-circle" class="h-5 w-5 mt-0.5 text-emerald-600" />
+            <div class="text-base font-semibold">
+              Sản phẩm "{{ page.state.formData.name || `#${props.productId || ''}` }}" được tạo thành công
+            </div>
+          </div>
+          <button type="button" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600" @click="showCreatedBanner = false">
+            <UIcon name="i-lucide-x" class="w-5 h-5" />
+          </button>
+          <div class="pl-7 mt-3">
+            <UButton label="Thêm sản phẩm khác" color="success" variant="soft" @click="router.push('/products/create')" />
+          </div>
+        </div>
+
         <div class="flex flex-col lg:flex-row gap-6">
           <!-- Left column -->
           <div class="flex-1 space-y-6">
@@ -482,7 +511,3 @@ const cancel = () => {
     </template>
   </UDashboardPanel>
 </template>
-
-<style scoped>
-/* No extra styles */
-</style>

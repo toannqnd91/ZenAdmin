@@ -84,13 +84,14 @@ export function useCreateProductPage() {
     return s || 'new-product'
   })
 
-  const _onSubmit = async () => {
+  const _onSubmit = async (): Promise<number | null> => {
     const { imageBaseUrl: _imageBaseUrl } = useApiConfig()
     // Sync brandId to formData before submit
     if ('brandId' in formData.value) {
       formData.value.brandId = trademark.value || null
     } else {
-      (formData.value as any).brandId = trademark.value || null
+      const fd = formData.value as unknown as { brandId?: number | null }
+      fd.brandId = trademark.value || null
     }
     try {
       const attrs = (activeAttributes.value as Array<{ name: string, values: string[] }>) || []
@@ -166,7 +167,10 @@ export function useCreateProductPage() {
       const ok = await submitForm({ options, variations, productImages })
       if (ok) {
         console.log('Sản phẩm đã được tạo thành công.')
+        const newId = Number(formData.value.id || 0)
+        return newId > 0 ? newId : null
       }
+      return null
     } catch (err) {
       let message = 'Đã xảy ra lỗi khi lưu sản phẩm.'
       if (err && typeof err === 'object') {
@@ -189,6 +193,7 @@ export function useCreateProductPage() {
         }
       }
       alert(message)
+      return null
     }
   }
 
