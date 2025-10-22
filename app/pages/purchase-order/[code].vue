@@ -7,6 +7,7 @@ import StatusSuccessLabel from '@/components/base/StatusSuccessLabel.vue'
 import IconInvoicePending from '@/components/icons/IconInvoicePending.vue'
 import { purchaseOrderService, type PurchaseOrderByCodeDTO, type PurchaseOrderItemDTO } from '@/services/purchase-order.service'
 import ConfirmPaymentModal from '@/components/purchase-order/ConfirmPaymentModal.vue'
+import TableEmptyState from '@/components/base/TableEmptyState.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -202,12 +203,42 @@ async function onReceiveAll() {
 
 // Payment modal state & handlers
 const showPaymentModal = ref(false)
-function onSubmitPayment(payload: { method: string, amount: number, reference: string, date: string }) {
-  // TODO: Call API to confirm payment for purchase order
-  const toast = useToast()
-  toast.add({ title: 'Đã nhận thông tin thanh toán', description: `Số tiền: ${new Intl.NumberFormat('vi-VN').format(payload.amount)}đ`, color: 'success' })
-  // Optionally refresh data from server when API is wired
-  // await loadDetail()
+async function onSubmitPayment(payload: { method: string, amount: number, reference: string, date: string }) {
+  if (!detail.value?.id) {
+    const toast = useToast()
+    toast.add({ title: 'Không thể thanh toán', description: 'Thiếu ID của đơn nhập hàng', color: 'error' })
+    return
+  }
+
+  // Map modal method string to API enum values
+  const methodMap: Record<string, number> = {
+    TienMat: 1,
+    ChuyenKhoan: 2,
+    ViDienTu: 3
+  }
+  const methodEnum = methodMap[payload.method] ?? 1
+
+  try {
+    const res = await purchaseOrderService.addPayment(detail.value.id, {
+      amount: Number(payload.amount || 0),
+      methodEnum,
+      reference: payload.reference || undefined,
+      description: `Thanh toán phiếu nhập ${detail.value.code} ngày ${payload.date}`
+    })
+    if (!res?.success) throw new Error(res?.message || 'Thanh toán thất bại')
+
+    const toast = useToast()
+    toast.add({
+      title: 'Đã ghi nhận thanh toán',
+      description: `Đã thanh toán ${new Intl.NumberFormat('vi-VN').format(Number(payload.amount || 0))}đ`,
+      color: 'success'
+    })
+    await loadDetail()
+  } catch (e) {
+    const err = e as { message?: string }
+    const toast = useToast()
+    toast.add({ title: 'Thanh toán thất bại', description: err?.message || 'Có lỗi xảy ra khi thanh toán', color: 'error' })
+  }
 }
 </script>
 
@@ -295,55 +326,63 @@ function onSubmitPayment(payload: { method: string, amount: number, reference: s
                 </template>
               </BaseCardHeader>
               <div class="-mx-6 mt-2">
-                <table class="min-w-full w-full text-sm border-separate border-spacing-0">
-                  <thead>
-                    <tr class="bg-gray-50">
-                      <th class="px-6 py-2 text-left font-semibold">
-                        Sản phẩm
-                      </th>
-                      <th class="px-6 py-2 text-right font-semibold">
-                        Số lượng
-                      </th>
-                      <th class="px-6 py-2 text-right font-semibold">
-                        Đơn giá
-                      </th>
-                      <th class="px-6 py-2 text-right font-semibold">
-                        Thành tiền
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="it in detail?.items || []" :key="it.id">
-                      <td class="px-6 py-2">
-                        <div class="flex items-center gap-2">
-                          <div class="w-10 h-10 rounded bg-gray-100 inline-flex items-center justify-center text-gray-400">
-                            —
-                          </div>
-                          <div>
-                            <button type="button" class="text-primary-600 font-medium hover:underline text-left">
-                              {{ it.name }}
-                            </button>
-                            <div v-if="it.normalizedName" class="text-xs text-gray-500">
-                              {{ it.normalizedName }}
+                <template v-if="(detail?.items?.length || 0) > 0">
+                  <table class="min-w-full w-full text-sm border-separate border-spacing-0">
+                    <thead>
+                      <tr class="bg-gray-50">
+                        <th class="px-6 py-2 text-left font-semibold">
+                          Sản phẩm
+                        </th>
+                        <th class="px-6 py-2 text-right font-semibold">
+                          Số lượng
+                        </th>
+                        <th class="px-6 py-2 text-right font-semibold">
+                          Đơn giá
+                        </th>
+                        <th class="px-6 py-2 text-right font-semibold">
+                          Thành tiền
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="it in detail?.items || []" :key="it.id">
+                        <td class="px-6 py-2">
+                          <div class="flex items-center gap-2">
+                            <div class="w-10 h-10 rounded bg-gray-100 inline-flex items-center justify-center text-gray-400">
+                              —
                             </div>
-                            <div class="text-xs text-gray-500">
-                              SKU: {{ it.sku || '---' }}
+                            <div>
+                              <button type="button" class="text-primary-600 font-medium hover:underline text-left">
+                                {{ it.name }}
+                              </button>
+                              <div v-if="it.normalizedName" class="text-xs text-gray-500">
+                                {{ it.normalizedName }}
+                              </div>
+                              <div class="text-xs text-gray-500">
+                                SKU: {{ it.sku || '---' }}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td class="px-6 py-2 text-right whitespace-nowrap tabular-nums">
-                        {{ it.qty }}
-                      </td>
-                      <td class="px-6 py-2 text-right whitespace-nowrap tabular-nums">
-                        {{ currency(it.unitPrice) }}
-                      </td>
-                      <td class="px-6 py-2 text-right whitespace-nowrap tabular-nums">
-                        <span class="font-semibold">{{ currency(it.total) }}</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                        </td>
+                        <td class="px-6 py-2 text-right whitespace-nowrap tabular-nums">
+                          {{ it.qty }}
+                        </td>
+                        <td class="px-6 py-2 text-right whitespace-nowrap tabular-nums">
+                          {{ currency(it.unitPrice) }}
+                        </td>
+                        <td class="px-6 py-2 text-right whitespace-nowrap tabular-nums">
+                          <span class="font-semibold">{{ currency(it.total) }}</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </template>
+                <template v-else>
+                  <TableEmptyState
+                    title="Chưa có sản phẩm"
+                    description="Phiếu nhập hàng chưa có sản phẩm nào"
+                  />
+                </template>
               </div>
               <div v-if="!isReceived" class="flex justify-end">
                 <UButton label="Nhập kho" color="primary" :loading="receiving" :disabled="receiving" @click="onReceiveAll" />
@@ -402,25 +441,33 @@ function onSubmitPayment(payload: { method: string, amount: number, reference: s
             <UPageCard variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>Lịch sử đơn nhập hàng</BaseCardHeader>
               <div class="-mx-6 px-6 pb-4 text-sm">
-                <div class="space-y-3">
-                  <div
-                    v-for="(h, idx) in detail?.history || []"
-                    :key="idx"
-                    class="flex items-start gap-3"
-                  >
-                    <div class="pt-1">
-                      <span class="w-2 h-2 inline-block rounded-full bg-primary-500" />
-                    </div>
-                    <div class="flex-1">
-                      <div class="text-xs text-gray-500">
-                        {{ h.time }}
+                <template v-if="(detail?.history?.length || 0) > 0">
+                  <div class="space-y-3">
+                    <div
+                      v-for="(h, idx) in detail?.history || []"
+                      :key="idx"
+                      class="flex items-start gap-3"
+                    >
+                      <div class="pt-1">
+                        <span class="w-2 h-2 inline-block rounded-full bg-primary-500" />
                       </div>
-                      <div class="text-gray-800">
-                        <span class="font-medium">{{ h.actor }}</span> {{ h.text }}
+                      <div class="flex-1">
+                        <div class="text-xs text-gray-500">
+                          {{ h.time }}
+                        </div>
+                        <div class="text-gray-800">
+                          <span class="font-medium">{{ h.actor }}</span> {{ h.text }}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                </template>
+                <template v-else>
+                  <TableEmptyState
+                    title="Chưa có lịch sử"
+                    description="Chưa có hoạt động nào cho đơn nhập hàng này"
+                  />
+                </template>
               </div>
             </UPageCard>
             </div>

@@ -95,6 +95,14 @@ export class PurchaseOrderService extends BaseService {
     // POST /api/v1/PurchaseOrders/{id}/receive
     return this.post<unknown>(API_ENDPOINTS.PURCHASE_ORDER_RECEIVE(id))
   }
+
+  // POST /api/v1/PurchaseOrders/{id}/payments
+  async addPayment(
+    id: number | string,
+    payload: { amount: number, methodEnum: number, reference?: string, description?: string }
+  ) {
+    return this.post<unknown>(API_ENDPOINTS.PURCHASE_ORDER_PAYMENTS(id), payload)
+  }
 }
 
 export const purchaseOrderService = new PurchaseOrderService()

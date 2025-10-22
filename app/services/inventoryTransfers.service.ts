@@ -41,6 +41,11 @@ export class InventoryTransfersService extends BaseService {
   async getCountsByStatus() {
     return this.get<InventoryTransferCountsResponse['data']>(API_ENDPOINTS.INVENTORY_TRANSFERS_COUNT_BY_STATUS)
   }
+
+  // Detail by transfer code
+  async getByCode(code: string) {
+    return this.get<InventoryTransferDetailDTO>(API_ENDPOINTS.INVENTORY_TRANSFER_BY_CODE(code))
+  }
 }
 
 // Separated types (exportable if needed elsewhere)
@@ -96,3 +101,33 @@ export interface InventoryTransferCountsResponse {
   message: string
   data: InventoryTransferCountsData | null
 }
+
+// Detail DTO by code
+export interface InventoryTransferItemDTO {
+  id: number
+  productId: number
+  quantity: number
+  transferredQuantity: number
+}
+export interface InventoryTransferDetailDTOEnvelope {
+  id: number
+  transferCode: string
+  status: number
+  statusText: string
+  createdOn: string
+  note: string | null
+  referenceName: string | null
+  tags: string | null
+  originId: number
+  originName: string
+  destinationId: number
+  destinationName: string
+  items: InventoryTransferItemDTO[]
+}
+export interface InventoryTransferDetailDTOResponse {
+  code: string
+  success: boolean
+  message: string
+  data: InventoryTransferDetailDTOEnvelope | null
+}
+export type InventoryTransferDetailDTO = InventoryTransferDetailDTOEnvelope

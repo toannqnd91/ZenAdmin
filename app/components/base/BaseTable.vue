@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import TableEmptyState from './TableEmptyState.vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import type { SortableEvent } from 'sortablejs'
 
@@ -76,6 +77,12 @@ interface Props {
   hideTitle?: boolean
   // Tabs visual style: default 'pill' (current behavior) or 'underline'
   tabsStyle?: 'pill' | 'underline'
+
+  // Empty state
+  emptyTitle?: string
+  emptyDescription?: string
+  emptyActionLabel?: string
+  emptyActionIcon?: string
 }
 
 interface TableTab {
@@ -101,6 +108,10 @@ const props = withDefaults(defineProps<Props>(), {
   hideSearch: false,
   hideTitle: false,
   tabsStyle: 'pill',
+  emptyTitle: 'Chưa có dữ liệu',
+  emptyDescription: 'Hiện chưa có bản ghi nào để hiển thị',
+  emptyActionLabel: '',
+  emptyActionIcon: 'i-lucide-plus',
   actions: () => [
     {
       label: 'Change Status',
@@ -150,6 +161,7 @@ const emit = defineEmits<{
   'row-copy-id': [string | number]
   'row-edit': [string | number]
   'row-delete': [string | number]
+  'empty-action': []
 }>()
 
 /* filter + paging */
@@ -424,7 +436,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
           <template v-if="!tabsSeparateLine && props.tabs && props.tabs.length">
             <div class="tab-scroll-wrapper flex-1 min-w-0 relative">
               <div class="absolute left-0 right-0 bottom-0 h-px bg-gray-200 pointer-events-none" />
-              <div class="tab-scroll flex flex-nowrap gap-2 overflow-x-auto overflow-y-visible overscroll-x-contain py-1 pr-2 pr-4 -mb-1" role="tablist">
+              <div class="tab-scroll flex flex-nowrap gap-2 overflow-x-auto overflow-y-visible overscroll-x-contain py-1 pr-4 -mb-1" role="tablist">
                 <template v-if="props.tabsStyle === 'underline'">
                   <button
                     v-for="tab in props.tabs"
@@ -657,7 +669,19 @@ const onRowDelete = (item: Record<string, unknown>) => {
     <div
       :class="props.bodyPadding"
     >
+      <!-- Empty state -->
+      <div v-if="!loading && (pageItems.length === 0)" class="py-10">
+        <TableEmptyState
+          :title="props.emptyTitle"
+          :description="props.emptyDescription"
+          :action-label="props.emptyActionLabel"
+          :action-icon="props.emptyActionIcon"
+          @action="$emit('empty-action')"
+        />
+      </div>
+
       <div
+        v-else
         class="overflow-x-auto"
         @click="onBodyClick"
       >

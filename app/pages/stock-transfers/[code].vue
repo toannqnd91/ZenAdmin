@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
+import TableEmptyState from '@/components/base/TableEmptyState.vue'
+import { inventoryTransfersService, type InventoryTransferDetailDTO, type InventoryTransferItemDTO } from '@/services/inventoryTransfers.service'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,7 +17,7 @@ interface TransferItem {
   name: string
   sku?: string | null
   normalizedName?: string | null
-  stockAtOrigin: number
+  transferredQty: number
   qty: number
   image?: string | null
 }
@@ -52,6 +54,8 @@ interface TransferDetail {
 }
 
 const detail = ref<TransferDetail | null>(null)
+const loading = ref(false)
+const error = ref<string | null>(null)
 
 function formatDate(iso: string) {
   if (!iso) return ''
@@ -75,43 +79,39 @@ function statusPillClass(label: string) {
   return 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200'
 }
 
-function loadDetail() {
-  const now = new Date()
-  detail.value = {
-    code: code.value || 'T0001',
-    statusLabel: 'Draft',
-    origin: { name: 'Kho 01', address: 'Hà Nội, Hanoi' },
-    destination: { name: 'Kho 02', address: 'Hà Nội, Hanoi' },
-    dateCreated: now.toISOString(),
-    referenceName: null,
-    note: '',
-    tags: [],
-    items: [
-      { id: 1, name: 'Sản phẩm 001', sku: 'SKU-001', stockAtOrigin: 50, qty: 1, image: null },
-      { id: 2, name: 'Sản phẩm 002', sku: 'SKU-002', stockAtOrigin: 100, qty: 1, image: null }
-    ],
-    timeline: [
-      {
-        id: 'cmt-1',
-        type: 'comment',
-        createdAt: now.toISOString(),
-        actorName: 'My Store Admin',
-        content: 'test cái'
-      },
-      {
-        id: 'act-1',
-        type: 'activity',
-        createdAt: now.toISOString(),
-        title: 'You edited Products on this inventory transfer.',
-        details: ['SKU-001 qty changed 1 → 2', 'SKU-002 removed']
-      },
-      {
-        id: 'act-0',
-        type: 'activity',
-        createdAt: new Date(now.getTime() - 2 * 60_000).toISOString(),
-        title: 'You created a draft inventory transfer.'
-      }
-    ]
+async function loadDetail() {
+  loading.value = true
+  error.value = null
+  try {
+    const res = await inventoryTransfersService.getByCode(code.value)
+    if (!res?.success) throw new Error(res?.message || 'Tải dữ liệu thất bại')
+    const d = res.data as InventoryTransferDetailDTO
+    const items: InventoryTransferItemDTO[] = Array.isArray(d.items) ? d.items : []
+    detail.value = {
+      code: String(d.transferCode || code.value),
+      statusLabel: String(d.statusText || ''),
+      origin: { name: String(d.originName || ''), address: null },
+      destination: { name: String(d.destinationName || ''), address: null },
+      dateCreated: String(d.createdOn || ''),
+      referenceName: d.referenceName || null,
+      note: d.note || null,
+      tags: (d.tags || '').split(',').map(s => s.trim()).filter(Boolean),
+      items: items.map(it => ({
+        id: it.id,
+        name: `Sản phẩm #${it.productId}`,
+        sku: null,
+        normalizedName: null,
+        transferredQty: Number(it.transferredQuantity || 0),
+        qty: Number(it.quantity || 0),
+        image: null
+      })),
+      timeline: []
+    }
+  } catch (e) {
+    const err = e as { message?: string }
+    error.value = err?.message || 'Không tải được chi tiết chuyển kho'
+  } finally {
+    loading.value = false
   }
 }
 
@@ -156,6 +156,7 @@ function removeItem(idx: number) {
 </script>
 
 <template>
+  <!-- eslint-disable vue/max-attributes-per-line, vue/html-closing-bracket-newline, vue/singleline-html-element-content-newline, vue/html-indent, vue/first-attribute-linebreak, vue/html-self-closing -->
   <UDashboardPanel id="stock-transfer-detail">
     <template #header>
       <UDashboardNavbar>
@@ -209,6 +210,9 @@ function removeItem(idx: number) {
 
     <template #body>
       <div class="w-full max-w-6xl mx-auto px-4 lg:px-6">
+        <div v-if="loading" class="py-10 text-center text-gray-500">Đang tải...</div>
+        <div v-else-if="error" class="py-10 text-center text-red-600">{{ error }}</div>
+        <template v-else>
         <div class="flex flex-col lg:flex-row gap-6">
           <div class="flex-1 space-y-6">
             <UPageCard variant="soft" class="bg-white rounded-lg">
@@ -252,65 +256,70 @@ function removeItem(idx: number) {
                 </button>
               </div>
               <div class="-mx-4 lg:-mx-6">
-                <table class="min-w-full w-full text-sm border-separate border-spacing-0">
-                  <thead>
-                    <tr class="bg-gray-50">
-                      <th class="px-6 py-2 text-left font-semibold">
-                        Sản phẩm
-                      </th>
-                      <th class="px-6 py-2 text-left font-semibold">
-                        SKU
-                      </th>
-                      <th class="px-6 py-2 text-right font-semibold">
-                        Tồn tại kho xuất
-                      </th>
-                      <th class="px-6 py-2 text-right font-semibold">
-                        Số lượng
-                      </th>
-                      <th class="px-6 py-2" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="(it, idx) in detail?.items || []" :key="it.id">
-                      <td class="px-6 py-2">
-                        <div class="flex items-center gap-2">
-                          <div class="w-10 h-10 rounded bg-gray-100 inline-flex items-center justify-center text-gray-400">
-                            —
-                          </div>
-                          <div>
-                            <div class="font-medium">
-                              {{ it.name }}
+                <template v-if="(detail?.items?.length || 0) > 0">
+                  <table class="min-w-full w-full text-sm border-separate border-spacing-0">
+                    <thead>
+                      <tr class="bg-gray-50">
+                        <th class="px-6 py-2 text-left font-semibold">
+                          Sản phẩm
+                        </th>
+                        <th class="px-6 py-2 text-left font-semibold">
+                          SKU
+                        </th>
+                        <th class="px-6 py-2 text-right font-semibold">
+                          Đã chuyển
+                        </th>
+                        <th class="px-6 py-2 text-right font-semibold">
+                          Số lượng
+                        </th>
+                        <th class="px-6 py-2" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(it, idx) in detail?.items || []" :key="it.id">
+                        <td class="px-6 py-2">
+                          <div class="flex items-center gap-2">
+                            <div class="w-10 h-10 rounded bg-gray-100 inline-flex items-center justify-center text-gray-400">
+                              —
                             </div>
-                            <div v-if="it.normalizedName" class="text-xs text-gray-500">
-                              {{ it.normalizedName }}
+                            <div>
+                              <div class="font-medium">
+                                {{ it.name }}
+                              </div>
+                              <div v-if="it.normalizedName" class="text-xs text-gray-500">
+                                {{ it.normalizedName }}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td class="px-6 py-2">
-                        <button type="button" class="text-primary-600 font-medium hover:underline">
-                          {{ it.sku || '—' }}
-                        </button>
-                      </td>
-                      <td class="px-6 py-2 text-right tabular-nums">
-                        {{ it.stockAtOrigin }}
-                      </td>
-                      <td class="px-6 py-2 text-right">
-                        <input
-                          v-model.number="it.qty"
-                          type="number"
-                          min="0"
-                          class="w-16 h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                      </td>
-                      <td class="px-6 py-2 text-right">
-                        <button class="text-gray-400 hover:text-error" @click="removeItem(idx)">
-                          ×
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                        </td>
+                        <td class="px-6 py-2">
+                          <button type="button" class="text-primary-600 font-medium hover:underline">
+                            {{ it.sku || '—' }}
+                          </button>
+                        </td>
+                        <td class="px-6 py-2 text-right tabular-nums">
+                          {{ it.transferredQty }}
+                        </td>
+                        <td class="px-6 py-2 text-right">
+                          <input
+                            v-model.number="it.qty"
+                            type="number"
+                            min="0"
+                            class="w-16 h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          >
+                        </td>
+                        <td class="px-6 py-2 text-right">
+                          <button class="text-gray-400 hover:text-error" @click="removeItem(idx)">
+                            ×
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </template>
+                <template v-else>
+                  <TableEmptyState title="Chưa có sản phẩm" description="Phiếu chuyển kho này chưa có sản phẩm" />
+                </template>
               </div>
             </UPageCard>
 
@@ -368,8 +377,8 @@ function removeItem(idx: number) {
 
                 <!-- Timeline list styled like Orders page history -->
                 <div>
-                  <div v-if="!(detail?.timeline && detail.timeline.length)" class="text-sm text-gray-500">
-                    Không có lịch sử.
+                  <div v-if="!(detail?.timeline && detail.timeline.length)" class="text-sm">
+                    <TableEmptyState title="Chưa có lịch sử" description="Chưa có hoạt động nào cho phiếu này" />
                   </div>
                   <ul v-else class="space-y-3">
                     <li v-for="h in historyLike" :key="h.id" class="flex gap-3">
@@ -455,6 +464,7 @@ function removeItem(idx: number) {
             Save
           </button>
         </div>
+        </template>
       </div>
     </template>
   </UDashboardPanel>

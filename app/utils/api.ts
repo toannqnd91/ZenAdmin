@@ -65,11 +65,13 @@ export const API_ENDPOINTS = {
   INVENTORY_TRANSFERS: '/InventoryTransfers',
   INVENTORY_TRANSFERS_GRID: '/InventoryTransfers/grid',
   INVENTORY_TRANSFERS_COUNT_BY_STATUS: '/InventoryTransfers/count-by-status',
+  INVENTORY_TRANSFER_BY_CODE: (code: string) => `/InventoryTransfers/${code}`,
 
   // Purchase Orders endpoints
   PURCHASE_ORDERS_GRID: '/PurchaseOrders/grid',
   PURCHASE_ORDER_BY_CODE: (code: string) => `/PurchaseOrders/by-code/${code}`,
   PURCHASE_ORDER_RECEIVE: (id: number | string) => `/PurchaseOrders/${id}/receive`,
+  PURCHASE_ORDER_PAYMENTS: (id: number | string) => `/PurchaseOrders/${id}/payments`,
 
   // Damage Items endpoints
   DAMAGE_ITEMS_GRID: '/DamageItems/grid',
