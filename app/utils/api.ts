@@ -28,7 +28,7 @@ export const API_ENDPOINTS = {
   PROFILE: '/Identity/profile',
   // Content endpoints
   COLLECTIONS: '/collections',
-  DASHBOARD_MENU: '/DashboardMenu',
+  DASHBOARD_MENU: '/Identity/system-menu/auto',
   DASHBOARD_STATS: '/Dashboard/stats',
   DASHBOARD_OVERVIEW: '/Dashboard/overview',
   // Statistics endpoints
@@ -114,7 +114,7 @@ export const API_ENDPOINTS = {
   LOCATIONS_WARDS_BY_PROVINCE: (provinceCode: number | string) => `/locations/provinces/${provinceCode}/wards`,
 
   // Legacy duplicates (migrating away from getApiEndpoints())
-  DASHBOARD_MENU_LEGACY: '/DashboardMenu',
+  DASHBOARD_MENU_LEGACY: '/Identity/system-menu/auto',
   LOGIN_LEGACY: '/Identity/login',
   REFRESH_TOKEN_LEGACY: '/Identity/refresh',
   NEWS_CATEGORIES_LEGACY: '/NewsCategories',
