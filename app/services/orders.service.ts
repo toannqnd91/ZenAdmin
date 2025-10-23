@@ -1,4 +1,6 @@
 import { BaseService } from './base.service'
+import type { ShippingMethod } from '@/types/shipping'
+import type { DeliveryOption } from '@/types/delivery'
 import { API_ENDPOINTS } from '@/utils/api'
 
 export interface OrderCountsByStatusResponse {
@@ -152,8 +154,8 @@ export interface CreatePosOrderRequest {
   orderSourceId: number | string | null
   shippingFeeAmount: number
   discountAmount: number
-  deliveryOption: number // numeric enum
-  shippingMethod: string | null
+  deliveryOption: DeliveryOption // string token: 'vanchuyen' | 'tugiaohang' | 'giaongay' | 'giaosau'
+  shippingMethod: ShippingMethod | null
   expectedDeliveryDate: string | null // ISO string
   orderNote: string | null
   couponCode: string | null

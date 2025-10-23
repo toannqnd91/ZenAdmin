@@ -16,6 +16,9 @@ import { orderSourceService } from '@/services/order-source.service'
 import type { OrderSourceItem } from '@/services/order-source.service'
 import { customersService, ordersService } from '@/services'
 import { useAuthService } from '@/composables/useAuthService'
+import type { ShippingMethod } from '@/types/shipping'
+import { SHIPPING_METHOD_OPTIONS, ShippingMethodLabels } from '@/types/shipping'
+import type { DeliveryOption } from '@/types/delivery'
 
 // Runtime config & helpers (restored)
 const config = useRuntimeConfig()
@@ -96,8 +99,10 @@ const orderProducts = ref<OrderProduct[]>([])
 
 // Local UI state for product add modal
 const showAddProductModal = ref(false)
+type NewProductLike = { id: string | number, name: string, price?: number, sku?: string, thumbnailImageUrl?: string | null, [key: string]: unknown }
 
-function handleProductCreated(newProduct) {
+function handleProductCreated(evt: unknown) {
+  const newProduct = evt as NewProductLike
   showAddProductModal.value = false
   if (newProduct && newProduct.id) {
     orderProducts.value.unshift({
@@ -214,30 +219,29 @@ watch(paymentMethod, (m) => {
 
 type ShippingOption = 'carrier' | 'self' | 'delivered' | 'later'
 const shippingOption = ref<ShippingOption>('delivered')
-const shippingMethod = ref<string | null>(null)
-const shippingMethodOptions = ['Giao nhanh', 'Giao tiết kiệm', 'Nhận tại cửa hàng']
+const shippingMethod = ref<ShippingMethod | null>(null)
 
 // Bridge object for RemoteSearchSelect (shipping)
-const shippingMethodOption = ref<{ label: string, value: string } | null>(
-  shippingMethod.value ? { label: shippingMethod.value, value: shippingMethod.value } : null
+const shippingMethodOption = ref<{ label: string, value: ShippingMethod } | null>(
+  shippingMethod.value ? { label: ShippingMethodLabels[shippingMethod.value], value: shippingMethod.value } : null
 )
 
 // RemoteSearchSelect fetcher for shipping methods (local filter)
 async function fetchShippingMethods(search: string) {
   const q = (search || '').toLowerCase()
-  const items = shippingMethodOptions.map(m => ({ label: m, value: m }))
+  const items = SHIPPING_METHOD_OPTIONS
   return q ? items.filter(i => i.label.toLowerCase().includes(q)) : items
 }
 
 // Keep string state in sync with object selection (shipping)
 watch(shippingMethodOption, (opt) => {
-  shippingMethod.value = opt ? String(opt.value) : null
+  shippingMethod.value = opt ? (opt.value as ShippingMethod) : null
 })
 watch(shippingMethod, (m) => {
   if (!m) {
     shippingMethodOption.value = null
   } else if (!shippingMethodOption.value || shippingMethodOption.value.value !== m) {
-    shippingMethodOption.value = { label: m, value: m }
+    shippingMethodOption.value = { label: ShippingMethodLabels[m], value: m }
   }
 })
 
@@ -278,13 +282,13 @@ function mapPaymentMethodToApi(value: string): number {
 }
 
 // Delivery option mapping based on shippingOption
-function mapDeliveryOptionToApi(opt: string): number {
+function mapDeliveryOptionToApi(opt: string): DeliveryOption {
   switch (opt) {
-    case 'carrier': return 1
-    case 'self': return 2
-    case 'delivered': return 3
-    case 'later': return 4
-    default: return 0
+    case 'carrier': return 'VanChuyen'
+    case 'self': return 'TuGiaoHang'
+    case 'delivered': return 'GiaoNgay'
+    case 'later': return 'GiaoSau'
+    default: return 'VanChuyen'
   }
 }
 
@@ -321,8 +325,8 @@ interface CreatePosOrderRequest {
   orderSourceId: string | number | null
   shippingFeeAmount: number
   discountAmount: number
-  deliveryOption: number
-  shippingMethod: string | null
+  deliveryOption: DeliveryOption
+  shippingMethod: ShippingMethod | null
   expectedDeliveryDate: string | null
   orderNote: string | null
   couponCode: string | null
@@ -397,6 +401,13 @@ async function handleCreateOrder() {
       orderNote: orderNote.value || null,
       couponCode: couponCode.value || null,
       applyCouponToEachItem: true
+    }
+    // Print JSON payload before creating the order (as requested)
+    try {
+      console.log('[CreatePOS] Request body:', body)
+      console.log('[CreatePOS] JSON:', JSON.stringify(body, null, 2))
+    } catch {
+      // ignore logging errors
     }
     const res = await ordersService.createPosOrder(body)
     const envelope = res as unknown as {
@@ -858,7 +869,7 @@ onMounted(async () => {
   // Defaults requested:
   // - Shipping method: Nhận tại cửa hàng
   if (!shippingMethod.value) {
-    shippingMethod.value = 'Nhận tại cửa hàng'
+    shippingMethod.value = 'NhanTaiCuaHang'
   }
   // - Payment status: Đã thanh toán
   if (paymentStatus.value !== 'paid') {
@@ -988,7 +999,11 @@ function restoreDraft() {
     if (parsed.shippingOption && ['carrier', 'self', 'delivered', 'later'].includes(parsed.shippingOption)) {
       shippingOption.value = parsed.shippingOption as ShippingOption
     }
-    if (typeof parsed.shippingMethod === 'string' || parsed.shippingMethod === null) shippingMethod.value = parsed.shippingMethod || null
+    if (parsed.shippingMethod === null) {
+      shippingMethod.value = null
+    } else if (typeof parsed.shippingMethod === 'string' && parsed.shippingMethod in ShippingMethodLabels) {
+      shippingMethod.value = parsed.shippingMethod as ShippingMethod
+    }
     if (typeof parsed.orderDate === 'string') orderDate.value = parsed.orderDate
     if (typeof parsed.scheduledDate === 'string') scheduledDate.value = parsed.scheduledDate
     if (typeof parsed.orderNote === 'string') orderNote.value = parsed.orderNote
