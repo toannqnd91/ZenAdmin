@@ -297,6 +297,9 @@ async function submit() {
           placeholder="Chọn Tỉnh/thành"
           :clearable="true"
           :full-width="true"
+          searchable
+          search-in-trigger
+          :dropdown-max-height="320"
         />
       </div>
 
@@ -311,6 +314,9 @@ async function submit() {
           placeholder="Chọn Phường xã"
           :clearable="true"
           :full-width="true"
+          searchable
+          search-in-trigger
+          :dropdown-max-height="320"
           :disabled="!selectedProvince"
         />
       </div>
