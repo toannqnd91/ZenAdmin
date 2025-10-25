@@ -9,6 +9,7 @@ import UpdateSupplierInfoModal from '@/components/suppliers/UpdateSupplierInfoMo
 const route = useRoute()
 const router = useRouter()
 const code = computed(() => String(route.params.code || '').trim())
+const skipNextRefetch = ref(false)
 
 // API helpers
 const { getEndpoint } = useApiConfig()
@@ -124,12 +125,12 @@ interface SupplierDetailApiData {
 }
 
 // Fetch function
-const fetchDetail = async () => {
+const fetchDetail = async (force = false) => {
   loading.value = true
   error.value = null
   try {
     const { data: resp, error: fetchErr } = await useApiFetch<ApiResponse<SupplierDetailApiData>>(
-      () => getEndpoint(`/Supplier/by-code/${code.value}/detail`),
+      () => getEndpoint(`/Supplier/by-code/${code.value}/detail${force ? `?t=${Date.now()}` : ''}`),
       { server: false }
     )
 
@@ -196,7 +197,14 @@ const fetchDetail = async () => {
 }
 
 watchEffect(() => {
-  if (code.value) fetchDetail()
+  if (code.value) {
+    if (skipNextRefetch.value) {
+      // Skip one auto refetch (used after local optimistic update + route replace)
+      skipNextRefetch.value = false
+      return
+    }
+    fetchDetail(false)
+  }
 })
 
 function goBack() {
@@ -224,6 +232,8 @@ const supplierPayload = computed(() => ({
 
 async function onSaveSupplier(payload: { name: string, code: string, phone?: string | null, country?: string | null, region?: string | null, ward?: string | null, address?: string | null, email?: string | null, status?: 'active' | 'inactive', taxCode?: string | null, website?: string | null, fax?: string | null }) {
   if (!detail.value) return
+  const prevCode = detail.value.code
+  // Optimistic update
   detail.value.name = payload.name
   detail.value.code = payload.code
   detail.value.phone = payload.phone ?? null
@@ -235,8 +245,11 @@ async function onSaveSupplier(payload: { name: string, code: string, phone?: str
     region: payload.region ?? null,
     ward: payload.ward ?? null
   }
-  // Re-fetch full detail to ensure page state is up-to-date
-  await fetchDetail()
+  // If code changed, update URL without refetching again (we already updated state above)
+  if (payload.code && payload.code !== prevCode) {
+    skipNextRefetch.value = true
+    await router.replace(`/suppliers/${encodeURIComponent(payload.code)}`)
+  }
 }
 </script>
 
@@ -260,7 +273,14 @@ async function onSaveSupplier(payload: { name: string, code: string, phone?: str
                 <div class="text-lg font-semibold">
                   {{ detail?.name || code }}
                 </div>
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Đang hoạt động</span>
+                <span
+                  v-if="detail"
+                  :class="detail.status === 'active'
+                    ? 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200'"
+                >
+                  {{ detail.status === 'active' ? 'Đang hoạt động' : 'Ngưng hoạt động' }}
+                </span>
               </div>
               <div v-if="detail" class="text-xs text-gray-500">
                 Mã nhà cung cấp: <span class="font-medium">{{ detail.code }}</span>
