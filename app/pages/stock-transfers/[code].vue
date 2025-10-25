@@ -17,7 +17,7 @@ interface TransferItem {
   name: string
   sku?: string | null
   normalizedName?: string | null
-  transferredQty: number
+  availableQty: number
   qty: number
   image?: string | null
 }
@@ -56,6 +56,14 @@ interface TransferDetail {
 const detail = ref<TransferDetail | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+// Keep a snapshot of the original items (by id and qty) to detect changes
+const originalItemsSnapshot = ref<Array<{ id: string | number, qty: number }>>([])
+// Dropdown items for status actions (per design)
+const statusMenuItems = [
+  { label: 'Sẵn sàng', value: 'ready' },
+  { label: 'Đang xử lý', value: 'in-progress' },
+  { label: 'Đã chuyển', value: 'transferred' }
+]
 
 function formatDate(iso: string) {
   if (!iso) return ''
@@ -99,14 +107,16 @@ async function loadDetail() {
       items: items.map(it => ({
         id: it.id,
         name: `Sản phẩm #${it.productId}`,
-        sku: null,
+        sku: it.sku || null,
         normalizedName: null,
-        transferredQty: Number(it.transferredQuantity || 0),
+        availableQty: Number(it.availableQuantity || 0),
         qty: Number(it.quantity || 0),
         image: null
       })),
       timeline: []
     }
+    // Update original snapshot after successful load
+    originalItemsSnapshot.value = (detail.value?.items || []).map(it => ({ id: it.id, qty: it.qty }))
   } catch (e) {
     const err = e as { message?: string }
     error.value = err?.message || 'Không tải được chi tiết chuyển kho'
@@ -153,6 +163,41 @@ function removeItem(idx: number) {
   if (!detail.value) return
   detail.value.items.splice(idx, 1)
 }
+
+// Detect if there are unsaved changes (items added/removed or qty changed)
+const hasChanges = computed(() => {
+  if (!detail.value) return false
+  const curr = detail.value.items
+  const snap = originalItemsSnapshot.value
+  if (curr.length !== snap.length) return true
+  const snapMap = new Map<string, number>(snap.map(s => [String(s.id), s.qty]))
+  for (const it of curr) {
+    const k = String(it.id)
+    if (!snapMap.has(k)) return true
+    if (Number(it.qty) !== Number(snapMap.get(k))) return true
+  }
+  return false
+})
+
+function saveChanges() {
+  // Stub: Implement API call later; for now, just log the intended payload
+  if (!detail.value) return
+  const payload = {
+    code: detail.value.code,
+    items: detail.value.items.map(it => ({ id: it.id, qty: it.qty }))
+  }
+  console.log('Save inventory transfer changes', payload)
+  // After successful save, refresh snapshot to current state
+  originalItemsSnapshot.value = detail.value.items.map(it => ({ id: it.id, qty: it.qty }))
+}
+
+function onStatusSelect(item: { value?: string } | null) {
+  if (!item) return
+  const action = typeof item.value === 'string' ? item.value : null
+  if (!action || !detail.value) return
+  const payload = { code: detail.value.code, action }
+  console.log('Status action selected', payload)
+}
 </script>
 
 <template>
@@ -191,18 +236,24 @@ function removeItem(idx: number) {
         </template>
         <template #right>
           <div class="flex items-center gap-2">
-            <UButton
-              label="Thao tác khác"
-              color="neutral"
-              variant="soft"
-              size="sm"
-            />
-            <UButton
-              label="In phiếu"
-              color="primary"
-              variant="solid"
-              size="sm"
-            />
+            <button
+              class="h-8 px-4 rounded-md text-sm font-medium"
+              :class="hasChanges ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed'"
+              :disabled="!hasChanges"
+              @click="saveChanges"
+            >
+              Lưu
+            </button>
+            <UDropdownMenu :items="statusMenuItems" :popper="{ placement: 'bottom-end' }" @select="onStatusSelect">
+              <UButton
+                label="Thao tác"
+                color="neutral"
+                variant="solid"
+                size="sm"
+                class="h-8 px-4 rounded-md bg-gray-900 text-white hover:bg-gray-800"
+                trailing-icon="i-heroicons-chevron-down-20-solid"
+              />
+            </UDropdownMenu>
           </div>
         </template>
       </UDashboardNavbar>
@@ -263,11 +314,8 @@ function removeItem(idx: number) {
                         <th class="px-6 py-2 text-left font-semibold">
                           Sản phẩm
                         </th>
-                        <th class="px-6 py-2 text-left font-semibold">
-                          SKU
-                        </th>
                         <th class="px-6 py-2 text-right font-semibold">
-                          Đã chuyển
+                          Tồn kho gốc
                         </th>
                         <th class="px-6 py-2 text-right font-semibold">
                           Số lượng
@@ -286,19 +334,16 @@ function removeItem(idx: number) {
                               <div class="font-medium">
                                 {{ it.name }}
                               </div>
-                              <div v-if="it.normalizedName" class="text-xs text-gray-500">
-                                {{ it.normalizedName }}
+                              <div class="text-xs text-gray-500">
+                                <template v-if="it.sku">SKU: {{ it.sku }}</template>
+                                <template v-else>&mdash;</template>
                               </div>
                             </div>
                           </div>
                         </td>
-                        <td class="px-6 py-2">
-                          <button type="button" class="text-primary-600 font-medium hover:underline">
-                            {{ it.sku || '—' }}
-                          </button>
-                        </td>
+                        
                         <td class="px-6 py-2 text-right tabular-nums">
-                          {{ it.transferredQty }}
+                          {{ it.availableQty }}
                         </td>
                         <td class="px-6 py-2 text-right">
                           <input
@@ -460,8 +505,13 @@ function removeItem(idx: number) {
         </div>
 
         <div class="flex items-center justify-end mt-8 border-t border-transparent pt-4">
-          <button class="h-9 px-5 rounded-md bg-gray-200 text-gray-500 text-sm font-medium cursor-not-allowed" disabled>
-            Save
+          <button
+            class="h-9 px-5 rounded-md text-sm font-medium"
+            :class="hasChanges ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed'"
+            :disabled="!hasChanges"
+            @click="saveChanges"
+          >
+            Lưu
           </button>
         </div>
         </template>

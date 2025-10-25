@@ -108,6 +108,9 @@ export interface InventoryTransferItemDTO {
   productId: number
   quantity: number
   transferredQuantity: number
+  stockQuantity?: number
+  availableQuantity?: number
+  sku?: string
 }
 export interface InventoryTransferDetailDTOEnvelope {
   id: number

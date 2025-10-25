@@ -191,7 +191,7 @@ const q = ref('')
         <!-- Bottom toolbar -->
         <div class="h-16 border-t px-3 flex items-center gap-3 text-sm">
           <button class="h-9 inline-flex items-center gap-2 rounded border border-amber-300 bg-amber-50 px-3 text-amber-800">
-            Sapo Invoice <span class="text-xs font-medium text-amber-700">Cần thiết lập mẫu hoá đơn</span>
+            Zen Invoice <span class="text-xs font-medium text-amber-700">Cần thiết lập mẫu hoá đơn</span>
           </button>
           <button class="h-9 inline-flex items-center gap-2 rounded border border-sky-300 bg-sky-50 px-3 text-sky-800">
             Quản lý công nợ <span class="text-xs font-medium text-sky-700">Chưa thêm khách hàng</span>

@@ -77,7 +77,7 @@ export const API_ENDPOINTS = {
   DAMAGE_ITEMS_GRID: '/DamageItems/grid',
 
   // Supplier endpoints
-  SUPPLIERS: '/Suppliers',
+  SUPPLIERS: '/Supplier/grid',
   // Customer endpoints
   CUSTOMERS_GRID: '/customers/grid',
   // External customer endpoints

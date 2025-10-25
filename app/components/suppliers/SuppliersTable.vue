@@ -4,6 +4,8 @@ import BaseTable from '@/components/base/BaseTable.vue'
 
 interface Supplier {
   id: number | string
+  code?: string
+  slug?: string
   name: string
   phone?: string | null
   email?: string | null
@@ -62,12 +64,19 @@ const addButton = {
 
 const handleRowClick = (item: Record<string, unknown>) => {
   const supplier = item as unknown as Supplier
-  navigateTo(`/suppliers/${supplier.id}/update`)
+  const code = (supplier.code && typeof supplier.code === 'string' && supplier.code.trim())
+    ? supplier.code
+    : (supplier.slug && typeof supplier.slug === 'string' && supplier.slug.trim())
+        ? supplier.slug
+        : String(supplier.id)
+  navigateTo(`/suppliers/${code}`)
 }
 
 const tableData = computed(() =>
   props.data.map((s: Supplier) => ({
     id: s.id,
+    code: s.code,
+    slug: s.slug,
     name: s.name,
     phone: s.phone,
     email: s.email,
