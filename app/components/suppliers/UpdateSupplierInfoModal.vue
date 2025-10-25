@@ -3,6 +3,7 @@ import { ref, watch, computed } from 'vue'
 import BaseModal from '@/components/base/BaseModal.vue'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import { useLocations, type LocationOption } from '@/composables/useLocations'
+import { supplierService, type UpdateSupplierRequest, type SupplierByIdData } from '@/services/supplier.service'
 
 interface SupplierUpdatePayload {
   name: string
@@ -22,11 +23,15 @@ interface SupplierUpdatePayload {
 interface Props {
   modelValue?: boolean
   value?: Partial<SupplierUpdatePayload>
+  supplierId?: number | string | null
+  slug?: string | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
-  value: () => ({ name: '', code: '', phone: null, country: 'Vietnam', region: null, ward: null, address: null, email: null, taxCode: null, website: null, fax: null, status: 'active' })
+  value: () => ({ name: '', code: '', phone: null, country: 'Vietnam', region: null, ward: null, address: null, email: null, taxCode: null, website: null, fax: null, status: 'active' }),
+  supplierId: null,
+  slug: null
 })
 
 const emit = defineEmits<{
@@ -56,6 +61,9 @@ const form = ref<SupplierUpdatePayload>({
 
 watch(() => props.modelValue, (v) => {
   if (v) {
+    if (props.supplierId !== null && props.supplierId !== undefined) {
+      void loadSupplierDetail()
+    }
     form.value = {
       name: props.value?.name ?? '',
       code: props.value?.code ?? '',
@@ -74,11 +82,20 @@ watch(() => props.modelValue, (v) => {
 })
 
 function onSave() {
-  emit('save', { ...form.value })
-  open.value = false
+  // If no supplierId, fallback to emitting only (UI-only save)
+  if (!props.supplierId && props.supplierId !== 0) {
+    emit('save', { ...form.value })
+    open.value = false
+    return
+  }
+  void submit()
 }
 
 const showMore = ref(false)
+const saving = ref(false)
+const saveError = ref<string | null>(null)
+const loadingDetail = ref(false)
+const loadError = ref<string | null>(null)
 
 // Locations integration
 const { getProvinces, getWards } = useLocations()
@@ -117,10 +134,97 @@ watch(selectedWard, (w) => {
   const keyed = w as { name?: string | number, code?: string | number, id?: string | number } | null
   form.value.ward = w ? String(keyed?.name ?? keyed?.code ?? keyed?.id) : null
 })
+
+async function loadSupplierDetail() {
+  try {
+    loadingDetail.value = true
+    loadError.value = null
+    const resp = await supplierService.getSupplierById(props.supplierId as number | string)
+    if (!resp?.success) throw new Error(resp?.message || 'Tải dữ liệu nhà cung cấp thất bại')
+    const d = resp.data as SupplierByIdData
+
+    form.value = {
+      name: d.name || '',
+      code: d.code || '',
+      phone: d.phone || null,
+      country: d.country || 'Vietnam',
+      region: d.region || null,
+      ward: null,
+      address: d.address || null,
+      email: d.email || null,
+      taxCode: d.taxCode || null,
+      website: d.website || null,
+      fax: d.fax || null,
+      status: (d.status as 'active' | 'inactive') || (d.statusEnum === 0 ? 'active' : 'inactive')
+    }
+
+    // Select province and ward if we have ids
+    if (d.provinceId != null) {
+      const provinces = await getProvinces('')
+      const p = (provinces || []).find((it: LocationOption) => Number(it.id) === Number(d.provinceId))
+      if (p) {
+        selectedProvince.value = { id: p.id, code: p.code, name: p.name, division_type: p.division_type } as unknown as Record<string, unknown>
+        if (d.wardId != null) {
+          const wards = await getWards('', p.code || p.id)
+          const w = (wards || []).find((it: LocationOption) => Number(it.id) === Number(d.wardId))
+          if (w) {
+            selectedWard.value = { id: w.id, code: w.code, name: w.name, division_type: w.division_type } as unknown as Record<string, unknown>
+          }
+        }
+      }
+    }
+  } catch (e: unknown) {
+    loadError.value = e instanceof Error ? e.message : 'Không thể tải dữ liệu'
+  } finally {
+    loadingDetail.value = false
+  }
+}
+
+async function submit() {
+  if (saving.value) return
+  saving.value = true
+  saveError.value = null
+  try {
+    // Derive ids for province/ward if selected
+    const provinceObj = selectedProvince.value as (Record<string, unknown> | null)
+    const wardObj = selectedWard.value as (Record<string, unknown> | null)
+    const provinceId = provinceObj ? Number((provinceObj.id as number | string | undefined) ?? (provinceObj.code as number | string | undefined) ?? NaN) : null
+    const wardId = wardObj ? Number((wardObj.id as number | string | undefined) ?? (wardObj.code as number | string | undefined) ?? NaN) : null
+
+    const payload: UpdateSupplierRequest = {
+      name: form.value.name,
+      code: form.value.code || null,
+      slug: props.slug ?? null,
+      phoneCountryCode: '84',
+      phone: form.value.phone || null,
+      email: form.value.email || null,
+      address: form.value.address || null,
+      country: form.value.country || null,
+      region: form.value.region || null,
+      provinceId: Number.isNaN(provinceId as number) ? null : (provinceId as number),
+      wardId: Number.isNaN(wardId as number) ? null : (wardId as number),
+      taxCode: form.value.taxCode || null,
+      website: form.value.website || null,
+      fax: form.value.fax || null,
+      status: form.value.status || null
+    }
+
+    await supplierService.updateSupplier(props.supplierId as number | string, payload)
+    // Emit updated basic info back to parent to refresh local UI
+    emit('save', { ...form.value })
+    open.value = false
+  } catch (e: unknown) {
+    saveError.value = e instanceof Error ? e.message : 'Lưu thất bại'
+  } finally {
+    saving.value = false
+  }
+}
 </script>
 
 <template>
   <BaseModal v-model="open" title="Sửa nhà cung cấp" width-class="max-w-3xl">
+    <div v-if="loadingDetail" class="text-sm text-gray-500 mb-2">Đang tải dữ liệu...</div>
+    <div v-if="loadError" class="text-sm text-error mb-2">{{ loadError }}</div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <!-- Tên nhà cung cấp -->
       <div>
@@ -222,13 +326,12 @@ watch(selectedWard, (w) => {
         >
       </div>
 
-      <!-- Thông tin thêm (disclosure) -->
-      <div class="md:col-span-2">
-        <button type="button" class="inline-flex items-center gap-1 text-primary-600 text-sm font-medium" @click="showMore = !showMore">
+      <!-- Thông tin thêm (disclosure) shown at top only when collapsed -->
+      <div v-if="!showMore" class="md:col-span-2">
+        <button type="button" class="inline-flex items-center gap-1 text-primary-600 text-sm font-medium" @click="showMore = true">
           <span>Thông tin thêm</span>
           <svg
-            class="w-4 h-4 transition-transform"
-            :class="showMore ? 'rotate-180' : 'rotate-0'"
+            class="w-4 h-4 transition-transform rotate-0"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -297,10 +400,28 @@ watch(selectedWard, (w) => {
             </select>
           </div>
         </div>
+        <!-- Move the toggle to bottom when expanded -->
+        <div class="md:col-span-2">
+          <button type="button" class="inline-flex items-center gap-1 text-primary-600 text-sm font-medium" @click="showMore = false">
+            <span>Thông tin thêm</span>
+            <svg
+              class="w-4 h-4 transition-transform rotate-180"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+        </div>
       </template>
     </div>
 
     <template #footer>
+      <div v-if="saveError" class="text-error text-sm mr-auto">
+        {{ saveError }}
+      </div>
       <button
         type="button"
         class="h-9 px-4 rounded-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50"
@@ -310,10 +431,12 @@ watch(selectedWard, (w) => {
       </button>
       <button
         type="button"
-        class="h-9 px-4 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700"
+        class="h-9 px-4 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed"
+        :disabled="saving"
         @click="onSave"
       >
-        Lưu
+        <span v-if="saving">Đang lưu...</span>
+        <span v-else>Lưu</span>
       </button>
     </template>
   </BaseModal>

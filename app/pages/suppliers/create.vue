@@ -1,20 +1,26 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
+import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
+import { useLocations } from '@/composables/useLocations'
+import { supplierService, type CreateSupplierRequest } from '@/services/supplier.service'
 
 interface SupplierForm {
   name: string
   code: string
+  phoneCountryCode: string
   phone: string
   taxCode: string
   email: string
   website: string
   fax: string
   country: string
-  region: string
-  ward: string
+  region: string | null
+  provinceId: number | null
+  wardId: number | null
   address: string
+  status: 'active' | 'inactive'
   manager: string
   tagsInput: string
   tags: string[]
@@ -25,15 +31,18 @@ const router = useRouter()
 const form = ref<SupplierForm>({
   name: '',
   code: '',
+  phoneCountryCode: '+84',
   phone: '',
   taxCode: '',
   email: '',
   website: 'https://',
   fax: '',
   country: 'Vietnam',
-  region: '',
-  ward: '',
+  region: null,
+  provinceId: null,
+  wardId: null,
   address: '',
+  status: 'active',
   manager: 'Phạm Văn Toàn',
   tagsInput: '',
   tags: []
@@ -41,6 +50,7 @@ const form = ref<SupplierForm>({
 
 const submitting = ref(false)
 const touchedName = ref(false)
+const apiError = ref<string | null>(null)
 
 const nameError = computed(() => {
   if (!touchedName.value) return ''
@@ -50,15 +60,74 @@ const nameError = computed(() => {
 
 const isValid = computed(() => !nameError.value && form.value.name.trim().length > 0)
 
-function onSubmit() {
+// Locations composable for province/ward
+const { getProvinces, getWards } = useLocations()
+const selectedProvince = ref<Record<string, unknown> | null>(null)
+const selectedWard = ref<Record<string, unknown> | null>(null)
+
+type LocationGeneric = { id?: number | string, name?: string, code?: number | string, division_type?: string }
+function castLocationItems(list: unknown): Record<string, unknown>[] {
+  const arr = Array.isArray(list) ? (list as LocationGeneric[]) : []
+  return arr.map(it => ({ id: it.id, name: it.name, code: it.code, division_type: it.division_type }))
+}
+async function provinceFetch(search: string) {
+  const list = await getProvinces(search)
+  return castLocationItems(list)
+}
+async function wardFetch(search: string) {
+  const p = selectedProvince.value as { code?: string | number, id?: string | number } | null
+  const provinceCode = p?.code ?? p?.id ?? null
+  const list = await getWards(search, provinceCode as string | number | undefined)
+  return castLocationItems(list)
+}
+
+watch(selectedProvince, (v) => {
+  const keyed = v as { id?: number, code?: number | string, name?: string } | null
+  form.value.region = v ? String(keyed?.name ?? keyed?.code ?? keyed?.id ?? '') : null
+  form.value.provinceId = typeof keyed?.id === 'number' ? keyed?.id : null
+  selectedWard.value = null
+  form.value.wardId = null
+})
+watch(selectedWard, (w) => {
+  const keyed = w as { id?: number } | null
+  form.value.wardId = typeof keyed?.id === 'number' ? keyed?.id : null
+})
+
+async function onSubmit() {
   touchedName.value = true
-  if (!isValid.value) return
+  if (!isValid.value || submitting.value) return
   submitting.value = true
-  // TODO: Gọi API tạo mới nhà cung cấp (chưa có endpoint create trong service)
-  setTimeout(() => {
+  apiError.value = null
+  try {
+    const payload: CreateSupplierRequest = {
+      name: form.value.name.trim(),
+      code: form.value.code.trim() ? form.value.code.trim() : null,
+      phoneCountryCode: form.value.phoneCountryCode || null,
+      phone: form.value.phone.trim() ? form.value.phone.trim() : null,
+      email: form.value.email.trim() ? form.value.email.trim() : null,
+      address: form.value.address.trim() ? form.value.address.trim() : null,
+      country: form.value.country || null,
+      region: form.value.region,
+      provinceId: form.value.provinceId,
+      wardId: form.value.wardId,
+      taxCode: form.value.taxCode.trim() ? form.value.taxCode.trim() : null,
+      website: form.value.website.trim() ? form.value.website.trim() : null,
+      fax: form.value.fax.trim() ? form.value.fax.trim() : null,
+      status: form.value.status
+    }
+    const res = await supplierService.createSupplier(payload)
+    if (!res?.success) throw new Error(res?.message || 'Tạo nhà cung cấp thất bại')
+    {
+      const created = res?.data as unknown as { code?: string } | undefined
+      const createdCode = created?.code || payload.code
+      if (createdCode) router.push(`/suppliers/${createdCode}`)
+      else router.push('/suppliers')
+    }
+  } catch (e) {
+    apiError.value = e instanceof Error ? e.message : 'Lỗi không xác định'
+  } finally {
     submitting.value = false
-    router.push('/suppliers')
-  }, 800)
+  }
 }
 
 function addTagFromInput() {
@@ -145,8 +214,8 @@ function goBack() {
                     <label class="block text-xs font-medium text-gray-600 mb-1">Số điện thoại</label>
                     <div class="flex">
                       <div class="relative">
-                        <select class="h-9 pl-2 pr-7 text-sm rounded-l-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
-                          <option value="VN">
+                        <select v-model="form.phoneCountryCode" class="h-9 pl-2 pr-7 text-sm rounded-l-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none">
+                          <option value="+84">
                             🇻🇳 +84
                           </option>
                         </select>
@@ -217,6 +286,21 @@ function goBack() {
                       class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                   </div>
+                  <!-- Trạng thái -->
+                  <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Trạng thái</label>
+                    <select
+                      v-model="form.status"
+                      class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="active">
+                        Đang hoạt động
+                      </option>
+                      <option value="inactive">
+                        Ngưng hoạt động
+                      </option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </UPageCard>
@@ -237,38 +321,29 @@ function goBack() {
                     </select>
                   </div>
                   <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Khu vực</label>
-                    <select
-                      v-model="form.region"
-                      class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="" disabled>
-                        Chọn khu vực
-                      </option>
-                      <option>
-                        Hà Nội
-                      </option>
-                      <option>
-                        Hồ Chí Minh
-                      </option>
-                    </select>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Tỉnh/thành phố</label>
+                    <RemoteSearchSelect
+                      v-model="selectedProvince"
+                      :fetch-fn="provinceFetch"
+                      label-field="name"
+                      :get-item-key="item => (item.code ?? item.id) as (string | number)"
+                      placeholder="Chọn Tỉnh/thành"
+                      :clearable="true"
+                      :full-width="true"
+                    />
                   </div>
                   <div class="md:col-span-2">
                     <label class="block text-xs font-medium text-gray-600 mb-1">Phường xã</label>
-                    <select
-                      v-model="form.ward"
-                      class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="" disabled>
-                        Chọn Phường xã
-                      </option>
-                      <option>
-                        Phường 1
-                      </option>
-                      <option>
-                        Phường 2
-                      </option>
-                    </select>
+                    <RemoteSearchSelect
+                      v-model="selectedWard"
+                      :fetch-fn="wardFetch"
+                      label-field="name"
+                      :get-item-key="item => (item.code ?? item.id) as (string | number)"
+                      placeholder="Chọn Phường xã"
+                      :clearable="true"
+                      :full-width="true"
+                      :disabled="!selectedProvince"
+                    />
                   </div>
                   <div class="md:col-span-2">
                     <label class="block text-xs font-medium text-gray-600 mb-1">Địa chỉ cụ thể</label>
@@ -343,6 +418,9 @@ function goBack() {
 
         <!-- Submit -->
         <div class="flex justify-end mt-8 mb-4">
+          <div v-if="apiError" class="text-error text-sm mr-4 self-center">
+            {{ apiError }}
+          </div>
           <button
             type="button"
             class="px-6 h-10 rounded-md font-semibold text-sm disabled:opacity-60 disabled:cursor-not-allowed transition shadow-sm bg-primary-600 text-white hover:bg-primary-700"

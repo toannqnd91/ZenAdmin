@@ -78,6 +78,8 @@ export const API_ENDPOINTS = {
 
   // Supplier endpoints
   SUPPLIERS: '/Supplier/grid',
+  SUPPLIER_BY_ID: (id: number | string) => `/Supplier/${id}`,
+  SUPPLIER_CREATE: '/Supplier',
   // Customer endpoints
   CUSTOMERS_GRID: '/customers/grid',
   // External customer endpoints

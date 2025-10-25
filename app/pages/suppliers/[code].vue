@@ -15,8 +15,10 @@ const { getEndpoint } = useApiConfig()
 
 // View model for the page
 interface SupplierDetailVM {
+  id: number
   name: string
   code: string
+  slug: string
   status: 'active' | 'inactive'
   phone?: string | null
   email?: string | null
@@ -141,8 +143,10 @@ const fetchDetail = async () => {
     const d = response.data
     // Summary / header
     detail.value = {
+      id: d.supplier.id,
       name: d.supplier.name,
       code: d.supplier.code,
+      slug: d.supplier.slug,
       status: d.supplier.isPublished ? 'active' : 'inactive',
       phone: d.supplier.phone || null,
       email: d.supplier.email || null,
@@ -218,7 +222,7 @@ const supplierPayload = computed(() => ({
   status: detail.value?.status ?? 'active'
 }))
 
-function onSaveSupplier(payload: { name: string, code: string, phone?: string | null, country?: string | null, region?: string | null, ward?: string | null, address?: string | null, email?: string | null, status?: 'active' | 'inactive', taxCode?: string | null, website?: string | null, fax?: string | null }) {
+async function onSaveSupplier(payload: { name: string, code: string, phone?: string | null, country?: string | null, region?: string | null, ward?: string | null, address?: string | null, email?: string | null, status?: 'active' | 'inactive', taxCode?: string | null, website?: string | null, fax?: string | null }) {
   if (!detail.value) return
   detail.value.name = payload.name
   detail.value.code = payload.code
@@ -231,6 +235,8 @@ function onSaveSupplier(payload: { name: string, code: string, phone?: string | 
     region: payload.region ?? null,
     ward: payload.ward ?? null
   }
+  // Re-fetch full detail to ensure page state is up-to-date
+  await fetchDetail()
 }
 </script>
 
@@ -443,6 +449,8 @@ function onSaveSupplier(payload: { name: string, code: string, phone?: string | 
           <UpdateSupplierInfoModal
             v-model="showUpdateSupplier"
             :value="supplierPayload"
+            :supplier-id="detail?.id ?? null"
+            :slug="detail?.slug ?? null"
             @save="onSaveSupplier"
           />
         </template>
