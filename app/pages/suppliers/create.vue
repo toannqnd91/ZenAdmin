@@ -65,6 +65,32 @@ const { getProvinces, getWards } = useLocations()
 const selectedProvince = ref<Record<string, unknown> | null>(null)
 const selectedWard = ref<Record<string, unknown> | null>(null)
 
+// Status via RemoteSearchSelect
+const statusItems = [
+  { id: 'active', name: 'Đang hoạt động' },
+  { id: 'inactive', name: 'Ngưng hoạt động' }
+]
+const selectedStatus = ref<Record<string, unknown> | null>(statusItems.find(i => i.id === form.value.status) as unknown as Record<string, unknown>)
+async function statusFetch(search: string) {
+  const q = (search || '').toLowerCase()
+  const list = q ? statusItems.filter(s => s.name.toLowerCase().includes(q)) : statusItems
+  // Return as generic items already shaped
+  return list as unknown as Record<string, unknown>[]
+}
+function getStatusKey(item: Record<string, unknown>) {
+  const v = (item as { id?: string | number }).id
+  return typeof v === 'string' || typeof v === 'number' ? v : String(v ?? '')
+}
+watch(selectedStatus, (v) => {
+  const id = (v as { id?: string })?.id
+  if (id === 'active' || id === 'inactive') {
+    form.value.status = id
+  } else if (!v) {
+    // default on clear
+    form.value.status = 'active'
+  }
+})
+
 type LocationGeneric = { id?: number | string, name?: string, code?: number | string, division_type?: string }
 function castLocationItems(list: unknown): Record<string, unknown>[] {
   const arr = Array.isArray(list) ? (list as LocationGeneric[]) : []
@@ -91,6 +117,25 @@ watch(selectedProvince, (v) => {
 watch(selectedWard, (w) => {
   const keyed = w as { id?: number } | null
   form.value.wardId = typeof keyed?.id === 'number' ? keyed?.id : null
+})
+
+// Country via RemoteSearchSelect
+const countryItems = [
+  { id: 'Vietnam', name: 'Vietnam' }
+]
+const selectedCountry = ref<Record<string, unknown> | null>(countryItems.find(c => c.name === form.value.country) as unknown as Record<string, unknown>)
+async function countryFetch(search: string) {
+  const q = (search || '').toLowerCase()
+  const list = q ? countryItems.filter(c => c.name.toLowerCase().includes(q)) : countryItems
+  return list as unknown as Record<string, unknown>[]
+}
+function getCountryKey(item: Record<string, unknown>) {
+  const v = (item as { id?: string | number }).id
+  return typeof v === 'string' || typeof v === 'number' ? v : String(v ?? 'Vietnam')
+}
+watch(selectedCountry, (v) => {
+  const name = (v as { name?: string } | null)?.name
+  form.value.country = name || 'Vietnam'
 })
 
 async function onSubmit() {
@@ -289,17 +334,18 @@ function goBack() {
                   <!-- Trạng thái -->
                   <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Trạng thái</label>
-                    <select
-                      v-model="form.status"
-                      class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="active">
-                        Đang hoạt động
-                      </option>
-                      <option value="inactive">
-                        Ngưng hoạt động
-                      </option>
-                    </select>
+                    <RemoteSearchSelect
+                      v-model="selectedStatus"
+                      :fetch-fn="statusFetch"
+                      label-field="name"
+                      :get-item-key="getStatusKey"
+                      placeholder="Chọn trạng thái"
+                      :clearable="true"
+                      :full-width="true"
+                      searchable
+                      search-in-trigger
+                      :dropdown-max-height="320"
+                    />
                   </div>
                 </div>
               </div>
@@ -311,14 +357,18 @@ function goBack() {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Quốc gia</label>
-                    <select
-                      v-model="form.country"
-                      class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option>
-                        Vietnam
-                      </option>
-                    </select>
+                    <RemoteSearchSelect
+                      v-model="selectedCountry"
+                      :fetch-fn="countryFetch"
+                      label-field="name"
+                      :get-item-key="getCountryKey"
+                      placeholder="Chọn quốc gia"
+                      :clearable="true"
+                      :full-width="true"
+                      searchable
+                      search-in-trigger
+                      :dropdown-max-height="320"
+                    />
                   </div>
                   <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Tỉnh/thành phố</label>
@@ -387,7 +437,6 @@ function goBack() {
                 </template>
               </BaseCardHeader>
               <div class="-mx-6 px-6">
-                <label class="block text-xs font-medium text-gray-600 mb-1">Tag</label>
                 <input
                   v-model="form.tagsInput"
                   type="text"
