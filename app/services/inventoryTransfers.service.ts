@@ -46,6 +46,11 @@ export class InventoryTransfersService extends BaseService {
   async getByCode(code: string) {
     return this.get<InventoryTransferDetailDTO>(API_ENDPOINTS.INVENTORY_TRANSFER_BY_CODE(code))
   }
+
+  // Update status by code
+  async updateStatus(code: string, payload: { status: number, strictFifo?: boolean, rollbackAll?: boolean }) {
+    return this.post<{ success: boolean } | null>(API_ENDPOINTS.INVENTORY_TRANSFER_UPDATE_STATUS(code), payload)
+  }
 }
 
 // Separated types (exportable if needed elsewhere)

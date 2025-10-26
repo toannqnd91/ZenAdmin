@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import type { DropdownMenuItem } from '@nuxt/ui'
 import { useRoute, useRouter } from 'vue-router'
 
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
@@ -42,6 +43,7 @@ type TimelineEntry = TimelineComment | TimelineActivity
 
 interface TransferDetail {
   code: string
+  status: number
   statusLabel: string
   origin: { name: string, address?: string | null }
   destination: { name: string, address?: string | null }
@@ -56,14 +58,41 @@ interface TransferDetail {
 const detail = ref<TransferDetail | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const statusUpdating = ref(false)
+const statusError = ref<string | null>(null)
 // Keep a snapshot of the original items (by id and qty) to detect changes
 const originalItemsSnapshot = ref<Array<{ id: string | number, qty: number }>>([])
-// Dropdown items for status actions (per design)
-const statusMenuItems = [
-  { label: 'Sẵn sàng', value: 'ready' },
-  { label: 'Đang xử lý', value: 'in-progress' },
-  { label: 'Đã chuyển', value: 'transferred' }
-]
+// Status constants
+const ALL_STATUS = [
+  { code: 1, label: 'Sẵn sàng' },
+  { code: 2, label: 'Đang xử lý' },
+  { code: 3, label: 'Đã chuyển' }
+] as const
+
+// Primary action for split-button: next logical status
+const primaryAction = computed(() => {
+  const s = detail.value?.status ?? 0
+  if (s <= 0) return ALL_STATUS[0]
+  if (s === 1) return ALL_STATUS[1]
+  if (s === 2) return ALL_STATUS[2]
+  // When already transferred, keep last as label and disable action
+  return ALL_STATUS[2]
+})
+
+// Dropdown items exclude current status and primary action
+const statusMenuItems = computed<DropdownMenuItem[]>(() => {
+  const current = detail.value?.status ?? 0
+  return ALL_STATUS
+    .filter(a => a.code !== current && a.code !== primaryAction.value.code)
+    .map(a => ({
+      label: a.label,
+      disabled: statusUpdating.value,
+      onSelect: (e: Event) => {
+        e?.preventDefault?.()
+        onStatusAction(a)
+      }
+    }))
+})
 
 function formatDate(iso: string) {
   if (!iso) return ''
@@ -97,6 +126,7 @@ async function loadDetail() {
     const items: InventoryTransferItemDTO[] = Array.isArray(d.items) ? d.items : []
     detail.value = {
       code: String(d.transferCode || code.value),
+      status: Number(d.status || 0),
       statusLabel: String(d.statusText || ''),
       origin: { name: String(d.originName || ''), address: null },
       destination: { name: String(d.destinationName || ''), address: null },
@@ -155,6 +185,9 @@ const historyLike = computed(() => {
   }))
 })
 
+// Whether transfer is completed (hide actions)
+const isTransferred = computed(() => (detail.value?.status ?? 0) === 3)
+
 function goBack() {
   router.push('/stock-transfers')
 }
@@ -190,13 +223,39 @@ function saveChanges() {
   // After successful save, refresh snapshot to current state
   originalItemsSnapshot.value = detail.value.items.map(it => ({ id: it.id, qty: it.qty }))
 }
-
-function onStatusSelect(item: { value?: string } | null) {
-  if (!item) return
-  const action = typeof item.value === 'string' ? item.value : null
-  if (!action || !detail.value) return
-  const payload = { code: detail.value.code, action }
-  console.log('Status action selected', payload)
+const toast = useToast()
+function onStatusAction(a: { label: string, code: number }) {
+  if (statusUpdating.value || !detail.value) return
+  if (detail.value.status === a.code) return
+  statusUpdating.value = true
+  statusError.value = null
+  const currentCode = detail.value.code
+  const body = { status: a.code, strictFifo: false, rollbackAll: false }
+  ;(async () => {
+    try {
+      const res = await inventoryTransfersService.updateStatus(currentCode, body)
+      if (!res?.success) throw new Error(res?.message || 'Cập nhật trạng thái thất bại')
+      if (detail.value) {
+        detail.value.status = a.code
+        detail.value.statusLabel = a.label
+        const activity: TimelineActivity = {
+          id: `act-${Date.now()}`,
+          type: 'activity',
+          createdAt: new Date().toISOString(),
+          title: `Cập nhật trạng thái: ${a.label}`
+        }
+        detail.value.timeline.unshift(activity)
+      }
+      toast.add({ title: 'Đã cập nhật trạng thái', description: a.label, color: 'success' })
+    } catch (e) {
+      const err = e as { message?: string }
+      statusError.value = err?.message || 'Không thể cập nhật trạng thái'
+      toast.add({ title: 'Cập nhật trạng thái thất bại', description: statusError.value, color: 'error' })
+      console.error('Update status failed', err)
+    } finally {
+      statusUpdating.value = false
+    }
+  })()
 }
 </script>
 
@@ -237,6 +296,7 @@ function onStatusSelect(item: { value?: string } | null) {
         <template #right>
           <div class="flex items-center gap-2">
             <button
+              v-if="!isTransferred"
               class="h-8 px-4 rounded-md text-sm font-medium"
               :class="hasChanges ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed'"
               :disabled="!hasChanges"
@@ -244,16 +304,33 @@ function onStatusSelect(item: { value?: string } | null) {
             >
               Lưu
             </button>
-            <UDropdownMenu :items="statusMenuItems" :popper="{ placement: 'bottom-end' }" @select="onStatusSelect">
+            <div v-if="!isTransferred" class="inline-flex items-stretch">
               <UButton
-                label="Thao tác"
+                :label="primaryAction.label"
                 color="neutral"
                 variant="solid"
                 size="sm"
-                class="h-8 px-4 rounded-md bg-gray-900 text-white hover:bg-gray-800"
-                trailing-icon="i-heroicons-chevron-down-20-solid"
+                class="h-8 px-4 rounded-l-md rounded-r-none bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-70 disabled:cursor-not-allowed"
+                :loading="statusUpdating"
+                :disabled="statusUpdating || (detail?.status === primaryAction.code)"
+                @click="onStatusAction(primaryAction)"
               />
-            </UDropdownMenu>
+
+              <UDropdownMenu :items="statusMenuItems" :popper="{ placement: 'bottom-end' }">
+                <UButton
+                  color="neutral"
+                  variant="solid"
+                  size="sm"
+                  icon="i-heroicons-chevron-down-20-solid"
+                  class="h-8 px-3 -ml-px rounded-l-none rounded-r-md bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-70 disabled:cursor-not-allowed"
+                  :disabled="statusUpdating || statusMenuItems.length === 0"
+                />
+              </UDropdownMenu>
+            </div>
+            <div v-else class="inline-flex items-stretch">
+              <!-- When transferred, hide actions; keep space minimal or show nothing -->
+            </div>
+            <div v-if="statusError" class="text-xs text-red-600 ml-2">{{ statusError }}</div>
           </div>
         </template>
       </UDashboardNavbar>
@@ -504,7 +581,7 @@ function onStatusSelect(item: { value?: string } | null) {
           </div>
         </div>
 
-        <div class="flex items-center justify-end mt-8 border-t border-transparent pt-4">
+        <div v-if="!isTransferred" class="flex items-center justify-end mt-8 border-t border-transparent pt-4">
           <button
             class="h-9 px-5 rounded-md text-sm font-medium"
             :class="hasChanges ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed'"
