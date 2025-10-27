@@ -2,6 +2,9 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import OrdersTable from '@/components/orders/OrdersTable.vue'
 import { ordersService } from '@/services/orders.service'
+import WarehouseSwitcher from '@/components/WarehouseSwitcher.vue'
+import type { WarehouseOption } from '@/components/WarehouseSwitcher.vue'
+import { useGlobalWarehouse } from '@/composables/useWarehouse'
 
 interface OrderCounts {
   all: number
@@ -114,6 +117,26 @@ const totalRecords = ref(0)
 const totalPages = computed(() => Math.ceil(totalRecords.value / pagination.value.pageSize) || 1)
 const loading = ref(false)
 
+// Global warehouse state binding for header switcher
+const { selectedWarehouse: globalWarehouse, setWarehouse } = useGlobalWarehouse()
+const selectedBranch = computed<WarehouseOption | null>({
+  get() {
+    const sw = globalWarehouse.value
+    if (sw && sw.id !== null && sw.id !== undefined && String(sw.id).trim() !== '') {
+      return { id: sw.id, name: sw.name }
+    }
+    return { id: null, name: 'Tất cả chi nhánh' }
+  },
+  set(v) {
+    if (!v) {
+      setWarehouse(null)
+      return
+    }
+    const id = v.id == null ? null : (typeof v.id === 'number' ? v.id : Number(v.id))
+    setWarehouse({ id, name: v.name })
+  }
+})
+
 function onTabChange(val: string) {
   currentTab.value = val
   pagination.value.pageIndex = 0 // reset to first page
@@ -217,6 +240,11 @@ watch(q, () => {
   pagination.value.pageIndex = 0
   searchDebounce = setTimeout(() => fetchOrders(), 400)
 })
+// Refetch when global warehouse changes
+watch(() => globalWarehouse.value?.id, () => {
+  pagination.value.pageIndex = 0
+  fetchOrders()
+})
 </script>
 
 <template>
@@ -225,6 +253,13 @@ watch(q, () => {
       <UDashboardNavbar title="Đơn hàng">
         <template #leading>
           <UDashboardSidebarCollapse />
+        </template>
+        <template #right>
+          <WarehouseSwitcher
+            v-model="selectedBranch"
+            :borderless="true"
+            :auto-width="true"
+          />
         </template>
       </UDashboardNavbar>
     </template>
