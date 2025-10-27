@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { useProductsService } from '@/composables/useProductsService'
+import type { WarehouseOption } from '@/components/WarehouseSwitcher.vue'
+import { useGlobalWarehouse } from '@/composables/useWarehouse'
 
 const { isNotificationsSlideoverOpen } = useDashboard()
 
 const {
   q,
+  warehouseId,
   rowSelection,
   pagination,
   products,
@@ -16,6 +19,31 @@ const {
   totalPages,
   totalRecords
 } = useProductsService()
+
+// Bind WarehouseSwitcher to global warehouse selection and sync to products filter
+const { selectedWarehouse: globalWarehouse, setWarehouse } = useGlobalWarehouse()
+
+const selectedWarehouse = computed<WarehouseOption | null>({
+  get() {
+    const sw = globalWarehouse.value
+    if (sw && sw.id !== null && sw.id !== undefined && String(sw.id).trim() !== '') {
+      return { id: sw.id, name: sw.name }
+    }
+    return { id: null, name: 'Tất cả chi nhánh' }
+  },
+  set(v) {
+    if (!v) {
+      setWarehouse(null)
+      return
+    }
+    const id = v.id == null ? null : (typeof v.id === 'number' ? v.id : Number(v.id))
+    setWarehouse({ id, name: v.name })
+  }
+})
+
+watch(selectedWarehouse, (val) => {
+  warehouseId.value = val?.id ?? null
+})
 
 const onRowCopyId = (id: string | number) => {
   try {
@@ -65,6 +93,12 @@ async function onRowMultiDelete(ids: (string | number)[]) {
         </template>
 
         <template #right>
+          <WarehouseSwitcher
+            v-model="selectedWarehouse"
+            :borderless="true"
+            :auto-width="true"
+            class="mr-2"
+          />
           <UColorModeButton />
           <UTooltip text="Notifications" :shortcuts="['N']">
             <UButton

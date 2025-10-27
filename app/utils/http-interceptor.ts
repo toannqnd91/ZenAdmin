@@ -6,7 +6,7 @@ import { getApiEndpoints } from '@/utils/api'
  */
 export class HttpInterceptor {
   private isRefreshing = false
-  private refreshPromise: Promise<any> | null = null
+  private refreshPromise: Promise<unknown> | null = null
 
   async request(url: string, options: RequestInit = {}): Promise<Response> {
     // Add auth headers
@@ -41,6 +41,23 @@ export class HttpInterceptor {
     }
 
     try {
+      // Add WarehouseId header from global selection or cookie
+      try {
+        const sel = useState<{ id: string | number | null } | null>('global-warehouse')
+        const wid = sel?.value?.id
+        if (wid !== null && wid !== undefined && String(wid).trim() !== '') {
+          headers.set('WarehouseId', String(wid))
+        } else {
+          // fallback to cookie if state not initialized
+          const widCookie = useCookie('warehouse_id')
+          if (widCookie?.value && widCookie.value !== 'null' && widCookie.value !== 'undefined') {
+            headers.set('WarehouseId', String(widCookie.value))
+          }
+        }
+      } catch {
+        // ignore header set errors
+      }
+
       // Get access token from cookie (consistent with useAuth)
       const accessTokenCookie = useCookie('access_token')
       if (accessTokenCookie.value) {
@@ -115,9 +132,9 @@ export class HttpInterceptor {
       throw new Error('Token refresh failed')
     }
 
-    const data: ApiResponse<any> = await response.json()
+    const data: ApiResponse<{ accessToken: string, refreshToken?: string | null }> = await response.json()
 
-    if (!data.success) {
+    if (!data.success || !data.data) {
       throw new Error(data.message)
     }
 

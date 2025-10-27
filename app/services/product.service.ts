@@ -58,6 +58,7 @@ export class ProductService extends BaseService {
   async getProducts(options?: {
     search?: string
     categoryId?: number
+    warehouseId?: number | string | null
     hasOptions?: boolean
     pagination?: { start: number, number: number }
     sort?: { field: string, reverse: boolean }
@@ -65,6 +66,7 @@ export class ProductService extends BaseService {
     const searchObj: Record<string, unknown> = {
       Name: options?.search ?? null,
       CategoryId: options?.categoryId ?? null,
+      WarehouseId: options?.warehouseId ?? null,
       // Luôn gửi HasOptions; mặc định true nếu không truyền vào để phù hợp yêu cầu
       HasOptions: typeof options?.hasOptions !== 'undefined' ? options.hasOptions : true
     }
@@ -114,8 +116,8 @@ export class ProductService extends BaseService {
   /**
    * Quick create product (for AddProductModal)
    */
-  async createQuickProduct(data: any) {
-    return this.post<any>(API_ENDPOINTS.PRODUCT_QUICK_CREATE, data)
+  async createQuickProduct(data: unknown) {
+    return this.post<unknown>(API_ENDPOINTS.PRODUCT_QUICK_CREATE, data)
   }
 
   /**

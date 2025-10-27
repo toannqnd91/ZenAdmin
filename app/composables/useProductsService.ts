@@ -10,6 +10,7 @@ export const useProductsService = () => {
 
   // Reactive state
   const q = ref('')
+  const warehouseId = ref<number | string | null>(null)
   const rowSelection = ref({})
   const pagination = ref({
     pageIndex: 0,
@@ -57,6 +58,7 @@ export const useProductsService = () => {
   async function fetchProducts(options?: {
     search?: string
     categoryId?: number
+    warehouseId?: number | string | null
     hasOptions?: boolean
     pagination?: { start: number, number: number }
     sort?: { field: string, reverse: boolean }
@@ -270,11 +272,12 @@ export const useProductsService = () => {
 
   // Watch search query and pagination and refetch
   watch(
-    [q, pagination],
+    [q, pagination, warehouseId],
     () => {
       const searchValue = unref(q)
       fetchProducts({
         search: searchValue,
+        warehouseId: unref(warehouseId),
         pagination: {
           start: pagination.value.pageIndex * pagination.value.pageSize,
           number: pagination.value.pageSize
@@ -297,6 +300,7 @@ export const useProductsService = () => {
   return {
     // Data
     q,
+    warehouseId,
     rowSelection,
     pagination,
     totalRecords: computed(() => totalRecords.value),

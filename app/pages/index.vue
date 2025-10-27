@@ -8,6 +8,8 @@ import { useAuthService } from '~/composables/useAuthService'
 import TrialBanner from '@/components/home/TrialBanner.vue'
 import OverviewLineChart from '@/components/home/OverviewLineChart.vue'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
+import WarehouseSwitcher from '@/components/WarehouseSwitcher.vue'
+import { useGlobalWarehouse } from '@/composables/useWarehouse'
 import { orderSourceService } from '@/services/order-source.service'
 import type { OrderSourceItem } from '@/services/order-source.service'
 import { warehouseService } from '@/services/warehouse.service'
@@ -97,7 +99,26 @@ const selectedOrderSource = ref<OrderSourceItem | typeof allSource | null>(allSo
 
 // Branch selection (chi nhánh) similar pattern with 'Tất cả chi nhánh'
 const allBranch: BranchItem = { id: null, name: 'Tất cả chi nhánh', code: 'ALL_BRANCH' }
-const selectedBranch = ref<BranchItem | null>(allBranch)
+const { selectedWarehouse, setWarehouse } = useGlobalWarehouse()
+// Bind dashboard branch selection to global warehouse selection
+const selectedBranch = computed({
+  get(): BranchItem | null {
+    const sw = selectedWarehouse.value
+    if (sw && sw.id !== null && sw.id !== undefined && String(sw.id).trim() !== '') {
+      const numericId = typeof sw.id === 'number' ? sw.id : Number(sw.id)
+      return { id: Number.isNaN(numericId) ? null : numericId, name: sw.name }
+    }
+    return allBranch
+  },
+  set(v: BranchItem | null) {
+    if (!v) {
+      setWarehouse(null)
+      return
+    }
+    const id = v.id == null ? null : (typeof v.id === 'number' ? v.id : Number(v.id))
+    setWarehouse({ id, name: v.name || '' })
+  }
+})
 
 // Overview statistics state
 const overviewLoading = ref(false)
@@ -187,7 +208,7 @@ async function fetchBranches(search: string) {
 }
 
 function onClearBranch() {
-  selectedBranch.value = allBranch
+  setWarehouse(null)
 }
 
 async function fetchOrderSources(search: string) {
@@ -280,6 +301,8 @@ watch(selectedOrderSource, (val) => {
         </template>
 
         <template #right>
+          <!-- Global warehouse switcher (reusable) -->
+          <WarehouseSwitcher v-model="selectedBranch" />
           <UColorModeButton />
           <UTooltip text="Notifications" :shortcuts="['N']">
             <UButton
