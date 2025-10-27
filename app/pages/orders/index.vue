@@ -245,12 +245,15 @@ watch(() => globalWarehouse.value?.id, () => {
   pagination.value.pageIndex = 0
   fetchOrders()
 })
+
+// Navbar notifications toggle from dashboard store (standardized across pages)
+const { isNotificationsSlideoverOpen } = useDashboard()
 </script>
 
 <template>
   <UDashboardPanel id="orders">
     <template #header>
-      <UDashboardNavbar title="Đơn hàng">
+      <UDashboardNavbar title="Đơn hàng" :ui="{ right: 'gap-3' }">
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
@@ -260,6 +263,20 @@ watch(() => globalWarehouse.value?.id, () => {
             :borderless="true"
             :auto-width="true"
           />
+          <div class="h-5 w-px bg-gray-200 mx-2" />
+          <UColorModeButton />
+          <UTooltip text="Notifications" :shortcuts="['N']">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              square
+              @click="isNotificationsSlideoverOpen = true"
+            >
+              <UChip color="error" inset>
+                <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
+              </UChip>
+            </UButton>
+          </UTooltip>
         </template>
       </UDashboardNavbar>
     </template>

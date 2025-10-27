@@ -9,6 +9,9 @@ const {
   error
 } = useCollectionsService()
 
+// Standardized global controls (theme + notifications)
+const { isNotificationsSlideoverOpen } = useDashboard()
+
 // Additional reactive state for table
 const rowSelection = ref<Record<string, boolean>>({})
 const tablePagination = computed({
@@ -32,9 +35,25 @@ const handleDelete = (selectedIds: number[]) => {
 <template>
   <UDashboardPanel id="collections" class="flex flex-col h-full">
     <template #header>
-      <UDashboardNavbar title="Bộ sưu tập">
+      <UDashboardNavbar title="Bộ sưu tập" :ui="{ right: 'gap-3' }">
         <template #leading>
           <UDashboardSidebarCollapse />
+        </template>
+        <template #right>
+          <div class="h-5 w-px bg-gray-200 mx-2" />
+          <UColorModeButton />
+          <UTooltip text="Notifications" :shortcuts="['N']">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              square
+              @click="isNotificationsSlideoverOpen = true"
+            >
+              <UChip color="error" inset>
+                <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
+              </UChip>
+            </UButton>
+          </UTooltip>
         </template>
       </UDashboardNavbar>
     </template>

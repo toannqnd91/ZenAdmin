@@ -6,19 +6,37 @@ const { data, loading, error } = useProductsCategoriesService()
 const q = ref('')
 const rowSelection = ref<Record<string, boolean>>({})
 const pagination = ref({ pageIndex: 0, pageSize: 10 })
+
+// Global notifications slideover + color mode (standardized header controls)
+const { isNotificationsSlideoverOpen } = useDashboard()
 </script>
 
 <template>
   <UDashboardPanel id="products-categories">
     <template #header>
-      <UDashboardNavbar title="Danh mục sản phẩm">
+      <UDashboardNavbar title="Danh mục sản phẩm" :ui="{ right: 'gap-3' }">
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
+        <template #right>
+          <!-- Divider before global controls -->
+          <div class="h-5 w-px bg-gray-200 mx-2" />
 
-        <!-- <template #right>
-          <ProductsCategoriesAddModal />
-        </template> -->
+          <!-- Color mode + notifications -->
+          <UColorModeButton />
+          <UTooltip text="Notifications" :shortcuts="['N']">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              square
+              @click="isNotificationsSlideoverOpen = true"
+            >
+              <UChip color="error" inset>
+                <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
+              </UChip>
+            </UButton>
+          </UTooltip>
+        </template>
       </UDashboardNavbar>
     </template>
 

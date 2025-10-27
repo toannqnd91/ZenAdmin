@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import SettingsSidebar from '@/components/SettingsSidebar.vue'
+ 
+const { isNotificationsSlideoverOpen } = useDashboard()
 </script>
 
 <template>
@@ -8,9 +10,26 @@ import SettingsSidebar from '@/components/SettingsSidebar.vue'
     :ui="{ root: 'min-h-[100dvh] flex flex-col', body: 'settings-scroll flex-1' }"
   >
     <template #header>
-      <UDashboardNavbar title="Cài đặt">
+      <UDashboardNavbar title="Cài đặt" :ui="{ right: 'gap-3' }">
         <template #leading>
           <UDashboardSidebarCollapse />
+        </template>
+        <template #right>
+          <div class="h-5 w-px bg-gray-200 mx-2" />
+
+          <UColorModeButton />
+          <UTooltip text="Notifications" :shortcuts="['N']">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              square
+              @click="isNotificationsSlideoverOpen = true"
+            >
+              <UChip color="error" inset>
+                <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
+              </UChip>
+            </UButton>
+          </UTooltip>
         </template>
       </UDashboardNavbar>
     </template>

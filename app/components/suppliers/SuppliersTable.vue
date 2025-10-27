@@ -10,7 +10,10 @@ interface Supplier {
   phone?: string | null
   email?: string | null
   address?: string | null
-  isPublished: boolean
+  // Backend may return either status/statusEnum or legacy isPublished
+  status?: string | null
+  statusEnum?: number | null
+  isPublished?: boolean
 }
 
 interface Props {
@@ -57,6 +60,16 @@ const columns: TableColumn[] = [
   }
 ]
 
+// Column widths align with the columns order above
+// Name (wider for readability), Phone (compact), Email (medium), Address (flex), Status (compact)
+const colWidths = [
+  '320px', // Tên nhà cung cấp
+  '140px', // Số điện thoại
+  '240px', // Email
+  '', // Địa chỉ (auto)
+  '120px' // Trạng thái
+]
+
 const addButton = {
   label: 'Thêm nhà cung cấp',
   href: '/suppliers/create'
@@ -73,16 +86,45 @@ const handleRowClick = (item: Record<string, unknown>) => {
 }
 
 const tableData = computed(() =>
-  props.data.map((s: Supplier) => ({
-    id: s.id,
-    code: s.code,
-    slug: s.slug,
-    name: s.name,
-    phone: s.phone,
-    email: s.email,
-    address: s.address,
-    isPublished: s.isPublished ? 'Đã xuất bản' : 'Nháp'
-  }))
+  props.data.map((s: Supplier) => {
+    const mapStatus = (ss: Supplier): { label: string, cls: string } => {
+      const raw = (ss.status || '').trim()
+      if (raw) {
+        const k = raw.toLowerCase()
+        if (k === 'active') return { label: 'Hoạt động', cls: 'text-green-600' }
+        if (k === 'inactive') return { label: 'Ngừng hoạt động', cls: 'text-gray-500' }
+        return { label: raw, cls: 'text-gray-700' }
+      }
+      if (typeof ss.statusEnum === 'number') {
+        // 1 -> Active, others -> Inactive (fallback)
+        return ss.statusEnum === 1
+          ? { label: 'Hoạt động', cls: 'text-green-600' }
+          : { label: 'Ngừng hoạt động', cls: 'text-gray-500' }
+      }
+      if (typeof ss.isPublished === 'boolean') {
+        return ss.isPublished
+          ? { label: 'Đã xuất bản', cls: 'text-green-600' }
+          : { label: 'Nháp', cls: 'text-gray-400' }
+      }
+      return { label: '-', cls: 'text-gray-400' }
+    }
+
+    const st = mapStatus(s)
+
+    const safe = (v: unknown) => v == null || v === '' ? '-' : v
+
+    return {
+      id: s.id,
+      code: s.code,
+      slug: s.slug,
+      name: safe(s.name) as string,
+      phone: safe(s.phone) as string,
+      email: safe(s.email) as string,
+      address: safe(s.address) as string,
+      statusLabel: st.label,
+      statusClass: st.cls
+    }
+  })
 )
 </script>
 
@@ -95,6 +137,7 @@ const tableData = computed(() =>
     :loading="loading"
     title="Nhà cung cấp"
     :columns="columns"
+    :col-widths="colWidths"
     :add-button="addButton"
     :row-click-handler="handleRowClick"
     search-placeholder="Tìm kiếm nhà cung cấp..."
@@ -104,8 +147,8 @@ const tableData = computed(() =>
     @delete="ids => emit('delete', ids)"
   >
     <template #column-isPublished="{ item }">
-      <span :class="item.isPublished === 'Đã xuất bản' ? 'text-green-600' : 'text-gray-400'">
-        {{ item.isPublished }}
+      <span :class="item.statusClass">
+        {{ item.statusLabel }}
       </span>
     </template>
   </BaseTable>

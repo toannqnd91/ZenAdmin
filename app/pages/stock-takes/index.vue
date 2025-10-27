@@ -5,6 +5,9 @@ import { useRouter } from 'vue-router'
 
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import BaseTable from '@/components/base/BaseTable.vue'
+import WarehouseSwitcher from '@/components/WarehouseSwitcher.vue'
+import type { WarehouseOption } from '@/components/WarehouseSwitcher.vue'
+import { useGlobalWarehouse } from '@/composables/useWarehouse'
 import { useApiConfig } from '@/composables/useApiConfig'
 import { useApiFetch } from '@/composables/useApiFetch'
 import type { ApiResponse } from '@/types/common'
@@ -29,12 +32,10 @@ const tabCounts = computed<TabDef[]>(() => [
 ])
 
 const q = ref('')
-interface WarehouseOption { id: number, name: string }
 interface StatusOption { code: string, name: string }
 interface DatePreset { value: string, label: string }
 type GenericItem = Record<string, unknown>
 
-const selectedWarehouse = ref<WarehouseOption | null>(null)
 const selectedStatus = ref<StatusOption | null>(null)
 const selectedDatePreset = ref<DatePreset | null>(null)
 
@@ -59,14 +60,7 @@ async function fetchStatuses(qs: string): Promise<GenericItem[]> {
   return (qq ? items.filter(i => i.name.toLowerCase().includes(qq) || i.code.includes(qq)) : items) as unknown as GenericItem[]
 }
 
-async function fetchWarehouses(qs: string): Promise<GenericItem[]> {
-  const items: WarehouseOption[] = [
-    { id: 1, name: 'Kho tổng' },
-    { id: 2, name: 'Kho chi nhánh' }
-  ]
-  const qq = (qs || '').toLowerCase()
-  return (qq ? items.filter(i => i.name.toLowerCase().includes(qq)) : items) as unknown as GenericItem[]
-}
+// Header warehouse switcher is global. Local warehouse select removed in filters.
 
 interface RowItem {
   id: string
@@ -180,6 +174,29 @@ interface GridData {
 
 const { getEndpoint } = useApiConfig()
 
+// Bind header WarehouseSwitcher to global warehouse selection (cookie-based filtering on API)
+const { selectedWarehouse: globalWarehouse, setWarehouse } = useGlobalWarehouse()
+const selectedHeaderWarehouse = computed<WarehouseOption | null>({
+  get() {
+    const sw = globalWarehouse.value
+    if (sw && sw.id !== null && sw.id !== undefined && String(sw.id).trim() !== '') {
+      return { id: sw.id, name: sw.name }
+    }
+    return { id: null, name: 'Tất cả chi nhánh' }
+  },
+  set(v) {
+    if (!v) {
+      setWarehouse(null)
+      return
+    }
+    const id = v.id == null ? null : (typeof v.id === 'number' ? v.id : Number(v.id))
+    setWarehouse({ id, name: v.name })
+  }
+})
+
+// Standardized notifications slideover state from dashboard store
+const { isNotificationsSlideoverOpen } = useDashboard()
+
 async function fetchGrid(_reset = false) {
   loading.value = true
   try {
@@ -249,7 +266,12 @@ watch(accessTokenCookie, (val) => {
     fetchGrid(true)
   }
 })
-watch([q, () => pagination.value.pageIndex, () => pagination.value.pageSize, selectedStatus, selectedWarehouse, selectedDatePreset], () => fetchGrid())
+watch([q, () => pagination.value.pageIndex, () => pagination.value.pageSize, selectedStatus, selectedDatePreset], () => fetchGrid())
+// Refetch when global warehouse changes
+watch(() => globalWarehouse.value?.id, () => {
+  pagination.value.pageIndex = 0
+  fetchGrid()
+})
 
 function goToDetail(code: string) {
   if (!code) return
@@ -264,25 +286,36 @@ function onTabChange(val: string) {
 <template>
   <UDashboardPanel id="stock-takes">
     <template #header>
-      <UDashboardNavbar title="Phiếu kiểm kho">
+      <UDashboardNavbar title="Phiếu kiểm kho" :ui="{ right: 'gap-3' }">
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
         <template #right>
-          <div class="flex items-center gap-2">
+          <UButton
+            label="Xuất file"
+            color="neutral"
+            variant="soft"
+            size="sm"
+          />
+          <WarehouseSwitcher
+            v-model="selectedHeaderWarehouse"
+            :borderless="true"
+            :auto-width="true"
+          />
+          <div class="h-5 w-px bg-gray-200 mx-2" />
+          <UColorModeButton />
+          <UTooltip text="Notifications" :shortcuts="['N']">
             <UButton
-              label="Xuất file"
               color="neutral"
-              variant="soft"
-              size="sm"
-            />
-            <UButton
-              label="Kho hàng"
-              color="neutral"
-              variant="soft"
-              size="sm"
-            />
-          </div>
+              variant="ghost"
+              square
+              @click="isNotificationsSlideoverOpen = true"
+            >
+              <UChip color="error" inset>
+                <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
+              </UChip>
+            </UButton>
+          </UTooltip>
         </template>
       </UDashboardNavbar>
     </template>
@@ -376,15 +409,6 @@ function onTabChange(val: string) {
                   label-field="label"
                   borderless
                   :trigger-class="'h-9 rounded-none border-r border-gray-200 min-w-[120px] px-3 flex-1'"
-                  clearable
-                />
-                <RemoteSearchSelect
-                  v-model="selectedWarehouse"
-                  :fetch-fn="fetchWarehouses"
-                  placeholder="Kho hàng"
-                  label-field="name"
-                  borderless
-                  :trigger-class="'h-9 rounded-none border-r border-gray-200 min-w-[140px] px-3 flex-1'"
                   clearable
                 />
                 <button

@@ -7,6 +7,7 @@ interface ProductCategory {
   name: string
   description?: string
   imageUrl?: string | null
+  productCount?: number
 }
 
 interface Props {
@@ -33,10 +34,27 @@ const columns: TableColumn[] = [
     class: 'py-3 text-left font-medium'
   },
   {
+    key: 'productCount',
+    label: 'Sản phẩm',
+    class: 'py-3 text-right font-medium pr-4',
+    align: 'right'
+  },
+  {
     key: 'description',
     label: 'Mô tả',
-    class: 'py-3 text-left font-medium'
+    class: 'py-3 text-right font-medium pr-6',
+    align: 'right'
   }
+]
+
+// Column widths align with the columns order above: [Tên danh mục, Sản phẩm, Mô tả]
+// - Name: wide enough for titles and thumbnail
+// - Product count: compact fixed width
+// - Description: flexible
+const colWidths = [
+  '350', // Tên danh mục
+  '150', // Sản phẩm
+  '150' // Mô tả (auto)
 ]
 
 const addButton = {
@@ -55,7 +73,8 @@ const tableData = computed(() =>
     id: c.id,
     name: c.name,
     description: c.description,
-    imageUrl: c.imageUrl
+    imageUrl: c.imageUrl,
+    productCount: typeof c.productCount === 'number' ? c.productCount : 0
   }))
 )
 </script>
@@ -69,6 +88,7 @@ const tableData = computed(() =>
     :loading="loading"
     title="Danh mục sản phẩm"
     :columns="columns"
+    :col-widths="colWidths"
     :add-button="addButton"
     :row-click-handler="handleRowClick"
     search-placeholder="Tìm kiếm danh mục..."
@@ -96,8 +116,15 @@ const tableData = computed(() =>
 
     <!-- Custom description column -->
     <template #column-description="{ item }">
-      <div class="text-sm text-gray-500">
+      <div class="text-sm text-gray-500 text-right pr-6">
         {{ (item as any).description || 'Không có mô tả' }}
+      </div>
+    </template>
+
+    <!-- Custom product count column (right aligned) -->
+    <template #column-productCount="{ item }">
+      <div class="text-sm text-gray-900 font-medium text-right pr-4 tabular-nums">
+        {{ (item as any).productCount ?? 0 }}
       </div>
     </template>
   </BaseTable>

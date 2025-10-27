@@ -6,6 +6,9 @@ import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import DamageItemsTable from '@/components/damage-items/DamageItemsTable.vue'
 import { damageItemsService } from '@/services/damage-items.service'
 import type { DamageItemsGridData } from '@/services/damage-items.service'
+import WarehouseSwitcher from '@/components/WarehouseSwitcher.vue'
+import type { WarehouseOption } from '@/components/WarehouseSwitcher.vue'
+import { useGlobalWarehouse } from '@/composables/useWarehouse'
 
 const router = useRouter()
 
@@ -29,7 +32,27 @@ const tabCounts = computed<TabDef[]>(() => [
 const q = ref('')
 const selectedStatus = ref(null)
 const selectedDatePreset = ref<{ value: string, label: string } | null>(null)
-const selectedWarehouse = ref(null)
+// Global header warehouse switcher (standardized across pages)
+const { isNotificationsSlideoverOpen } = useDashboard()
+const { selectedWarehouse: globalWarehouse, setWarehouse } = useGlobalWarehouse()
+const selectedHeaderWarehouse = computed<WarehouseOption | null>({
+  get() {
+    const sw = globalWarehouse.value
+    if (sw && sw.id !== null && sw.id !== undefined && String(sw.id).trim() !== '') {
+      return { id: sw.id, name: sw.name }
+    }
+    // Allow "Tất cả" as clear state for this page
+    return { id: null, name: 'Tất cả chi nhánh' }
+  },
+  set(v) {
+    if (!v) {
+      setWarehouse(null)
+      return
+    }
+    const id = v.id == null ? null : (typeof v.id === 'number' ? v.id : Number(v.id))
+    setWarehouse({ id, name: v.name })
+  }
+})
 
 async function fetchDatePresets(qs: string) {
   const items = [
@@ -52,13 +75,7 @@ async function fetchStatuses(qs: string) {
   return qq ? items.filter(i => i.name.toLowerCase().includes(qq) || i.code.includes(qq)) : items
 }
 
-async function fetchWarehouses(qs: string) {
-  const items = [
-    { id: 1, name: 'Cửa hàng chính' }
-  ]
-  const qq = (qs || '').toLowerCase()
-  return qq ? items.filter(i => i.name.toLowerCase().includes(qq)) : items
-}
+// Removed local warehouse filter – using global header WarehouseSwitcher
 
 interface DamageItemRow {
   id: string
@@ -108,13 +125,13 @@ async function fetchGrid(_reset = false) {
     const items = (data?.Items || []) as DamageItemsGridData['Items']
     totalRecords.value = data?.TotalRecord ?? 0
     rows.value = items.map(it => ({
-      id: String(it.Id ?? ''),
-      code: `DMG${String(it.Id ?? '').padStart(5, '0')}`,
-      date: formatDate(it.CreatedOn || ''),
-      warehouseName: it.WarehouseName || '',
-      statusLabel: mapStatusLabel(it.Status ?? null),
-      approvedOn: formatDate(it.ApprovedOn || ''),
-      createdByName: it.CreatedById || ''
+      id: String(it.id ?? ''),
+      code: `DMG${String(it.id ?? '').padStart(5, '0')}`,
+      date: formatDate(it.createdOn || ''),
+      warehouseName: it.warehouseName || '',
+      statusLabel: mapStatusLabel(it.status ?? null),
+      approvedOn: formatDate(it.approvedOn || ''),
+      createdByName: it.createdById || ''
     }))
   } catch (e) {
     console.error('fetch damage items grid failed', e)
@@ -129,6 +146,11 @@ onMounted(() => {
   fetchGrid(true)
 })
 watch([q, () => pagination.value.pageIndex, () => pagination.value.pageSize], () => fetchGrid())
+// Refetch when global warehouse changes (future: backend filter integration)
+watch(() => globalWarehouse.value?.id, () => {
+  pagination.value.pageIndex = 0
+  fetchGrid()
+})
 
 function goToCode(code: string) {
   if (!code) return
@@ -147,25 +169,42 @@ function onUpdatePagination(val: { pageIndex: number, pageSize: number }) {
 <template>
   <UDashboardPanel id="damage-items">
     <template #header>
-      <UDashboardNavbar title="Phiếu hủy hàng">
+      <UDashboardNavbar title="Phiếu hủy hàng" :ui="{ right: 'gap-3' }">
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
         <template #right>
-          <div class="flex items-center gap-2">
+          <UButton
+            label="Xuất file"
+            color="neutral"
+            variant="soft"
+            size="sm"
+          />
+          <WarehouseSwitcher
+            v-model="selectedHeaderWarehouse"
+            :include-all="true"
+            :clearable="true"
+            :borderless="true"
+            :auto-width="true"
+          />
+
+          <!-- Divider before global controls -->
+          <div class="h-5 w-px bg-gray-200 mx-2" />
+
+          <!-- Always keep these two at the far right: color mode + notifications -->
+          <UColorModeButton />
+          <UTooltip text="Notifications" :shortcuts="['N']">
             <UButton
-              label="Xuất file"
               color="neutral"
-              variant="soft"
-              size="sm"
-            />
-            <UButton
-              label="Kho hàng"
-              color="neutral"
-              variant="soft"
-              size="sm"
-            />
-          </div>
+              variant="ghost"
+              square
+              @click="isNotificationsSlideoverOpen = true"
+            >
+              <UChip color="error" inset>
+                <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
+              </UChip>
+            </UButton>
+          </UTooltip>
         </template>
       </UDashboardNavbar>
     </template>
@@ -247,15 +286,6 @@ function onUpdatePagination(val: { pageIndex: number, pageSize: number }) {
                   label-field="label"
                   borderless
                   :trigger-class="'h-9 rounded-none border-r border-gray-200 min-w-[120px] px-3 flex-1'"
-                  clearable
-                />
-                <RemoteSearchSelect
-                  v-model="selectedWarehouse"
-                  :fetch-fn="fetchWarehouses"
-                  placeholder="Kho hàng"
-                  label-field="name"
-                  borderless
-                  :trigger-class="'h-9 rounded-none border-r border-gray-200 min-w-[140px] px-3 flex-1'"
                   clearable
                 />
                 <button type="button" class="h-full px-4 inline-flex items-center gap-2 text-sm text-gray-700 hover:bg-gray-50 rounded-none">

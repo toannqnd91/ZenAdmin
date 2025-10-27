@@ -4,6 +4,8 @@ import { customersService } from '@/services'
 import CustomersTable from '@/components/customers/CustomersTable.vue'
 import type { CustomerItem } from '@/services/customers.service'
 
+const { isNotificationsSlideoverOpen } = useDashboard()
+
 const q = ref('')
 const rowSelection = ref<Record<string, boolean>>({})
 const pagination = ref({ pageIndex: 0, pageSize: 50 })
@@ -68,9 +70,25 @@ const tableData = computed(() => {
 <template>
   <UDashboardPanel id="customers">
     <template #header>
-      <UDashboardNavbar title="Customers">
+      <UDashboardNavbar title="Customers" :ui="{ right: 'gap-3' }">
         <template #leading>
           <UDashboardSidebarCollapse />
+        </template>
+        <template #right>
+          <div class="h-5 w-px bg-gray-200 mx-2" />
+          <UColorModeButton />
+          <UTooltip text="Notifications" :shortcuts="['N']">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              square
+              @click="isNotificationsSlideoverOpen = true"
+            >
+              <UChip color="error" inset>
+                <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
+              </UChip>
+            </UButton>
+          </UTooltip>
         </template>
       </UDashboardNavbar>
     </template>

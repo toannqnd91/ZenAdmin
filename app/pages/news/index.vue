@@ -12,8 +12,11 @@ const {
   deleteNewsMulti,
   pagination,
   totalPages,
-  totalRecords
+  totalRecords,
+  fetchNews
 } = await useNewsService()
+
+const { isNotificationsSlideoverOpen } = useDashboard()
 
 // For compatibility with existing NewsTable component
 // Transform service data to match NewsTable expected format
@@ -92,9 +95,28 @@ async function onRowMultiDelete(ids: (string | number)[]) {
 <template>
   <UDashboardPanel id="news" class="flex flex-col h-full">
     <template #header>
-      <UDashboardNavbar title="Tin tức">
+      <UDashboardNavbar title="Tin tức" :ui="{ right: 'gap-3' }">
         <template #leading>
           <UDashboardSidebarCollapse />
+        </template>
+        <template #right>
+          <!-- Divider before global controls -->
+          <div class="h-5 w-px bg-gray-200 mx-2" />
+
+          <!-- Color mode + notifications -->
+          <UColorModeButton />
+          <UTooltip text="Notifications" :shortcuts="['N']">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              square
+              @click="isNotificationsSlideoverOpen = true"
+            >
+              <UChip color="error" inset>
+                <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
+              </UChip>
+            </UButton>
+          </UTooltip>
         </template>
       </UDashboardNavbar>
     </template>

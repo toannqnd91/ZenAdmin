@@ -11,6 +11,7 @@ export interface ProductCategory {
   parentId?: number
   categories: ProductCategory[]
   imageUrl?: string
+  productCount?: number
 }
 
 export interface ProductCategoriesApiResponse {

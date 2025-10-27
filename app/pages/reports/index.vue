@@ -4,8 +4,9 @@ import OverviewLineChart from '@/components/home/OverviewLineChart.vue'
 import TopHorizontalBar from '@/components/home/top/TopHorizontalBar.vue'
 import type { OverviewChartPoint } from '@/services/statistics.service'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
-import { warehouseService } from '@/services/warehouse.service'
-import type { WarehouseItem } from '@/services/warehouse.service'
+// No warehouse selector on this page per spec
+
+const { isNotificationsSlideoverOpen } = useDashboard()
 
 // Period filter options (restored)
 interface PeriodOption {
@@ -27,31 +28,7 @@ function fetchPeriods(search: string) {
   return Promise.resolve(q ? periodOptions.filter(p => p.label.toLowerCase().includes(q)) : periodOptions)
 }
 
-// Branch (warehouse) filter (restored)
-interface BranchOption {
-  id: number | null
-  name: string
-  code?: string
-  isDefault?: boolean
-  [k: string]: unknown
-}
-const allBranch: BranchOption = { id: null, name: 'Tất cả chi nhánh' }
-const selectedBranch = ref<BranchOption | null>(allBranch)
-async function fetchBranches(search: string) {
-  try {
-    const res = await warehouseService.getWarehouses()
-    const list: WarehouseItem[] = Array.isArray(res?.data) ? res.data : []
-    const mapped: BranchOption[] = list.map(w => ({ id: w.id, name: w.name, code: undefined, isDefault: w.isDefault }))
-    const lower = (search || '').toLowerCase()
-    const filtered = lower ? mapped.filter(b => b.name.toLowerCase().includes(lower)) : mapped
-    return [allBranch, ...filtered]
-  } catch {
-    return [allBranch]
-  }
-}
-function onClearBranch() {
-  selectedBranch.value = allBranch
-}
+// Removed branch selector entirely
 
 // KPI metrics (placeholder demo; integrate real API if needed)
 interface MetricCard {
@@ -157,7 +134,7 @@ onMounted(() => {
   loadTopLists()
 })
 
-watch([selectedPeriod, selectedBranch], () => {
+watch(selectedPeriod, () => {
   loadChart()
   loadTopLists()
 })
@@ -166,7 +143,24 @@ watch([selectedPeriod, selectedBranch], () => {
 <template>
   <UDashboardPanel id="reports-overview">
     <template #header>
-      <UDashboardNavbar title="Tổng quan báo cáo" />
+      <UDashboardNavbar title="Tổng quan báo cáo" :ui="{ right: 'gap-3' }">
+        <template #right>
+          <div class="h-5 w-px bg-gray-200 mx-2" />
+          <UColorModeButton />
+          <UTooltip text="Notifications" :shortcuts="['N']">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              square
+              @click="isNotificationsSlideoverOpen = true"
+            >
+              <UChip color="error" inset>
+                <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
+              </UChip>
+            </UButton>
+          </UTooltip>
+        </template>
+      </UDashboardNavbar>
     </template>
     <template #body>
       <div class="space-y-6">
@@ -205,18 +199,6 @@ watch([selectedPeriod, selectedBranch], () => {
             borderless
             dropdown-max-height="180px"
             style="background: #ffffff; border-radius: 5px;"
-          />
-          <RemoteSearchSelect
-            v-model="selectedBranch"
-            :fetch-fn="fetchBranches"
-            placeholder="Tất cả chi nhánh"
-            label-field="name"
-            :searchable="false"
-            :clearable="selectedBranch?.id !== null"
-            :auto-width="true"
-            borderless
-            style="background: #ffffff; border-radius: 5px;"
-            @clear="onClearBranch"
           />
         </div>
 

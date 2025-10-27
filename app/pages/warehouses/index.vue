@@ -11,6 +11,9 @@ const warehouses = ref<WarehouseItem[]>([])
 const q = ref('')
 const rowSelection = ref<Record<string, boolean>>({})
 
+// Global dashboard state (notifications slideover, theme button)
+const { isNotificationsSlideoverOpen } = useDashboard()
+
 const columns = [
   { key: 'name', label: 'Tên kho' },
   { key: 'createdOn', label: 'Ngày tạo' },
@@ -53,11 +56,29 @@ function onWarehouseSaved(w: { id: string | number, name: string }) {
 <template>
     <UDashboardPanel id="warehouses" class="flex flex-col h-full">
         <template #header>
-            <UDashboardNavbar title="Chi nhánh / kho hàng">
+            <UDashboardNavbar title="Chi nhánh / kho hàng" :ui="{ right: 'gap-3' }">
                 <template #leading>
                     <UDashboardSidebarCollapse />
                 </template>
-                <!-- Có thể thêm các nút/phím tắt ở đây nếu cần -->
+                <template #right>
+                    <!-- Divider before global controls (kept for consistent spacing) -->
+                    <div class="h-5 w-px bg-gray-200 mx-2" />
+
+                    <!-- Always keep these two at the far right: color mode + notifications -->
+                    <UColorModeButton />
+                    <UTooltip text="Notifications" :shortcuts="['N']">
+                        <UButton
+                            color="neutral"
+                            variant="ghost"
+                            square
+                            @click="isNotificationsSlideoverOpen = true"
+                        >
+                            <UChip color="error" inset>
+                                <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
+                            </UChip>
+                        </UButton>
+                    </UTooltip>
+                </template>
             </UDashboardNavbar>
         </template>
         <template #body>
