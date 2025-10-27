@@ -5,6 +5,9 @@ import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import CashFlowTable from '@/components/cash-flow/CashFlowTable.vue'
 import { cashBookService } from '@/services'
 import type { CashBookItem, MethodBreakdownEntry } from '@/services'
+import WarehouseSwitcher from '@/components/WarehouseSwitcher.vue'
+import type { WarehouseOption } from '@/components/WarehouseSwitcher.vue'
+import { useGlobalWarehouse } from '@/composables/useWarehouse'
 
 // Tabs (mirroring orders table style with counts)
 type TabKey = 'all' | 'cash' | 'bank' | 'unassigned'
@@ -25,15 +28,13 @@ const tabCounts = computed<TabDef[]>(() => [
 // Filters state (stub)
 // Không chọn mặc định (null) nhưng request sẽ hiểu là toàn thời gian
 const selectedDatePreset = ref<{ value: string, label: string } | null>(null)
-interface BranchOption {
-  id: number
-  name: string
-}
+// interface BranchOption { id: number; name: string }
 interface DocTypeOption {
   code: string
   name: string
 }
-const selectedBranch = ref<BranchOption | null>(null)
+// Local doc type only; warehouse will come from global header switcher
+// const selectedBranch = ref<BranchOption | null>(null)
 const selectedDocType = ref<DocTypeOption | null>(null)
 
 // Mock fetchers for RemoteSearchSelect
@@ -61,14 +62,7 @@ async function fetchDatePresets(q: string): Promise<DatePresetItem[]> {
   const qq = q.toLowerCase()
   return (qq ? items.filter(i => i.label.toLowerCase().includes(qq)) : items)
 }
-async function fetchBranches(q: string) {
-  const items: (BranchOption & { [k: string]: unknown })[] = [
-    { id: 1, name: 'Chi nhánh chính' },
-    { id: 2, name: 'Kho online' }
-  ]
-  const qq = q.toLowerCase()
-  return qq ? items.filter(i => i.name.toLowerCase().includes(qq)) : items
-}
+// Removed branch dropdown in filters; using global header WarehouseSwitcher
 async function fetchDocTypes(q: string) {
   const items: (DocTypeOption & { [k: string]: unknown })[] = [
     { code: 'RVN', name: 'Thu bán hàng' },
@@ -81,6 +75,24 @@ async function fetchDocTypes(q: string) {
 // Selection & search state early (used by watchers)
 const rowSelection = ref<Record<string, boolean>>({})
 const q = ref('')
+
+// Global warehouse state binding
+const { selectedWarehouse: globalWarehouse, setWarehouse } = useGlobalWarehouse()
+const selectedHeaderWarehouse = computed<WarehouseOption | null>({
+  get() {
+    const sw = globalWarehouse.value
+    if (sw && sw.id !== null && sw.id !== undefined && String(sw.id).trim() !== '') {
+      return { id: sw.id, name: sw.name }
+    }
+    // For cash-flow, we require a concrete warehouse; fallback to null in UI
+    return null
+  },
+  set(v) {
+    if (!v) return
+    const id = v.id == null ? null : (typeof v.id === 'number' ? v.id : Number(v.id))
+    setWarehouse({ id, name: v.name })
+  }
+})
 
 // Raw API items and mapped rows for table component shape
 const rawItems = ref<CashBookItem[]>([])
@@ -251,6 +263,11 @@ async function fetchCashBook() {
 }
 
 onMounted(fetchCashBook)
+// Refetch when global warehouse changes (header switcher)
+watch(() => globalWarehouse.value?.id, () => {
+  pagination.value.pageIndex = 0
+  fetchCashBook()
+})
 watch([selectedDatePreset, () => pagination.value.pageIndex, () => pagination.value.pageSize], () => {
   fetchCashBook()
 })
@@ -325,6 +342,13 @@ function onTabChange(val: string) {
         </template>
         <template #right>
           <div class="flex items-center gap-2">
+            <WarehouseSwitcher
+              v-model="selectedHeaderWarehouse"
+              :include-all="false"
+              :clearable="false"
+              :borderless="true"
+              :auto-width="true"
+            />
             <UButton
               label="Xuất file"
               color="neutral"
@@ -468,15 +492,6 @@ function onTabChange(val: string) {
                   label-field="label"
                   borderless
                   :trigger-class="'h-9 rounded-none border-r border-gray-200 min-w-[138px] px-3 flex-1'"
-                  clearable
-                />
-                <RemoteSearchSelect
-                  v-model="selectedBranch"
-                  :fetch-fn="fetchBranches"
-                  placeholder="Chi nhánh"
-                  label-field="name"
-                  borderless
-                  :trigger-class="'h-9 rounded-none border-r border-gray-200 min-w-[120px] px-3 flex-1'"
                   clearable
                 />
                 <RemoteSearchSelect
