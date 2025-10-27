@@ -13,6 +13,8 @@ import { useGlobalWarehouse } from '@/composables/useWarehouse'
 type TabKey = 'all' | 'cash' | 'bank' | 'unassigned'
 // Default main tab = all (Tổng quỹ)
 const activeTab = ref<TabKey>('all')
+// Global dashboard state (notifications slideover, etc.)
+const { isNotificationsSlideoverOpen } = useDashboard()
 interface TabDef {
   label: string
   value: TabKey
@@ -331,7 +333,7 @@ function onTabChange(val: string) {
 <template>
   <UDashboardPanel id="cash-flow">
     <template #header>
-      <UDashboardNavbar>
+  <UDashboardNavbar :ui="{ right: 'gap-3' }">
         <template #leading>
           <UDashboardSidebarCollapse />
           <div>
@@ -341,27 +343,44 @@ function onTabChange(val: string) {
           </div>
         </template>
         <template #right>
-          <div class="flex items-center gap-2">
-            <WarehouseSwitcher
-              v-model="selectedHeaderWarehouse"
-              :include-all="false"
-              :clearable="false"
-              :borderless="true"
-              :auto-width="true"
-            />
+          <!-- Keep Export at start, Warehouse at end, Reason in between -->
+          <UButton
+            label="Xuất file"
+            color="neutral"
+            variant="soft"
+            size="sm"
+          />
+          <UButton
+            label="Lý do thu chi"
+            color="neutral"
+            variant="soft"
+            size="sm"
+          />
+          <WarehouseSwitcher
+            v-model="selectedHeaderWarehouse"
+            :include-all="true"
+            :clearable="true"
+            :borderless="true"
+            :auto-width="true"
+          />
+
+          <!-- Divider before global controls -->
+          <div class="h-5 w-px bg-gray-200 mx-2" />
+
+          <!-- Always keep these two at the far right: color mode + notifications -->
+          <UColorModeButton />
+          <UTooltip text="Notifications" :shortcuts="['N']">
             <UButton
-              label="Xuất file"
               color="neutral"
-              variant="soft"
-              size="sm"
-            />
-            <UButton
-              label="Lý do thu chi"
-              color="neutral"
-              variant="soft"
-              size="sm"
-            />
-          </div>
+              variant="ghost"
+              square
+              @click="isNotificationsSlideoverOpen = true"
+            >
+              <UChip color="error" inset>
+                <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
+              </UChip>
+            </UButton>
+          </UTooltip>
         </template>
       </UDashboardNavbar>
     </template>

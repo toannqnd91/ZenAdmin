@@ -303,6 +303,7 @@ watch(selectedOrderSource, (val) => {
         <template #right>
           <!-- Global warehouse switcher (reusable) -->
           <WarehouseSwitcher v-model="selectedBranch" />
+          <div class="h-5 w-px bg-gray-200 mx-2" />
           <UColorModeButton />
           <UTooltip text="Notifications" :shortcuts="['N']">
             <UButton
