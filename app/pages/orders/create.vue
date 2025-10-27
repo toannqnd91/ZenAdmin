@@ -6,6 +6,8 @@ import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import AddCustomerModal from '~/components/orders/AddCustomerModal.vue'
 import AddProductModal from '~/components/orders/AddProductModal.vue'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
+import WarehouseSwitcher from '@/components/WarehouseSwitcher.vue'
+import type { WarehouseOption } from '@/components/WarehouseSwitcher.vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
 import CustomRadio from '@/components/CustomRadio.vue'
@@ -19,6 +21,7 @@ import { useAuthService } from '@/composables/useAuthService'
 import type { ShippingMethod } from '@/types/shipping'
 import { SHIPPING_METHOD_OPTIONS, ShippingMethodLabels } from '@/types/shipping'
 import type { DeliveryOption } from '@/types/delivery'
+import { useGlobalWarehouse } from '@/composables/useWarehouse'
 
 // Runtime config & helpers (restored)
 const config = useRuntimeConfig()
@@ -124,6 +127,50 @@ function handleProductCreated(evt: unknown) {
 const selectedCustomer = ref<GenericItem | null>(null)
 const selectedSource = ref<GenericItem | null>(null)
 const selectedBranch = ref<GenericItem | null>(null)
+
+// Global warehouse binding for header switcher
+const { selectedWarehouse: globalWarehouse, setWarehouse } = useGlobalWarehouse()
+const selectedHeaderWarehouse = computed<WarehouseOption | null>({
+  get() {
+    const sw = globalWarehouse.value
+    if (sw && sw.id !== null && sw.id !== undefined && String(sw.id).trim() !== '') {
+      return { id: sw.id, name: sw.name }
+    }
+    return { id: null, name: 'Tất cả chi nhánh' }
+  },
+  set(v) {
+    if (!v) {
+      setWarehouse(null)
+      return
+    }
+    const id = v.id == null ? null : (typeof v.id === 'number' ? v.id : Number(v.id))
+    setWarehouse({ id, name: v.name })
+  }
+})
+
+// Keep local form branch in sync with global switcher and vice versa
+watch(() => globalWarehouse.value?.id, (wid) => {
+  const curr = (selectedBranch.value as { id?: string | number, name?: string } | null)?.id
+  const currStr = curr == null ? null : String(curr)
+  const newStr = wid == null ? null : String(wid)
+  if (currStr !== newStr) {
+    if (wid == null || String(wid).trim() === '') {
+      selectedBranch.value = null
+    } else {
+      const name = globalWarehouse.value?.name || ''
+      selectedBranch.value = { id: wid as string | number, name }
+    }
+  }
+})
+watch(selectedBranch, (b) => {
+  const id = (b && 'id' in b) ? (b as any).id : null
+  const name = (b && 'name' in b) ? (b as any).name : ''
+  const gId = globalWarehouse.value?.id ?? null
+  if (String(gId ?? '') !== String(id ?? '')) {
+    if (id == null || String(id).trim() === '') setWarehouse(null)
+    else setWarehouse({ id: typeof id === 'number' ? id : Number(id), name: String(name || '') })
+  }
+})
 
 // Staff in charge (current logged-in user)
 const { user: authUser, getProfile } = useAuthService()
@@ -875,23 +922,29 @@ onMounted(async () => {
   if (paymentStatus.value !== 'paid') {
     paymentStatus.value = 'paid'
   }
-  // - Default branch: fetch default warehouse id via service and select it
-  try {
-    const def = await warehouseService.getDefaultWarehouse()
-    const defId = def?.data?.id
-    if (typeof defId === 'number' || typeof defId === 'string') {
-      // Try resolve branch name from warehouses list
-      try {
-        const all = await warehouseService.getWarehouses()
-        const list: WarehouseItem[] = Array.isArray(all?.data) ? all.data : []
-        const found = list.find((w: WarehouseItem) => String(w.id) === String(defId))
-        selectedBranch.value = { id: defId, name: (found && found.name) ? found.name : 'Chi nhánh mặc định' }
-      } catch {
-        selectedBranch.value = { id: defId, name: 'Chi nhánh mặc định' }
+  // - Default branch: use global selected warehouse if available; otherwise fallback to default from API
+  if (globalWarehouse.value && globalWarehouse.value.id != null && String(globalWarehouse.value.id).trim() !== '') {
+    selectedBranch.value = { id: globalWarehouse.value.id, name: globalWarehouse.value.name }
+  } else {
+    try {
+      const def = await warehouseService.getDefaultWarehouse()
+      const defId = def?.data?.id
+      if (typeof defId === 'number' || typeof defId === 'string') {
+        // Try resolve branch name from warehouses list
+        try {
+          const all = await warehouseService.getWarehouses()
+          const list: WarehouseItem[] = Array.isArray(all?.data) ? all.data : []
+          const found = list.find((w: WarehouseItem) => String(w.id) === String(defId))
+          selectedBranch.value = { id: defId, name: (found && found.name) ? found.name : 'Chi nhánh mặc định' }
+          setWarehouse({ id: defId as any, name: (found && found.name) ? found.name : 'Chi nhánh mặc định' })
+        } catch {
+          selectedBranch.value = { id: defId, name: 'Chi nhánh mặc định' }
+          setWarehouse({ id: defId as any, name: 'Chi nhánh mặc định' })
+        }
       }
+    } catch {
+      // ignore if API not available
     }
-  } catch {
-    // ignore if API not available
   }
 
   // Nhân viên phụ trách: lấy display_name của tài khoản đang đăng nhập
@@ -1196,7 +1249,11 @@ function onAddCustomer() {
           </div>
         </template>
         <template #right>
-          <!-- Có thể thêm nút/phím tắt ở đây nếu cần -->
+          <WarehouseSwitcher
+            v-model="selectedHeaderWarehouse"
+            :borderless="true"
+            :auto-width="true"
+          />
         </template>
       </UDashboardNavbar>
     </template>
