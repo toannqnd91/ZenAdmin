@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Image URL logic like ProductsTable
-import { useRuntimeConfig, useToast, useRouter } from '#imports'
+import { useRuntimeConfig, useToast, useRouter, useCookie } from '#imports'
 import type { ApiResponse } from '@/types/common'
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import AddCustomerModal from '~/components/orders/AddCustomerModal.vue'
@@ -13,7 +13,6 @@ import CustomCheckbox from '@/components/CustomCheckbox.vue'
 import CustomRadio from '@/components/CustomRadio.vue'
 import { productService } from '@/services/product.service'
 import { warehouseService } from '@/services/warehouse.service'
-import type { WarehouseItem } from '@/services/warehouse.service'
 import { orderSourceService } from '@/services/order-source.service'
 import type { OrderSourceItem } from '@/services/order-source.service'
 import { customersService, ordersService } from '@/services'
@@ -136,7 +135,7 @@ const selectedHeaderWarehouse = computed<WarehouseOption | null>({
     if (sw && sw.id !== null && sw.id !== undefined && String(sw.id).trim() !== '') {
       return { id: sw.id, name: sw.name }
     }
-    return { id: null, name: 'Tất cả chi nhánh' }
+    return null
   },
   set(v) {
     if (!v) {
@@ -149,6 +148,7 @@ const selectedHeaderWarehouse = computed<WarehouseOption | null>({
 })
 
 // Keep local form branch in sync with global switcher and vice versa
+const initializingWarehouse = ref(true)
 watch(() => globalWarehouse.value?.id, (wid) => {
   const curr = (selectedBranch.value as { id?: string | number, name?: string } | null)?.id
   const currStr = curr == null ? null : String(curr)
@@ -162,9 +162,10 @@ watch(() => globalWarehouse.value?.id, (wid) => {
     }
   }
 })
-watch(selectedBranch, (b) => {
-  const id = (b && 'id' in b) ? (b as any).id : null
-  const name = (b && 'name' in b) ? (b as any).name : ''
+watch(selectedBranch, (b: { id?: number | string | null, name?: string } | null) => {
+  if (initializingWarehouse.value) return
+  const id = b?.id ?? null
+  const name = b?.name ?? ''
   const gId = globalWarehouse.value?.id ?? null
   if (String(gId ?? '') !== String(id ?? '')) {
     if (id == null || String(id).trim() === '') setWarehouse(null)
@@ -922,30 +923,29 @@ onMounted(async () => {
   if (paymentStatus.value !== 'paid') {
     paymentStatus.value = 'paid'
   }
-  // - Default branch: use global selected warehouse if available; otherwise fallback to default from API
+  // - Default branch precedence:
+  //   1) Global selection (from homepage header)
+  //   2) Cookie fallback (warehouse_id) if global not initialized yet
+  //   3) Backend default warehouse
   if (globalWarehouse.value && globalWarehouse.value.id != null && String(globalWarehouse.value.id).trim() !== '') {
     selectedBranch.value = { id: globalWarehouse.value.id, name: globalWarehouse.value.name }
   } else {
-    try {
-      const def = await warehouseService.getDefaultWarehouse()
-      const defId = def?.data?.id
-      if (typeof defId === 'number' || typeof defId === 'string') {
-        // Try resolve branch name from warehouses list
-        try {
-          const all = await warehouseService.getWarehouses()
-          const list: WarehouseItem[] = Array.isArray(all?.data) ? all.data : []
-          const found = list.find((w: WarehouseItem) => String(w.id) === String(defId))
-          selectedBranch.value = { id: defId, name: (found && found.name) ? found.name : 'Chi nhánh mặc định' }
-          setWarehouse({ id: defId as any, name: (found && found.name) ? found.name : 'Chi nhánh mặc định' })
-        } catch {
-          selectedBranch.value = { id: defId, name: 'Chi nhánh mặc định' }
-          setWarehouse({ id: defId as any, name: 'Chi nhánh mặc định' })
-        }
-      }
-    } catch {
-      // ignore if API not available
+    const widCookie = useCookie<string | null>('warehouse_id')
+    const wnameCookie = useCookie<string | null>('warehouse_name')
+    if (widCookie?.value && widCookie.value !== 'null' && widCookie.value !== 'undefined') {
+      const idStr = String(widCookie.value)
+      const idNum = Number(idStr)
+      const id = Number.isFinite(idNum) ? idNum : idStr
+      const name = wnameCookie?.value || ''
+      selectedBranch.value = { id, name }
+      setWarehouse({ id: id as number | string, name })
+    } else {
+      // No global or cookie -> do not auto-select default; user must choose explicitly
     }
   }
+
+  // finish warehouse init so local->global sync watcher can activate for future user changes
+  initializingWarehouse.value = false
 
   // Nhân viên phụ trách: lấy display_name của tài khoản đang đăng nhập
   try {
@@ -1251,6 +1251,9 @@ function onAddCustomer() {
         <template #right>
           <WarehouseSwitcher
             v-model="selectedHeaderWarehouse"
+            :include-all="false"
+            :clearable="false"
+            placeholder="Chọn chi nhánh"
             :borderless="true"
             :auto-width="true"
           />
@@ -1980,7 +1983,7 @@ function onAddCustomer() {
                     v-model="selectedBranch"
                     :fetch-fn="fetchBranches"
                     placeholder="Cửa hàng chính"
-                    :clearable="true"
+                    :clearable="false"
                     :debounce="300"
                     :full-width="true"
                     label-field="name"
