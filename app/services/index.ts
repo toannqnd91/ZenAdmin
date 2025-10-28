@@ -11,6 +11,8 @@ export { orderSourceService, OrderSourceService } from './order-source.service'
 export { customersService, CustomersService } from './customers.service'
 export { ordersService, OrdersService } from './orders.service'
 export { cashBookService } from './cashbook.service'
+export { priceBooksService, PriceBooksService } from './pricebooks.service'
+export { warehouseService, WarehouseService } from './warehouse.service'
 
 // Export types
 export type {
@@ -54,3 +56,8 @@ export type {
   MethodBreakdownEntry,
   DocumentKindBreakdown
 } from './cashbook.service'
+
+export type {
+  CreatePriceBookRequest,
+  CreatePriceBookResponse
+} from './pricebooks.service'

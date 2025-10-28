@@ -116,6 +116,11 @@ export const API_ENDPOINTS = {
   LOCATIONS_PROVINCES: '/locations/provinces',
   LOCATIONS_WARDS_BY_PROVINCE: (provinceCode: number | string) => `/locations/provinces/${provinceCode}/wards`,
 
+  // Pricing / Pricebooks endpoints
+  PRICING_PRICEBOOKS: '/pricing/pricebooks',
+  PRICING_PRICEBOOKS_BY_TYPE: '/pricing/pricebooks/by-type',
+  PRICING_PRICEBOOK_BY_ID: (id: number | string) => `/pricing/pricebooks/${id}`,
+
   // Legacy duplicates (migrating away from getApiEndpoints())
   DASHBOARD_MENU_LEGACY: '/Identity/system-menu/auto',
   LOGIN_LEGACY: '/Identity/login',

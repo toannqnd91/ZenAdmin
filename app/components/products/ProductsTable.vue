@@ -40,7 +40,7 @@ interface Props {
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
-  (e: 'update:q', value: string): void
+  (e: 'update:q' | 'update:tab', value: string): void
   (e: 'update:rowSelection', value: Record<string, boolean>): void
   (e: 'update:pagination', value: { pageIndex: number, pageSize: number }): void
   (e: 'copy-id' | 'edit' | 'delete', id: string | number): void
@@ -84,6 +84,16 @@ const columns: TableColumn[] = [
 const addButton = {
   label: 'Thêm sản phẩm',
   href: '/products/create'
+}
+
+// Tabs for table header (first tab: "Tất cả")
+const tabs = [
+  { label: 'Tất cả', value: 'all' }
+]
+const activeTab = ref<string>('all')
+const onTabChange = (v: string) => {
+  activeTab.value = v
+  emit('update:tab', v)
 }
 
 const handleRowClick = (item: Record<string, unknown>) => {
@@ -164,13 +174,16 @@ const currencySuffix = 'đ'
     :row-click-handler="handleRowClick"
     :total-pages="props.totalPages"
     :total-records="props.totalRecords"
+    :tabs="tabs"
     search-placeholder="Tìm kiếm sản phẩm"
+    tabs-style="underline"
     @row-copy-id="onRowCopyId"
     @row-edit="onRowEdit"
     @row-delete="onRowDelete"
     @update:q="emit('update:q', $event)"
     @update:row-selection="emit('update:rowSelection', $event)"
     @update:pagination="emit('update:pagination', $event)"
+    @update:tab="onTabChange"
     @delete="emit('delete-multi', $event)"
   >
     <!-- Custom name column with image -->
