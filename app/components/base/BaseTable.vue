@@ -343,6 +343,27 @@ const getAlignClass = (align?: 'left' | 'center' | 'right') => {
   }
 }
 
+// Align skeleton block within cell similar to text alignment
+const getSkeletonBlockClass = (align?: 'left' | 'center' | 'right') => {
+  switch (align) {
+    case 'center':
+      return 'mx-auto'
+    case 'right':
+      return 'ml-auto'
+    default:
+      return ''
+  }
+}
+
+// Resolve effective alignment using either explicit column.align or class utilities
+const getColumnAlign = (column: TableColumn): 'left' | 'center' | 'right' => {
+  if (column.align) return column.align
+  const cls = column.class || ''
+  if (/text-right/.test(cls)) return 'right'
+  if (/text-center/.test(cls)) return 'center'
+  return 'left'
+}
+
 /* Row action menu helpers */
 const rowMenuOpenId = ref<string | null>(null)
 const toggleRowMenu = (id: string | number) => {
@@ -796,10 +817,10 @@ const onRowDelete = (item: Record<string, unknown>) => {
               <td
                 v-for="(column, cIdx) in columns"
                 :key="`scol-${column.key}-${cIdx}`"
-                class="py-4"
+                :class="['py-4', getAlignClass(getColumnAlign(column))]"
               >
                 <div
-                  class="h-4 rounded bg-gray-200 animate-pulse"
+                  :class="['h-4 rounded bg-gray-200 animate-pulse', getSkeletonBlockClass(getColumnAlign(column))]"
                   :style="{ width: skeletonWidths[cIdx % skeletonWidths.length] }"
                   aria-hidden="true"
                 />
