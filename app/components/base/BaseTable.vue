@@ -94,7 +94,7 @@ interface TableTab {
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
   rowClickEnabled: true,
-  showFilter: true,
+  showFilter: false,
   showRowActions: true,
   selectable: true,
   searchPlaceholder: 'Tìm kiếm...',
@@ -460,7 +460,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
       </div>
     </template>
     <!-- Top bar -->
-    <div :class="['flex items-center gap-3', props.headerPaddingX, 'py-5']">
+    <div :class="['flex items-center gap-3', props.headerPaddingX, 'py-3']">
       <h2 class="text-lg font-semibold flex-1 min-w-0">
         <div class="table-title-bar flex items-center gap-4 w-full">
           <template v-if="!tabsSeparateLine && props.tabs && props.tabs.length">
@@ -697,7 +697,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
 
     <!-- Table -->
     <div
-      :class="props.bodyPadding"
+      :class="[props.bodyPadding, 'overflow-x-auto']"
     >
       <!-- Empty state -->
       <div v-if="!loading && (pageItems.length === 0)" class="py-10">
@@ -712,7 +712,6 @@ const onRowDelete = (item: Record<string, unknown>) => {
 
       <div
         v-else
-        class="overflow-x-auto"
         @click="onBodyClick"
       >
         <table class="w-full min-w-[64rem] table-fixed text-sm">

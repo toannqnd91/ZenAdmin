@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import BaseTable, { type TableColumn } from '@/components/base/BaseTable.vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
 import BaseDropdownSelect from '@/components/BaseDropdownSelect.vue'
@@ -38,46 +39,81 @@ const rows = ref<Row[]>([
 ])
 const currency = (n: number) => (n || 0).toLocaleString('vi-VN') + 'đ'
 
-const pageIndex = ref(0)
-const pageSize = ref(20)
+// BaseTable state
+const q = ref('')
+const rowSelection = ref<Record<string, boolean>>({})
+const pagination = ref({ pageIndex: 0, pageSize: 20 })
+const loading = ref(false)
+const totalRecords = computed(() => rows.value.length)
+const totalPages = computed(() => 1)
+
+// Map rows to BaseTable data; include a searchable 'product' field
+const tableRows = computed(() =>
+  rows.value.map(r => ({
+    id: r.id,
+    product: `${r.name} ${r.sku || ''}`.trim(),
+    name: r.name,
+    sku: r.sku,
+    basePrice: r.basePrice,
+    price: r.price,
+    lock: r.lock
+  }))
+)
+
+const columns: TableColumn[] = [
+  { key: 'product', label: 'Sản phẩm', class: 'py-3 text-left font-medium' },
+  { key: 'basePrice', label: 'Giá gốc', class: 'py-3 text-right font-medium', align: 'right' },
+  { key: 'price', label: 'Giá sản phẩm', class: 'py-3 text-right font-medium pr-12', align: 'right' }
+]
+
+// Control column widths: widen "Giá sản phẩm" column
+const colWidths = ['', '180px', '240px']
 
 function onSave() { /* TODO: wire API */ }
+
+// Row actions (placeholder handlers)
+function onEditRow(_item: Record<string, unknown>) {
+  // TODO: implement edit behavior for row
+}
+function onDeleteRow(_item: Record<string, unknown>) {
+  // TODO: implement delete behavior for row
+}
 </script>
 
+<!-- eslint-disable vue/max-attributes-per-line, vue/html-closing-bracket-newline, vue/singleline-html-element-content-newline, vue/html-indent, vue/first-attribute-linebreak, vue/html-self-closing -->
 <template>
-  <!-- eslint-disable vue/max-attributes-per-line, vue/html-closing-bracket-newline, vue/singleline-html-element-content-newline, vue/html-indent, vue/first-attribute-linebreak, vue/html-self-closing -->
-  <UDashboardPanel id="pricebook-detail" class="flex flex-col h-full">
-    <template #header>
-      <UDashboardNavbar>
-        <template #leading>
-          <div class="flex items-center gap-3">
-            <button
-              class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-              @click="goBack"
-            >
-              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-            </button>
-            <div>
-              <div class="flex items-center gap-3">
-                <div class="text-lg font-semibold">{{ name }}</div>
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Đang áp dụng</span>
+    <UDashboardPanel id="pricebook-detail" class="flex flex-col h-full">
+      <template #header>
+        <UDashboardNavbar>
+          <template #leading>
+            <div class="flex items-center gap-3">
+              <button
+                class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                @click="goBack"
+              >
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+              </button>
+              <div>
+                <div class="flex items-center gap-3">
+                  <div class="text-lg font-semibold">{{ name }}</div>
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Đang áp dụng</span>
+                </div>
+                <div class="text-xs text-gray-500">{{ code }}</div>
               </div>
-              <div class="text-xs text-gray-500">{{ code }}</div>
             </div>
-          </div>
-        </template>
-        <template #right>
-          <div class="flex items-center gap-2">
-            <button class="h-8 px-4 rounded-md text-sm font-medium bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200">Ngừng áp dụng</button>
-          </div>
-        </template>
-      </UDashboardNavbar>
-    </template>
+          </template>
+          <template #right>
+            <div class="flex items-center gap-2">
+              <button class="h-8 px-4 rounded-md text-sm font-medium bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200">Ngừng áp dụng</button>
+            </div>
+          </template>
+        </UDashboardNavbar>
+      </template>
 
-    <template #body>
-      <div class="w-full max-w-6xl mx-auto px-4 lg:px-6 py-5">
+  <template #body>
+  <div class="w-full max-w-6xl mx-auto px-4 lg:px-6 py-5">
         <div class="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
           <!-- Thông tin bảng giá -->
           <UPageCard variant="soft" class="bg-white rounded-lg">
@@ -139,85 +175,88 @@ function onSave() { /* TODO: wire API */ }
 
         <!-- Danh sách sản phẩm -->
         <UPageCard variant="soft" class="bg-white rounded-lg mt-4">
-          <BaseCardHeader>Danh sách sản phẩm đang bán</BaseCardHeader>
-          <div class="-mx-6 px-6 pb-4">
-            <div class="flex flex-wrap items-center gap-3 mb-3">
-              <div class="flex-1 min-w-[240px]">
-                <input type="text" class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm" placeholder="Tìm kiếm theo mã sản phẩm, tên sản phẩm, barcode" />
-              </div>
-              <button class="h-9 px-3 rounded-md border border-gray-300 bg-white text-sm">Xuất file</button>
-              <button class="h-9 px-3 rounded-md border border-gray-300 bg-white text-sm">Nhập file</button>
-              <button class="h-9 px-3 rounded-md bg-primary-600 text-white text-sm">Đăng bán sản phẩm</button>
-            </div>
+          <div class="overflow-x-auto">
+          <BaseTable
+            :q="q"
+            :row-selection="rowSelection"
+            :pagination="pagination"
+            :data="tableRows"
+            :loading="loading"
+            :total-records="totalRecords"
+            :total-pages="totalPages"
+            :columns="columns"
+            :col-widths="colWidths"
+            :show-row-actions="true"
+            title="Danh sách sản phẩm đang bán"
+            :show-filter="false"
+            body-padding="px-4 lg:px-0"
+            header-padding-x="px-4 lg:px-0"
+            footer-padding="px-4 lg:px-0"
+          >
+            <template #search-actions>
+              <button class="h-9 px-3 rounded-md border border-gray-300 bg-white text-sm whitespace-nowrap" type="button">Xuất file</button>
+              <button class="h-9 px-3 rounded-md border border-gray-300 bg-white text-sm whitespace-nowrap" type="button">Nhập file</button>
+              <button class="h-9 px-3 rounded-md bg-primary-600 text-white text-sm whitespace-nowrap" type="button">Đăng bán sản phẩm</button>
+            </template>
 
-            <div class="flex flex-wrap items-center gap-3 mb-3">
-              <BaseDropdownSelect :model-value="null" :options="[]" placeholder="Danh mục" class="w-[160px] h-9 px-3 rounded-md border border-gray-300 bg-white text-sm" />
-              <BaseDropdownSelect :model-value="null" :options="[]" placeholder="Loại sản phẩm" class="w-[180px] h-9 px-3 rounded-md border border-gray-300 bg-white text-sm" />
-              <BaseDropdownSelect :model-value="null" :options="[]" placeholder="Tag" class="w-[140px] h-9 px-3 rounded-md border border-gray-300 bg-white text-sm" />
-            </div>
-
-            <div class="overflow-x-auto">
-              <table class="min-w-full w-full text-sm border-separate border-spacing-0">
-                <thead>
-                  <tr class="bg-gray-50">
-                    <th class="pl-4 pr-2 py-2 w-10"><input type="checkbox"></th>
-                    <th class="px-2 py-2 text-left font-semibold">Sản phẩm</th>
-                    <th class="px-4 py-2 text-left font-semibold">Giá gốc</th>
-                    <th class="px-6 py-2 text-left font-semibold">Giá sản phẩm</th>
-                    <th class="pr-4 py-2 w-10"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="r in rows" :key="r.id" class="border-b border-gray-50">
-                    <td class="pl-4 pr-2 py-3 align-top"><input type="checkbox"></td>
-                    <td class="px-2 py-3 align-top">
-                      <div class="flex items-start gap-3">
-                        <div class="h-12 w-12 bg-gray-100 rounded md:flex hidden"></div>
-                        <div>
-                          <a href="#" class="text-primary-600 hover:underline">{{ r.name }}</a>
-                          <div class="text-xs text-gray-500">SKU: {{ r.sku || '---' }}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td class="px-4 py-3 align-top text-gray-700">{{ currency(r.basePrice) }}</td>
-                    <td class="px-6 py-3 align-top">
-                      <div class="flex items-center gap-2">
-                        <span v-if="r.lock" class="text-yellow-600" title="Khoá">
-                          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M7 11V7a5 5 0 0110 0v4" />
-                            <rect x="5" y="11" width="14" height="10" rx="2" />
-                          </svg>
-                        </span>
-                        <span class="text-gray-900 font-medium">{{ currency(r.price) }}</span>
-                      </div>
-                    </td>
-                    <td class="pr-4 py-3 align-top text-right">
-                      <button class="text-gray-400 hover:text-gray-600" title="Tuỳ chọn">
-                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M12 5v.01M12 12v.01M12 19v.01" />
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div class="flex items-center justify-between mt-3">
-              <div class="text-sm text-gray-600">Từ 1 đến {{ rows.length }} trên tổng {{ rows.length }}</div>
-              <div class="flex items-center gap-3">
-                <div class="flex items-center gap-2 text-sm">
-                  <span>Hiển thị</span>
-                  <BaseDropdownSelect :model-value="String(pageSize)" :options="[{ id: '20', label: '20' }] as any" class="w-[72px] h-8 px-3 rounded-md border border-gray-300 bg-white text-sm" />
-                  <span>Kết quả</span>
-                </div>
-                <div class="inline-flex items-center gap-1">
-                  <button class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 text-gray-500" disabled>&lt;</button>
-                  <button class="h-8 w-8 inline-flex items-center justify-center rounded-md bg-primary-600 text-white">1</button>
-                  <button class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 text-gray-500" disabled>&gt;</button>
+            <!-- Product column -->
+            <template #column-product="{ item }">
+              <div class="flex items-start gap-3">
+                <div class="h-11 w-11 bg-gray-100 rounded md:flex hidden" />
+                <div>
+                  <div class="text-[15px] text-gray-900 font-medium">{{ (item as any).name }}</div>
+                  <div class="text-xs text-gray-500">SKU: {{ (item as any).sku || '---' }}</div>
                 </div>
               </div>
-            </div>
+            </template>
+
+            <!-- Base price -->
+            <template #column-basePrice="{ value }">
+              <span class="block text-right text-gray-700">{{ currency(Number(value || 0)) }}</span>
+            </template>
+
+            <!-- Price with lock -->
+            <template #column-price="{ item, value }">
+              <div class="flex items-center gap-2 justify-end pr-12">
+                <span v-if="(item as any).lock" class="text-yellow-600" title="Khoá">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M7 11V7a5 5 0 0110 0v4" />
+                    <rect x="5" y="11" width="14" height="10" rx="2" />
+                  </svg>
+                </span>
+                <span class="text-gray-900 font-medium">{{ currency(Number(value || 0)) }}</span>
+              </div>
+            </template>
+
+            <!-- Custom row actions: Edit + Delete icons -->
+            <template #row-actions="{ item: _item }">
+              <div class="flex items-center justify-end gap-2">
+                <button
+                  class="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100"
+                  title="Sửa"
+                  type="button"
+                  @click.stop="onEditRow(_item)"
+                >
+                  <svg class="w-4 h-4 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" />
+                    <path d="M14.06 4.69l3.75 3.75" />
+                  </svg>
+                </button>
+                <button
+                  class="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100"
+                  title="Xoá"
+                  type="button"
+                  @click.stop="onDeleteRow(_item)"
+                >
+                  <svg class="w-4 h-4 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                  </svg>
+                </button>
+              </div>
+            </template>
+          </BaseTable>
           </div>
         </UPageCard>
 
