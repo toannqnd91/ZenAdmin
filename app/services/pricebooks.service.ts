@@ -1,5 +1,6 @@
 import { BaseService } from './base.service'
 import { API_ENDPOINTS } from '@/utils/api'
+import type { PriceBookDetail } from '@/types/pricebook'
 
 export interface CreatePriceBookRequest {
   code: string | null
@@ -39,6 +40,11 @@ export class PriceBooksService extends BaseService {
   async getByType(type?: 'Warehouse' | 'CustomerGroup' | 'Channel') {
     const params = type ? { type } : undefined
     return this.get<Array<Record<string, unknown>>>(API_ENDPOINTS.PRICING_PRICEBOOKS_BY_TYPE, params)
+  }
+
+  /** Get a price book detail by code */
+  async getByCode(code: string) {
+    return this.get<PriceBookDetail>(API_ENDPOINTS.PRICING_PRICEBOOK_BY_CODE(code))
   }
 }
 

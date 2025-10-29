@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import BaseTable, { type TableColumn } from '@/components/base/BaseTable.vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
 import BaseDropdownSelect from '@/components/BaseDropdownSelect.vue'
+import { priceBooksService } from '@/services'
+import type { PriceBookDetail, PriceBookCustomerGroup } from '@/types/pricebook'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,7 +16,7 @@ function goBack() {
 }
 
 // Form state
-const name = ref('Bảng giá TEST NHÓM VIP')
+const name = ref('')
 type AdjustKind = 'percent-down' | 'percent-up' | 'amount-down' | 'amount-up'
 const adjustKind = ref<AdjustKind>('percent-down')
 const adjustValue = ref<number | ''>(10)
@@ -27,16 +29,11 @@ const adjustOptions = [
   { id: 'amount-up', label: 'Tăng tiền (đ)' }
 ]
 
-const groupsSummary = ref('Đã chọn 2 nhóm khách hàng')
-const selectedGroups = ref<string[]>(['Nhận quảng cáo', 'Nhóm KH Test'])
+const groupsSummary = ref('')
+const selectedGroups = ref<string[]>([])
 
-// Products mock
-type Row = { id: number, name: string, sku?: string | null, basePrice: number, price: number, lock?: boolean }
-const rows = ref<Row[]>([
-  { id: 3, name: 'Sản phẩm 003', sku: '---', basePrice: 170000, price: 153000 },
-  { id: 2, name: 'Sản phẩm 002', sku: '---', basePrice: 180000, price: 160000, lock: true },
-  { id: 1, name: 'Sản phẩm 001', sku: '---', basePrice: 200000, price: 165000, lock: true }
-])
+// API state
+const pricebook = ref<PriceBookDetail | null>(null)
 const currency = (n: number) => (n || 0).toLocaleString('vi-VN') + 'đ'
 
 // BaseTable state
@@ -44,19 +41,19 @@ const q = ref('')
 const rowSelection = ref<Record<string, boolean>>({})
 const pagination = ref({ pageIndex: 0, pageSize: 20 })
 const loading = ref(false)
-const totalRecords = computed(() => rows.value.length)
+const totalRecords = computed(() => pricebook.value?.items?.length || 0)
 const totalPages = computed(() => 1)
 
 // Map rows to BaseTable data; include a searchable 'product' field
 const tableRows = computed(() =>
-  rows.value.map(r => ({
-    id: r.id,
-    product: `${r.name} ${r.sku || ''}`.trim(),
-    name: r.name,
-    sku: r.sku,
-    basePrice: r.basePrice,
-    price: r.price,
-    lock: r.lock
+  (pricebook.value?.items || []).map(it => ({
+    id: it.id,
+    product: `${it.productName} ${it.sku || ''}`.trim(),
+    name: it.productName,
+    sku: it.sku,
+    basePrice: it.basePrice,
+    price: it.appliedPrice,
+    lock: it.priceType === 0 // assume absolute price means locked
   }))
 )
 
@@ -78,6 +75,33 @@ function onEditRow(_item: Record<string, unknown>) {
 function onDeleteRow(_item: Record<string, unknown>) {
   // TODO: implement delete behavior for row
 }
+
+// Fetch pricebook detail by code
+onMounted(async () => {
+  if (!code.value) return
+  loading.value = true
+  try {
+    const res = await priceBooksService.getByCode(code.value)
+    if (res.success) {
+      pricebook.value = res.data
+      name.value = res.data.name
+      // Groups
+  selectedGroups.value = (res.data.customerGroups || []).map((g: PriceBookCustomerGroup) => g.name)
+      groupsSummary.value = selectedGroups.value.length
+        ? `Đã chọn ${selectedGroups.value.length} nhóm khách hàng`
+        : 'Chưa chọn nhóm khách hàng'
+      // Adjust defaults
+      adjustValue.value = res.data.defaultAdjustmentPercent || 0
+      adjustKind.value = 'percent-down'
+    } else {
+      console.error('Fetch pricebook failed:', res.message)
+    }
+  } catch (err) {
+    console.error('Fetch pricebook error:', err)
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <!-- eslint-disable vue/max-attributes-per-line, vue/html-closing-bracket-newline, vue/singleline-html-element-content-newline, vue/html-indent, vue/first-attribute-linebreak, vue/html-self-closing -->
