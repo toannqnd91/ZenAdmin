@@ -4,8 +4,9 @@ import BaseTable, { type TableColumn } from '@/components/base/BaseTable.vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
 import BaseDropdownSelect from '@/components/BaseDropdownSelect.vue'
-import { priceBooksService } from '@/services'
+import { priceBooksService, customersService } from '@/services'
 import type { PriceBookDetail, PriceBookCustomerGroup } from '@/types/pricebook'
+import type { CustomerGroupItem } from '@/services/customers.service'
 
 const route = useRoute()
 const router = useRouter()
@@ -30,7 +31,13 @@ const adjustOptions = [
 ]
 
 const groupsSummary = ref('')
-const selectedGroups = ref<string[]>([])
+const groupOptions = ref<Array<{ id: number, label: string }>>([])
+const selectedGroupIds = ref<number[]>([])
+const selectedGroupNames = computed(() =>
+  groupOptions.value
+    .filter(o => selectedGroupIds.value.includes(o.id))
+    .map(o => o.label)
+)
 
 // API state
 const pricebook = ref<PriceBookDetail | null>(null)
@@ -86,9 +93,9 @@ onMounted(async () => {
       pricebook.value = res.data
       name.value = res.data.name
       // Groups
-  selectedGroups.value = (res.data.customerGroups || []).map((g: PriceBookCustomerGroup) => g.name)
-      groupsSummary.value = selectedGroups.value.length
-        ? `Đã chọn ${selectedGroups.value.length} nhóm khách hàng`
+      selectedGroupIds.value = (res.data.customerGroups || []).map((g: PriceBookCustomerGroup) => g.customerGroupId)
+      groupsSummary.value = selectedGroupIds.value.length
+        ? `Đã chọn ${selectedGroupIds.value.length} nhóm khách hàng`
         : 'Chưa chọn nhóm khách hàng'
       // Adjust defaults
       adjustValue.value = res.data.defaultAdjustmentPercent || 0
@@ -101,7 +108,32 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+  // Fetch all customer groups for options (external API)
+  try {
+    const groupsRes = await customersService.getCustomerGroupsExternal()
+    if (groupsRes.success) {
+      const items = (groupsRes.data || []) as unknown as CustomerGroupItem[]
+      groupOptions.value = items.map(it => ({ id: it.id, label: it.name }))
+    }
+  } catch (e) {
+    console.error('Fetch customer groups failed:', e)
+  }
 })
+
+function onUpdateSelectedGroups(ids: number[] | string[]) {
+  // Normalize to number[]
+  selectedGroupIds.value = (ids as Array<number | string>).map(v => typeof v === 'string' ? Number(v) : v)
+  groupsSummary.value = selectedGroupIds.value.length
+    ? `Đã chọn ${selectedGroupIds.value.length} nhóm khách hàng`
+    : 'Chưa chọn nhóm khách hàng'
+}
+
+function removeGroup(id: number) {
+  selectedGroupIds.value = selectedGroupIds.value.filter(x => x !== id)
+  groupsSummary.value = selectedGroupIds.value.length
+    ? `Đã chọn ${selectedGroupIds.value.length} nhóm khách hàng`
+    : 'Chưa chọn nhóm khách hàng'
+}
 </script>
 
 <!-- eslint-disable vue/max-attributes-per-line, vue/html-closing-bracket-newline, vue/singleline-html-element-content-newline, vue/html-indent, vue/first-attribute-linebreak, vue/html-self-closing -->
@@ -182,15 +214,19 @@ onMounted(async () => {
             <BaseCardHeader>Áp dụng cho nhóm khách hàng</BaseCardHeader>
             <div class="-mx-6 px-6 pb-4 space-y-3">
               <BaseDropdownSelect
-                :model-value="'count'"
-                :options="[{ id: 'count', label: groupsSummary }] as unknown as Array<{ id: string | number; label: string }>"
+                :model-value="selectedGroupIds"
+                :options="groupOptions"
+                multiple
+                multiple-display="count"
+                selected-count-text="Đã chọn"
+                selected-count-suffix="nhóm khách hàng"
                 class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm"
-                @update:model-value="() => {}"
+                @update:model-value="onUpdateSelectedGroups"
               />
               <div class="flex flex-wrap gap-2">
-                <span v-for="g in selectedGroups" :key="g" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-700 border border-gray-200">
+                <span v-for="g in selectedGroupNames" :key="g" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-700 border border-gray-200">
                   {{ g }}
-                  <button type="button" class="ml-1 text-gray-400 hover:text-gray-600">×</button>
+                  <button type="button" class="ml-1 text-gray-400 hover:text-gray-600" @click="removeGroup(groupOptions.find(o => o.label === g)?.id as number)">×</button>
                 </span>
               </div>
             </div>
