@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import { cashBookService } from '@/services/cashbook.service'
@@ -59,6 +59,7 @@ interface ApiReceipt {
 }
 
 const route = useRoute()
+const router = useRouter()
 const codeParam = computed(() => route.params.code as string)
 const loading = ref(false)
 const detail = ref<ReceiptDetail | null>(null)
@@ -222,6 +223,10 @@ onMounted(() => {
     }
   }, { immediate: true })
 })
+
+function goBack() {
+  router.push('/cash-flow')
+}
 </script>
 
 <template>
@@ -229,8 +234,21 @@ onMounted(() => {
     <template #header>
       <UDashboardNavbar hide-title>
         <template #leading>
-          <UDashboardSidebarCollapse />
-          <div>
+          <div class="flex items-center gap-3">
+            <button
+              class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              @click="goBack"
+            >
+              <svg
+                class="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
             <div class="text-lg font-semibold">
               Sổ quỹ
             </div>
@@ -253,13 +271,6 @@ onMounted(() => {
         <!-- Toolbar moved into body -->
         <div class="flex items-center justify-between gap-6 mb-6 flex-wrap">
           <div class="flex items-center gap-3 flex-shrink-0">
-            <UButton
-              color="neutral"
-              variant="soft"
-              icon="i-heroicons-arrow-left"
-              size="sm"
-              :to="'/cash-flow'"
-            />
             <div class="flex flex-col">
               <div class="text-xl font-semibold text-gray-900 leading-tight">
                 {{ detail.code }}

@@ -198,20 +198,24 @@ function goBack() {
       <UDashboardNavbar>
         <template #leading>
           <div class="flex items-center gap-3">
-            <UDashboardSidebarCollapse />
+            <button
+              class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              @click="goBack"
+            >
+              <svg
+                class="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
             <div class="text-lg font-semibold">
               Thêm mới khách hàng
             </div>
           </div>
-        </template>
-        <template #right>
-          <button
-            type="button"
-            class="h-9 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50"
-            @click="goBack"
-          >
-            Quay lại
-          </button>
         </template>
       </UDashboardNavbar>
     </template>

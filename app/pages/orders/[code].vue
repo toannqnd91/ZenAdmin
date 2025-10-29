@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ordersService } from '@/services/orders.service'
 import type { OrderDetail, OrderHistoryEvent, OrderDetailRawResponse, OrderHistoryListResponse } from '@/services/orders.service'
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
@@ -71,6 +71,7 @@ interface RawPayload {
 }
 
 const route = useRoute()
+const router = useRouter()
 const orderCodeParam = computed(() => route.params.code as string)
 const loading = ref(false)
 
@@ -378,14 +379,41 @@ async function fetchData() {
   }
 }
 onMounted(fetchData)
+
+function goBack() {
+  router.push('/orders')
+}
 </script>
 
 <template>
   <UDashboardPanel :id="`order-${orderCodeParam}`">
     <template #header>
-      <UDashboardNavbar title="Chi tiết đơn hàng">
+      <UDashboardNavbar>
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <div class="flex items-center gap-3">
+            <button
+              class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              @click="goBack"
+            >
+              <svg
+                class="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <div>
+              <div class="text-lg font-semibold">
+                Chi tiết đơn hàng
+              </div>
+              <div class="text-xs text-gray-500">
+                Mã đơn hàng: <span class="font-medium">{{ (detail && detail.orderCode) ? detail.orderCode : (orderCodeParam || '') }}</span>
+              </div>
+            </div>
+          </div>
         </template>
       </UDashboardNavbar>
     </template>
@@ -402,13 +430,6 @@ onMounted(fetchData)
             <!-- Full-width toolbar (single line, horizontally scrollable if narrow) -->
             <div class="flex items-center justify-between gap-6 overflow-x-auto whitespace-nowrap pr-2">
               <div class="flex items-center gap-3 flex-shrink-0">
-                <UButton
-                  :to="'/orders'"
-                  color="neutral"
-                  variant="soft"
-                  icon="i-heroicons-arrow-left"
-                  size="sm"
-                />
                 <div class="text-xl font-semibold text-gray-900">
                   {{ detail.orderCode }}
                 </div>
@@ -543,7 +564,7 @@ onMounted(fetchData)
                           <th class="px-6 py-2 text-left font-semibold">
                             Đơn giá
                           </th>
-                          <th class="px-6 py-2 text-left font-semibold text-right">
+                          <th class="px-6 py-2 font-semibold text-right">
                             Thành tiền
                           </th>
                         </tr>

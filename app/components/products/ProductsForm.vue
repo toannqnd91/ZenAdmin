@@ -1,4 +1,3 @@
-
 <script setup lang="ts">
 import { reactive, ref, computed, nextTick, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -145,6 +144,10 @@ const onSubmit = async () => {
 const cancel = () => {
   void router.push('/products')
 }
+
+const goBack = () => {
+  void router.push('/products')
+}
 </script>
 
 <template>
@@ -154,10 +157,21 @@ const cancel = () => {
       <UDashboardNavbar>
         <template #leading>
           <div class="flex items-center gap-3">
-            <UDashboardSidebarCollapse />
-            <div>
-              <div class="text-lg font-semibold">{{ isEdit ? 'Cập nhật sản phẩm' : 'Thêm sản phẩm mới' }}</div>
-            </div>
+            <button
+              class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              @click="goBack"
+            >
+              <svg
+                class="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <div class="text-lg font-semibold">{{ isEdit ? 'Cập nhật sản phẩm' : 'Thêm sản phẩm mới' }}</div>
           </div>
         </template>
         <template #right>

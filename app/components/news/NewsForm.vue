@@ -34,6 +34,7 @@ const {
 } = await useNewsForm(props.newsId)
 
 const cancel = () => navigateTo('/news')
+const goBack = () => navigateTo('/news')
 </script>
 
 <template>
@@ -41,7 +42,22 @@ const cancel = () => navigateTo('/news')
     <template #header>
       <UDashboardNavbar :title="isEdit ? 'Chỉnh sửa tin tức' : 'Thêm tin tức mới'">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <div class="flex items-center gap-3">
+            <button
+              class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              @click="goBack"
+            >
+              <svg
+                class="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+          </div>
         </template>
         <template #right>
           <div class="flex items-center gap-2">
