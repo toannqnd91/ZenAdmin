@@ -67,7 +67,7 @@ const columns: TableColumn[] = [
 ]
 
 // Control column widths: widen "Giá sản phẩm" column
-const colWidths = ['', '180px', '240px']
+const colWidths = ['', '180px', '260px']
 
 function onSave() { /* TODO: wire API */ }
 

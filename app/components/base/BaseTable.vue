@@ -697,7 +697,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
 
     <!-- Table -->
     <div
-      :class="[props.bodyPadding, 'overflow-x-auto']"
+      :class="props.bodyPadding"
     >
       <!-- Empty state -->
       <div v-if="!loading && (pageItems.length === 0)" class="py-10">
@@ -712,6 +712,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
 
       <div
         v-else
+        class="overflow-x-auto"
         @click="onBodyClick"
       >
         <table class="w-full min-w-[64rem] table-fixed text-sm">
