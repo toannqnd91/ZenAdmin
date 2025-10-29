@@ -21,14 +21,13 @@ const emit = defineEmits<{
 }>()
 
 const columns: TableColumn[] = [
-  { key: 'code', label: 'Mã bảng giá', class: 'py-3 text-left font-medium' },
   { key: 'name', label: 'Tên bảng giá', class: 'py-3 text-left font-medium' },
   { key: 'type', label: 'Loại bảng giá', class: 'py-3 text-left font-medium' },
   { key: 'status', label: 'Trạng thái', class: 'py-3 text-left font-medium' },
   { key: 'adjustment', label: 'Điều chỉnh giá', class: 'py-3 text-right font-medium', align: 'right' }
 ]
 
-const colWidths = ['180px', '', '260px', '180px', '140px']
+const colWidths = ['', '260px', '180px', '140px']
 
 const addButton = {
   label: 'Thêm bảng giá',
@@ -44,7 +43,7 @@ const tabs = [
 
 const onTabChange = (v: string) => emit('update:tab', v)
 
-const onClickCode = (id: string) => navigateTo(`/price-book/${id}`)
+const onClickName = (code: string) => navigateTo(`/pricebooks/${encodeURIComponent(code)}`)
 
 // Adapt data type for BaseTable
 const tableData = computed(() => props.data as unknown as Record<string, unknown>[])
@@ -71,15 +70,20 @@ const tableData = computed(() => props.data as unknown as Record<string, unknown
     @update:pagination="emit('update:pagination', $event)"
     @update:tab="onTabChange"
   >
-    <!-- Code column with link style -->
-    <template #column-code="{ item }">
-      <button
-        type="button"
-        class="text-primary-600 hover:underline"
-        @click.stop="onClickCode(String(item.id))"
-      >
-        {{ item.code }}
-      </button>
+    <!-- Name column: clickable name with code shown below -->
+    <template #column-name="{ item }">
+      <div>
+        <button
+          type="button"
+          class="text-[15px] text-gray-900 font-medium"
+          @click.stop="onClickName(String(item.code))"
+        >
+          {{ item.name }}
+        </button>
+        <div class="text-xs text-gray-500 mt-0.5">
+          Mã: <span class="font-medium">{{ item.code }}</span>
+        </div>
+      </div>
     </template>
 
     <!-- Status pill -->

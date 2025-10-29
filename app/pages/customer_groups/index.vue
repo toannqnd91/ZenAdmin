@@ -14,7 +14,7 @@ type GroupRow = {
 const loading = ref(false)
 const q = ref('')
 const rowSelection = ref<Record<string, boolean>>({})
-const pagination = ref({ pageIndex: 0, pageSize: 15 })
+const pagination = ref({ pageIndex: 0, pageSize: 20 })
 
 // Filter: 'all' | 'auto' | 'manual'
 const typeFilter = ref<'all' | 'auto' | 'manual'>('all')
@@ -53,7 +53,7 @@ onMounted(async () => {
   }
 })
 
-// Pagination is controlled via v-model:pagination
+// Pagination is controlled via v-model:pagination (20 rows per page)
 </script>
 
 <template>

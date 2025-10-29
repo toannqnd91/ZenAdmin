@@ -90,19 +90,21 @@ watch(isOpen, (open) => {
             :class="[props.class, 'flex items-center cursor-pointer', { 'opacity-50 pointer-events-none': props.loading }]"
             @click="isOpen = !isOpen"
         >
-            <span v-if="!props.multiple && props.modelValue">
-                {{ options.find(o => o.id === props.modelValue)?.label || props.placeholder || '' }}
-            </span>
-                    <span v-else-if="props.multiple && Array.isArray(props.modelValue) && props.modelValue.length">
-                        <template v-if="showCount">
-                            {{ (props.selectedCountText || 'Đã chọn') + ' ' + props.modelValue.length + ' ' + (props.selectedCountSuffix || 'giá trị') }}
-                        </template>
-                <template v-else>
-                    {{ props.modelValue.map(id => options.find(o => o.id === id)?.label).filter(Boolean).join(', ') }}
-                </template>
-            </span>
-            <span v-else class="text-gray-400">{{ props.placeholder || 'Chọn...' }}</span>
-            <svg class="ml-auto h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="flex-1 min-w-0 overflow-hidden">
+                <span v-if="!props.multiple && props.modelValue" class="block truncate">
+                    {{ options.find(o => o.id === props.modelValue)?.label || props.placeholder || '' }}
+                </span>
+                <span v-else-if="props.multiple && Array.isArray(props.modelValue) && props.modelValue.length" class="block truncate">
+                    <template v-if="showCount">
+                        {{ (props.selectedCountText || 'Đã chọn') + ' ' + props.modelValue.length + ' ' + (props.selectedCountSuffix || 'giá trị') }}
+                    </template>
+                    <template v-else>
+                        {{ props.modelValue.map(id => options.find(o => o.id === id)?.label).filter(Boolean).join(', ') }}
+                    </template>
+                </span>
+                <span v-else class="text-gray-400 block truncate">{{ props.placeholder || 'Chọn...' }}</span>
+            </div>
+            <svg class="ml-2 h-4 w-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
         </div>

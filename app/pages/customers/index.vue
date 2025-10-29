@@ -8,7 +8,7 @@ const { isNotificationsSlideoverOpen } = useDashboard()
 
 const q = ref('')
 const rowSelection = ref<Record<string, boolean>>({})
-const pagination = ref({ pageIndex: 0, pageSize: 50 })
+const pagination = ref({ pageIndex: 0, pageSize: 20 })
 const totalRecords = ref(0)
 const totalPages = ref(1)
 
