@@ -226,6 +226,15 @@ const gotoPage = (p: number) => {
 const rangeFrom = computed(() => (currentPage.value - 1) * props.pagination.pageSize + (pageItems.value.length ? 1 : 0))
 const rangeTo = computed(() => (currentPage.value - 1) * props.pagination.pageSize + pageItems.value.length)
 
+// Skeleton rows count while loading
+const skeletonRows = computed(() => {
+  const size = props.pagination?.pageSize ?? 10
+  return Math.min(Math.max(size, 5), 10)
+})
+
+// Provide varied widths for skeletons so UI looks natural
+const skeletonWidths = ['75%', '55%', '85%', '65%', '45%', '70%', '60%', '80%', '50%', '40%']
+
 // Draggable items local copy when dragging is enabled. We keep a local mutable copy
 const draggableItems = ref<Record<string, unknown>[]>([])
 if (props.draggable) {
@@ -769,7 +778,43 @@ const onRowDelete = (item: Record<string, unknown>) => {
             </tr>
           </thead>
 
-          <tbody v-if="!props.draggable">
+          <!-- Loading skeleton -->
+          <tbody v-if="loading">
+            <tr
+              v-for="n in skeletonRows"
+              :key="`skeleton-${n}`"
+              class="border-t border-gray-200"
+            >
+              <!-- Checkbox cell placeholder -->
+              <td v-if="props.selectable" class="py-4 align-middle">
+                <div class="w-14 h-full flex items-center">
+                  <div class="h-5 w-5 rounded-md bg-gray-200 animate-pulse" aria-hidden="true" />
+                </div>
+              </td>
+
+              <!-- Column placeholders -->
+              <td
+                v-for="(column, cIdx) in columns"
+                :key="`scol-${column.key}-${cIdx}`"
+                class="py-4"
+              >
+                <div
+                  class="h-4 rounded bg-gray-200 animate-pulse"
+                  :style="{ width: skeletonWidths[cIdx % skeletonWidths.length] }"
+                  aria-hidden="true"
+                />
+              </td>
+
+              <!-- Actions cell placeholder -->
+              <td v-if="props.showRowActions" class="py-4 pr-4">
+                <div class="flex justify-end">
+                  <div class="h-5 w-5 rounded-md bg-gray-200 animate-pulse" aria-hidden="true" />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+
+          <tbody v-else-if="!props.draggable">
             <tr
               v-for="item in pageItems"
               :key="String(item.id)"
@@ -890,7 +935,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
           </tbody>
 
           <VueDraggable
-            v-if="props.draggable"
+            v-if="!loading && props.draggable"
             v-model="draggableItems"
             tag="tbody"
             :handle="'.' + (props.dragHandleClass || 'drag-handle')"
