@@ -76,7 +76,7 @@ async function onSave(draft = false) {
       : Math.abs(Number(form.adjustmentValue || 0))
 
     const payload = {
-      code: null,
+      code: '',
       name: form.name.trim(),
       status: draft ? 0 : 1, // 0: draft, 1: active (assumption)
       startOn: now.toISOString(),
@@ -95,7 +95,8 @@ async function onSave(draft = false) {
         : (form.adjustment === 'increase'
             ? `Tăng giá ${Math.abs(Number(form.adjustmentValue || 0))}%`
             : `Giảm giá ${Math.abs(Number(form.adjustmentValue || 0))}%`),
-      defaultAdjustmentPercent: form.adjustment === '' ? 0 : signedPercent
+      defaultAdjustmentPercent: form.adjustment === '' ? 0 : signedPercent,
+      adjustmentMode: (form.adjustment || 'increase') as 'increase' | 'decrease'
     }
 
     const res = await priceBooksService.createPriceBook(payload)

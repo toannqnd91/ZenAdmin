@@ -43,6 +43,23 @@ const selectedGroupNames = computed(() =>
 const pricebook = ref<PriceBookDetail | null>(null)
 const currency = (n: number) => (n || 0).toLocaleString('vi-VN') + 'đ'
 
+// Image helpers (same behavior as /products)
+const config = useRuntimeConfig()
+const publicCfg = config.public as Record<string, unknown> | undefined
+const imageBaseUrl = typeof publicCfg?.imageBaseUrl === 'string' ? (publicCfg!.imageBaseUrl as string) : ''
+const getThumbnail = (raw: Record<string, unknown>) => {
+  const url = (raw as { thumbnailImageUrl?: string | null }).thumbnailImageUrl ?? null
+  if (!url) return '/no-image.svg'
+  if (!url.includes('/') && imageBaseUrl) return `${imageBaseUrl}/image/${url}`
+  return url
+}
+const onImgError = (e: Event) => {
+  const t = e.target as HTMLImageElement | null
+  if (t) t.src = '/no-image.svg'
+}
+const getRowName = (raw: Record<string, unknown>) => String((raw as { name?: string }).name ?? '')
+const getRowSku = (raw: Record<string, unknown>) => String((raw as { sku?: string | null }).sku ?? '—')
+
 // BaseTable state
 const q = ref('')
 const rowSelection = ref<Record<string, boolean>>({})
@@ -58,6 +75,7 @@ const tableRows = computed(() =>
     product: `${it.productName} ${it.sku || ''}`.trim(),
     name: it.productName,
     sku: it.sku,
+    thumbnailImageUrl: it.thumbnailImageUrl ?? null,
     basePrice: it.basePrice,
     price: it.appliedPrice,
     lock: it.priceType === 0 // assume absolute price means locked
@@ -237,9 +255,9 @@ function removeGroup(id: number) {
         <UPageCard variant="soft" class="bg-white rounded-lg mt-4">
           <div class="overflow-x-auto">
           <BaseTable
-            :q="q"
-            :row-selection="rowSelection"
-            :pagination="pagination"
+            v-model:q="q"
+            v-model:row-selection="rowSelection"
+            v-model:pagination="pagination"
             :data="tableRows"
             :loading="loading"
             :total-records="totalRecords"
@@ -247,7 +265,7 @@ function removeGroup(id: number) {
             :columns="columns"
             :col-widths="colWidths"
             :show-row-actions="true"
-            title="Danh sách sản phẩm đang bán"
+            title="Danh sách sản phẩm áp dụng"
             :show-filter="false"
             body-padding="px-4 lg:px-0"
             header-padding-x="px-4 lg:px-0"
@@ -256,16 +274,18 @@ function removeGroup(id: number) {
             <template #search-actions>
               <button class="h-9 px-3 rounded-md border border-gray-300 bg-white text-sm whitespace-nowrap" type="button">Xuất file</button>
               <button class="h-9 px-3 rounded-md border border-gray-300 bg-white text-sm whitespace-nowrap" type="button">Nhập file</button>
-              <button class="h-9 px-3 rounded-md bg-primary-600 text-white text-sm whitespace-nowrap" type="button">Đăng bán sản phẩm</button>
+              <button class="h-9 px-3 rounded-md bg-primary-600 text-white text-sm whitespace-nowrap" type="button" @click="router.push(`/pricebooks/${code}/editor`)">Thêm sản phẩm</button>
             </template>
 
             <!-- Product column -->
             <template #column-product="{ item }">
-              <div class="flex items-start gap-3">
-                <div class="h-11 w-11 bg-gray-100 rounded md:flex hidden" />
-                <div>
-                  <div class="text-[15px] text-gray-900 font-medium">{{ (item as any).name }}</div>
-                  <div class="text-xs text-gray-500">SKU: {{ (item as any).sku || '---' }}</div>
+              <div class="flex items-center gap-4">
+                <div class="h-11 w-11 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
+                  <img :src="getThumbnail(item as Record<string, unknown>)" :alt="getRowName(item as Record<string, unknown>)" class="h-full w-full object-cover" @error="onImgError">
+                </div>
+                <div class="flex flex-col">
+                  <div class="text-[15px] text-gray-900 font-medium">{{ getRowName(item as Record<string, unknown>) }}</div>
+                  <div class="text-xs text-gray-500">SKU: {{ getRowSku(item as Record<string, unknown>) }}</div>
                 </div>
               </div>
             </template>

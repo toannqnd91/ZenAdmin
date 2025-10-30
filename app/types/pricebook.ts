@@ -3,6 +3,8 @@ export interface PriceBookItem {
   productId: number
   sku: string
   productName: string
+  /** Optional product thumbnail filename or full URL */
+  thumbnailImageUrl?: string | null
   basePrice: number
   priceType: number
   value: number

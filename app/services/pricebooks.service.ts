@@ -3,7 +3,7 @@ import { API_ENDPOINTS } from '@/utils/api'
 import type { PriceBookDetail } from '@/types/pricebook'
 
 export interface CreatePriceBookRequest {
-  code: string | null
+  code: string
   name: string
   status: number
   startOn: string
@@ -19,6 +19,8 @@ export interface CreatePriceBookRequest {
   priceFormulaJson: string
   priceFormulaDescription: string
   defaultAdjustmentPercent: number
+  /** 'increase' or 'decrease' */
+  adjustmentMode: 'increase' | 'decrease'
 }
 
 export interface CreatePriceBookResponse {
@@ -45,6 +47,11 @@ export class PriceBooksService extends BaseService {
   /** Get a price book detail by code */
   async getByCode(code: string) {
     return this.get<PriceBookDetail>(API_ENDPOINTS.PRICING_PRICEBOOK_BY_CODE(code))
+  }
+
+  /** Get items of a price book by code */
+  async getItemsByCode(code: string) {
+    return this.get<import('@/types/pricebook').PriceBookItem[]>(API_ENDPOINTS.PRICING_PRICEBOOK_ITEMS_BY_CODE(code))
   }
 }
 
