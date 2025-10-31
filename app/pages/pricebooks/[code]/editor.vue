@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import BaseTable, { type TableColumn } from '@/components/base/BaseTable.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { priceBooksService } from '@/services'
@@ -73,7 +73,7 @@ async function loadPage() {
   try {
     const page = (pagination.value.pageIndex ?? 0) + 1
     const size = pagination.value.pageSize ?? 25
-    const res = await priceBooksService.getMissingProductsByCode(code.value, page, size)
+    const res = await priceBooksService.getMissingProductsByCode(code.value, page, size, q.value)
     if (res.success) {
       items.value = res.data?.items || []
       totalRecords.value = res.data?.pagination?.total ?? items.value.length
@@ -90,6 +90,16 @@ async function loadPage() {
 
 onMounted(loadPage)
 watch(pagination, loadPage, { deep: true })
+
+// Debounce keyword search
+let _t: ReturnType<typeof setTimeout> | undefined
+watch(q, (_val) => {
+  if (_t) clearTimeout(_t)
+  _t = setTimeout(() => {
+    pagination.value.pageIndex = 0
+    loadPage()
+  }, 300)
+})
 </script>
 
 <!-- eslint-disable vue/max-attributes-per-line, vue/html-closing-bracket-newline, vue/singleline-html-element-content-newline, vue/html-indent, vue/first-attribute-linebreak, vue/html-self-closing -->

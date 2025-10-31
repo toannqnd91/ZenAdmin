@@ -55,8 +55,9 @@ export class PriceBooksService extends BaseService {
   }
 
   /** Get missing products for a price book by code with server pagination */
-  async getMissingProductsByCode(code: string, page: number, pageSize: number) {
-    const params = { page, pageSize }
+  async getMissingProductsByCode(code: string, page: number, pageSize: number, keyword?: string) {
+    const params: Record<string, string | number> = { page, pageSize }
+    if (keyword && String(keyword).trim() !== '') params.keyword = String(keyword).trim()
     return this.get<PriceBookMissingProductsPage>(API_ENDPOINTS.PRICING_PRICEBOOK_MISSING_PRODUCTS_BY_CODE(code), params)
   }
 }
