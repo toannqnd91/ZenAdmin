@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import BaseModal from '@/components/base/BaseModal.vue'
 import BaseTable, { type TableColumn } from '@/components/base/BaseTable.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { priceBooksService } from '@/services'
@@ -22,6 +23,7 @@ const pagination = ref({ pageIndex: 0, pageSize: 25 })
 const totalRecords = ref(0)
 const totalPages = ref(1)
 const currency = (n: number) => (n || 0).toLocaleString('vi-VN') + 'đ'
+const hasSelection = computed(() => Object.values(rowSelection.value).some(Boolean))
 
 // Image helpers (same as /products)
 const config = useRuntimeConfig()
@@ -50,7 +52,7 @@ const tableRows = computed(() =>
     thumbnailImageUrl: it.thumbnailImageUrl ?? null,
     basePrice: it.basePrice,
     price: it.appliedPrice,
-    lock: false
+    lock: it.alreadyExistsButInactive === true
   }))
 )
 
@@ -62,9 +64,80 @@ const columns: TableColumn[] = [
 
 const colWidths = ['', '', '']
 
-// Actions
-function onEditRow(_item: Record<string, unknown>) {}
-function onDeleteRow(_item: Record<string, unknown>) {}
+// Actions / Edit modal
+const showEditModal = ref(false)
+const submitting = ref(false)
+interface RowShape {
+  id: number
+  name: string
+  sku: string
+  price: number
+  thumbnailImageUrl?: string | null
+  lock?: boolean
+}
+const editingItem = ref<RowShape | null>(null)
+const priceInput = ref<string>('')
+const formatVND = (v: number | string) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(typeof v === 'string' ? Number(v) : v || 0)
+// Parse a VND string like "12.000 đ" into 12000 (strip thousands separators, currency, spaces)
+const parseVND = (s: string) => {
+  const digits = String(s ?? '').replace(/[^\d-]/g, '')
+  return digits ? Number(digits) : 0
+}
+function onEditRow(row: Record<string, unknown>) {
+  const r = row as unknown as RowShape
+  editingItem.value = {
+    id: Number(r.id),
+    name: String(r.name || ''),
+    sku: String((r as { sku?: string }).sku || ''),
+    price: Number((r as { price?: number }).price || 0),
+    thumbnailImageUrl: (r as { thumbnailImageUrl?: string | null }).thumbnailImageUrl ?? null,
+    lock: (r as { lock?: boolean }).lock ?? false
+  }
+  priceInput.value = formatVND(editingItem.value.price)
+  showEditModal.value = true
+}
+const onResetPrice = () => {
+  if (!editingItem.value) return
+  priceInput.value = formatVND(editingItem.value.price)
+}
+function onConfirmEdit() {
+  if (!editingItem.value) return
+  const id = editingItem.value.id
+  const newPrice = parseVND(priceInput.value)
+  submitting.value = true
+  ;(async () => {
+    try {
+      const res = await priceBooksService.addItemToPriceBook(code.value, {
+        productId: id,
+        priceType: 0, // 0: fixed price
+        value: newPrice,
+        isActived: false,
+        note: ''
+      })
+      if (!res.success) throw new Error(res.message || 'Không thể thêm giá sản phẩm')
+
+      // Refresh list (product should no longer be missing)
+      await loadPage()
+
+      const toast = useToast()
+      toast.add({ title: 'Đã cập nhật giá', color: 'success' })
+      showEditModal.value = false
+    } catch (err: unknown) {
+      const toast = useToast()
+      const msg = err instanceof Error ? err.message : String(err)
+      toast.add({ title: 'Lỗi cập nhật', description: msg, color: 'error' })
+    } finally {
+      submitting.value = false
+    }
+  })()
+}
+function onPriceInput(e: Event) {
+  const el = e.target as HTMLInputElement
+  const digits = (el.value || '').replace(/\D/g, '')
+  const num = digits ? Number(digits) : 0
+  priceInput.value = formatVND(num)
+}
+// delete action removed per requirement
 
 // Fetch missing products with server-side pagination
 async function loadPage() {
@@ -130,6 +203,7 @@ watch(q, (_val) => {
             v-model:q="q"
             v-model:row-selection="rowSelection"
             v-model:pagination="pagination"
+            :query-sync="{ pageKey: 'page', qKey: 'q' }"
             :data="tableRows"
             :loading="loading"
             :total-records="totalRecords"
@@ -137,11 +211,13 @@ watch(q, (_val) => {
             :columns="columns"
             :col-widths="colWidths"
             :show-row-actions="true"
+            :actions="[]"
+            :show-selection-delete="false"
             title="Danh sách sản phẩm chưa trong bảng giá"
             :show-filter="false"
           >
             <template #search-actions>
-              <button class="h-9 px-3 rounded-md bg-primary-600 text-white text-sm whitespace-nowrap" type="button">
+              <button class="h-9 px-3 rounded-md bg-primary-600 text-white text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed" type="button" :disabled="!hasSelection">
                 Thêm vào danh sách
               </button>
             </template>
@@ -182,13 +258,6 @@ watch(q, (_val) => {
                     <path d="M14.06 4.69l3.75 3.75" />
                   </svg>
                 </button>
-                <button class="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100" title="Xoá" type="button" @click.stop="onDeleteRow(_item)">
-                  <svg class="w-4 h-4 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 6h18" />
-                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                  </svg>
-                </button>
               </div>
             </template>
           </BaseTable>
@@ -196,6 +265,52 @@ watch(q, (_val) => {
           <div class="text-center text-sm text-gray-500 mt-8">
             Tìm hiểu thêm về <a href="#" class="text-primary-600 hover:underline">bảng giá</a>
           </div>
+
+          <!-- Edit price modal -->
+          <BaseModal v-model="showEditModal" title="Chỉnh sửa giá sản phẩm" width-class="max-w-2xl">
+            <div v-if="editingItem" class="flex items-center justify-between gap-4">
+              <div class="flex items-center gap-4">
+                <div class="h-11 w-11 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
+                  <img :src="getThumbnail(editingItem as unknown as Record<string, unknown>)" :alt="editingItem.name" class="h-full w-full object-cover" @error="onImgError">
+                </div>
+                <div>
+                  <div class="text-[15px] font-medium text-blue-600">{{ editingItem.name }}</div>
+                  <div class="text-xs text-gray-500">SKU: {{ editingItem.sku || '—' }}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span v-if="editingItem.lock" class="text-yellow-600" title="Khoá">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M7 11V7a5 5 0 0110 0v4" />
+                    <rect x="5" y="11" width="14" height="10" rx="2" />
+                  </svg>
+                </span>
+                <div class="relative">
+                  <input
+                    :value="priceInput"
+                    type="text"
+                    inputmode="numeric"
+                    class="h-9 w-40 pr-10 pl-3 rounded-md border border-gray-300 bg-white text-right text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    @input="onPriceInput"
+                    @blur="priceInput = formatVND(parseVND(priceInput))"
+                  >
+                  <span class="absolute inset-y-0 right-7 flex items-center text-gray-400 select-none">đ</span>
+                  <button class="absolute inset-y-0 right-1 px-1 text-gray-500 hover:text-gray-700" type="button" title="Khôi phục" @click="onResetPrice">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 2v6h-6" />
+                      <path d="M3 12a9 9 0 0115-6.7L21 8" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <template #footer>
+              <div class="flex items-center justify-end gap-3 w-full">
+                <button type="button" class="h-9 px-4 rounded-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50" @click="showEditModal=false">Hủy</button>
+                <button type="button" class="h-9 px-5 rounded-md bg-primary-600 text-white text-sm font-medium disabled:opacity-50" :disabled="!editingItem || submitting" @click="onConfirmEdit">Xác nhận</button>
+              </div>
+            </template>
+          </BaseModal>
         </div>
       </div>
     </template>

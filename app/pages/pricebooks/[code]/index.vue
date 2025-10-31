@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import BaseTable, { type TableColumn } from '@/components/base/BaseTable.vue'
+import BaseModal from '@/components/base/BaseModal.vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
 import BaseDropdownSelect from '@/components/BaseDropdownSelect.vue'
 import { priceBooksService, customersService } from '@/services'
-import type { PriceBookDetail, PriceBookCustomerGroup } from '@/types/pricebook'
+import type { PriceBookDetail, PriceBookCustomerGroup, PriceBookItem } from '@/types/pricebook'
 import type { CustomerGroupItem } from '@/services/customers.service'
 
 const route = useRoute()
@@ -41,6 +42,7 @@ const selectedGroupNames = computed(() =>
 
 // API state
 const pricebook = ref<PriceBookDetail | null>(null)
+const items = ref<PriceBookItem[]>([])
 const currency = (n: number) => (n || 0).toLocaleString('vi-VN') + 'đ'
 
 // Image helpers (same behavior as /products)
@@ -65,13 +67,14 @@ const q = ref('')
 const rowSelection = ref<Record<string, boolean>>({})
 const pagination = ref({ pageIndex: 0, pageSize: 20 })
 const loading = ref(false)
-const totalRecords = computed(() => pricebook.value?.items?.length || 0)
+const totalRecords = computed(() => items.value.length || 0)
 const totalPages = computed(() => 1)
 
 // Map rows to BaseTable data; include a searchable 'product' field
 const tableRows = computed(() =>
-  (pricebook.value?.items || []).map(it => ({
+  (items.value || []).map(it => ({
     id: it.id,
+    productId: it.productId,
     product: `${it.productName} ${it.sku || ''}`.trim(),
     name: it.productName,
     sku: it.sku,
@@ -93,12 +96,103 @@ const colWidths = ['', '180px', '260px']
 
 function onSave() { /* TODO: wire API */ }
 
-// Row actions (placeholder handlers)
-function onEditRow(_item: Record<string, unknown>) {
-  // TODO: implement edit behavior for row
+// Edit price modal (reuse logic from editor.vue)
+const showEditModal = ref(false)
+const submitting = ref(false)
+interface RowShape {
+  id: number
+  productId: number
+  name: string
+  sku: string
+  price: number
+  thumbnailImageUrl?: string | null
+  lock?: boolean
 }
-function onDeleteRow(_item: Record<string, unknown>) {
-  // TODO: implement delete behavior for row
+const editingItem = ref<RowShape | null>(null)
+const priceInput = ref<string>('')
+const formatVND = (v: number | string) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(typeof v === 'string' ? Number(v) : v || 0)
+const parseVND = (s: string) => {
+  const digits = String(s ?? '').replace(/[^\d-]/g, '')
+  return digits ? Number(digits) : 0
+}
+function onEditRow(row: Record<string, unknown>) {
+  const r = row as unknown as RowShape
+  editingItem.value = {
+    id: Number(r.id),
+    productId: Number((r as { productId?: number }).productId || 0),
+    name: String((r as { name?: string }).name || ''),
+    sku: String((r as { sku?: string }).sku || ''),
+    price: Number((r as { price?: number }).price || 0),
+    thumbnailImageUrl: (r as { thumbnailImageUrl?: string | null }).thumbnailImageUrl ?? null,
+    lock: (r as { lock?: boolean }).lock ?? false
+  }
+  priceInput.value = formatVND(editingItem.value.price)
+  showEditModal.value = true
+}
+const onResetPrice = () => {
+  if (!editingItem.value) return
+  priceInput.value = formatVND(editingItem.value.price)
+}
+async function onConfirmEdit() {
+  if (!editingItem.value) return
+  const productId = editingItem.value.productId || editingItem.value.id
+  const newPrice = parseVND(priceInput.value)
+  submitting.value = true
+  try {
+    const res = await priceBooksService.addItemToPriceBook(code.value, {
+      productId,
+      priceType: 0,
+      value: newPrice,
+      isActived: true,
+      note: ''
+    })
+    if (!res.success) throw new Error(res.message || 'Không thể cập nhật giá sản phẩm')
+    // Refresh items to reflect changes
+    await loadItems()
+    const toast = useToast()
+    toast.add({ title: 'Đã cập nhật giá', color: 'success' })
+    showEditModal.value = false
+  } catch (err: unknown) {
+    const toast = useToast()
+    const msg = err instanceof Error ? err.message : String(err)
+    toast.add({ title: 'Lỗi cập nhật', description: msg, color: 'error' })
+  } finally {
+    submitting.value = false
+  }
+}
+function onPriceInput(e: Event) {
+  const el = e.target as HTMLInputElement
+  const digits = (el.value || '').replace(/\D/g, '')
+  const num = digits ? Number(digits) : 0
+  priceInput.value = formatVND(num)
+}
+async function onDeleteRow(_item: Record<string, unknown>) {
+  const itemId = Number((_item as { id?: number }).id || 0)
+  if (!itemId) return
+  const toast = useToast()
+  try {
+    const res = await priceBooksService.deleteItemFromPriceBook(code.value, itemId)
+    if (!res.success) throw new Error(res.message || 'Không thể xoá sản phẩm khỏi bảng giá')
+    // Refresh items after delete
+    await loadItems()
+    toast.add({ title: 'Đã xoá khỏi bảng giá', color: 'success' })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    toast.add({ title: 'Xoá thất bại', description: msg, color: 'error' })
+  }
+}
+
+// Fetch items list by code
+async function loadItems() {
+  if (!code.value) return
+  try {
+    const res = await priceBooksService.getItemsByCode(code.value)
+    if (res.success) {
+      items.value = res.data || []
+    }
+  } catch (err) {
+    console.error('Fetch items error:', err)
+  }
 }
 
 // Fetch pricebook detail by code
@@ -121,6 +215,8 @@ onMounted(async () => {
     } else {
       console.error('Fetch pricebook failed:', res.message)
     }
+    // Load items for table
+    await loadItems()
   } catch (err) {
     console.error('Fetch pricebook error:', err)
   } finally {
@@ -258,6 +354,7 @@ function removeGroup(id: number) {
             v-model:q="q"
             v-model:row-selection="rowSelection"
             v-model:pagination="pagination"
+            :query-sync="{ pageKey: 'page', qKey: 'q' }"
             :data="tableRows"
             :loading="loading"
             :total-records="totalRecords"
@@ -337,6 +434,51 @@ function removeGroup(id: number) {
               </div>
             </template>
           </BaseTable>
+          <!-- Edit price modal (shared UI) -->
+          <BaseModal v-model="showEditModal" title="Chỉnh sửa giá sản phẩm" width-class="max-w-2xl">
+            <div v-if="editingItem" class="flex items-center justify-between gap-4">
+              <div class="flex items-center gap-4">
+                <div class="h-11 w-11 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
+                  <img :src="getThumbnail(editingItem as unknown as Record<string, unknown>)" :alt="editingItem.name" class="h-full w-full object-cover" @error="onImgError">
+                </div>
+                <div>
+                  <div class="text-[15px] font-medium text-blue-600">{{ editingItem.name }}</div>
+                  <div class="text-xs text-gray-500">SKU: {{ editingItem.sku || '—' }}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span v-if="editingItem.lock" class="text-yellow-600" title="Khoá">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M7 11V7a5 5 0 0110 0v4" />
+                    <rect x="5" y="11" width="14" height="10" rx="2" />
+                  </svg>
+                </span>
+                <div class="relative">
+                  <input
+                    :value="priceInput"
+                    type="text"
+                    inputmode="numeric"
+                    class="h-9 w-40 pr-10 pl-3 rounded-md border border-gray-300 bg-white text-right text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    @input="onPriceInput"
+                    @blur="priceInput = formatVND(parseVND(priceInput))"
+                  >
+                  <span class="absolute inset-y-0 right-7 flex items-center text-gray-400 select-none">đ</span>
+                  <button class="absolute inset-y-0 right-1 px-1 text-gray-500 hover:text-gray-700" type="button" title="Khôi phục" @click="onResetPrice">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 2v6h-6" />
+                      <path d="M3 12a9 9 0 0115-6.7L21 8" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <template #footer>
+              <div class="flex items-center justify-end gap-3 w-full">
+                <button type="button" class="h-9 px-4 rounded-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50" @click="showEditModal=false">Hủy</button>
+                <button type="button" class="h-9 px-5 rounded-md bg-primary-600 text-white text-sm font-medium disabled:opacity-50" :disabled="!editingItem || submitting" @click="onConfirmEdit">Xác nhận</button>
+              </div>
+            </template>
+          </BaseModal>
           </div>
         </UPageCard>
 

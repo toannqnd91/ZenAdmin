@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import TableEmptyState from './TableEmptyState.vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import type { SortableEvent } from 'sortablejs'
@@ -40,6 +41,8 @@ interface Props {
   addButton?: AddButton
   addButtonDropdownItems?: unknown[]
   actions?: TableAction[]
+  // Show the default Delete button in the selection toolbar
+  showSelectionDelete?: boolean
 
   // Server pagination totals (optional)
   totalRecords?: number
@@ -83,6 +86,11 @@ interface Props {
   emptyDescription?: string
   emptyActionLabel?: string
   emptyActionIcon?: string
+
+  // Optional: sync search and page with URL query
+  // - boolean true uses defaults: page -> 'page', q -> 'q'
+  // - or provide keys: { pageKey?: string, qKey?: string }
+  querySync?: boolean | { pageKey?: string, qKey?: string }
 }
 
 interface TableTab {
@@ -112,6 +120,7 @@ const props = withDefaults(defineProps<Props>(), {
   emptyDescription: 'Hiện chưa có bản ghi nào để hiển thị',
   emptyActionLabel: '',
   emptyActionIcon: 'i-lucide-plus',
+  showSelectionDelete: true,
   actions: () => [
     {
       label: 'Change Status',
@@ -163,6 +172,67 @@ const emit = defineEmits<{
   'row-delete': [string | number]
   'empty-action': []
 }>()
+
+// Query sync (optional, opt-in)
+const route = useRoute()
+const router = useRouter()
+const enableQuerySync = computed(() => !!props.querySync)
+const pageKey = computed(() => typeof props.querySync === 'object' && props.querySync?.pageKey ? props.querySync.pageKey : 'page')
+const qKey = computed(() => typeof props.querySync === 'object' && props.querySync?.qKey ? props.querySync.qKey : 'q')
+
+// Initialize from URL once on mount
+onMounted(() => {
+  if (!enableQuerySync.value) return
+  // q
+  const qRaw = route.query[qKey.value]
+  const qStr = Array.isArray(qRaw) ? qRaw[0] : qRaw
+  if (typeof qStr === 'string' && qStr !== props.q) {
+    emit('update:q', qStr)
+  }
+  // page
+  const pRaw = route.query[pageKey.value]
+  const pNum = Array.isArray(pRaw) ? Number(pRaw[0]) : Number(pRaw)
+  if (!Number.isNaN(pNum) && pNum > 0) {
+    const idx = pNum - 1
+    if (idx !== (props.pagination?.pageIndex ?? 0)) {
+      emit('update:pagination', { pageIndex: idx, pageSize: props.pagination?.pageSize ?? 15 })
+    }
+  }
+})
+
+// When URL query changes (back/forward), sync down to component state
+watch(() => route.query[qKey.value], (val) => {
+  if (!enableQuerySync.value) return
+  const qStr = Array.isArray(val) ? val[0] : val
+  if (typeof qStr === 'string' && qStr !== props.q) emit('update:q', qStr)
+})
+
+watch(() => route.query[pageKey.value], (val) => {
+  if (!enableQuerySync.value) return
+  const pNum = Array.isArray(val) ? Number(val[0]) : Number(val)
+  const desired = !Number.isNaN(pNum) && pNum > 0 ? pNum - 1 : 0
+  if (desired !== (props.pagination?.pageIndex ?? 0)) {
+    emit('update:pagination', { pageIndex: desired, pageSize: props.pagination?.pageSize ?? 15 })
+  }
+})
+
+// When component state changes, reflect it to URL
+watch(() => props.q, (val) => {
+  if (!enableQuerySync.value) return
+  const cur = route.query[qKey.value]
+  const curStr = Array.isArray(cur) ? cur[0] : cur
+  if (val === curStr) return
+  router.replace({ query: { ...route.query, [qKey.value]: val || undefined } })
+})
+
+watch(() => props.pagination?.pageIndex, (idx) => {
+  if (!enableQuerySync.value || typeof idx !== 'number') return
+  const cur = route.query[pageKey.value]
+  const curNum = Array.isArray(cur) ? Number(cur[0]) : Number(cur)
+  const pageNumber = idx + 1
+  if (curNum === pageNumber) return
+  router.replace({ query: { ...route.query, [pageKey.value]: String(pageNumber) } })
+})
 
 /* filter + paging */
 const filtered = computed(() =>
@@ -672,8 +742,9 @@ const onRowDelete = (item: Record<string, unknown>) => {
             </svg>
           </button>
 
-          <!-- Delete button -->
+          <!-- Delete button (optional) -->
           <button
+            v-if="props.showSelectionDelete"
             type="button"
             class="h-8 inline-flex items-center gap-2 rounded-md border border-red-300 px-3 text-sm bg-white hover:bg-red-50 text-red-600"
             @click="() => { emit('delete', Object.keys(rowSelection).filter(id => rowSelection[id])); emit('update:rowSelection', {}); }"

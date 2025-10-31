@@ -57,8 +57,21 @@ export class PriceBooksService extends BaseService {
   /** Get missing products for a price book by code with server pagination */
   async getMissingProductsByCode(code: string, page: number, pageSize: number, keyword?: string) {
     const params: Record<string, string | number> = { page, pageSize }
-    if (keyword && String(keyword).trim() !== '') params.keyword = String(keyword).trim()
+    if (keyword && String(keyword).trim() !== '') params.keyword = keyword
     return this.get<PriceBookMissingProductsPage>(API_ENDPOINTS.PRICING_PRICEBOOK_MISSING_PRODUCTS_BY_CODE(code), params)
+  }
+
+  /** Add an item (product price) into a price book by code */
+  async addItemToPriceBook(
+    code: string,
+    payload: { productId: number, priceType: number, value: number, isActived: boolean, note?: string }
+  ) {
+    return this.post<unknown>(API_ENDPOINTS.PRICING_PRICEBOOK_ITEMS_BY_CODE(code), payload)
+  }
+
+  /** Delete an item from price book by item id */
+  async deleteItemFromPriceBook(code: string, itemId: number | string) {
+    return this.delete<unknown>(API_ENDPOINTS.PRICING_PRICEBOOK_ITEM_BY_CODE_AND_ID(code, itemId))
   }
 }
 

@@ -166,6 +166,7 @@ const currencySuffix = 'đ'
     :q="q"
     :row-selection="rowSelection"
     :pagination="pagination"
+    :query-sync="true"
     :data="data"
     :loading="loading"
     title="Danh sách sản phẩm"
