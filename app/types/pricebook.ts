@@ -36,3 +36,24 @@ export interface PriceBookDetail {
   channels: Array<Record<string, unknown>>
   items: PriceBookItem[]
 }
+
+// Missing products types for editor page
+export interface PriceBookMissingProduct {
+  id: number
+  sku: string
+  name: string
+  basePrice: number
+  alreadyExistsButInactive: boolean
+  appliedPrice: number
+  thumbnailImageUrl?: string | null
+}
+
+export interface PriceBookMissingProductsPage {
+  pagination: {
+    total: number
+    page: number
+    pageSize: number
+    totalPages: number
+  }
+  items: PriceBookMissingProduct[]
+}

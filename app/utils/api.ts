@@ -122,6 +122,7 @@ export const API_ENDPOINTS = {
   PRICING_PRICEBOOK_BY_ID: (id: number | string) => `/pricing/pricebooks/${id}`,
   PRICING_PRICEBOOK_BY_CODE: (code: string) => `/pricing/pricebooks/${encodeURIComponent(code)}/code`,
   PRICING_PRICEBOOK_ITEMS_BY_CODE: (code: string) => `/pricing/pricebooks/${encodeURIComponent(code)}/items`,
+  PRICING_PRICEBOOK_MISSING_PRODUCTS_BY_CODE: (code: string) => `/pricing/pricebooks/${encodeURIComponent(code)}/missing-products`,
 
   // Legacy duplicates (migrating away from getApiEndpoints())
   DASHBOARD_MENU_LEGACY: '/Identity/system-menu/auto',

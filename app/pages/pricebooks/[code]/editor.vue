@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import BaseTable, { type TableColumn } from '@/components/base/BaseTable.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { priceBooksService } from '@/services'
-import type { PriceBookItem } from '@/types/pricebook'
+import type { PriceBookMissingProduct } from '@/types/pricebook'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,13 +14,13 @@ function goBack() {
 }
 
 // State
-const items = ref<PriceBookItem[]>([])
+const items = ref<PriceBookMissingProduct[]>([])
 const loading = ref(false)
 const q = ref('')
 const rowSelection = ref<Record<string, boolean>>({})
-const pagination = ref({ pageIndex: 0, pageSize: 20 })
-const totalRecords = computed(() => items.value.length)
-const totalPages = computed(() => 1)
+const pagination = ref({ pageIndex: 0, pageSize: 25 })
+const totalRecords = ref(0)
+const totalPages = ref(1)
 const currency = (n: number) => (n || 0).toLocaleString('vi-VN') + 'đ'
 
 // Image helpers (same as /products)
@@ -40,17 +40,17 @@ const onImgError = (e: Event) => {
 const getRowName = (raw: Record<string, unknown>) => String((raw as { name?: string }).name ?? '')
 const getRowSku = (raw: Record<string, unknown>) => String((raw as { sku?: string | null }).sku ?? '—')
 
-// Table rows
+// Table rows (map API -> BaseTable)
 const tableRows = computed(() =>
   items.value.map(it => ({
     id: it.id,
-    product: `${it.productName} ${it.sku || ''}`.trim(),
-    name: it.productName,
+    product: `${it.name} ${it.sku || ''}`.trim(),
+    name: it.name,
     sku: it.sku,
     thumbnailImageUrl: it.thumbnailImageUrl ?? null,
     basePrice: it.basePrice,
     price: it.appliedPrice,
-    lock: it.priceType === 0
+    lock: false
   }))
 )
 
@@ -66,23 +66,30 @@ const colWidths = ['', '', '']
 function onEditRow(_item: Record<string, unknown>) {}
 function onDeleteRow(_item: Record<string, unknown>) {}
 
-// Fetch items by code
-onMounted(async () => {
+// Fetch missing products with server-side pagination
+async function loadPage() {
   if (!code.value) return
   loading.value = true
   try {
-    const res = await priceBooksService.getItemsByCode(code.value)
+    const page = (pagination.value.pageIndex ?? 0) + 1
+    const size = pagination.value.pageSize ?? 25
+    const res = await priceBooksService.getMissingProductsByCode(code.value, page, size)
     if (res.success) {
-      items.value = res.data || []
+      items.value = res.data?.items || []
+      totalRecords.value = res.data?.pagination?.total ?? items.value.length
+      totalPages.value = res.data?.pagination?.totalPages ?? 1
     } else {
-      console.error('Fetch items failed:', res.message)
+      console.error('Fetch missing products failed:', res.message)
     }
   } catch (err) {
-    console.error('Fetch items error:', err)
+    console.error('Fetch missing products error:', err)
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(loadPage)
+watch(pagination, loadPage, { deep: true })
 </script>
 
 <!-- eslint-disable vue/max-attributes-per-line, vue/html-closing-bracket-newline, vue/singleline-html-element-content-newline, vue/html-indent, vue/first-attribute-linebreak, vue/html-self-closing -->

@@ -1,6 +1,6 @@
 import { BaseService } from './base.service'
 import { API_ENDPOINTS } from '@/utils/api'
-import type { PriceBookDetail } from '@/types/pricebook'
+import type { PriceBookDetail, PriceBookMissingProductsPage } from '@/types/pricebook'
 
 export interface CreatePriceBookRequest {
   code: string
@@ -52,6 +52,12 @@ export class PriceBooksService extends BaseService {
   /** Get items of a price book by code */
   async getItemsByCode(code: string) {
     return this.get<import('@/types/pricebook').PriceBookItem[]>(API_ENDPOINTS.PRICING_PRICEBOOK_ITEMS_BY_CODE(code))
+  }
+
+  /** Get missing products for a price book by code with server pagination */
+  async getMissingProductsByCode(code: string, page: number, pageSize: number) {
+    const params = { page, pageSize }
+    return this.get<PriceBookMissingProductsPage>(API_ENDPOINTS.PRICING_PRICEBOOK_MISSING_PRODUCTS_BY_CODE(code), params)
   }
 }
 
