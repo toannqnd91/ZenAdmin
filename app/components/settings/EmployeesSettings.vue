@@ -1,15 +1,36 @@
 <script setup lang="ts">
-const props = defineProps<{
-  ownerName?: string
-  lastLogin?: string
-  activeCount?: number
-  maxCount?: number
-}>()
+import { ref, reactive, computed, onMounted } from 'vue'
+import BaseTable from '@/components/base/BaseTable.vue'
+import { identityService } from '@/services/identity.service'
+import { employeesService } from '@/services/employees.service'
+import type { EmployeeItem } from '@/services/employees.service'
 
-const owner = computed(() => props.ownerName || 'Phạm Văn Toàn')
-const last = computed(() => props.lastLogin || 'Đăng nhập lần cuối 12/10/2025 06:45:11')
-const active = computed(() => props.activeCount ?? 1)
-const max = computed(() => props.maxCount ?? 3)
+const owner = ref<string>('')
+const last = ref<string>('')
+const loadingOwner = ref(false)
+
+async function loadOwner() {
+  loadingOwner.value = true
+  const res = await identityService.getShopOwnerCached({
+    onUpdated: (data) => {
+      if (data) {
+        owner.value = data.fullName || data.name || data.userName || data.email || ''
+        last.value = data.createdOn ? `Tạo ngày ${new Date(data.createdOn).toLocaleString('vi-VN')}` : ''
+      }
+    }
+  })
+  const data = res.data
+  if (data) {
+    owner.value = data.fullName || data.name || data.userName || data.email || ''
+    last.value = data.createdOn ? `Tạo ngày ${new Date(data.createdOn).toLocaleString('vi-VN')}` : ''
+  }
+  loadingOwner.value = false
+}
+
+onMounted(loadOwner)
+
+const active = ref(1)
+const max = ref(3)
 const percent = computed(() => Math.min(100, Math.round((active.value / Math.max(1, max.value)) * 100)))
 
 // Local state: toggle create employee view
@@ -26,6 +47,59 @@ function submitInvite() {
   // In real app, call API then reset/close
   console.log('Invite employee', { ...form })
 }
+
+// Employees list (cache-first)
+const employees = ref<EmployeeItem[]>([])
+const employeesLoading = ref(false)
+const employeesRefreshing = ref(false)
+const empQ = ref('')
+const empSelection = ref<Record<string, boolean>>({})
+const empColumns = [
+  { key: 'accountText', label: 'Tài khoản' },
+  { key: 'statusText', label: 'Trạng thái', align: 'right' as const }
+]
+const employeeRows = computed(() => {
+  return employees.value.map((e) => {
+    const name = e.fullName || e.email || e.code
+    const acct = [name, e.department, e.position].filter(Boolean).join(' ')
+    return {
+      id: e.id,
+      // columns for filtering/searching
+      accountText: acct,
+      statusText: e.isActive ? 'Đang kích hoạt' : 'Ngừng kích hoạt',
+      // raw fields for custom rendering
+      name,
+      email: e.email,
+      department: e.department,
+      position: e.position,
+      isActive: e.isActive,
+      createdOn: e.createdOn
+    }
+  })
+})
+
+async function loadEmployees() {
+  employeesLoading.value = true
+  const res = await employeesService.getEmployeesCached({
+    onUpdated: (list) => {
+      employees.value = Array.isArray(list) ? list : []
+    }
+  })
+  const list = res.data
+  employees.value = Array.isArray(list) ? list : []
+  if (res.fromCache) {
+    employeesLoading.value = false
+    employeesRefreshing.value = true
+    res.refreshPromise?.finally(() => {
+      employeesRefreshing.value = false
+    })
+  } else {
+    employeesLoading.value = false
+    employeesRefreshing.value = false
+  }
+}
+
+onMounted(loadEmployees)
 </script>
 
 <template>
@@ -169,23 +243,57 @@ function submitInvite() {
         </div>
       </UPageCard>
 
-      <!-- Tài khoản nhân viên (empty state) -->
-      <UPageCard title="Tài khoản nhân viên" variant="soft" class="bg-white rounded-lg">
-        <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
-          <div class="py-8 flex flex-col items-center text-center gap-2 text-gray-700">
-            <img src="/empty-user-state.svg" alt="" class="w-32 h-32">
-
-            <div class="text-gray-600">
-              Cửa hàng của bạn chưa có nhân viên nào
+      <!-- Tài khoản nhân viên -->
+      <UPageCard variant="soft" class="bg-white rounded-lg" :ui="{ header: 'hidden' }">
+        <BaseTable
+          v-model:q="empQ"
+          v-model:row-selection="empSelection"
+          :data="employeeRows"
+          :loading="employeesLoading"
+          :columns="empColumns"
+          :col-widths="['', '160px']"
+          :table-min-width="'0'"
+          title="Danh sách nhân viên"
+          :add-button="{ label: 'Thêm mới nhân viên', handler: startCreate }"
+          :search-placeholder="'Tìm kiếm nhân viên'"
+          :show-row-actions="false"
+          :selectable="true"
+          :body-padding="'px-0'"
+          :header-padding-x="'px-0'"
+          :footer-padding="'pb-4'"
+          :empty-title="'Chưa có nhân viên'"
+          :empty-description="'Hãy thêm nhân viên đầu tiên cho cửa hàng'"
+          empty-action-label="Thêm mới nhân viên"
+          @empty-action="startCreate"
+        >
+          <template #column-accountText="{ item }">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center">
+                <UIcon name="i-lucide-user" class="size-4 text-gray-500" />
+              </div>
+              <div class="min-w-0">
+                <button class="font-medium truncate text-primary-600 hover:underline">
+                  {{ item.name }}
+                </button>
+                <div class="text-xs text-gray-500 truncate">
+                  {{ item.email || 'Chưa bao giờ đăng nhập' }}
+                  <span v-if="item.department"> • {{ item.department }}</span>
+                  <span v-if="item.position"> • {{ item.position }}</span>
+                </div>
+              </div>
             </div>
-            <UButton
-              label="Thêm mới nhân viên"
-              color="primary"
-              variant="solid"
-              class="mt-1"
-              @click="startCreate"
-            />
-          </div>
+          </template>
+          <template #column-statusText="{ item }">
+            <div class="flex items-center justify-end gap-3">
+              <UBadge :color="item.isActive ? 'success' : 'neutral'" variant="soft" size="sm">
+                {{ item.isActive ? 'Đang kích hoạt' : 'Ngừng kích hoạt' }}
+              </UBadge>
+              <span class="text-xs text-gray-500">{{ item.createdOn ? new Date(String(item.createdOn)).toLocaleDateString('vi-VN') : '' }}</span>
+            </div>
+          </template>
+        </BaseTable>
+        <div v-if="employeesRefreshing" class="py-2 text-xs text-gray-500 text-center">
+          Đang cập nhật...
         </div>
       </UPageCard>
 

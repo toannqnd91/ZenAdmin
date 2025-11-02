@@ -73,6 +73,7 @@ interface Props {
   // Body (table container) horizontal padding utility classes
   bodyPadding?: string
   headerPaddingX?: string
+  headerPaddingY?: string
   footerPadding?: string
   // Hide built-in search input (so parent can render its own in filters-line)
   hideSearch?: boolean
@@ -80,6 +81,9 @@ interface Props {
   hideTitle?: boolean
   // Tabs visual style: default 'pill' (current behavior) or 'underline'
   tabsStyle?: 'pill' | 'underline'
+
+  // Table min width (CSS length, e.g. '64rem', '0', '800px') to control horizontal overflow
+  tableMinWidth?: string
 
   // Empty state
   emptyTitle?: string
@@ -111,6 +115,7 @@ const props = withDefaults(defineProps<Props>(), {
   totalPages: 1,
   bodyPadding: 'px-6',
   headerPaddingX: 'px-6',
+  headerPaddingY: 'py-3',
   footerPadding: 'px-6 pb-4',
   tabsSeparateLine: false,
   hideSearch: false,
@@ -134,7 +139,8 @@ const props = withDefaults(defineProps<Props>(), {
       handler: () => {},
       variant: 'secondary'
     }
-  ]
+  ],
+  tableMinWidth: '64rem'
 })
 
 // Tab state
@@ -530,7 +536,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
       </div>
     </template>
     <!-- Top bar -->
-    <div :class="['flex items-center gap-3', props.headerPaddingX, 'py-3']">
+    <div :class="['flex items-center gap-3', props.headerPaddingX, props.headerPaddingY]">
       <h2 class="text-lg font-semibold flex-1 min-w-0">
         <div class="table-title-bar flex items-center gap-4 w-full">
           <template v-if="!tabsSeparateLine && props.tabs && props.tabs.length">
@@ -670,7 +676,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
           </button>
         </slot>
       </div>
-    </div>
+      </div>
     <!-- Filters line when tabs are inline (not separate) -->
     <div v-if="!tabsSeparateLine && $slots['filters-line']" class="px-6 -mt-3 mb-2">
       <slot name="filters-line" />
@@ -786,7 +792,10 @@ const onRowDelete = (item: Record<string, unknown>) => {
         class="overflow-x-auto"
         @click="onBodyClick"
       >
-        <table class="w-full min-w-[64rem] table-fixed text-sm">
+        <table
+          class="w-full table-fixed text-sm"
+          :style="{ minWidth: props.tableMinWidth }"
+        >
           <colgroup>
             <col v-if="props.selectable" class="w-14">
             <template v-if="props.colWidths && props.colWidths.length === columns.length">

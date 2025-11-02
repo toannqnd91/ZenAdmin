@@ -1,5 +1,6 @@
 // API Endpoints configuration
 export const API_ENDPOINTS = {
+  SHOP_OWNER: '/Identity/shop-owner',
   PRODUCT_QUICK_CREATE: '/Product/quick-create',
   // Warehouse endpoints
   WAREHOUSES: '/Warehouse',
@@ -89,6 +90,8 @@ export const API_ENDPOINTS = {
   CUSTOMER_GROUPS_EXTERNAL: '/customergroups',
   CUSTOMER_ORDERS_EXTERNAL: (id: string) => `/customer/${id}/orders`,
   ORDER_COUNT_BY_STATUS_EXTERNAL: '/OrdersRead/count-by-status',
+  // Employees
+  EMPLOYEES: '/employees',
 
   // Pages endpoints
   PAGES: '/pages',
