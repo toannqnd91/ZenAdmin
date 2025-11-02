@@ -54,13 +54,13 @@ const partners: Partner[] = [
     </UPageCard>
 
     <template v-if="tab === 'integrated'">
-      <!-- Kết nối qua Sapo Express -->
-      <UPageCard title="Kết nối qua Sapo Express" variant="soft" class="bg-white rounded-lg">
+      <!-- Kết nối qua Zen Express -->
+      <UPageCard title="Kết nối qua Zen Express" variant="soft" class="bg-white rounded-lg">
         <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
           <div class="flex items-center justify-between">
             <div class="flex flex-wrap items-center gap-x-5 gap-y-3 py-2">
               <div class="text-xl font-semibold text-green-600">
-                Sapo Express
+                Zen Express
               </div>
               <div class="text-sm text-gray-600">
                 GiaoHangNhanh

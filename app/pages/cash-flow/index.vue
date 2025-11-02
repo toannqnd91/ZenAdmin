@@ -117,6 +117,8 @@ const rows = computed<TableRow[]>(() => rawItems.value.map(i => ({
   amount: i.type === 1 ? i.amount : -Math.abs(i.amount)
 })))
 const loading = ref(false)
+// Background refresh flag (when serving cached data instantly)
+const refreshing = ref(false)
 
 // Summary numbers
 const openingBalance = ref(0)
@@ -129,6 +131,8 @@ const methodBreakdown = ref<MethodBreakdownEntry[]>([])
 const pagination = ref({ pageIndex: 0, pageSize: 20 })
 const totalRecords = ref(0)
 const totalPages = computed(() => Math.ceil(totalRecords.value / pagination.value.pageSize) || 1)
+
+// Use service-level cache via filterCached
 
 function getRangeFromPreset(preset: { value: string, label: string } | null): { from: string, to: string } {
   const now = new Date()
@@ -235,32 +239,53 @@ function mapMethod(tab: TabKey): number {
 }
 
 async function fetchCashBook() {
-  loading.value = true
-  try {
-    const { from, to } = getRangeFromPreset(selectedDatePreset.value)
-    const body = {
-      from,
-      to,
-      type: 0,
-      method: mapMethod(activeTab.value),
-      status: 0,
-      page: pagination.value.pageIndex + 1,
-      pageSize: pagination.value.pageSize,
-      keyword: q.value.trim(),
-      documentKinds: [] as string[]
+  const { from, to } = getRangeFromPreset(selectedDatePreset.value)
+  const body = {
+    from,
+    to,
+    type: 0,
+    method: mapMethod(activeTab.value),
+    status: 0,
+    page: pagination.value.pageIndex + 1,
+    pageSize: pagination.value.pageSize,
+    keyword: q.value.trim(),
+    documentKinds: [] as string[]
+  }
+  // Ask service for cached-first data and background refresh
+  const res = await cashBookService.filterCached(body, {
+    onUpdated: (data) => {
+      // Only called when fresh data differs from cache
+      rawItems.value = data.items
+      totalRecords.value = data.pagination.total
+      openingBalance.value = data.openingBalance
+      totalIn.value = data.totalIn
+      totalOut.value = data.totalOut
+      closingBalance.value = data.closingBalance
+      methodBreakdown.value = data.methodBreakdown
     }
-    const data = await cashBookService.filter(body)
-    rawItems.value = data.items
-    totalRecords.value = data.pagination.total
-    openingBalance.value = data.openingBalance
-    totalIn.value = data.totalIn
-    totalOut.value = data.totalOut
-    closingBalance.value = data.closingBalance
-    methodBreakdown.value = data.methodBreakdown
-  } catch (err) {
-    console.error('Failed to fetch cash book', err)
-  } finally {
+  })
+
+  // Apply initial data (cached or fresh)
+  const data = res.data
+  rawItems.value = data.items
+  totalRecords.value = data.pagination.total
+  openingBalance.value = data.openingBalance
+  totalIn.value = data.totalIn
+  totalOut.value = data.totalOut
+  closingBalance.value = data.closingBalance
+  methodBreakdown.value = data.methodBreakdown
+
+  // UI flags for loading state
+  if (res.fromCache) {
     loading.value = false
+    refreshing.value = true
+    // Turn off refreshing when background refresh completes
+    res.refreshPromise?.finally(() => {
+      refreshing.value = false
+    })
+  } else {
+    loading.value = false
+    refreshing.value = false
   }
 }
 
@@ -333,7 +358,7 @@ function onTabChange(val: string) {
 <template>
   <UDashboardPanel id="cash-flow">
     <template #header>
-  <UDashboardNavbar :ui="{ right: 'gap-3' }">
+      <UDashboardNavbar :ui="{ right: 'gap-3' }">
         <template #leading>
           <UDashboardSidebarCollapse />
           <div>

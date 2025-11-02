@@ -128,7 +128,39 @@ export interface CustomerOrdersListResponse {
   } | null
 }
 
+// Cached result type for customers grid
+export type CustomersCachedResult = {
+  data: CustomersGridResponse
+  fromCache: boolean
+  refreshPromise?: Promise<boolean>
+}
+
 export class CustomersService extends BaseService {
+  private _cache: Record<string, { data: CustomersGridResponse, checksum: string, ts: number }> = {}
+  private _groupsCache: { data: CustomerGroupItem[], checksum: string, ts: number } | null = null
+
+  private groupsChecksum(list: CustomerGroupItem[]) {
+    try {
+      return JSON.stringify(list.map(g => ({ id: g.id, name: g.name, ruleMode: g.ruleMode, autoRun: g.autoRun, latestUpdatedOn: g.latestUpdatedOn })))
+    } catch {
+      return ''
+    }
+  }
+
+  private checksum(d: CustomersGridResponse) {
+    try {
+      return JSON.stringify({
+        items: d.items,
+        totalRecord: d.totalRecord,
+        numberOfPages: d.numberOfPages,
+        totalSalesAll: d.totalSalesAll,
+        totalNetSalesAll: d.totalNetSalesAll
+      })
+    } catch {
+      return ''
+    }
+  }
+
   /** Create a new customer via external API */
   async createCustomer(data: CreateCustomerRequest) {
     return this.post<CreateCustomerResponse>(API_ENDPOINTS.CUSTOMER_CREATE_EXTERNAL, data)
@@ -144,6 +176,30 @@ export class CustomersService extends BaseService {
   /** Get customer groups via external API */
   async getCustomerGroupsExternal() {
     return this.get<CustomerGroupItem[]>(API_ENDPOINTS.CUSTOMER_GROUPS_EXTERNAL)
+  }
+
+  /** Cache-first groups: return cached list instantly, refresh in background. */
+  async getCustomerGroupsExternalCached(opts?: { onUpdated?: (data: CustomerGroupItem[]) => void }): Promise<{ data: CustomerGroupItem[] | null, fromCache: boolean, refreshPromise?: Promise<boolean> }> {
+    const cached = this._groupsCache
+    if (cached) {
+      const refreshPromise = this.getCustomerGroupsExternal()
+        .then((res) => {
+          const list = Array.isArray(res?.data) ? res.data : []
+          const next = this.groupsChecksum(list)
+          if (next !== cached.checksum) {
+            this._groupsCache = { data: list, checksum: next, ts: Date.now() }
+            if (opts?.onUpdated) opts.onUpdated(list)
+            return true
+          }
+          return false
+        })
+        .catch(() => false)
+      return { data: cached.data, fromCache: true, refreshPromise }
+    }
+    const res = await this.getCustomerGroupsExternal()
+    const list = Array.isArray(res?.data) ? res.data : []
+    this._groupsCache = { data: list, checksum: this.groupsChecksum(list), ts: Date.now() }
+    return { data: list, fromCache: false }
   }
 
   /** Get recent orders for a customer via external API (POST) */
@@ -193,6 +249,56 @@ export class CustomersService extends BaseService {
     })
 
     return this.post<CustomersGridResponse>(API_ENDPOINTS.CUSTOMERS_GRID, body)
+  }
+
+  /** Cache-first loader: returns cached data instantly and refreshes in background. */
+  async getCustomersCached(
+    options?: {
+      pagination?: { start: number, number: number, numberOfPages?: number }
+      search?: { name?: string | null, excludeGuests?: boolean }
+      sort?: { field?: string, reverse?: boolean }
+    },
+    opts?: { onUpdated?: (data: CustomersGridResponse) => void }
+  ): Promise<CustomersCachedResult> {
+    const norm = {
+      pagination: {
+        start: options?.pagination?.start ?? 0,
+        number: options?.pagination?.number ?? 20,
+        numberOfPages: options?.pagination?.numberOfPages ?? 10
+      },
+      search: {
+        name: options?.search?.name ?? null,
+        excludeGuests: options?.search?.excludeGuests ?? true
+      },
+      sort: {
+        field: options?.sort?.field ?? 'Id',
+        reverse: options?.sort?.reverse ?? false
+      }
+    }
+    const key = JSON.stringify(norm)
+    const cached = this._cache[key]
+    if (cached) {
+      const refreshPromise = this.getCustomers(options)
+        .then((res) => {
+          if (!res.success || !res.data) return false
+          const nextSum = this.checksum(res.data)
+          if (nextSum !== cached.checksum) {
+            this._cache[key] = { data: res.data, checksum: nextSum, ts: Date.now() }
+            if (opts?.onUpdated) opts.onUpdated(res.data)
+            return true
+          }
+          return false
+        })
+        .catch(() => false)
+      return { data: cached.data, fromCache: true, refreshPromise }
+    }
+    const fresh = await this.getCustomers(options)
+    if (!fresh.success || !fresh.data) {
+      // degrade gracefully
+      return { data: { items: [], totalRecord: 0, numberOfPages: 1, totalSalesAll: 0, totalNetSalesAll: 0 }, fromCache: false }
+    }
+    this._cache[key] = { data: fresh.data, checksum: this.checksum(fresh.data), ts: Date.now() }
+    return { data: fresh.data, fromCache: false }
   }
 }
 

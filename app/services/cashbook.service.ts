@@ -80,10 +80,58 @@ export interface CashBookApiResponse {
 }
 
 class CashBookService extends BaseService {
+  // In-memory cache by serialized request body
+  private _cache: Record<string, { data: CashBookResponseData, checksum: string, ts: number }> = {}
+
+  private checksum(d: CashBookResponseData) {
+    try {
+      return JSON.stringify({
+        items: d.items,
+        total: d.pagination?.total,
+        openingBalance: d.openingBalance,
+        totalIn: d.totalIn,
+        totalOut: d.totalOut,
+        closingBalance: d.closingBalance,
+        methodBreakdown: d.methodBreakdown
+      })
+    } catch {
+      return ''
+    }
+  }
+
   async filter(request: CashBookFilterRequest): Promise<CashBookResponseData> {
     const res = await this.post<CashBookResponseData>(API_ENDPOINTS.CASHBOOK_FILTER, request)
     // API envelope already parsed by BaseService; ensure success
     return res.data
+  }
+
+  /**
+   * Cache-first fetch: returns cached data instantly if available, and performs a background refresh.
+   * The returned object includes a refreshPromise that resolves to true if new data replaces cache.
+   */
+  async filterCached(
+    request: CashBookFilterRequest,
+    opts?: { onUpdated?: (data: CashBookResponseData) => void }
+  ): Promise<{ data: CashBookResponseData; fromCache: boolean; refreshPromise?: Promise<boolean> }> {
+    const key = JSON.stringify(request)
+    const cached = this._cache[key]
+    if (cached) {
+      const refreshPromise = this.filter(request)
+        .then((data) => {
+          const next = this.checksum(data)
+          if (next !== cached.checksum) {
+            this._cache[key] = { data, checksum: next, ts: Date.now() }
+            if (opts?.onUpdated) opts.onUpdated(data)
+            return true
+          }
+          return false
+        })
+        .catch(() => false)
+      return { data: cached.data, fromCache: true, refreshPromise }
+    }
+    const fresh = await this.filter(request)
+    this._cache[key] = { data: fresh, checksum: this.checksum(fresh), ts: Date.now() }
+    return { data: fresh, fromCache: false }
   }
 
   async getByCode(code: string) {

@@ -116,6 +116,8 @@ const pagination = ref({ pageIndex: 0, pageSize: 20 })
 const totalRecords = ref(0)
 const totalPages = computed(() => Math.ceil(totalRecords.value / pagination.value.pageSize) || 1)
 const loading = ref(false)
+const refreshing = ref(false)
+const countsLoading = ref(false)
 
 // Global warehouse state binding for header switcher
 const { selectedWarehouse: globalWarehouse, setWarehouse } = useGlobalWarehouse()
@@ -175,14 +177,13 @@ function buildGridRequest() {
 }
 
 async function fetchOrders() {
-  try {
-    loading.value = true
-    const body = buildGridRequest()
-    const res = await ordersService.getOrdersGrid(body)
-    if (res?.success && res.data) {
-      totalRecords.value = res.data.totalRecord
-      // Map API items to table rows
-      orders.value = res.data.items.map((i) => {
+  loading.value = true
+  const body = buildGridRequest()
+  const res = await ordersService.getOrdersGridCached(body, {
+    onUpdated: (grid) => {
+      if (!grid) return
+      totalRecords.value = grid.totalRecord
+      orders.value = (grid.items || []).map((i) => {
         const rawCode = i.orderCode || i.orderNumber || `${i.id}`
         const displayCode = rawCode.startsWith('#') ? rawCode : `#${rawCode}`
         const customerName = i.customer?.name || i.customerName || '—'
@@ -198,22 +199,46 @@ async function fetchOrders() {
           createdAt: formatDate(i.createdOn)
         }
       })
-    } else {
-      orders.value = []
-      totalRecords.value = 0
     }
-  } catch {
+  })
+  const grid = res.data
+  if (grid) {
+    totalRecords.value = grid.totalRecord
+    orders.value = (grid.items || []).map((i) => {
+      const rawCode = i.orderCode || i.orderNumber || `${i.id}`
+      const displayCode = rawCode.startsWith('#') ? rawCode : `#${rawCode}`
+      const customerName = i.customer?.name || i.customerName || '—'
+      return {
+        id: i.id,
+        code: displayCode,
+        customer: customerName,
+        total: i.orderTotal,
+        source: i.sourceName || i.orderSource || 'Admin',
+        paymentStatus: normalizePaymentStatus(i.paymentStatus),
+        processStatus: mapProcessStatus(i.orderStatus),
+        shippingMethod: i.shippingMethod || null,
+        createdAt: formatDate(i.createdOn)
+      }
+    })
+  } else {
     orders.value = []
     totalRecords.value = 0
-  } finally {
+  }
+  if (res.fromCache) {
     loading.value = false
+    refreshing.value = true
+    res.refreshPromise?.finally(() => {
+      refreshing.value = false
+    })
+  } else {
+    loading.value = false
+    refreshing.value = false
   }
 }
 
-onMounted(async () => {
-  // counts
+async function fetchCounts() {
   try {
-    loading.value = true
+    countsLoading.value = true
     const res = await ordersService.getCountsByStatus()
     if (res?.success && res.data) {
       const { byStatus, ...rest } = res.data
@@ -222,10 +247,15 @@ onMounted(async () => {
   } catch {
     /* silent */
   } finally {
-    loading.value = false
+    countsLoading.value = false
   }
-  // initial orders
-  await fetchOrders()
+}
+
+onMounted(() => {
+  // Kick off orders first to leverage cache for instant paint
+  fetchOrders()
+  // Fetch counts in background without blocking list render
+  fetchCounts()
 })
 
 // Watchers for search & pagination
@@ -244,6 +274,7 @@ watch(q, () => {
 watch(() => globalWarehouse.value?.id, () => {
   pagination.value.pageIndex = 0
   fetchOrders()
+  fetchCounts()
 })
 
 // Navbar notifications toggle from dashboard store (standardized across pages)

@@ -40,12 +40,56 @@ export interface UpdateNewsRequest extends NewsFormData {
 }
 
 export class NewsService extends BaseService {
+  // in-memory caches
+  private _listCache: Record<string, { data: NewsListResponse, checksum: string, ts: number }> = {}
+  private _catCache: { data: NewsCategory[], checksum: string, ts: number } | null = null
+
+  private _listSum(d: NewsListResponse) {
+    try {
+      return JSON.stringify({
+        totalRecord: d.totalRecord,
+        numberOfPages: d.numberOfPages,
+        items: d.items.map(i => ({ id: i.id, title: i.title, desc: i.desc, url: i.url, createdDate: i.createdDate }))
+      })
+    } catch {
+      return ''
+    }
+  }
+
+  private _catSum(d: NewsCategory[]) {
+    try {
+      return JSON.stringify(d.map(c => ({ id: c.id, name: c.name })))
+    } catch {
+      return ''
+    }
+  }
   /**
    * Get all news categories
    */
   async getCategories() {
     const body = this.createListRequestBody()
     return this.post<NewsCategory[]>(API_ENDPOINTS.NEWS_CATEGORIES, body)
+  }
+
+  async getCategoriesCached(opts?: { onUpdated?: (data: NewsCategory[]) => void }): Promise<{ data: NewsCategory[] | null, fromCache: boolean, refreshPromise?: Promise<boolean> }> {
+    const cached = this._catCache
+    if (cached) {
+      const refreshPromise = this.getCategories().then((res) => {
+        const list = Array.isArray(res?.data) ? res.data : []
+        const next = this._catSum(list)
+        if (next !== cached.checksum) {
+          this._catCache = { data: list, checksum: next, ts: Date.now() }
+          opts?.onUpdated?.(list)
+          return true
+        }
+        return false
+      }).catch(() => false)
+      return { data: cached.data, fromCache: true, refreshPromise }
+    }
+    const res = await this.getCategories()
+    const list = Array.isArray(res?.data) ? res.data : []
+    this._catCache = { data: list, checksum: this._catSum(list), ts: Date.now() }
+    return { data: list, fromCache: false }
   }
 
   /**
@@ -70,6 +114,41 @@ export class NewsService extends BaseService {
       body
     )
     return response
+  }
+
+  async getNewsCached(options?: {
+    categoryId?: number
+    search?: string
+    pagination?: { start: number, number: number }
+    sort?: { field: string, reverse: boolean }
+  }, opts?: { onUpdated?: (data: NewsListResponse) => void }): Promise<{ data: NewsListResponse | null, fromCache: boolean, refreshPromise?: Promise<boolean> }> {
+    const body = this.createListRequestBody({
+      pagination: options?.pagination,
+      search: {
+        CategoryId: options?.categoryId || null,
+        Title: options?.search || null
+      },
+      sort: options?.sort
+    })
+    const key = JSON.stringify(body)
+    const cached = this._listCache[key]
+    if (cached) {
+      const refreshPromise = this.post<NewsListResponse>(API_ENDPOINTS.NEWS, body).then((res) => {
+        if (!res?.success || !res.data) return false
+        const next = this._listSum(res.data)
+        if (next !== cached.checksum) {
+          this._listCache[key] = { data: res.data, checksum: next, ts: Date.now() }
+          opts?.onUpdated?.(res.data)
+          return true
+        }
+        return false
+      }).catch(() => false)
+      return { data: cached.data, fromCache: true, refreshPromise }
+    }
+    const res = await this.post<NewsListResponse>(API_ENDPOINTS.NEWS, body)
+    if (!res?.success || !res.data) return { data: null, fromCache: false }
+    this._listCache[key] = { data: res.data, checksum: this._listSum(res.data), ts: Date.now() }
+    return { data: res.data, fromCache: false }
   }
 
   /**

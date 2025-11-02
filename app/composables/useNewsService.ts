@@ -5,7 +5,7 @@ import type { News } from '@/services/news.service'
 
 export const useNewsService = () => {
   const toast = useToast()
-  const { accessToken } = useAuthService() // Get token from auth service
+  const { accessToken: _accessToken } = useAuthService() // underscore to appease unused var rule
 
   // Reactive state
   const q = ref('')
@@ -18,6 +18,7 @@ export const useNewsService = () => {
   const news = ref<News[]>([])
   const categories = ref<NewsCategory[]>([])
   const loading = ref(false)
+  const refreshing = ref(false)
   const categoriesLoading = ref(false)
   const error = ref<Error | null>(null)
 
@@ -54,17 +55,32 @@ export const useNewsService = () => {
     error.value = null
 
     try {
-      // console.debug('[useNewsService] Fetching news with token:', accessToken.value ? 'Token available' : 'No token')
-
-      // console.debug('Access Token:', accessToken.value)
-
-      const response = await newsService.getNews(options)
-      if (response.success && response.data) {
-        news.value = response.data.items
-        totalRecords.value = response.data.totalRecord
-        totalPages.value = response.data.numberOfPages
+      const res = await newsService.getNewsCached(options, {
+        onUpdated: (data) => {
+          if (!data) return
+          news.value = data.items
+          totalRecords.value = data.totalRecord
+          totalPages.value = data.numberOfPages
+        }
+      })
+      if (res.data) {
+        news.value = res.data.items
+        totalRecords.value = res.data.totalRecord
+        totalPages.value = res.data.numberOfPages
       } else {
-        throw new Error(response.message)
+        news.value = []
+        totalRecords.value = 0
+        totalPages.value = 0
+      }
+      if (res.fromCache) {
+        loading.value = false
+        refreshing.value = true
+        res.refreshPromise?.finally(() => {
+          refreshing.value = false
+        })
+      } else {
+        loading.value = false
+        refreshing.value = false
       }
     } catch (err) {
       error.value = err instanceof Error ? err : new Error('Failed to fetch news')
@@ -73,8 +89,8 @@ export const useNewsService = () => {
         description: error.value.message,
         color: 'error'
       })
-    } finally {
       loading.value = false
+      refreshing.value = false
     }
   }
 
@@ -82,13 +98,10 @@ export const useNewsService = () => {
     categoriesLoading.value = true
 
     try {
-      console.log('[useNewsService] Fetching categories with token:', accessToken.value ? 'Token available' : 'No token')
-      const response = await newsService.getCategories()
-      if (response.success) {
-        categories.value = response.data
-      } else {
-        throw new Error(response.message)
-      }
+      const res = await newsService.getCategoriesCached({
+        onUpdated: (list) => { categories.value = list }
+      })
+      categories.value = Array.isArray(res.data) ? res.data : []
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch categories'
       toast.add({
@@ -336,6 +349,7 @@ export const useNewsService = () => {
     categories: readonly(categories),
     filteredNews,
     loading: readonly(loading),
+    refreshing: readonly(refreshing),
     categoriesLoading: readonly(categoriesLoading),
     error: readonly(error),
 

@@ -12,6 +12,7 @@ type GroupRow = {
 }
 
 const loading = ref(false)
+const refreshing = ref(false)
 const q = ref('')
 const rowSelection = ref<Record<string, boolean>>({})
 const pagination = ref({ pageIndex: 0, pageSize: 20 })
@@ -34,22 +35,41 @@ const pageSlice = computed(() => {
 
 onMounted(async () => {
   loading.value = true
-  try {
-    const res = await customersService.getCustomerGroupsExternal()
-    const groups: CustomerGroupItem[] = res?.data || []
-    // Map to table rows
-    allItems.value = groups.map((g: CustomerGroupItem) => {
-      const rawType: 'auto' | 'manual' = g.autoRun ? 'auto' : 'manual'
-      return {
-        id: g.id,
-        name: g.name,
-        count: 0,
-        typeText: rawType === 'auto' ? 'Tự động' : 'Thủ công',
-        rawType
-      }
-    })
-  } finally {
+  const res = await customersService.getCustomerGroupsExternalCached({
+    onUpdated: (groups) => {
+      const list: CustomerGroupItem[] = Array.isArray(groups) ? groups : []
+      allItems.value = list.map((g: CustomerGroupItem) => {
+        const rawType: 'auto' | 'manual' = g.autoRun ? 'auto' : 'manual'
+        return {
+          id: g.id,
+          name: g.name,
+          count: 0,
+          typeText: rawType === 'auto' ? 'Tự động' : 'Thủ công',
+          rawType
+        }
+      })
+    }
+  })
+  const groups: CustomerGroupItem[] = Array.isArray(res.data) ? res.data as CustomerGroupItem[] : []
+  allItems.value = groups.map((g: CustomerGroupItem) => {
+    const rawType: 'auto' | 'manual' = g.autoRun ? 'auto' : 'manual'
+    return {
+      id: g.id,
+      name: g.name,
+      count: 0,
+      typeText: rawType === 'auto' ? 'Tự động' : 'Thủ công',
+      rawType
+    }
+  })
+  if (res.fromCache) {
     loading.value = false
+    refreshing.value = true
+    res.refreshPromise?.finally(() => {
+      refreshing.value = false
+    })
+  } else {
+    loading.value = false
+    refreshing.value = false
   }
 })
 

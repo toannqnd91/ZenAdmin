@@ -13,26 +13,43 @@ const totalRecords = ref(0)
 const totalPages = ref(1)
 
 const loading = ref(false)
+const refreshing = ref(false)
 const data = ref<CustomerItem[]>([])
 const totals = ref({ totalSalesAll: 0, totalNetSalesAll: 0 })
 
 const fetchCustomers = async () => {
-  loading.value = true
-  try {
-    const res = await customersService.getCustomers({
-      pagination: { start: pagination.value.pageIndex, number: pagination.value.pageSize },
-      search: { name: q.value || null, excludeGuests: true },
-      sort: { field: 'Id', reverse: true }
-    })
-    if (res.success && res.data) {
-      data.value = res.data.items || []
-      totalRecords.value = res.data.totalRecord || 0
-      totalPages.value = res.data.numberOfPages || 1
-      totals.value.totalSalesAll = res.data.totalSalesAll || 0
-      totals.value.totalNetSalesAll = res.data.totalNetSalesAll || 0
+  const opts = {
+    pagination: { start: pagination.value.pageIndex, number: pagination.value.pageSize },
+    search: { name: q.value || null, excludeGuests: true },
+    sort: { field: 'Id', reverse: true }
+  } as const
+
+  const res = await customersService.getCustomersCached(opts, {
+    onUpdated: (grid) => {
+      data.value = grid.items || []
+      totalRecords.value = grid.totalRecord || 0
+      totalPages.value = grid.numberOfPages || 1
+      totals.value.totalSalesAll = grid.totalSalesAll || 0
+      totals.value.totalNetSalesAll = grid.totalNetSalesAll || 0
     }
-  } finally {
+  })
+
+  const grid = res.data
+  data.value = grid.items || []
+  totalRecords.value = grid.totalRecord || 0
+  totalPages.value = grid.numberOfPages || 1
+  totals.value.totalSalesAll = grid.totalSalesAll || 0
+  totals.value.totalNetSalesAll = grid.totalNetSalesAll || 0
+
+  if (res.fromCache) {
     loading.value = false
+    refreshing.value = true
+    res.refreshPromise?.finally(() => {
+      refreshing.value = false
+    })
+  } else {
+    loading.value = false
+    refreshing.value = false
   }
 }
 

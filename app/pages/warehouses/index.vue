@@ -7,6 +7,7 @@ import type { WarehouseItem } from '@/services/warehouse.service'
 import AddWarehouseModal from '@/components/AddWarehouseModal.vue'
 
 const loading = ref(false)
+const refreshing = ref(false)
 const warehouses = ref<WarehouseItem[]>([])
 const q = ref('')
 const rowSelection = ref<Record<string, boolean>>({})
@@ -25,14 +26,28 @@ const columns = [
 const colWidths: string[] = ['', '160px', '180px', '180px']
 
 async function fetchWarehouses() {
-  loading.value = true
-  try {
-    const res = await warehouseService.getWarehouses()
-    warehouses.value = Array.isArray(res?.data) ? res.data : []
-  } catch {
-    warehouses.value = []
-  }
-  loading.value = false
+    loading.value = true
+    const res = await warehouseService.getWarehousesCached({
+        onUpdated: (list) => {
+            warehouses.value = Array.isArray(list) ? list : []
+        }
+    })
+    const list = res.data
+    if (Array.isArray(list)) {
+        warehouses.value = list
+    } else {
+        warehouses.value = []
+    }
+    if (res.fromCache) {
+        loading.value = false
+        refreshing.value = true
+        res.refreshPromise?.finally(() => {
+            refreshing.value = false
+        })
+    } else {
+        loading.value = false
+        refreshing.value = false
+    }
 }
 
 onMounted(fetchWarehouses)

@@ -18,10 +18,21 @@ export interface OrderCountsByStatusResponse {
 }
 
 export class OrdersService extends BaseService {
+  // simple in-memory caches
+  private _gridCache: Record<string, { data: OrderGridResponse['data'], checksum: string, ts: number }> = {}
+
+  private _gridChecksum(d: OrderGridResponse['data']) {
+    try {
+      return JSON.stringify({ items: d?.items, totalRecord: d?.totalRecord, numberOfPages: d?.numberOfPages })
+    } catch {
+      return ''
+    }
+  }
   async getCountsByStatus() {
     // POST with empty body per sample
     return this.post<OrderCountsByStatusResponse['data']>(API_ENDPOINTS.ORDER_COUNT_BY_STATUS_EXTERNAL, {})
   }
+
 
   // Order grid (list) -------------------------------------------------------
   /**
@@ -30,6 +41,36 @@ export class OrdersService extends BaseService {
    */
   async getOrdersGrid(body: OrderGridRequest) {
     return this.post<OrderGridResponse['data']>(API_ENDPOINTS.ORDER_GRID_EXTERNAL, body)
+  }
+
+  /**
+   * Cache-first grid: returns cached data instantly and refreshes in background.
+   */
+  async getOrdersGridCached(
+    body: OrderGridRequest,
+    opts?: { onUpdated?: (data: OrderGridResponse['data']) => void }
+  ): Promise<{ data: OrderGridResponse['data'] | null, fromCache: boolean, refreshPromise?: Promise<boolean> }> {
+    const key = JSON.stringify(body)
+    const cached = this._gridCache[key]
+    if (cached) {
+      const refreshPromise = this.getOrdersGrid(body)
+        .then((res) => {
+          if (!res.success || !res.data) return false
+          const sum = this._gridChecksum(res.data)
+          if (sum !== cached.checksum) {
+            this._gridCache[key] = { data: res.data, checksum: sum, ts: Date.now() }
+            opts?.onUpdated?.(res.data)
+            return true
+          }
+          return false
+        })
+        .catch(() => false)
+      return { data: cached.data, fromCache: true, refreshPromise }
+    }
+    const res = await this.getOrdersGrid(body)
+    if (!res.success || !res.data) return { data: null, fromCache: false }
+    this._gridCache[key] = { data: res.data, checksum: this._gridChecksum(res.data), ts: Date.now() }
+    return { data: res.data, fromCache: false }
   }
 
   // Create POS order -------------------------------------------------------

@@ -4,6 +4,18 @@ import type { ProductItem } from '@/composables/useProducts'
 import type { Row } from '@tanstack/table-core'
 import { getPaginationRowModel } from '@tanstack/table-core'
 
+// Module-level cache for products list (persists across component mounts)
+type ProdCacheEntry = { items: ProductItem[]; totalRecords: number; totalPages: number; checksum: string; ts: number }
+const PRODUCTS_CACHE: Record<string, ProdCacheEntry> = {}
+type FetchOptions = {
+  search?: string
+  categoryId?: number
+  warehouseId?: number | string | null
+  hasOptions?: boolean
+  pagination?: { start: number; number: number }
+  sort?: { field: string; reverse: boolean }
+}
+
 export const useProductsService = () => {
   const toast = useToast()
   const table = useTemplateRef('table')
@@ -20,6 +32,7 @@ export const useProductsService = () => {
   // Data state
   const products = ref<ProductItem[]>([])
   const loading = ref(false)
+  const refreshing = ref(false)
   const error = ref<Error | null>(null)
   const totalRecords = ref(0)
   const totalPages = ref(0)
@@ -55,16 +68,39 @@ export const useProductsService = () => {
   }
 
   // Methods
-  async function fetchProducts(options?: {
-    search?: string
-    categoryId?: number
-    warehouseId?: number | string | null
-    hasOptions?: boolean
-    pagination?: { start: number, number: number }
-    sort?: { field: string, reverse: boolean }
-  }) {
-    loading.value = true
+  // Simple module-scoped cache for products list keyed by filters/pagination
+  const makeKey = (opts: FetchOptions | undefined) => {
+    const keyObj = {
+      q: String(opts?.search ?? '').trim(),
+      warehouseId: opts?.warehouseId ?? null,
+      start: Number(opts?.pagination?.start ?? pagination.value.pageIndex * pagination.value.pageSize),
+      number: Number(opts?.pagination?.number ?? pagination.value.pageSize)
+    }
+    return JSON.stringify(keyObj)
+  }
+  const makeChecksum = (items: ProductItem[], totalR: number, totalP: number) => {
+    try {
+      return JSON.stringify({ items, totalR, totalP })
+    } catch {
+      return `${items?.length || 0}:${totalR}:${totalP}`
+    }
+  }
+
+  async function fetchProducts(options?: FetchOptions) {
     error.value = null
+    const key = makeKey(options)
+    const cached = PRODUCTS_CACHE[key]
+    if (cached) {
+      // serve cached immediately
+      products.value = cached.items.slice()
+      totalRecords.value = cached.totalRecords
+      totalPages.value = cached.totalPages
+      loading.value = false
+      refreshing.value = true
+    } else {
+      loading.value = true
+      refreshing.value = false
+    }
 
     try {
       // Truyền thêm HasOptions vào QueryObject nếu có
@@ -77,9 +113,22 @@ export const useProductsService = () => {
       const response = await productService.getProducts(opts)
       if (response.success) {
         // API trả về response.data.items
-        products.value = (response.data?.items as ProductItem[]) || []
-        totalRecords.value = Number(response.data?.totalRecord || 0)
-        totalPages.value = Number(response.data?.numberOfPages || 0)
+        const items = (response.data?.items as ProductItem[]) || []
+        const nextTotalR = Number(response.data?.totalRecord || 0)
+        const nextTotalP = Number(response.data?.numberOfPages || 0)
+        const nextChecksum = makeChecksum(items, nextTotalR, nextTotalP)
+        if (!cached || nextChecksum !== cached.checksum) {
+          products.value = items
+          totalRecords.value = nextTotalR
+          totalPages.value = nextTotalP
+          PRODUCTS_CACHE[key] = {
+            items: items.slice(),
+            totalRecords: nextTotalR,
+            totalPages: nextTotalP,
+            checksum: nextChecksum,
+            ts: Date.now()
+          }
+        }
       } else {
         throw new Error(response.message)
       }
@@ -102,6 +151,7 @@ export const useProductsService = () => {
       })
     } finally {
       loading.value = false
+      refreshing.value = false
     }
   }
 
@@ -307,7 +357,8 @@ export const useProductsService = () => {
     totalPages: computed(() => totalPages.value),
     products: computed(() => products.value),
     filtered,
-    loading: readonly(loading),
+  loading: readonly(loading),
+  refreshing: readonly(refreshing),
     error: readonly(error),
     table,
 
