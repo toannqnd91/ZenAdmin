@@ -23,12 +23,12 @@ const groups: Array<{ date: string, items: LogItem[] }> = [
       { time: '06:47:51', category: 'Đặt hàng nhập', actor: 'Phạm Văn Toàn', desc: 'Thêm mới đơn đặt hàng nhập', linkText: 'PO00001', linkHref: '#' },
       { time: '06:46:49', category: 'Sản phẩm', actor: 'Phạm Văn Toàn', desc: 'Thêm mới sản phẩm', linkText: 'sản phẩm 002', linkHref: '#' },
       { time: '06:46:26', category: 'Sản phẩm', actor: 'Phạm Văn Toàn', desc: 'Thêm mới sản phẩm', linkText: 'sản phẩm 001', linkHref: '#' },
-      { time: '06:45:23', category: 'Kênh bán hàng', actor: 'Sapo', desc: 'Kích hoạt kênh bán hàng: Website - Cửa hàng trực tuyến' },
-      { time: '06:45:11', category: 'Menu', actor: 'Sapo', desc: 'Thêm mới menu', linkText: 'Chính sách', linkHref: '#' },
-      { time: '06:45:11', category: 'Menu', actor: 'Sapo', desc: 'Thêm mới menu', linkText: 'Hướng dẫn', linkHref: '#' },
-      { time: '06:45:11', category: 'Menu', actor: 'Sapo', desc: 'Thêm mới menu', linkText: 'Hỗ trợ', linkHref: '#' },
-      { time: '06:45:11', category: 'Menu', actor: 'Sapo', desc: 'Thêm mới menu', linkText: 'Thông tin', linkHref: '#' },
-      { time: '06:45:11', category: 'Menu', actor: 'Sapo', desc: 'Thêm mới menu', linkText: 'Footer', linkHref: '#' }
+      { time: '06:45:23', category: 'Kênh bán hàng', actor: 'Zen', desc: 'Kích hoạt kênh bán hàng: Website - Cửa hàng trực tuyến' },
+      { time: '06:45:11', category: 'Menu', actor: 'Zen', desc: 'Thêm mới menu', linkText: 'Chính sách', linkHref: '#' },
+      { time: '06:45:11', category: 'Menu', actor: 'Zen', desc: 'Thêm mới menu', linkText: 'Hướng dẫn', linkHref: '#' },
+      { time: '06:45:11', category: 'Menu', actor: 'Zen', desc: 'Thêm mới menu', linkText: 'Hỗ trợ', linkHref: '#' },
+      { time: '06:45:11', category: 'Menu', actor: 'Zen', desc: 'Thêm mới menu', linkText: 'Thông tin', linkHref: '#' },
+      { time: '06:45:11', category: 'Menu', actor: 'Zen', desc: 'Thêm mới menu', linkText: 'Footer', linkHref: '#' }
     ]
   }
 ]

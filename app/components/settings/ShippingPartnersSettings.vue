@@ -89,7 +89,7 @@ const partners: Partner[] = [
           </div>
           <div class="text-sm text-gray-600">
             <span>
-              Tích hợp Sapo Express để sử dụng các đối tác đã kết nối, được hưởng bảng giá, hỗ trợ trực tiếp và đối soát thanh toán.
+              Tích hợp Zen Express để sử dụng các đối tác đã kết nối, được hưởng bảng giá, hỗ trợ trực tiếp và đối soát thanh toán.
             </span>
             <NuxtLink to="#" class="text-primary-600 ms-1">
               Xem chính sách
