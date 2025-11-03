@@ -85,6 +85,11 @@ interface Props {
   // Table min width (CSS length, e.g. '64rem', '0', '800px') to control horizontal overflow
   tableMinWidth?: string
 
+  // Optional custom class for the header row (thead > tr), e.g. 'bg-gray-50'
+  headerRowClass?: string
+  // Make header background bleed to the container edges (useful when parent applies inner paddings)
+  headerFullBleed?: boolean
+
   // Empty state
   emptyTitle?: string
   emptyDescription?: string
@@ -140,7 +145,8 @@ const props = withDefaults(defineProps<Props>(), {
       variant: 'secondary'
     }
   ],
-  tableMinWidth: '64rem'
+  tableMinWidth: '64rem',
+  headerFullBleed: false
 })
 
 // Tab state
@@ -789,9 +795,14 @@ const onRowDelete = (item: Record<string, unknown>) => {
 
       <div
         v-else
-        class="overflow-x-auto"
+        class="overflow-x-auto relative"
         @click="onBodyClick"
       >
+        <!-- Full-bleed header background overlay (doesn't affect layout height) -->
+        <div
+          v-if="props.headerFullBleed && props.headerRowClass"
+          :class="['absolute top-0 left-0 right-0 h-14 -mx-6 pointer-events-none', props.headerRowClass]"
+        />
         <table
           class="w-full table-fixed text-sm"
           :style="{ minWidth: props.tableMinWidth }"
@@ -822,8 +833,8 @@ const onRowDelete = (item: Record<string, unknown>) => {
             <col v-if="props.showRowActions" class="w-[60px]">
           </colgroup>
           <thead class="text-gray-500">
-            <tr class="h-14" :class="{ hidden: selectedCount > 0 }">
-              <th v-if="props.selectable" class="py-0">
+            <tr :class="['h-14', props.headerRowClass, { hidden: selectedCount > 0 }]">
+              <th v-if="props.selectable" :class="['py-0', props.headerRowClass]">
                 <div class="w-14 h-full flex items-center justify-start">
                   <button
                     data-role="chk"
@@ -869,11 +880,11 @@ const onRowDelete = (item: Record<string, unknown>) => {
               <th
                 v-for="column in columns"
                 :key="column.key"
-                :class="[column.class || '', 'py-3 font-medium', getAlignClass(column.align)]"
+                :class="[column.class || '', 'py-3 font-medium', getAlignClass(column.align), props.headerRowClass]"
               >
                 {{ column.label }}
               </th>
-              <th v-if="props.showRowActions" class="py-3 text-left font-medium pr-4">
+              <th v-if="props.showRowActions" :class="['py-3 text-left font-medium pr-4', props.headerRowClass]">
                 <!-- Cột actions -->
               </th>
             </tr>

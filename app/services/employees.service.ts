@@ -44,7 +44,8 @@ export class EmployeesService extends BaseService {
     if (cached) {
       const refreshPromise = this.getEmployees()
         .then((res) => {
-          const list = Array.isArray(res?.data?.data) ? res.data!.data! : []
+          // Normalize response for standard ApiResponse envelope
+          const list = Array.isArray(res?.data) ? (res.data as EmployeeItem[]) : []
           const sum = this._sum(list)
           if (sum !== cached.checksum) {
             this._cache = { data: list, checksum: sum, ts: Date.now() }
