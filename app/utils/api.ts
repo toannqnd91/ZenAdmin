@@ -27,6 +27,10 @@ export const API_ENDPOINTS = {
   LOGOUT: '/Identity/logout',
   REFRESH_TOKEN: '/Identity/refresh',
   PROFILE: '/Identity/profile',
+  // Roles
+  IDENTITY_ROLES: '/Identity/GetRoles',
+  // Permissions
+  PERMISSION_GROUPS: '/permissions/groups',
   // Content endpoints
   COLLECTIONS: '/collections',
   DASHBOARD_MENU: '/Identity/system-menu/auto',

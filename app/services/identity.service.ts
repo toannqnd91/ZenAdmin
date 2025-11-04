@@ -28,6 +28,13 @@ export interface ShopOwnerResponse {
   data: ShopOwner | null
 }
 
+export interface Role {
+  id: string
+  name: string
+  description?: string | null
+  history?: unknown
+}
+
 export class IdentityService extends BaseService {
   private _ownerCache: { data: ShopOwner | null, ts: number } | null = null
 
@@ -36,7 +43,7 @@ export class IdentityService extends BaseService {
     if (cached) {
       const refreshPromise = this.getShopOwner()
         .then((res) => {
-          const owner = res?.success ? res.data : null
+          const owner: ShopOwner | null = res?.success ? res.data : null
           if (JSON.stringify(owner) !== JSON.stringify(cached.data)) {
             this._ownerCache = { data: owner, ts: Date.now() }
             opts?.onUpdated?.(owner as ShopOwner | null)
@@ -48,13 +55,20 @@ export class IdentityService extends BaseService {
       return { data: cached.data, fromCache: true, refreshPromise }
     }
     const res = await this.getShopOwner()
-    const owner = res?.success ? res.data : null
-    this._ownerCache = { data: owner as ShopOwner | null, ts: Date.now() }
-    return { data: owner as ShopOwner | null, fromCache: false }
+    const owner: ShopOwner | null = res?.success ? res.data : null
+    this._ownerCache = { data: owner, ts: Date.now() }
+    return { data: owner, fromCache: false }
   }
 
   async getShopOwner() {
-    return this.get<ShopOwnerResponse>(API_ENDPOINTS.SHOP_OWNER)
+    // API returns envelope ApiResponse<ShopOwner>
+    return this.get<ShopOwner>(API_ENDPOINTS.SHOP_OWNER)
+  }
+
+  // Roles
+  async getRoles() {
+    // API returns envelope ApiResponse<Role[]> where data is an array of roles
+    return this.get<Role[]>(API_ENDPOINTS.IDENTITY_ROLES)
   }
 }
 

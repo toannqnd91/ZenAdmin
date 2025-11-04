@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onActivated, onDeactivated, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
-import { identityService } from '@/services/identity.service'
+import { useRoute, useRouter } from 'vue-router'
+import { identityService, type Role } from '@/services/identity.service'
 import { employeesService } from '@/services/employees.service'
+import { warehouseService, type WarehouseItem } from '@/services/warehouse.service'
+import { permissionsService, type PermissionGroupApi } from '@/services/permissions.service'
 import type { EmployeeItem } from '@/services/employees.service'
 
 type EmployeeRow = {
@@ -66,9 +68,13 @@ function startCreate() {
       // ignore
     }
   })
+  // reflect in URL
+  setQuery({ [EMP_VIEW]: 'create', [EMP_ID]: undefined })
 }
 function cancelCreate() {
   creating.value = false
+  // reflect in URL: back to list or keep detail if selected
+  setQuery({ [EMP_VIEW]: selected.value ? 'detail' : 'list', [EMP_ID]: selected.value?.id })
 }
 function submitInvite() {
   // placeholder action
@@ -78,31 +84,40 @@ function submitInvite() {
 
 // Permissions assignment state
 const assigning = ref(false)
-const selectedBranch = ref<string>('')
-const selectedRole = ref<string>('')
+// Branch/Role selections
+// Support multi-select branches
+const selectedBranchIds = ref<Array<string | number>>([])
+const selectedBranchItems = ref<WarehouseItem[]>([])
+const selectedRoleObj = ref<{ id: string, name: string } | null>(null)
 type PermissionGroup = { key: string, title: string, children: { key: string, title: string }[] }
-const permissionGroups = ref<PermissionGroup[]>([
-  { key: 'home', title: 'Trang chủ', children: [{ key: 'home.view', title: 'Xem trang chủ' }] },
-  { key: 'orders', title: 'Đơn hàng', children: Array.from({ length: 9 }).map((_, i) => ({ key: `orders.${i + 1}`, title: `Quyền ${i + 1}` })) },
-  { key: 'draft-orders', title: 'Đơn hàng nháp', children: Array.from({ length: 5 }).map((_, i) => ({ key: `draft.${i + 1}`, title: `Quyền ${i + 1}` })) },
-  { key: 'incomplete-orders', title: 'Đơn hàng chưa hoàn tất', children: [{ key: 'incomplete.view', title: 'Xem' }] },
-  { key: 'returns', title: 'Trả hàng', children: Array.from({ length: 5 }).map((_, i) => ({ key: `returns.${i + 1}`, title: `Quyền ${i + 1}` })) },
-  { key: 'products', title: 'Sản phẩm', children: Array.from({ length: 7 }).map((_, i) => ({ key: `products.${i + 1}`, title: `Quyền ${i + 1}` })) },
-  { key: 'product-cats', title: 'Danh mục sản phẩm', children: [{ key: 'pc.view', title: 'Xem' }] },
-  { key: 'shipping', title: 'Vận chuyển', children: Array.from({ length: 4 }).map((_, i) => ({ key: `ship.${i + 1}`, title: `Quyền ${i + 1}` })) },
-  { key: 'warehouse', title: 'Kho', children: Array.from({ length: 31 }).map((_, i) => ({ key: `wh.${i + 1}`, title: `Quyền ${i + 1}` })) },
-  { key: 'customers', title: 'Khách hàng', children: Array.from({ length: 5 }).map((_, i) => ({ key: `cust.${i + 1}`, title: `Quyền ${i + 1}` })) },
-  { key: 'sales-report', title: 'Báo cáo bán hàng', children: Array.from({ length: 2 }).map((_, i) => ({ key: `salerep.${i + 1}`, title: `Quyền ${i + 1}` })) },
-  { key: 'payment-report', title: 'Báo cáo thanh toán', children: [{ key: 'payrep.view', title: 'Xem' }] },
-  { key: 'other-report', title: 'Báo cáo khác', children: Array.from({ length: 3 }).map((_, i) => ({ key: `otherrep.${i + 1}`, title: `Quyền ${i + 1}` })) },
-  { key: 'promo', title: 'Khuyến mãi', children: Array.from({ length: 2 }).map((_, i) => ({ key: `promo.${i + 1}`, title: `Quyền ${i + 1}` })) },
-  { key: 'cashbook', title: 'Sổ quỹ', children: Array.from({ length: 5 }).map((_, i) => ({ key: `cash.${i + 1}`, title: `Quyền ${i + 1}` })) },
-  { key: 'website', title: 'Website', children: Array.from({ length: 5 }).map((_, i) => ({ key: `web.${i + 1}`, title: `Quyền ${i + 1}` })) },
-  { key: 'settings', title: 'Cấu hình', children: Array.from({ length: 9 }).map((_, i) => ({ key: `cfg.${i + 1}`, title: `Quyền ${i + 1}` })) }
-])
+const permissionGroups = ref<PermissionGroup[]>([])
+const permGroupsLoading = ref(false)
+function mapPermissionGroups(data: PermissionGroupApi[]): PermissionGroup[] {
+  return (data || []).map(g => ({
+    key: String(g.id ?? g.name),
+    title: g.description || g.name || 'Nhóm quyền',
+    children: (g.permissions || []).map(p => ({
+      key: p.name || String(p.id),
+      title: p.description || p.name || 'Quyền'
+    }))
+  }))
+}
+async function loadPermissionGroups(force = false) {
+  if (permissionGroups.value.length && !force) return
+  permGroupsLoading.value = true
+  try {
+    const res = await permissionsService.getPermissionGroups()
+    const arr = Array.isArray(res?.data) ? res.data : []
+    permissionGroups.value = mapPermissionGroups(arr)
+  } catch {
+    permissionGroups.value = []
+  } finally {
+    permGroupsLoading.value = false
+  }
+}
 const expandedGroups = ref<Record<string, boolean>>({})
 const selectedPerms = ref<Record<string, boolean>>({})
-const groupSelectedCount = (g: PermissionGroup) => g.children.reduce((n,c)=> n + (selectedPerms.value[c.key] ? 1 : 0), 0)
+const groupSelectedCount = (g: PermissionGroup) => g.children.reduce((n, c) => n + (selectedPerms.value[c.key] ? 1 : 0), 0)
 const isGroupChecked = (g: PermissionGroup) => groupSelectedCount(g) === g.children.length
 const isGroupIndeterminate = (g: PermissionGroup) => groupSelectedCount(g) > 0 && !isGroupChecked(g)
 function toggleGroup(g: PermissionGroup) {
@@ -128,9 +143,13 @@ function openAll() {
 }
 function openAssign() {
   assigning.value = true
+  // reflect in URL
+  setQuery({ [EMP_VIEW]: 'assign', [EMP_ID]: selected.value?.id })
 }
 function closeAssign() {
   assigning.value = false
+  // reflect in URL
+  setQuery({ [EMP_VIEW]: selected.value ? 'detail' : 'list', [EMP_ID]: selected.value?.id })
 }
 
 // Employees list (cache-first) with shared Nuxt state for instant return on tab/page switch
@@ -141,6 +160,77 @@ const employeesLoading = ref(false)
 const employeesRefreshing = ref(false)
 const empQ = ref('')
 const empSelection = ref<Record<string, boolean>>({})
+// Branches (warehouses) data for permission assignment
+const branches = ref<WarehouseItem[]>([])
+const branchesLoading = ref(false)
+const branchesRefreshing = ref(false)
+// Keep primitive id in sync for any API payloads later
+watch(selectedBranchItems, (val) => {
+  selectedBranchIds.value = Array.isArray(val) ? val.map(v => v.id) : []
+}, { deep: true })
+// NOTE: Branch fetching is handled inside the shared <BranchSelect /> component.
+// Leaving a stub here for reference in case needed elsewhere.
+// const _fetchBranchesFn = async (q: string) => {
+//   if (!branches.value.length && !branchesLoading.value) await loadBranches(true)
+//   const term = (q || '').toLowerCase().trim()
+//   const base = branches.value
+//   if (!term) return base
+//   return base.filter(b => (b.name || '').toLowerCase().includes(term))
+// }
+
+const fetchRolesFn: (q: string) => Promise<Record<string, unknown>[]> = async (q: string) => {
+  try {
+    const res = await identityService.getRoles()
+    const arr: Role[] = Array.isArray(res?.data) ? (res.data as Role[]) : []
+    const term = (q || '').toLowerCase().trim()
+    const out = !term ? arr : arr.filter(r => String(r.name || '').toLowerCase().includes(term))
+    return out as unknown as Record<string, unknown>[]
+  } catch {
+    return [] as unknown as Record<string, unknown>[]
+  }
+}
+async function loadBranches(force = false) {
+  if (!force && (branchesLoading.value || branchesRefreshing.value)) return
+  branchesLoading.value = true
+  const res = await warehouseService.getWarehousesCached({
+    onUpdated: (data) => {
+      branches.value = Array.isArray(data) ? data : []
+      // If no selection yet, preselect default warehouse
+      if (!selectedBranchIds.value.length) {
+        const def = branches.value.find(b => b.isDefault)
+        if (def) {
+          selectedBranchItems.value = [def]
+          selectedBranchIds.value = [def.id]
+        }
+      } else {
+        const cur = branches.value.filter(b => selectedBranchIds.value.map(String).includes(String(b.id)))
+        selectedBranchItems.value = cur
+      }
+    }
+  })
+  const list = Array.isArray(res.data) ? res.data : []
+  branches.value = list
+  if (!selectedBranchIds.value.length) {
+    const def = branches.value.find(b => b.isDefault)
+    if (def) {
+      selectedBranchItems.value = [def]
+      selectedBranchIds.value = [def.id]
+    }
+  } else {
+    const cur = branches.value.filter(b => selectedBranchIds.value.map(String).includes(String(b.id)))
+    selectedBranchItems.value = cur
+  }
+  if (res.fromCache && res.refreshPromise) {
+    branchesRefreshing.value = true
+    res.refreshPromise.finally(() => {
+      branchesRefreshing.value = false
+      branchesLoading.value = false
+    })
+  } else {
+    branchesLoading.value = false
+    branchesRefreshing.value = false
+  }
+}
 // Columns definition removed (no longer using BaseTable)
 const employeeRows = computed<EmployeeRow[]>(() => {
   return employees.value.map((e) => {
@@ -148,10 +238,8 @@ const employeeRows = computed<EmployeeRow[]>(() => {
     const acct = [name, e.department, e.position].filter(Boolean).join(' ')
     return {
       id: e.id,
-      // columns for filtering/searching
       accountText: acct,
       statusText: e.isActive ? 'Đang kích hoạt' : 'Ngừng kích hoạt',
-      // raw fields for custom rendering
       name,
       email: e.email || undefined,
       department: e.department || undefined,
@@ -182,10 +270,14 @@ function openDetailById(id: string | number) {
     } catch {
       // ignore
     }
+    // reflect in URL
+    setQuery({ [EMP_VIEW]: 'detail', [EMP_ID]: id })
   }
 }
 function closeDetail() {
   selected.value = null
+  // reflect in URL
+  setQuery({ [EMP_VIEW]: 'list', [EMP_ID]: undefined })
 }
 
 async function loadEmployees(force = false) {
@@ -260,11 +352,19 @@ const toggleAllVisible = () => {
 
 onMounted(() => {
   loadEmployees(true)
+  loadBranches(true)
+  loadPermissionGroups()
 })
 // In keep-alive scenarios or when navigating back to this card, ensure data is present
 onActivated(() => {
   if (!employees.value.length && !employeesLoading.value) {
     loadEmployees(true)
+  }
+  if (!branches.value.length && !branchesLoading.value) {
+    loadBranches(true)
+  }
+  if (!permissionGroups.value.length && !permGroupsLoading.value) {
+    loadPermissionGroups()
   }
 })
 
@@ -276,11 +376,107 @@ onDeactivated(() => {
 
 // Also reload when route changes to this page (client-side tab/section switches)
 const route = useRoute()
+const router = useRouter()
 watch(() => route.fullPath, () => {
   if (!employees.value.length && !employeesLoading.value) {
     loadEmployees(true)
   }
 })
+
+// URL sync so reload keeps current view/state
+// We scope query params to this card with an "emp_" prefix to avoid collisions
+const EMP_Q = 'emp_q'
+const EMP_VIEW = 'emp_view' // 'list' | 'create' | 'detail' | 'assign'
+const EMP_ID = 'emp_id'
+
+// Helper to update current route query without dropping other params
+function setQuery(next: Partial<Record<string, string | number | boolean | undefined>>) {
+  // Build a new query object without mutating/deleting dynamic keys
+  const base = route.query as Record<string, unknown>
+  const toRemove = new Set(
+    Object.keys(next).filter((k) => {
+      const v = next[k]
+      return v === undefined || v === null || v === ''
+    })
+  )
+  const result: Record<string, string> = {}
+  for (const [k, v] of Object.entries(base)) {
+    if (toRemove.has(k)) continue
+    if (typeof v === 'string') result[k] = v
+    else if (Array.isArray(v)) {
+      const head = v[0]
+      if (head != null) result[k] = String(head)
+    }
+  }
+  for (const [k, v] of Object.entries(next)) {
+    if (v === undefined || v === null || v === '') continue
+    result[k] = String(v)
+  }
+  router.replace({ query: result })
+}
+
+// Initialize state from URL on mount/activate
+function applyQueryToState() {
+  // search
+  const qRaw = route.query[EMP_Q]
+  const qStr = Array.isArray(qRaw) ? qRaw[0] : qRaw
+  if (typeof qStr === 'string' && qStr !== empQ.value) empQ.value = qStr
+
+  // view + id
+  const viewRaw = route.query[EMP_VIEW]
+  const view = Array.isArray(viewRaw) ? viewRaw[0] : viewRaw
+  const idRaw = route.query[EMP_ID]
+  const id = Array.isArray(idRaw) ? idRaw[0] : idRaw
+
+  if (view === 'create') {
+    creating.value = true
+    assigning.value = false
+    selected.value = null
+  } else if ((view === 'detail' || view === 'assign') && id) {
+    // If employees are already loaded, open now; else defer after load
+    const tryOpen = () => {
+      const emp = employeeMap.value[String(id)]
+      if (emp) {
+        selected.value = emp
+        creating.value = false
+        assigning.value = view === 'assign'
+        return true
+      }
+      return false
+    }
+    if (!tryOpen()) {
+      // After data refresh, try again once
+      const stop = watch(employeeMap, () => {
+        if (tryOpen()) stop()
+      })
+    }
+  } else {
+    // default list view
+    creating.value = false
+    assigning.value = false
+    // keep selected if already open and url didn't explicitly say list
+    if (view === 'list' || view == null) selected.value = null
+  }
+}
+
+onMounted(() => {
+  applyQueryToState()
+})
+onActivated(() => {
+  applyQueryToState()
+})
+
+// Keep URL updated when user types search
+watch(empQ, (val) => {
+  setQuery({ [EMP_Q]: val || undefined })
+})
+
+// React to external URL changes (back/forward)
+watch(() => [route.query[EMP_VIEW], route.query[EMP_ID], route.query[EMP_Q]], () => {
+  applyQueryToState()
+})
+
+// Reflect state transitions into URL is handled inline in action handlers above.
 </script>
 
 <template>
@@ -394,40 +590,25 @@ watch(() => route.fullPath, () => {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chi nhánh phân quyền<span class="text-red-500">*</span></label>
-              <select
-                v-model="selectedBranch"
-                class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="" disabled>
-                  Chọn chi nhánh
-                </option>
-                <option value="main">
-                  Chi nhánh chính
-                </option>
-                <option value="branch-1">
-                  Chi nhánh 1
-                </option>
-              </select>
+              <BranchSelect
+                v-model="selectedBranchItems"
+                placeholder="Chọn chi nhánh"
+                :clearable="true"
+                :full-width="true"
+                :multiple="true"
+              />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chọn vai trò</label>
-              <select
-                v-model="selectedRole"
-                class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="" disabled>
-                  Chọn vai trò
-                </option>
-                <option value="viewer">
-                  Xem
-                </option>
-                <option value="editor">
-                  Chỉnh sửa
-                </option>
-                <option value="admin">
-                  Quản trị
-                </option>
-              </select>
+              <AsyncSelect
+                v-model="selectedRoleObj"
+                :fetch-fn="fetchRolesFn"
+                placeholder="Chọn vai trò"
+                label-field="name"
+                :get-item-key="it => String(it.id)"
+                :clearable="true"
+                :full-width="true"
+              />
             </div>
           </div>
         </div>
@@ -458,46 +639,48 @@ watch(() => route.fullPath, () => {
             <div
               v-for="g in permissionGroups"
               :key="g.key"
-              class="border border-gray-200 rounded-md"
+              class="border border-gray-200 rounded-md bg-white overflow-hidden"
             >
-              <div class="flex items-center justify-between gap-3 px-3 h-12">
+              <div :class="['flex items-center justify-between gap-3 px-3 h-12 rounded-t-md', expandedGroups[g.key] ? 'bg-gray-100' : 'bg-white']">
                 <div class="flex items-center gap-3 min-w-0">
-                  <button
-                    type="button"
-                    role="checkbox"
-                    :aria-checked="isGroupChecked(g) ? 'true' : (isGroupIndeterminate(g) ? 'mixed' : 'false')"
-                    :class="[
-                      'inline-flex items-center justify-center h-5 w-5 rounded-md border focus:outline-none focus:ring-2 focus:ring-offset-1',
-                      isGroupChecked(g) || isGroupIndeterminate(g)
-                        ? 'bg-[#1b64f2] border-[#1b64f2] text-white focus:ring-blue-400'
-                        : 'bg-white border-gray-300 text-gray-400 focus:ring-blue-400'
-                    ]"
-                    @click="toggleGroup(g)"
-                  >
-                    <svg
-                      v-if="isGroupChecked(g)"
-                      class="h-3.5 w-3.5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="3"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
+                  <span class="inline-flex rounded-md p-0.5 focus-within:ring-2 focus-within:ring-[#1b64f2]">
+                    <button
+                      type="button"
+                      role="checkbox"
+                      :aria-checked="isGroupChecked(g) ? 'true' : (isGroupIndeterminate(g) ? 'mixed' : 'false')"
+                      :class="[
+                        'inline-flex items-center justify-center h-4 w-4 rounded-md border-0 focus:outline-none',
+                        isGroupChecked(g) || isGroupIndeterminate(g)
+                          ? 'bg-[#1b64f2] text-white'
+                          : 'bg-gray-100 text-gray-400'
+                      ]"
+                      @click="toggleGroup(g)"
                     >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    <svg
-                      v-else-if="isGroupIndeterminate(g)"
-                      class="h-3.5 w-3.5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="3"
-                      stroke-linecap="round"
-                    >
-                      <path d="M5 12h14" />
-                    </svg>
-                  </button>
+                      <svg
+                        v-if="isGroupChecked(g)"
+                        class="h-3 w-3"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="3"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <svg
+                        v-else-if="isGroupIndeterminate(g)"
+                        class="h-3 w-3"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="3"
+                        stroke-linecap="round"
+                      >
+                        <path d="M5 12h14" />
+                      </svg>
+                    </button>
+                  </span>
                   <div class="truncate font-medium">
                     {{ g.title }}
                   </div>
@@ -517,38 +700,40 @@ watch(() => route.fullPath, () => {
                 </div>
               </div>
 
-              <div v-if="expandedGroups[g.key]" class="px-3 pb-3 pt-0">
+              <div v-if="expandedGroups[g.key]" class="px-3 pb-3 pt-2">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
                   <label
                     v-for="c in g.children"
                     :key="c.key"
                     class="flex items-center gap-3 py-1"
                   >
-                    <button
-                      type="button"
-                      role="checkbox"
-                      :aria-checked="selectedPerms[c.key] ? 'true' : 'false'"
-                      :class="[
-                        'inline-flex items-center justify-center h-5 w-5 rounded-md border focus:outline-none focus:ring-2 focus:ring-offset-1',
-                        selectedPerms[c.key]
-                          ? 'bg-[#1b64f2] border-[#1b64f2] text-white focus:ring-blue-400'
-                          : 'bg-white border-gray-300 text-gray-400 focus:ring-blue-400'
-                      ]"
-                      @click.prevent="toggleChild(c.key)"
-                    >
-                      <svg
-                        v-if="selectedPerms[c.key]"
-                        class="h-3.5 w-3.5"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="3"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+                    <span class="inline-flex rounded-md p-0.5 focus-within:ring-2 focus-within:ring-[#1b64f2]">
+                      <button
+                        type="button"
+                        role="checkbox"
+                        :aria-checked="selectedPerms[c.key] ? 'true' : 'false'"
+                        :class="[
+                          'inline-flex items-center justify-center h-4 w-4 rounded-md border-0 focus:outline-none',
+                          selectedPerms[c.key]
+                            ? 'bg-[#1b64f2] text-white'
+                            : 'bg-gray-100 text-gray-400'
+                        ]"
+                        @click.prevent="toggleChild(c.key)"
                       >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    </button>
+                        <svg
+                          v-if="selectedPerms[c.key]"
+                          class="h-3 w-3"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="3"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </button>
+                    </span>
                     <span class="text-sm">{{ c.title }}</span>
                   </label>
                 </div>
@@ -893,9 +1078,6 @@ watch(() => route.fullPath, () => {
               />
             </div>
           </div>
-        </div>
-        <div v-if="employeesRefreshing" class="py-2 text-xs text-gray-500 text-center">
-          Đang cập nhật...
         </div>
       </UPageCard>
 
