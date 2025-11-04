@@ -61,9 +61,16 @@ export function useCreateProductPage() {
     formData.value.collectionIds = val
   })
 
-  const categoryOptions = computed(() => {
+  type DropdownOption = { id: number | string, label: string, children?: DropdownOption[] }
+  const categoryOptions = computed<DropdownOption[]>(() => {
     const cats = (categories.value ?? []) as ProductCategory[]
-    return cats.map(c => ({ id: c.id, label: c.name }))
+    const mapCat = (c: ProductCategory): DropdownOption => ({
+      id: c.id,
+      label: c.name,
+      children: ([...(Array.isArray(c.categories) ? c.categories : []), ...(Array.isArray(c.children) ? c.children : [])] as ProductCategory[])
+        .map(mapCat)
+    })
+    return cats.map(mapCat)
   })
 
   const { data: brands, loading: brandsLoading, error: brandsError } = useBrandsService()

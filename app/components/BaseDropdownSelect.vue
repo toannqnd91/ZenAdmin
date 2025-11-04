@@ -6,6 +6,7 @@ import CustomCheckbox from '@/components/CustomCheckbox.vue'
 interface Option {
     id: string | number
     label: string
+    children?: Option[]
 }
 
 const props = defineProps<{
@@ -33,9 +34,36 @@ const emit = defineEmits(['update:modelValue', 'add-new'])
 const search = ref('')
 const isOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
-const filteredOptions = computed(() => {
-    if (!search.value) return props.options
-    return props.options.filter(opt => opt.label.toLowerCase().includes(search.value.toLowerCase()))
+type FlatItem = { opt: Option, depth: number }
+
+function flattenOptions(list: Option[], depth = 0): FlatItem[] {
+    const out: FlatItem[] = []
+    for (const o of (list || [])) {
+        out.push({ opt: o, depth })
+        if (Array.isArray(o.children) && o.children.length) {
+            out.push(...flattenOptions(o.children, depth + 1))
+        }
+    }
+    return out
+}
+
+function findOptionById(id: string | number | null | undefined, list: Option[]): Option | undefined {
+    if (id == null) return undefined
+    for (const o of list) {
+        if (o.id === id) return o
+        if (o.children && o.children.length) {
+            const f = findOptionById(id, o.children)
+            if (f) return f
+        }
+    }
+    return undefined
+}
+
+const filteredFlat = computed<FlatItem[]>(() => {
+    const all = flattenOptions(props.options || [])
+    if (!search.value) return all
+    const term = search.value.toLowerCase()
+    return all.filter(it => (it.opt.label || '').toLowerCase().includes(term))
 })
 const selectedCount = computed(() => (Array.isArray(props.modelValue) ? props.modelValue.length : 0))
 const showCount = computed(() => {
@@ -50,7 +78,38 @@ const isSelected = (id: string | number) => {
     if (Array.isArray(props.modelValue)) return props.modelValue.includes(id)
     return props.modelValue === id
 }
+
+const hasChildren = (o?: Option) => !!(o && Array.isArray(o.children) && o.children.length)
+const getDescendantIds = (o?: Option): Array<string | number> => {
+    if (!o || !Array.isArray(o.children)) return []
+    const out: Array<string | number> = []
+    for (const ch of o.children) {
+        out.push(ch.id)
+        if (ch.children && ch.children.length) out.push(...getDescendantIds(ch))
+    }
+    return out
+}
+const isNodeChecked = (o: Option): boolean => {
+    if (!props.multiple) return isSelected(o.id)
+    const current = new Set(Array.isArray(props.modelValue) ? props.modelValue as Array<string | number> : [])
+    if (!hasChildren(o)) return current.has(o.id)
+    const all = getDescendantIds(o)
+    if (!all.length) return current.has(o.id)
+    return all.every(id => current.has(id))
+}
+const isNodeIndeterminate = (o: Option): boolean => {
+    if (!props.multiple) return false
+    if (!hasChildren(o)) return false
+    const current = new Set(Array.isArray(props.modelValue) ? props.modelValue as Array<string | number> : [])
+    const all = getDescendantIds(o)
+    if (!all.length) return false
+    const some = all.some(id => current.has(id))
+    const every = all.every(id => current.has(id))
+    return some && !every
+}
+
 function toggleOption(id: string | number) {
+    // legacy toggle by id (leaf or single select)
     if (props.multiple) {
         const arr = Array.isArray(props.modelValue) ? [...props.modelValue] : []
         const idx = arr.indexOf(id)
@@ -61,6 +120,24 @@ function toggleOption(id: string | number) {
         emit('update:modelValue', id)
         isOpen.value = false
     }
+}
+
+function toggleNode(o: Option, next?: boolean) {
+    if (!props.multiple) {
+        emit('update:modelValue', o.id)
+        isOpen.value = false
+        return
+    }
+    const set = new Set(Array.isArray(props.modelValue) ? (props.modelValue as Array<string | number>) : [])
+    const targets = [o.id, ...getDescendantIds(o)]
+    const currentlyAll = targets.every(id => set.has(id))
+    const targetState = typeof next === 'boolean' ? next : !currentlyAll
+    if (targetState) {
+        for (const id of targets) set.add(id)
+    } else {
+        for (const id of targets) set.delete(id)
+    }
+    emit('update:modelValue', Array.from(set))
 }
 function handleAddNew() {
     emit('add-new', search.value)
@@ -92,14 +169,14 @@ watch(isOpen, (open) => {
         >
             <div class="flex-1 min-w-0 overflow-hidden">
                 <span v-if="!props.multiple && props.modelValue" class="block truncate">
-                    {{ options.find(o => o.id === props.modelValue)?.label || props.placeholder || '' }}
+                    {{ findOptionById(props.modelValue as (string | number), options)?.label || props.placeholder || '' }}
                 </span>
                 <span v-else-if="props.multiple && Array.isArray(props.modelValue) && props.modelValue.length" class="block truncate">
                     <template v-if="showCount">
                         {{ (props.selectedCountText || 'Đã chọn') + ' ' + props.modelValue.length + ' ' + (props.selectedCountSuffix || 'giá trị') }}
                     </template>
                     <template v-else>
-                        {{ props.modelValue.map(id => options.find(o => o.id === id)?.label).filter(Boolean).join(', ') }}
+                        {{ props.modelValue.map(id => findOptionById(id, options)?.label).filter(Boolean).join(', ') }}
                     </template>
                 </span>
                 <span v-else class="text-gray-400 block truncate">{{ props.placeholder || 'Chọn...' }}</span>
@@ -118,7 +195,7 @@ watch(isOpen, (open) => {
                 >
             </div>
             <div
-                v-if="props.addNewLabel && search && !filteredOptions.length"
+                v-if="props.addNewLabel && search && !filteredFlat.length"
                 class="px-3 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
                 @click="handleAddNew"
             >
@@ -129,25 +206,26 @@ watch(isOpen, (open) => {
                 </span>
                 <span>{{ props.addNewLabel }} "{{ search }}"</span>
             </div>
-            <div v-else>
+            <div v-else class="max-h-80 overflow-auto">
                 <div
-                    v-for="opt in filteredOptions"
-                    :key="opt.id"
+                    v-for="item in filteredFlat"
+                    :key="item.opt.id"
                     class="px-3 py-2 flex items-center gap-2 cursor-pointer hover:bg-gray-100"
-                    @click="toggleOption(opt.id)"
+                    @click="toggleNode(item.opt)"
                 >
                     <CustomCheckbox
                         v-if="props.multiple"
-                        :model-value="isSelected(opt.id)"
-                        @update:model-value="toggleOption(opt.id)"
+                        :model-value="isNodeChecked(item.opt)"
+                        :indeterminate="isNodeIndeterminate(item.opt)"
+                        @update:model-value="(v:boolean) => toggleNode(item.opt, v)"
                         class="mr-2"
                     />
-                    <span v-else-if="isSelected(opt.id)" class="text-blue-600">
+                    <span v-else-if="isSelected(item.opt.id)" class="text-blue-600">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
                     </span>
-                    <span>{{ opt.label }}</span>
+                    <span :style="{ paddingLeft: (item.depth * 16) + 'px' }">{{ item.opt.label }}</span>
                 </div>
             </div>
         </div>

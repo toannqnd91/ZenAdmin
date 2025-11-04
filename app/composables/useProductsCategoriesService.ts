@@ -9,7 +9,8 @@ export interface ProductCategory {
   sortOrder: number
   isDeleted: boolean
   parentId?: number
-  categories: ProductCategory[]
+  categories?: ProductCategory[]
+  children?: ProductCategory[]
   imageUrl?: string
   productCount?: number
 }

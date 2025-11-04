@@ -649,10 +649,10 @@ watch(() => [route.query[EMP_VIEW], route.query[EMP_ID], route.query[EMP_Q]], ()
                       role="checkbox"
                       :aria-checked="isGroupChecked(g) ? 'true' : (isGroupIndeterminate(g) ? 'mixed' : 'false')"
                       :class="[
-                        'inline-flex items-center justify-center h-4 w-4 rounded-md border-0 focus:outline-none',
+                        'inline-flex items-center justify-center h-4 w-4 rounded-md border focus:outline-none',
                         isGroupChecked(g) || isGroupIndeterminate(g)
-                          ? 'bg-[#1b64f2] text-white'
-                          : 'bg-gray-100 text-gray-400'
+                          ? 'bg-[#1b64f2] text-white border-[#1b64f2]'
+                          : 'bg-gray-100 text-gray-400 border-gray-300'
                       ]"
                       @click="toggleGroup(g)"
                     >
@@ -713,10 +713,10 @@ watch(() => [route.query[EMP_VIEW], route.query[EMP_ID], route.query[EMP_Q]], ()
                         role="checkbox"
                         :aria-checked="selectedPerms[c.key] ? 'true' : 'false'"
                         :class="[
-                          'inline-flex items-center justify-center h-4 w-4 rounded-md border-0 focus:outline-none',
+                          'inline-flex items-center justify-center h-4 w-4 rounded-md border focus:outline-none',
                           selectedPerms[c.key]
-                            ? 'bg-[#1b64f2] text-white'
-                            : 'bg-gray-100 text-gray-400'
+                            ? 'bg-[#1b64f2] text-white border-[#1b64f2]'
+                            : 'bg-gray-100 text-gray-400 border-gray-300'
                         ]"
                         @click.prevent="toggleChild(c.key)"
                       >
@@ -882,9 +882,9 @@ watch(() => [route.query[EMP_VIEW], route.query[EMP_ID], route.query[EMP_Q]], ()
                 </div>
               </div>
             </div>
-            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <UBadge color="success" variant="soft" size="sm">
               Đang kích hoạt
-            </span>
+            </UBadge>
           </div>
         </div>
       </UPageCard>
@@ -1059,7 +1059,6 @@ watch(() => [route.query[EMP_VIEW], route.query[EMP_ID], route.query[EMP_Q]], ()
                       <UBadge :color="item.isActive ? 'success' : 'neutral'" variant="soft" size="sm">
                         {{ item.isActive ? 'Đang kích hoạt' : 'Ngừng kích hoạt' }}
                       </UBadge>
-                      <span class="text-xs text-gray-500">{{ item.createdOn ? new Date(String(item.createdOn)).toLocaleDateString('vi-VN') : '' }}</span>
                     </div>
                   </td>
                 </tr>

@@ -59,10 +59,21 @@ export const useProductForm = () => {
 
   // Selected categories as objects (for tag display)
   const selectedCategories = computed(() => {
-    if (!categories.value) return []
-    return (categories.value as ProductCategoryType[]).filter(cat =>
-      formData.value.categoryIds.includes(cat.id)
-    )
+    const ids = new Set<number>(formData.value.categoryIds || [])
+    const roots = (categories.value as ProductCategoryType[] | undefined) || []
+    const out: ProductCategoryType[] = []
+    const dfs = (list: ProductCategoryType[]) => {
+      for (const c of list) {
+        if (ids.has(c.id)) out.push(c)
+        const children = [
+          ...((Array.isArray((c as ProductCategoryType).categories) ? (c as ProductCategoryType).categories : []) as ProductCategoryType[]),
+          ...((Array.isArray((c as ProductCategoryType).children) ? (c as ProductCategoryType).children : []) as ProductCategoryType[])
+        ]
+        if (children && children.length) dfs(children)
+      }
+    }
+    dfs(roots)
+    return out
   })
 
   // Remove category from selection

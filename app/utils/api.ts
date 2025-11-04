@@ -58,11 +58,11 @@ export const API_ENDPOINTS = {
   PRODUCT_DELETE_MULTI: '/Product/delete-multiple',
 
   // Order endpoints
-  ORDER_SOURCES: '/OrdersRead/order-sources',
-  ORDER_GRID_EXTERNAL: '/OrdersRead/grid',
+  ORDER_SOURCES: '/Orders/order-sources',
+  ORDER_GRID_EXTERNAL: '/Orders/grid',
   ORDER_CREATE_POS: '/OrdersMutation/create-pos-order',
-  ORDER_BY_ID: (id: number | string) => `/OrdersRead/${id}`,
-  ORDER_HISTORY: (id: number | string) => `/OrdersRead/${id}/history`,
+  ORDER_BY_ID: (id: number | string) => `/Orders/${id}`,
+  ORDER_HISTORY: (id: number | string) => `/Orders/${id}/history`,
   // Order payments
   ORDER_PAY: (orderCode: string) => `/orders/${orderCode}/pay`,
 
@@ -93,7 +93,7 @@ export const API_ENDPOINTS = {
   CUSTOMER_BY_ID_EXTERNAL: (id: string) => `/customer/${id}`,
   CUSTOMER_GROUPS_EXTERNAL: '/customergroups',
   CUSTOMER_ORDERS_EXTERNAL: (id: string) => `/customer/${id}/orders`,
-  ORDER_COUNT_BY_STATUS_EXTERNAL: '/OrdersRead/count-by-status',
+  ORDER_COUNT_BY_STATUS_EXTERNAL: '/Orders/count-by-status',
   // Employees
   EMPLOYEES: '/employees',
 

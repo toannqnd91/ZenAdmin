@@ -78,6 +78,7 @@ const channels = [
             </div>
             <div class="flex items-center gap-2">
               <UButton
+                v-if="!ch.link"
                 color="primary"
                 variant="solid"
                 label="Cài đặt kênh"

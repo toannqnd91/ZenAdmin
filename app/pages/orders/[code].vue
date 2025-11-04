@@ -63,11 +63,16 @@ interface RawAddress {
   zipCode?: string | null
   contactName?: string | null
 }
+interface RawWarehouse {
+  id: number | string
+  name: string
+}
 interface RawPayload {
   order: RawOrder
   customerInfo?: unknown
   customer?: RawCustomer
   shippingAddress?: RawAddress
+  warehouse?: RawWarehouse
 }
 
 const route = useRoute()
@@ -183,7 +188,9 @@ function isRefunded(s: string) {
 
 // Action toolbar helpers
 function startReturn() {
-  console.debug('startReturn clicked', detail.value?.orderCode)
+  const raw = (orderCodeParam.value || '').toString()
+  const code = raw.replace(/^#/, '')
+  router.push({ path: '/orders/returns/create', query: { code } })
 }
 function printOrder() {
   window.print()
@@ -276,6 +283,7 @@ async function fetchData() {
       const o = payload.order
       let rawCustomer: RawCustomer | undefined = payload.customer
       let rawAddress: RawAddress | undefined = payload.shippingAddress
+      const rawWarehouse: RawWarehouse | undefined = payload.warehouse
       if (!rawCustomer || !rawAddress) {
         const ci = payload.customerInfo as unknown
         if (ci && typeof ci === 'object') {
@@ -356,7 +364,7 @@ async function fetchData() {
           note: o.orderNote || null,
           meta: {
             sourceName: null,
-            branchName: null,
+            branchName: rawWarehouse?.name || null,
             staffInCharge: null,
             creatorName: null,
             orderDate: o.createdOn,
@@ -551,6 +559,13 @@ function goBack() {
                       <span>Đã xử lý giao hàng</span>
                     </span>
                   </BaseCardHeader>
+                  <!-- Shipping meta: warehouse and method -->
+                  <div class="grid grid-cols-[auto_1fr] gap-x-8 gap-y-2">
+                    <span class="text-gray-600">Chi nhánh:</span>
+                    <span class="text-gray-900">{{ detail.meta?.branchName || '—' }}</span>
+                    <span class="text-gray-600">Vận chuyển:</span>
+                    <span class="text-gray-900">{{ (detail.meta?.deliveryOption === 'Pickup' || detail.meta?.deliveryOption === 'PickUp') ? 'Nhận tại cửa hàng' : (detail.meta?.shippingMethod || detail.meta?.deliveryOption || '—') }}</span>
+                  </div>
                   <div class="-mx-4 lg:-mx-6 overflow-x-auto">
                     <table class="min-w-full w-full text-sm border-separate border-spacing-0">
                       <thead>

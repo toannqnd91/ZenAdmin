@@ -42,24 +42,102 @@ const saleTax = ref(0)
           Quản lý cách cửa hàng của bạn thu thuế và hiển thị thuế
         </div>
         <div class="space-y-3">
-          <label class="flex items-start gap-2">
-            <input v-model="manageTaxInfo" type="checkbox" class="mt-1">
+          <label class="flex items-start gap-3">
+            <span class="inline-flex rounded-md p-0.5 focus-within:ring-2 focus-within:ring-[#1b64f2]">
+              <button
+                type="button"
+                role="checkbox"
+                :aria-checked="manageTaxInfo ? 'true' : 'false'"
+                :class="[
+                  'inline-flex items-center justify-center h-4 w-4 rounded-md border focus:outline-none',
+                  manageTaxInfo
+                    ? 'bg-[#1b64f2] text-white border-[#1b64f2]'
+                    : 'bg-gray-100 text-gray-400 border-gray-300'
+                ]"
+                @click.prevent="manageTaxInfo = !manageTaxInfo"
+              >
+                <svg
+                  v-if="manageTaxInfo"
+                  class="h-3 w-3"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </button>
+            </span>
             <div>
               <div class="text-sm">Quản lý thông tin thuế của cửa hàng</div>
               <div class="text-xs text-gray-500">Áp dụng cho giao dịch tạo từ trang quản trị</div>
             </div>
           </label>
 
-          <label class="flex items-start gap-2">
-            <input v-model="priceIncludesTax" type="checkbox" class="mt-1">
+          <label class="flex items-start gap-3">
+            <span class="inline-flex rounded-md p-0.5 focus-within:ring-2 focus-within:ring-[#1b64f2]">
+              <button
+                type="button"
+                role="checkbox"
+                :aria-checked="priceIncludesTax ? 'true' : 'false'"
+                :class="[
+                  'inline-flex items-center justify-center h-4 w-4 rounded-md border focus:outline-none',
+                  priceIncludesTax
+                    ? 'bg-[#1b64f2] text-white border-[#1b64f2]'
+                    : 'bg-gray-100 text-gray-400 border-gray-300'
+                ]"
+                @click.prevent="priceIncludesTax = !priceIncludesTax"
+              >
+                <svg
+                  v-if="priceIncludesTax"
+                  class="h-3 w-3"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </button>
+            </span>
             <div>
               <div class="text-sm">Giá đã bao gồm thuế</div>
               <div class="text-xs text-gray-500">Giá bán sản phẩm và phí vận chuyển trong đơn đã bao gồm giá trị thuế.</div>
             </div>
           </label>
 
-          <label class="flex items-start gap-2">
-            <input v-model="taxOnShipping" type="checkbox" class="mt-1">
+          <label class="flex items-start gap-3">
+            <span class="inline-flex rounded-md p-0.5 focus-within:ring-2 focus-within:ring-[#1b64f2]">
+              <button
+                type="button"
+                role="checkbox"
+                :aria-checked="taxOnShipping ? 'true' : 'false'"
+                :class="[
+                  'inline-flex items-center justify-center h-4 w-4 rounded-md border focus:outline-none',
+                  taxOnShipping
+                    ? 'bg-[#1b64f2] text-white border-[#1b64f2]'
+                    : 'bg-gray-100 text-gray-400 border-gray-300'
+                ]"
+                @click.prevent="taxOnShipping = !taxOnShipping"
+              >
+                <svg
+                  v-if="taxOnShipping"
+                  class="h-3 w-3"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </button>
+            </span>
             <div>
               <div class="text-sm">Ghi nhận thuế lên phí vận chuyển</div>
               <div class="text-xs text-gray-500">Tính thuế khi áp dụng phí vận chuyển trong đơn hàng</div>
