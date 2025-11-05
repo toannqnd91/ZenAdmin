@@ -2071,12 +2071,28 @@ function onAddCustomer() {
         </div>
         <!-- Footer Actions -->
         <div class="flex items-center justify-end gap-4 mt-10 border-t border-transparent pt-4">
-          <button class="h-9 px-5 rounded-md bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50" @click="saveDraft">
+          <button
+            class="h-9 px-5 rounded-md bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+            :disabled="creatingOrder"
+            aria-disabled="creatingOrder ? 'true' : 'false'"
+            @click="saveDraft"
+          >
             Lưu nháp
           </button>
           <div class="relative inline-flex items-center">
-            <button class="h-9 px-5 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700" @click="createAndConfirm">
-              Tạo đơn và xác nhận
+            <button
+              class="h-9 px-5 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center justify-center"
+              :disabled="creatingOrder"
+              aria-busy="creatingOrder ? 'true' : 'false'"
+              aria-live="polite"
+              @click="createAndConfirm"
+            >
+              <template v-if="creatingOrder">
+                <span class="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+              </template>
+              <template v-else>
+                Tạo đơn và xác nhận
+              </template>
             </button>
           </div>
         </div>

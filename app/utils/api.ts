@@ -66,6 +66,9 @@ export const API_ENDPOINTS = {
   // Order payments
   ORDER_PAY: (orderCode: string) => `/orders/${orderCode}/pay`,
 
+  // Sales returns
+  SALES_RETURNS_CALCULATE_REFUND: (orderCode: string) => `/sales-returns/${encodeURIComponent(orderCode)}/calculate-refund`,
+
   // Inventory Transfer endpoints
   INVENTORY_TRANSFERS: '/InventoryTransfers',
   INVENTORY_TRANSFERS_GRID: '/InventoryTransfers/grid',
