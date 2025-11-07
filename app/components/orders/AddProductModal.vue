@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
+import BaseNumberInput from '@/components/base/BaseNumberInput.vue'
 import { z } from 'zod'
 import { productService } from '@/services'
+import type { ApiResponse } from '@/types/common'
+import { useProductsCategoriesService } from '@/composables/useProductsCategoriesService'
+import type { ProductCategory } from '@/composables/useProductsCategoriesService'
 
 const schema = z.object({
   name: z.string().min(1, 'Tên sản phẩm là bắt buộc'),
@@ -35,12 +39,51 @@ const loading = ref(false)
 const form = ref<Schema>({ name: '', description: '', barcode: '', content: '', price: undefined, sku: '', cost: undefined, stock: undefined, unit: '' })
 const toast = useToast()
 
-async function fetchGroups(_q = ''): Promise<GroupItem[]> {
-  // placeholder: return empty list as a resolved promise to satisfy RemoteSearchSelect typing
-  return Promise.resolve([])
+// Use the same data source as /products/create for consistency
+const { data: categoriesData, loading: categoriesPending } = useProductsCategoriesService()
+
+// Flatten categories with indentation markers for child levels
+// Level 0: "Tên"
+// Level 1: "--- Tên"
+// Level 2: "------ Tên" (and so on)
+function flattenCategories(list: ProductCategory[] | undefined | null): GroupItem[] {
+  const out: GroupItem[] = []
+  const dfs = (arr: ProductCategory[] | undefined | null, level: number) => {
+    if (!Array.isArray(arr)) return
+    for (const c of arr) {
+      if ((c as { isDeleted?: boolean }).isDeleted) continue
+      const prefix = level > 0 ? `${'--- '.repeat(level)}` : ''
+      out.push({ id: c.id, name: `${prefix}${c.name}` })
+      const children = [
+        ...((Array.isArray(c.categories) ? c.categories : []) as ProductCategory[]),
+        ...((Array.isArray(c.children) ? c.children : []) as ProductCategory[])
+      ]
+      if (children.length) dfs(children, level + 1)
+    }
+  }
+  dfs(list || [], 0)
+  return out
 }
 
-const selectedGroup = ref(null)
+// RemoteSearchSelect fetch fn: ensure we return children too and wait briefly if still loading
+async function fetchGroups(q = ''): Promise<GroupItem[]> {
+  // If data not ready yet but loading, wait a short time (poll) so first open has results
+  let attempts = 0
+  while (attempts < 10 && (!categoriesData.value?.length) && (categoriesPending.value)) {
+    await new Promise(r => setTimeout(r, 60))
+    attempts++
+  }
+  const raw = categoriesData.value as ProductCategory[]
+  const all = flattenCategories(raw)
+  const term = (q || '').trim().toLowerCase()
+  if (!term) return all
+  return all.filter(it => String(it.name || '').toLowerCase().includes(term))
+}
+
+// (optional) expose loading if needed later; prefix underscore to satisfy lint if unused
+const _categoriesLoading = computed(() => !!categoriesPending.value)
+
+const selectedGroup = ref<GroupItem | null>(null)
 
 // Image upload local state (simple preview-only implementation)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -107,7 +150,7 @@ async function onSubmit() {
       warehouseId: null,
       productImages
     }
-    const response = await productService.createQuickProduct(payload)
+    const response = (await productService.createQuickProduct(payload)) as ApiResponse<{ id?: number }>
     if (response.success && response.data && response.data.id) {
       toast.add({ title: 'Thành công', description: 'Sản phẩm đã được tạo thành công' })
       // Emit full product info for parent to add to orderProducts
@@ -198,7 +241,7 @@ async function onSubmit() {
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium text-gray-700">Nhóm hàng</label>
+                  <label class="block text-sm font-medium text-gray-700">Danh mục</label>
                   <RemoteSearchSelect
                     v-model="selectedGroup"
                     placeholder="---Lựa chọn---"
@@ -207,40 +250,49 @@ async function onSubmit() {
                     clearable
                     searchable
                     :full-width="true"
+                    :append-to-body="true"
                   />
                 </div>
               </div>
 
-              <!-- Right column (cost, price, stock, unit) -->
               <div class="space-y-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700">Giá vốn</label>
-                  <input
-                    v-model.number="form.cost"
-                    type="number"
-                    placeholder="0"
-                    class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                  >
+                  <div class="relative">
+                    <BaseNumberInput
+                      v-model="form.cost"
+                      :allow-decimal="false"
+                      decimal-separator="."
+                      placeholder="0"
+                      class="w-full h-9 px-3 pr-8 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                    />
+                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">đ</span>
+                  </div>
                 </div>
 
                 <div>
                   <label class="block text-sm font-medium text-gray-700">Giá bán</label>
-                  <input
-                    v-model.number="form.price"
-                    type="number"
-                    placeholder="0"
-                    class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                  >
+                  <div class="relative">
+                    <BaseNumberInput
+                      v-model="form.price"
+                      :allow-decimal="false"
+                      decimal-separator="."
+                      placeholder="0"
+                      class="w-full h-9 px-3 pr-8 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                    />
+                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">đ</span>
+                  </div>
                 </div>
 
                 <div>
                   <label class="block text-sm font-medium text-gray-700">Tồn kho</label>
-                  <input
-                    v-model.number="form.stock"
-                    type="number"
+                  <BaseNumberInput
+                    v-model="form.stock"
+                    :allow-decimal="false"
+                    decimal-separator="."
                     placeholder="0"
                     class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                  >
+                  />
                 </div>
 
                 <div>

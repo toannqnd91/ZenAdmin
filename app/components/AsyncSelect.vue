@@ -29,6 +29,7 @@ interface Props {
   infiniteScroll?: boolean // enable infinite scroll when fetchMoreFn provided
   pageSize?: number // hint for page size (optional, for parent optimization)
   triggerClass?: string // extra classes appended to trigger (for grouped styling, radius overrides, widths)
+  appendToBody?: boolean // when true, render dropdown in body to avoid clipping in modals
 }
 const props = defineProps<Props>()
 const emit = defineEmits(['update:modelValue', 'select', 'clear'])
@@ -49,6 +50,8 @@ const dynamicListMaxHeight = ref<string | null>(null)
 let scrollParent: HTMLElement | null = null
 let debounceTimer: number | undefined
 const longestLabelPx = ref<number | null>(null)
+const dropdownFixedStyle = ref<Record<string, string> | undefined>(undefined)
+let lastTriggerWidth = 0
 
 const maxDisplay = computed(() => props.maxDisplayLength ?? 30)
 const maxListStyle = computed(() => {
@@ -187,6 +190,22 @@ function isSelected(item: GenericItem) {
   return selectedKeys.value.has(itemKey(item))
 }
 
+function computeFixedPosition() {
+  if (!props.appendToBody || !triggerRef.value) return
+  const rect = triggerRef.value.getBoundingClientRect()
+  const top = dropDirection.value === 'down' ? rect.bottom : rect.top
+  const y = dropDirection.value === 'down' ? top + 8 : top - 8
+  const minWidth = rect.width
+  lastTriggerWidth = rect.width
+  dropdownFixedStyle.value = {
+    position: 'fixed',
+    top: `${Math.round(y)}px`,
+    left: `${Math.round(rect.left)}px`,
+    minWidth: `${Math.round(minWidth)}px`,
+    zIndex: '2001'
+  }
+}
+
 function openDropdown() {
   if (props.disabled) return
   open.value = true
@@ -198,12 +217,17 @@ function openDropdown() {
   }
   nextTick(() => {
     computeDropDirection()
+    computeFixedPosition()
     document.addEventListener('mousedown', handleClickOutside)
     window.addEventListener('resize', computeDropDirection, { passive: true })
-    window.addEventListener('scroll', computeDropDirection, { passive: true })
+    const onScroll = () => {
+      computeDropDirection()
+      computeFixedPosition()
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
     scrollParent = findScrollParent(triggerRef.value)
     if (scrollParent && scrollParent !== document.body && scrollParent !== document.documentElement) {
-      scrollParent.addEventListener('scroll', computeDropDirection, { passive: true })
+      scrollParent.addEventListener('scroll', onScroll, { passive: true })
     }
   })
 }
@@ -211,7 +235,7 @@ function closeDropdown() {
   open.value = false
   document.removeEventListener('mousedown', handleClickOutside)
   window.removeEventListener('resize', computeDropDirection)
-  window.removeEventListener('scroll', computeDropDirection)
+  window.removeEventListener('scroll', () => { /* noop placeholder */ })
   if (scrollParent) scrollParent.removeEventListener('scroll', computeDropDirection)
 }
 function toggleDropdown() {
@@ -392,8 +416,89 @@ onBeforeUnmount(() => {
         />
       </svg>
     </div>
+    <Teleport v-if="props.appendToBody" to="body">
+      <div
+        v-if="open"
+        ref="dropdownRef"
+        :class="[
+          'z-[2001] bg-white rounded-md shadow-lg fixed left-0 top-0',
+          props.borderless ? 'border border-gray-200' : 'border border-gray-300',
+          'animate-dropdown'
+        ]"
+        :style="{ ...(dropdownFixedStyle || {}), width: lastTriggerWidth ? lastTriggerWidth + 'px' : undefined }"
+      >
+        <slot name="add-action" />
+        <div v-if="searchable !== false && !searchInTrigger" class="px-3 pt-2 pb-2">
+          <input
+            v-model="search"
+            type="text"
+            class="w-full h-9 px-3 rounded-md border border-gray-200 bg-gray-50 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-primary-500 placeholder-gray-400"
+            :placeholder="placeholder || 'Tìm kiếm...'"
+            :disabled="((Array.isArray(modelValue) ? modelValue.length > 0 : !!modelValue) && !clearable)"
+            @click.stop
+          >
+        </div>
+        <div v-if="loadingInitial" class="w-full px-3 py-4 text-center text-gray-500 text-sm">
+          Đang tải...
+        </div>
+        <div v-else-if="error" class="w-full px-3 py-4 text-center text-red-500 text-sm">
+          {{ error }}
+        </div>
+        <div v-else-if="items.length === 0" class="w-full px-3 py-4 text-center text-gray-500 text-sm rounded-b-md">
+          Không có kết quả
+        </div>
+        <div v-else>
+          <div class="overflow-auto" :style="[maxListStyle, dynamicListMaxHeight]" @scroll="e => loadMoreIfNeeded(e.target as HTMLElement)">
+            <div
+              v-for="item in items"
+              :key="itemKey(item)"
+              class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-all"
+              :class="{ 'bg-primary-50': isSelected(item) }"
+              @click.stop="selectItem(item)"
+            >
+              <slot name="item" :item="item">
+                <div class="flex-1">
+                  <div class="font-medium text-gray-900 text-sm">
+                    {{ getDisplayText ? getDisplayText(item) : (labelField ? (item[labelField] ?? '') : '') }}
+                  </div>
+                  <div v-if="getItemSubtitle && getItemSubtitle(item)" class="text-xs text-gray-500">
+                    {{ getItemSubtitle(item) }}
+                  </div>
+                </div>
+              </slot>
+              <svg
+                v-if="isSelected(item)"
+                class="w-4 h-4 text-primary-600 ml-2 flex-shrink-0"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-7.25 7.25a1 1 0 01-1.414 0l-3-3a1 1 0 111.414-1.414L8.5 11.586l6.543-6.543a1 1 0 011.414 0z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <div
+              v-if="infiniteScroll && loadingMore"
+              class="px-3 py-2 text-center text-xs text-gray-500"
+            >
+              Đang tải thêm...
+            </div>
+            <div
+              v-else-if="infiniteScroll && !hasMore"
+              class="px-3 py-2 text-center text-[11px] text-gray-400"
+            >
+              Hết dữ liệu
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <div
-      v-if="open"
+      v-else-if="open"
       ref="dropdownRef"
       :class="[
         'absolute left-0 z-50 bg-white rounded-md shadow-lg',
