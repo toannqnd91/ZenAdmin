@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRuntimeConfig } from '#imports'
+import { useRuntimeConfig, useToast } from '#imports'
 import { useRoute, useRouter } from 'vue-router'
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
 import BranchSelect from '@/components/BranchSelect.vue'
@@ -214,6 +214,11 @@ const refundSummary = ref<CalculateRefundResponseData | null>(null)
 const calculatingRefund = ref(false)
 let refundTimer: number | undefined
 
+// Submission state for creating return
+const returnNote = ref<string>('')
+const submittingReturn = ref(false)
+const toast = useToast()
+
 function scheduleCalculateRefund() {
   if (refundTimer) window.clearTimeout(refundTimer)
   refundTimer = window.setTimeout(() => {
@@ -245,6 +250,40 @@ watch(orderItems, () => {
   if (hasSelectedReturns.value) scheduleCalculateRefund()
   else refundSummary.value = null
 }, { deep: true })
+
+// Submit return to backend
+async function submitReturn() {
+  const items = orderItems.value
+    .filter(i => (i.returnQty || 0) > 0)
+    .map(i => ({ orderItemId: i.id, productId: i.productId, quantity: i.returnQty, reason: selectedReason.value?.value ?? undefined, restock: true }))
+  if (items.length === 0) {
+    toast.add({ title: 'Chưa có sản phẩm được chọn', color: 'warning' })
+    return
+  }
+  submittingReturn.value = true
+  try {
+    const body = {
+      warehouseId: (selectedBranch.value as WarehouseItem | null)?.id ?? undefined,
+      note: returnNote.value || undefined,
+      items
+    }
+    const res = await returnsService.createReturn(orderCode.value || undefined, body)
+    const env = res as unknown as Record<string, unknown> | null
+    const ok = !!(env && env.success === true)
+    if (ok) {
+      toast.add({ title: 'Tạo đơn trả hàng thành công', color: 'success' })
+      router.back()
+      return
+    }
+    const msg = env && typeof env.message === 'string' ? env.message : 'Tạo đơn trả hàng thất bại'
+    toast.add({ title: 'Lỗi', description: msg, color: 'error' })
+  } catch (err) {
+    const msg = err && (err as Error).message ? (err as Error).message : 'Tạo đơn thất bại'
+    toast.add({ title: 'Lỗi', description: msg, color: 'error' })
+  } finally {
+    submittingReturn.value = false
+  }
+}
 </script>
 
 <template>
@@ -424,6 +463,7 @@ watch(orderItems, () => {
               </BaseCardHeader>
               <div class="-mx-4 lg:-mx-6 px-4 lg:px-6 pb-4">
                 <input
+                  v-model="returnNote"
                   type="text"
                   placeholder="Nhập lý do hoàn trả hàng"
                   class="w-full h-11 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -545,8 +585,18 @@ watch(orderItems, () => {
                     </template>
                   </div>
                   <div class="pt-4">
-                    <button type="button" class="w-full h-10 rounded-md bg-primary-600 hover:bg-primary-700 text-white font-medium">
-                      Tạo đơn trả hàng
+                    <button
+                      type="button"
+                      class="w-full h-10 rounded-md bg-primary-600 hover:bg-primary-700 text-white font-medium disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center justify-center"
+                      :disabled="submittingReturn"
+                      @click="submitReturn"
+                    >
+                      <template v-if="submittingReturn">
+                        <span class="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                      </template>
+                      <template v-else>
+                        Tạo đơn trả hàng
+                      </template>
                     </button>
                   </div>
                 </template>

@@ -43,6 +43,11 @@ export class ReturnsService extends BaseService {
   async calculateRefund(orderCode: string, body: CalculateRefundRequest) {
     return this.post<CalculateRefundResponseData | null>(API_ENDPOINTS.SALES_RETURNS_CALCULATE_REFUND(orderCode), body)
   }
+  
+  async createReturn(orderCode: string | undefined, body: unknown) {
+    const endpoint = API_ENDPOINTS.SALES_RETURNS + (orderCode ? `?orderCode=${encodeURIComponent(orderCode)}` : '')
+    return this.post<unknown>(endpoint, body)
+  }
 }
 
 export const returnsService = new ReturnsService()

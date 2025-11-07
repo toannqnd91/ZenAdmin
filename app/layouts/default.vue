@@ -23,7 +23,6 @@ const {
   menuItems,
   menuLoading,
   menuError,
-  hasMenuError,
   retryFetchMenu
 } = useDashboard()
 
@@ -98,7 +97,6 @@ provide('sidebarCollapsed', sidebarCollapsed)
       v-model:open="open"
       collapsible
       resizable
-      class="bg-elevated/25"
       :ui="{ footer: 'lg:border-t lg:border-default' }"
     >
       <template #header="{ collapsed }">

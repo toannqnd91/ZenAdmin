@@ -8,6 +8,7 @@ import { useApiConfig } from '@/composables/useApiConfig'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
 import BaseDropdownSelect from '@/components/BaseDropdownSelect.vue'
 import TinyMCESelfHost from '@/components/TinyMCESelfHost.vue'
+import BaseNumberInput from '@/components/base/BaseNumberInput.vue'
 
 interface Props { productId?: number | null }
 const props = defineProps<Props>()
@@ -254,7 +255,7 @@ const goBack = () => {
                   <div class="flex-1">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Giá bán</label>
                     <div class="relative">
-                      <input id="price" v-model.number="page.state.formData.price" type="number" min="0" step="0.01" placeholder="0.00" class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pr-12">
+                      <BaseNumberInput id="price" v-model="page.state.formData.price" :allow-decimal="false" group-separator="," decimal-separator="." placeholder="0" class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pr-12" />
                       <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-base pointer-events-none">đ</span>
                     </div>
                   </div>
@@ -264,7 +265,7 @@ const goBack = () => {
                       <span class="ml-1" title="Giá so sánh là giá gốc trước khi giảm giá."><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" /></svg></span>
                     </div>
                     <div class="relative">
-                      <input id="compareAtPrice" v-model.number="page.state.formData.compareAtPrice" type="number" min="0" step="0.01" placeholder="0.00" class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pr-12">
+                      <BaseNumberInput id="compareAtPrice" v-model="page.state.formData.compareAtPrice" :allow-decimal="false" group-separator="," decimal-separator="." placeholder="0" class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pr-12" />
                       <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-base pointer-events-none">đ</span>
                     </div>
                   </div>
@@ -276,7 +277,7 @@ const goBack = () => {
                 <div class="flex flex-col md:flex-row gap-4">
                   <div class="flex-1">
                     <div class="flex items-center justify-between"><label class="block text-sm font-medium text-gray-700 mb-1">Giá nhập</label><span class="ml-1" title="Giá nhập là giá bạn mua vào."><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" /></svg></span></div>
-                    <div class="relative"><input id="importPrice" v-model.number="page.state.formData.importPrice" type="number" min="0" step="0.01" placeholder="0.00" class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pr-12"><span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-base pointer-events-none">đ</span></div>
+                    <div class="relative"><BaseNumberInput id="importPrice" v-model="page.state.formData.importPrice" :allow-decimal="false" group-separator="," decimal-separator="." placeholder="0" class="w-full px-3 h-[36px] text-base rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 pr-12" /><span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-base pointer-events-none">đ</span></div>
                   </div>
                   <div class="flex-1">
                     <div class="flex items-center justify-between"><label class="block text-sm font-medium text-gray-700 mb-1">Lợi nhuận</label><span class="text-gray-500 text-xs" title="Lợi nhuận = Giá bán - Giá nhập"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" /></svg></span></div>

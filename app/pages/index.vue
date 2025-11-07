@@ -295,7 +295,7 @@ watch(selectedOrderSource, (val) => {
 <template>
   <UDashboardPanel id="home">
     <template #header>
-      <UDashboardNavbar title="Tổng quan" :ui="{ right: 'gap-3' }">
+      <UDashboardNavbar title="Tổng quan" :ui="{ right: 'gap-3' }" class="bg-white">
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>

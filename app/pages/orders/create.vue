@@ -11,6 +11,7 @@ import type { WarehouseOption } from '@/components/WarehouseSwitcher.vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
 import CustomRadio from '@/components/CustomRadio.vue'
+import BaseNumberInput from '@/components/base/BaseNumberInput.vue'
 import { productService } from '@/services/product.service'
 import { warehouseService } from '@/services/warehouse.service'
 import { orderSourceService } from '@/services/order-source.service'
@@ -332,11 +333,11 @@ function mapPaymentMethodToApi(value: string): number {
 // Delivery option mapping based on shippingOption
 function mapDeliveryOptionToApi(opt: string): DeliveryOption {
   switch (opt) {
-    case 'carrier': return 'VanChuyen'
-    case 'self': return 'TuGiaoHang'
-    case 'delivered': return 'GiaoNgay'
-    case 'later': return 'GiaoSau'
-    default: return 'VanChuyen'
+    case 'carrier': return 'vanchuyen'
+    case 'self': return 'tugiaohang'
+    case 'delivered': return 'giaongay'
+    case 'later': return 'giaosau'
+    default: return 'vanchuyen'
   }
 }
 
@@ -1541,13 +1542,13 @@ function onAddCustomer() {
                           </button>
                         </div>
                         <div class="relative">
-                          <input
-                            v-model.number="paymentAmount"
-                            type="number"
-                            min="0"
+                          <BaseNumberInput
+                            v-model="paymentAmount"
+                            :allow-decimal="false"
+                            decimal-separator="."
                             class="w-full h-9 px-3 pr-6 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-right"
                             @input="paymentAmountDirty = true"
-                          >
+                          />
                           <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">đ</span>
                         </div>
                       </div>
@@ -1592,7 +1593,12 @@ function onAddCustomer() {
                       </div>
                       <div class="flex items-center gap-1 flex-1">
                         <div class="relative w-full">
-                          <input v-model.number="discountInput" type="number" :class="['w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500', discountError ? 'border-red-400 bg-red-50' : 'border-gray-300']">
+                          <BaseNumberInput
+                            v-model="discountInput"
+                            :allow-decimal="false"
+                            decimal-separator="."
+                            :class="['w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500', discountError ? 'border-red-400 bg-red-50' : 'border-gray-300']"
+                          />
                           <span v-if="discountType === 'amount'" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₫</span>
                           <span v-else class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">%</span>
                         </div>
@@ -1644,7 +1650,12 @@ function onAddCustomer() {
                       <label class="text-sm font-medium min-w-[100px]">Giá trị:</label>
                       <div class="flex items-center gap-1 flex-1">
                         <div class="relative w-full">
-                          <input v-model.number="shippingFeeInput" type="number" :class="['w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500', shippingFeeError ? 'border-red-400 bg-red-50' : 'border-gray-300']">
+                          <BaseNumberInput
+                            v-model="shippingFeeInput"
+                            :allow-decimal="false"
+                            decimal-separator="."
+                            :class="['w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500', shippingFeeError ? 'border-red-400 bg-red-50' : 'border-gray-300']"
+                          />
                           <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₫</span>
                         </div>
                       </div>
@@ -1707,13 +1718,13 @@ function onAddCustomer() {
                     <div v-if="priceUseNew" class="mb-6">
                       <label class="text-sm font-medium text-gray-700 mb-1 block">Giá mới</label>
                       <div class="relative">
-                        <input
-                          v-model.number="priceNewValue"
-                          type="number"
-                          min="0"
+                        <BaseNumberInput
+                          v-model="priceNewValue"
+                          :allow-decimal="false"
+                          decimal-separator="."
                           class="w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500"
                           :class="priceError ? 'border-red-400 bg-red-50' : 'border-gray-300'"
-                        >
+                        />
                         <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₫</span>
                       </div>
                     </div>
@@ -1736,12 +1747,13 @@ function onAddCustomer() {
                           </button>
                         </div>
                         <div class="flex-1 relative">
-                          <input
-                            v-model.number="priceDiscountInput"
-                            type="number"
+                          <BaseNumberInput
+                            v-model="priceDiscountInput"
+                            :allow-decimal="false"
+                            decimal-separator="."
                             class="w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500"
                             :class="priceError ? 'border-red-400 bg-red-50' : 'border-gray-300'"
-                          >
+                          />
                           <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">{{ priceDiscountType === 'amount' ? '₫' : '%' }}</span>
                         </div>
                       </div>
@@ -2074,7 +2086,7 @@ function onAddCustomer() {
           <button
             class="h-9 px-5 rounded-md bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
             :disabled="creatingOrder"
-            aria-disabled="creatingOrder ? 'true' : 'false'"
+            :aria-disabled="creatingOrder ? 'true' : 'false'"
             @click="saveDraft"
           >
             Lưu nháp
@@ -2083,7 +2095,7 @@ function onAddCustomer() {
             <button
               class="h-9 px-5 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center justify-center"
               :disabled="creatingOrder"
-              aria-busy="creatingOrder ? 'true' : 'false'"
+              :aria-busy="creatingOrder ? 'true' : 'false'"
               aria-live="polite"
               @click="createAndConfirm"
             >

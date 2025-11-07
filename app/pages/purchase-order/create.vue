@@ -10,6 +10,7 @@ import ProductPriceAdjustModal from '@/components/ProductPriceAdjustModal.vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
 import CustomRadio from '@/components/CustomRadio.vue'
+import BaseNumberInput from '@/components/base/BaseNumberInput.vue'
 import { productService } from '@/services/product.service'
 import { warehouseService } from '@/services/warehouse.service'
 import { supplierService } from '@/services/supplier.service'
@@ -888,13 +889,12 @@ function saveDraft() {
                           </button>
                         </div>
                         <div class="relative">
-                          <input
-                            v-model.number="paymentAmount"
-                            type="number"
-                            min="0"
+                          <BaseNumberInput
+                            v-model="paymentAmount"
+                            :allow-decimal="false"
                             class="w-full h-9 px-3 pr-6 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-right"
                             @input="paymentAmountDirty = true"
-                          >
+                          />
                           <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">đ</span>
                         </div>
                       </div>
@@ -1151,11 +1151,11 @@ function saveDraft() {
             </div>
             <div class="flex items-center gap-1 flex-1">
               <div class="relative w-full">
-                <input
-                  v-model.number="discountInput"
-                  type="number"
+                <BaseNumberInput
+                  v-model="discountInput"
+                  :allow-decimal="false"
                   :class="['w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500', discountError ? 'border-red-400 bg-red-50' : 'border-gray-300']"
-                >
+                />
                 <span
                   v-if="discountType === 'amount'"
                   class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"

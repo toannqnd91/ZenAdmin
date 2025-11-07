@@ -87,7 +87,7 @@ async function onRowMultiDelete(ids: (string | number)[]) {
 <template>
   <UDashboardPanel id="products" class="flex flex-col h-full">
     <template #header>
-  <UDashboardNavbar title="Sản phẩm" :ui="{ right: 'gap-3' }">
+      <UDashboardNavbar title="Sản phẩm" :ui="{ right: 'gap-3' }" class="bg-white">
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>

@@ -60,13 +60,14 @@ export const API_ENDPOINTS = {
   // Order endpoints
   ORDER_SOURCES: '/Orders/order-sources',
   ORDER_GRID_EXTERNAL: '/Orders/grid',
-  ORDER_CREATE_POS: '/OrdersMutation/create-pos-order',
+  ORDER_CREATE_POS: '/Orders/create-pos-order',
   ORDER_BY_ID: (id: number | string) => `/Orders/${id}`,
   ORDER_HISTORY: (id: number | string) => `/Orders/${id}/history`,
   // Order payments
   ORDER_PAY: (orderCode: string) => `/orders/${orderCode}/pay`,
 
   // Sales returns
+  SALES_RETURNS: '/sales-returns',
   SALES_RETURNS_CALCULATE_REFUND: (orderCode: string) => `/sales-returns/${encodeURIComponent(orderCode)}/calculate-refund`,
 
   // Inventory Transfer endpoints
