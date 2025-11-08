@@ -335,7 +335,8 @@ const createSlipItems = [
 ]
 
 function formatCurrency(v: number) {
-  return v.toLocaleString('vi-VN') + 'đ'
+  const n = Math.floor(Number(v) || 0)
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + 'đ'
 }
 
 const pagedRows = computed(() => rows.value) // API already paginates

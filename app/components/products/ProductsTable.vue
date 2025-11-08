@@ -154,9 +154,12 @@ const invText = (p: ProductItem) => {
   return { line1: `${p.stockQuantity} in stock`, variants: `${Array.isArray(p.variations) ? p.variations.length : 1} variants`, danger: false }
 }
 
+// Format with comma as thousands separator per new UI requirement, keep no decimals
 function formatVNDNumber(v?: number | null) {
   if (v == null) return ''
-  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(v)
+  const n = Math.floor(Number(v) || 0)
+  // Manual grouping with comma
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 const currencySuffix = 'đ'
 </script>

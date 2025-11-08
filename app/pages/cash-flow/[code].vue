@@ -65,8 +65,9 @@ const loading = ref(false)
 const detail = ref<ReceiptDetail | null>(null)
 const errorMessage = ref('')
 function formatCurrency(v?: number | null) {
-  if (v == null || isNaN(v)) return '0đ'
-  return new Intl.NumberFormat('vi-VN').format(v) + 'đ'
+  if (v == null || isNaN(v as number)) return '0đ'
+  const n = Math.floor(Number(v) || 0)
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + 'đ'
 }
 function formatDate(iso?: string | null) {
   if (!iso) return ''
