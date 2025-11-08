@@ -133,10 +133,9 @@ export const useProductForm = () => {
     errors.value = {}
     isSubmitting.value = true
     try {
-      // Validate
+      // Validate (only tên sản phẩm là bắt buộc)
       if (!formData.value.name) errors.value.name = 'Tên sản phẩm là bắt buộc'
-      if (!formData.value.content)
-        errors.value.content = 'Nội dung là bắt buộc'
+      // Mô tả và nội dung không bắt buộc
       if (Object.keys(errors.value).length)
         throw new Error('Vui lòng kiểm tra lại thông tin bắt buộc')
 
@@ -199,11 +198,9 @@ export const useProductForm = () => {
         price: Number(formData.value.price) || 0,
         oldPrice: Number(formData.value.compareAtPrice) || 0,
         costPrice: Number(formData.value.importPrice) || 0,
-        isCallForPricing: false,
-        isAllowToOrder: false,
+        isCallForPricing: true,
         isPublished: true,
         isFeatured: !!formData.value.isFeatured,
-        stockTrackingIsEnabled: false,
         categoryIds: formData.value.categoryIds || [],
         // Map descriptions
         shortDescription: formData.value.description || '',
@@ -248,10 +245,15 @@ export const useProductForm = () => {
       const allowNegativeStock = (
         formData.value as unknown as Record<string, unknown>
       )['allowNegativeStock']
-      if (typeof manageInventory === 'boolean')
-        payload.stockTrackingIsEnabled = manageInventory
-      if (typeof allowNegativeStock === 'boolean')
-        payload.isAllowToOrder = allowNegativeStock
+      // Derive stock flags from UI (dynamic):
+      // - stockTrackingIsEnabled mirrors "Quản lý số lượng tồn kho"
+      // - allowOutOfStock mirrors "Cho phép bán khi hết hàng" but only meaningful when manageInventory is true
+      const manageInvBool = typeof manageInventory === 'boolean' ? manageInventory : false
+      const allowNegBool = typeof allowNegativeStock === 'boolean' ? allowNegativeStock : false
+      payload.stockTrackingIsEnabled = manageInvBool
+      payload.allowOutOfStock = manageInvBool && allowNegBool
+      // Clean legacy flag if present
+      if ('isAllowToOrder' in payload) delete (payload as Record<string, unknown>).isAllowToOrder
 
       // Remove imageUrls if productImages is present
       if (extras?.productImages && 'imageUrls' in payload) {

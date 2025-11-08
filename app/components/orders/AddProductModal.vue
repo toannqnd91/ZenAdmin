@@ -10,7 +10,8 @@ import type { ProductCategory } from '@/composables/useProductsCategoriesService
 
 const schema = z.object({
   name: z.string().min(1, 'Tên sản phẩm là bắt buộc'),
-  description: z.string().min(1, 'Mô tả là bắt buộc'),
+  // mô tả không bắt buộc
+  description: z.string().optional(),
   barcode: z.string().optional(),
   content: z.string().min(1, 'Nội dung là bắt buộc'),
   price: z.number().min(0, 'Giá phải lớn hơn hoặc bằng 0').optional(),

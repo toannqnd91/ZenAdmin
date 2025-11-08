@@ -148,7 +148,8 @@ export default {
       if (v == null || v === '') return ''
       const num = typeof v === 'string' ? Number(v) : v
       if (isNaN(num)) return ''
-      return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(num) + 'đ'
+      const n = Math.floor(num)
+      return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + 'đ'
     }
   }
 }

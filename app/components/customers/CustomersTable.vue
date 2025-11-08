@@ -45,6 +45,14 @@ const colWidths = [
   '18%', // totalSale
   '18%' // netSale
 ]
+
+function formatNumber(v: number | string) {
+  if (v == null || v === '') return '0'
+  const num = typeof v === 'string' ? Number(v) : v
+  if (isNaN(num)) return '0'
+  const n = Math.floor(num)
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+}
 </script>
 
 <template>
@@ -82,13 +90,13 @@ const colWidths = [
     </template>
 
     <template #column-receivable="{ value }">
-      <span>{{ Number(value || 0).toLocaleString('vi-VN') }}</span>
+      <span>{{ formatNumber(value as number | string) }}</span>
     </template>
     <template #column-totalSale="{ value }">
-      <span>{{ Number(value || 0).toLocaleString('vi-VN') }}</span>
+      <span>{{ formatNumber(value as number | string) }}</span>
     </template>
     <template #column-netSale="{ value }">
-      <span class="block text-right">{{ Number(value || 0).toLocaleString('vi-VN') }}</span>
+      <span class="block text-right">{{ formatNumber(value as number | string) }}</span>
     </template>
   </BaseTable>
 </template>

@@ -111,7 +111,7 @@ const rows = computed<TableRow[]>(() => rawItems.value.map(i => ({
   id: String(i.id),
   code: i.code,
   date: new Date(i.occurredOn).toLocaleDateString('vi-VN'),
-  partnerName: i.partyName,
+  partnerName: i.partyName && String(i.partyName).trim() !== '' ? i.partyName : 'Khách lẻ',
   reason: i.description,
   originalDoc: i.referenceId ? `#${i.referenceId}` : '',
   amount: i.type === 1 ? i.amount : -Math.abs(i.amount)
