@@ -60,6 +60,14 @@ export class SalesReturnsService extends BaseService {
     return this.post<SalesReturnGridResponse['data']>(API_ENDPOINTS.SALES_RETURNS + '/grid', body)
   }
 
+  // Fetch a single sales return detail by code (returnNumber)
+  async getByCode(code: string) {
+    if (!code) {
+      return Promise.resolve({ success: false, message: 'Missing code', data: null, code: 'invalid' }) as unknown as SalesReturnGridResponse
+    }
+    return this.get<unknown>(API_ENDPOINTS.SALES_RETURN_BY_CODE(code))
+  }
+
   async getGridCached(
     body: SalesReturnGridRequest,
     opts?: { onUpdated?: (data: SalesReturnGridResponse['data']) => void }

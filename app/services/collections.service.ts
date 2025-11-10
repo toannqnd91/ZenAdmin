@@ -14,6 +14,17 @@ export interface CollectionListOptions {
   sort?: { field: string, reverse: boolean }
 }
 
+export interface CreateCollectionRequest {
+  name: string
+  description?: string
+  imageUrl?: string
+  isPublished?: boolean
+}
+
+export interface UpdateCollectionRequest extends Partial<CreateCollectionRequest> {
+  id: number
+}
+
 export class CollectionsService extends BaseService {
   /**
    * Get all collections
@@ -28,6 +39,28 @@ export class CollectionsService extends BaseService {
       sort: options?.sort
     })
     return this.post<CollectionListResponse>(API_ENDPOINTS.COLLECTIONS, body)
+  }
+
+  /**
+   * Create new collection
+   */
+  async createCollection(data: CreateCollectionRequest) {
+    return this.post<Collection>(API_ENDPOINTS.COLLECTIONS, data)
+  }
+
+  /**
+   * Update collection
+   */
+  async updateCollection(data: UpdateCollectionRequest) {
+    // Assuming RESTful endpoint /collections/{id}
+    return this.put<Collection>(`${API_ENDPOINTS.COLLECTIONS}/${data.id}`, data)
+  }
+
+  /**
+   * Delete collection
+   */
+  async deleteCollection(id: number) {
+    return this.delete(`${API_ENDPOINTS.COLLECTIONS}/${id}`)
   }
 }
 

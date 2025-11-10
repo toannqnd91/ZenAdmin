@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { useAppTitle } from '@/composables/useAppSettings'
+import { useRouter } from 'vue-router'
 
 definePageMeta({ layout: 'default' })
-const appTitle = useAppTitle()
-useHead({ title: `Thêm danh mục sản phẩm - ${appTitle}` })
+useHead({ title: 'Thêm danh mục sản phẩm' })
+
+const router = useRouter()
+function goBack() {
+  if (history.length > 1) router.back()
+  else router.push('/products-categories')
+}
 </script>
 
 <template>
