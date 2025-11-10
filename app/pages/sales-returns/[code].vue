@@ -101,35 +101,87 @@ const totalItemsCount = computed(() => {
   return arr.reduce((s, it) => s + Number(it.approvedQty ?? it.quantity ?? 0), 0)
 })
 
+// API envelope for single sales return (based on provided sample JSON)
+interface SalesReturnDetailApiEnvelope {
+  code: string
+  success: boolean
+  message: string
+  data: null | {
+    id: number | string
+    orderId: number | string | null
+    orderCode: string | null
+    returnNumber: string
+    customerId: number | string | null
+    customerName: string | null
+    warehouseId: number | string | null
+    warehouseName: string | null
+    status: string | null
+    subtotal: number
+    taxTotal: number
+    discountReturn: number
+    totalRefund: number
+    total: number
+    refundAmount: number
+    note: string | null
+    items: Array<{
+      id: number | string
+      productId: number | string
+      productName: string
+      quantity: number
+      unitPrice: number
+      lineTotal: number
+      reason: string | null
+      restock: boolean
+      originalQuantity: number
+      shippedQuantity: number
+      returnedQuantity: number
+      maxReturnQty: number
+      lineTax: number
+      costPrice: number
+    }> | null
+  }
+}
+
 async function loadDetail() {
   loading.value = true
   error.value = null
   try {
-    const res = await salesReturnsService.getByCode(code.value)
+    const res = await salesReturnsService.getByCode(code.value) as unknown as SalesReturnDetailApiEnvelope
     if (!res?.success) throw new Error(res?.message || 'Lỗi tải dữ liệu')
-    const d = res.data as unknown as SalesReturnDetailDTO
-    // Defensive extraction of items without using 'any'
-    const rawItems: unknown = (d as { items?: unknown }).items
-    const itemsArr: SalesReturnDetailItem[] = Array.isArray(rawItems) ? (rawItems as SalesReturnDetailItem[]) : []
+    const data = res.data
+    if (!data) throw new Error('Không có dữ liệu đơn trả hàng')
+    const itemsArr = Array.isArray(data.items) ? data.items : []
     detail.value = {
-      ...d,
-      returnNumber: d?.returnNumber || d?.code || `#${code.value}`,
-      customerName: d?.customerName && String(d.customerName).trim() !== '' ? d.customerName : 'Khách lẻ',
-      totals: {
-        subtotal: Number(d?.totals?.subtotal || 0),
-        discount: Number(d?.totals?.discount || 0),
-        tax: Number(d?.totals?.tax || 0),
-        totalRefund: Number(d?.totals?.totalRefund ?? d?.totals?.subtotal ?? 0),
-        totalItems: Number(d?.totals?.totalItems || 0)
-      },
+      id: data.id,
+      returnNumber: data.returnNumber,
+      code: data.returnNumber,
+      orderId: data.orderId,
+      orderCode: data.orderCode,
+      status: data.status || undefined,
+      createdOn: undefined, // backend sample lacks createdOn timestamp
+      warehouseName: data.warehouseName || undefined,
+      customerName: data.customerName && String(data.customerName).trim() !== '' ? data.customerName : 'Khách lẻ',
+      staffName: undefined,
+      canceledOn: undefined,
+      note: data.note || undefined,
       items: itemsArr.map(it => ({
-        ...it,
+        id: it.id,
+        productId: it.productId,
+        productName: it.productName,
         quantity: Number(it.quantity || 0),
-        approvedQty: Number(it.approvedQty ?? it.quantity ?? 0),
+        approvedQty: Number(it.quantity || 0),
         unitPrice: Number(it.unitPrice || 0),
-        originalUnitPrice: it.originalUnitPrice != null ? Number(it.originalUnitPrice) : undefined,
-        lineTotal: Number(it.lineTotal ?? (Number(it.unitPrice || 0) * Number(it.approvedQty ?? it.quantity ?? 0)))
-      }))
+        originalUnitPrice: undefined, // not present in sample, keep placeholder
+        lineTotal: Number(it.lineTotal || (Number(it.unitPrice || 0) * Number(it.quantity || 0))),
+        reason: it.reason || null
+      })),
+      totals: {
+        subtotal: Number(data.subtotal || 0),
+        discount: Number(data.discountReturn || 0),
+        tax: Number(data.taxTotal || 0),
+        totalRefund: Number(data.totalRefund || data.subtotal || 0),
+        totalItems: itemsArr.reduce((s, it) => s + Number(it.quantity || 0), 0)
+      }
     }
     if (detail.value?.orderCode) {
       await calculateRefundSuggestion()

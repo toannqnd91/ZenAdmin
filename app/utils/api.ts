@@ -68,7 +68,8 @@ export const API_ENDPOINTS = {
 
   // Sales returns
   SALES_RETURNS: '/sales-returns',
-  SALES_RETURN_BY_CODE: (code: string) => `/sales-returns/${encodeURIComponent(code)}`,
+  // Single sales return detail by code (backend pattern: /api/v1/sales-returns/by-code/{code})
+  SALES_RETURN_BY_CODE: (code: string) => `/sales-returns/by-code/${encodeURIComponent(code)}`,
   SALES_RETURNS_CALCULATE_REFUND: (orderCode: string) => `/sales-returns/${encodeURIComponent(orderCode)}/calculate-refund`,
 
   // Inventory Transfer endpoints
