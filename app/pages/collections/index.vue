@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { useCollectionsService } from '@/composables/useCollectionsService'
+import AddCollectionModal from '@/components/collections/AddCollectionModal.vue'
+import type { Collection } from '@/composables/useCollectionsService'
 
 const {
   q,
   pagination,
   collections,
   loading,
-  error
+  error,
+  fetchCollections
 } = useCollectionsService()
 
 // Standardized global controls (theme + notifications)
@@ -22,12 +25,32 @@ const tablePagination = computed({
   }
 })
 
+// Modal state & editing
+const showCollectionModal = ref(false)
+const editingCollection = ref<Collection | null>(null)
+function onAddCollection() {
+  editingCollection.value = null
+  showCollectionModal.value = true
+}
+function onEditCollection(c: Collection) {
+  editingCollection.value = c
+  showCollectionModal.value = true
+}
+function onCollectionSaved(payload: { id: number | string, name: string }) {
+  // Optimistic update
+  if (editingCollection.value) {
+    collections.value = collections.value.map(it => String(it.id) === String(editingCollection.value!.id) ? { ...it, name: payload.name } : it)
+  } else {
+    collections.value = [{ id: payload.id as number, name: payload.name, description: '', imageUrl: '', isPublished: true }, ...collections.value]
+  }
+  editingCollection.value = null
+  // Refetch to ensure server state
+  fetchCollections()
+}
+
 // Handle delete action
-const handleDelete = (selectedIds: number[]) => {
-  console.log('Delete collections with IDs:', selectedIds)
-  // TODO: Implement delete logic
-  // Example: await collectionsService.deleteCollections(selectedIds)
-  // Reset selection after delete
+const handleDelete = (_selectedIds: number[]) => {
+  // Placeholder delete logic
   rowSelection.value = {}
 }
 </script>
@@ -71,6 +94,9 @@ const handleDelete = (selectedIds: number[]) => {
             v-model:pagination="tablePagination"
             :data="collections"
             :loading="loading"
+            add-in-modal
+            @open-add-modal="onAddCollection"
+            @open-edit-modal="onEditCollection"
             @delete="handleDelete"
           />
           <div v-if="error" class="text-error mt-4">
@@ -80,4 +106,9 @@ const handleDelete = (selectedIds: number[]) => {
       </div>
     </template>
   </UDashboardPanel>
+  <AddCollectionModal
+    v-model="showCollectionModal"
+    :collection="editingCollection"
+    @saved="onCollectionSaved"
+  />
 </template>

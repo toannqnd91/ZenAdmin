@@ -32,10 +32,11 @@ export class BrandService extends BaseService {
     const searchObj: Record<string, unknown> = {
       Name: options?.search ?? null
     }
+    // Default sort: by Id, Reverse: true per requirement
     const body = this.createListRequestBody({
       pagination: options?.pagination,
       search: searchObj,
-      sort: options?.sort
+      sort: options?.sort ?? { field: 'Id', reverse: true }
     })
     return this.post<Brand[]>(API_ENDPOINTS.BRANDS, body)
   }
@@ -51,14 +52,21 @@ export class BrandService extends BaseService {
    * Create new brand
    */
   async createBrand(data: CreateBrandRequest) {
-    return this.post<Brand>(API_ENDPOINTS.BRANDS, data)
+    // Creation uses singular endpoint per backend requirement
+    return this.post<Brand>(API_ENDPOINTS.BRAND_CREATE, data)
   }
 
   /**
    * Update brand
    */
   async updateBrand(data: UpdateBrandRequest) {
-    return this.put<Brand>(API_ENDPOINTS.BRAND_BY_ID(data.id), data)
+    // Use dedicated update endpoint (/Brand/{id}/update)
+    return this.put<Brand>(API_ENDPOINTS.BRAND_UPDATE(data.id), {
+      name: data.name,
+      slug: data.slug,
+      isPublished: data.isPublished,
+      logoUrl: data.logoUrl
+    })
   }
 
   /**

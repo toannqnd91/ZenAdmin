@@ -9,6 +9,7 @@ interface Props {
   q: string
   rowSelection: Record<string, boolean>
   pagination: { pageIndex: number, pageSize: number }
+  addInModal?: boolean
 }
 
 const props = defineProps<Props>()
@@ -17,6 +18,8 @@ const emit = defineEmits<{
   'update:rowSelection': [Record<string, boolean>]
   'update:pagination': [{ pageIndex: number, pageSize: number }]
   'delete': [number[]]
+  'open-add-modal': []
+  'open-edit-modal': [Collection]
 }>()
 
 const columns: TableColumn[] = [
@@ -39,16 +42,19 @@ const colWidths = [
   // '10%'  // isPublished
 ]
 
-const addButton = {
-  label: 'Thêm bộ sưu tập',
-  href: '/collections/create'
-}
+const addButton = computed(() => {
+  if (props.addInModal) {
+    return { label: 'Thêm bộ sưu tập', handler: () => emit('open-add-modal') }
+  }
+  return { label: 'Thêm bộ sưu tập', href: '/collections/create' }
+})
 
 // Map collections (strongly typed) to records expected by BaseTable
 const tableData = computed(() =>
   props.data.map(c => ({
     id: c.id,
     name: c.name,
+    description: c.description,
     imageUrl: c.imageUrl,
     isPublished: c.isPublished
   }))
@@ -58,6 +64,16 @@ const tableData = computed(() =>
 const handleDelete = (selectedIds: string[]) => {
   const numericIds = selectedIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id))
   emit('delete', numericIds)
+}
+
+// Row click handler reuse modal for editing when enabled
+const handleRowClick = (item: Record<string, unknown>) => {
+  const col = item as unknown as Collection
+  if (props.addInModal) {
+    emit('open-edit-modal', col)
+  } else {
+    navigateTo(`/collections/${col.id}/update`)
+  }
 }
 </script>
 
@@ -71,6 +87,7 @@ const handleDelete = (selectedIds: string[]) => {
     :row-selection="props.rowSelection"
     :pagination="props.pagination"
     :add-button="addButton"
+    :row-click-handler="handleRowClick"
     title="Danh sách bộ sưu tập"
     @update:q="emit('update:q', $event)"
     @update:row-selection="emit('update:rowSelection', $event)"
@@ -100,14 +117,4 @@ const handleDelete = (selectedIds: string[]) => {
   </BaseTable>
 </template>
 
-<script lang="ts">
-// Hàm loại bỏ thẻ HTML và giới hạn số từ
-function stripHtmlAndLimitWords(html: string, maxWords = 30): string {
-  if (!html) return ''
-  // Loại bỏ thẻ HTML
-  const text = html.replace(/<[^>]*>/g, ' ')
-  // Cắt và ghép lại tối đa maxWords từ
-  const words = text.split(/\s+/).filter(Boolean)
-  return words.slice(0, maxWords).join(' ') + (words.length > maxWords ? '...' : '')
-}
-</script>
+<!-- Removed unused helper function to satisfy linter -->

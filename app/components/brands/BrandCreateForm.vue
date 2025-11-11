@@ -5,7 +5,6 @@ import { fileService } from '@/services'
 
 const form = ref({
   name: '',
-  isPublished: true,
   logoUrl: '' as string | null
 })
 
@@ -65,12 +64,18 @@ async function submit() {
   }
   isSubmitting.value = true
   try {
-    await brandService.createBrand({
+    const res = await brandService.createBrand({
       name: form.value.name.trim(),
-      isPublished: form.value.isPublished,
+      isPublished: true,
       logoUrl: form.value.logoUrl || undefined
     })
-    navigateTo('/brands')
+    const toast = useToast()
+    if (res?.success) {
+      toast.add({ title: 'Đã tạo thương hiệu', description: form.value.name, color: 'success' })
+      navigateTo('/brands')
+    } else {
+      toast.add({ title: 'Tạo thất bại', description: res?.message || 'Có lỗi xảy ra', color: 'error' })
+    }
   } finally {
     isSubmitting.value = false
   }
@@ -94,6 +99,7 @@ async function submit() {
             {{ errors.name }}
           </p>
         </div>
+        
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Logo</label>
           <div class="space-y-3">
@@ -120,11 +126,15 @@ async function submit() {
             </div>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <UCheckbox v-model="form.isPublished" label="Hiển thị" />
-        </div>
-        <div class="pt-2">
-          <UButton type="submit" :loading="isSubmitting" label="Lưu" />
+        
+        <div class="pt-2 flex items-center gap-3">
+          <UButton
+            type="submit"
+            :loading="isSubmitting"
+            label="Lưu"
+            :disabled="!canSubmit"
+          />
+          <span v-if="!canSubmit" class="text-xs text-gray-500">Điền tên để lưu</span>
         </div>
       </form>
     </UPageCard>

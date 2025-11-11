@@ -52,8 +52,14 @@ export class CollectionsService extends BaseService {
    * Update collection
    */
   async updateCollection(data: UpdateCollectionRequest) {
-    // Assuming RESTful endpoint /collections/{id}
-    return this.put<Collection>(`${API_ENDPOINTS.COLLECTIONS}/${data.id}`, data)
+    // Use explicit update endpoint per backend spec: /Collection/{id}/update
+    return this.put<Collection>(API_ENDPOINTS.COLLECTION_UPDATE(data.id), {
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      imageUrl: data.imageUrl,
+      isPublished: data.isPublished
+    })
   }
 
   /**

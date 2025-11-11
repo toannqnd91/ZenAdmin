@@ -119,8 +119,13 @@ export const API_ENDPOINTS = {
   MENU_TYPES: '/MenuTypes',
 
   // Brand endpoints
-  BRANDS: '/brands',
+  BRANDS: '/brands', // list & get by id remain plural (backend convention)
+  BRAND_CREATE: '/brand', // singular endpoint used only for creation (backend allows lowercase)
   BRAND_BY_ID: (id: number) => `/brands/${id}`,
+  BRAND_UPDATE: (id: number) => `/Brand/${id}/update`, // explicit update endpoint per backend spec
+
+  // Collection endpoints
+  COLLECTION_UPDATE: (id: number | string) => `/Collection/${id}/update`,
   // Cash Book endpoints
   CASHBOOK_FILTER: '/cashbook/filter',
   CASHBOOK_DETAIL: (code: string) => `/cashbook/${code}`,

@@ -1,14 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { TableColumn } from '@/components/base/BaseTable.vue'
 import BaseTable from '@/components/base/BaseTable.vue'
-
-interface Brand {
-  id: number | string
-  slug: string
-  name: string
-  isPublished: boolean
-  logoUrl: string
-}
+import type { Brand } from '@/services/brand.service'
 
 interface Props {
   data: Brand[]
@@ -16,6 +10,7 @@ interface Props {
   q: string
   rowSelection: Record<string, boolean>
   pagination: { pageIndex: number, pageSize: number }
+  addInModal?: boolean
 }
 
 const props = defineProps<Props>()
@@ -24,6 +19,8 @@ const emit = defineEmits<{
   'update:rowSelection': [Record<string, boolean>]
   'update:pagination': [{ pageIndex: number, pageSize: number }]
   'delete': [string[]]
+  'open-add-modal': []
+  'open-edit-modal': [Brand]
 }>()
 
 const columns: TableColumn[] = [
@@ -34,14 +31,21 @@ const columns: TableColumn[] = [
   }
 ]
 
-const addButton = {
-  label: 'Thêm thương hiệu',
-  href: '/brands/create'
-}
+const addButton = computed(() => {
+  if (props.addInModal) {
+    return { label: 'Thêm thương hiệu', handler: () => emit('open-add-modal') }
+  }
+  return { label: 'Thêm thương hiệu', href: '/brands/create' }
+})
 
 const handleRowClick = (item: Record<string, unknown>) => {
   const brandItem = item as unknown as Brand
-  navigateTo(`/brands/${brandItem.id}/update`)
+  // If adding in modal (i.e., modal flow is enabled), also use modal for edit
+  if (props.addInModal) {
+    emit('open-edit-modal', brandItem)
+  } else {
+    navigateTo(`/brands/${brandItem.id}/update`)
+  }
 }
 
 const tableData = computed(() =>

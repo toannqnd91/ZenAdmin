@@ -688,7 +688,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
       <slot name="filters-line" />
     </div>
 
-    <div v-if="selectedCount === 0 && props.selectable" class="border-t border-gray-200" />
+  <div v-if="selectedCount === 0 && props.selectable" class="h-px border-t border-gray-200" />
 
     <!-- Selection toolbar -->
     <div
@@ -783,7 +783,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
       :class="props.bodyPadding"
     >
       <!-- Empty state -->
-      <div v-if="!loading && (pageItems.length === 0)" class="py-10">
+      <div v-if="!loading && (pageItems.length === 0)" class="py-0">
         <TableEmptyState
           :title="props.emptyTitle"
           :description="props.emptyDescription"
@@ -804,7 +804,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
           :class="['absolute top-0 left-0 right-0 h-14 -mx-6 pointer-events-none', props.headerRowClass]"
         />
         <table
-          class="w-full table-fixed text-sm"
+          class="w-full table-fixed text-sm border-collapse"
           :style="{ minWidth: props.tableMinWidth }"
         >
           <colgroup>

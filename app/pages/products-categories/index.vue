@@ -12,9 +12,9 @@ const { isNotificationsSlideoverOpen } = useDashboard()
 </script>
 
 <template>
-  <UDashboardPanel id="products-categories">
+  <UDashboardPanel id="products-categories" class="flex flex-col h-full">
     <template #header>
-      <UDashboardNavbar title="Danh mục sản phẩm" :ui="{ right: 'gap-3' }">
+      <UDashboardNavbar title="Danh mục sản phẩm" :ui="{ right: 'gap-3' }" class="bg-white">
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
@@ -41,16 +41,19 @@ const { isNotificationsSlideoverOpen } = useDashboard()
     </template>
 
     <template #body>
-      <ProductsCategoriesTable
-        v-model:q="q"
-        v-model:row-selection="rowSelection"
-        v-model:pagination="pagination"
-        :data="data"
-        :loading="loading"
-      />
-
-      <div v-if="error" class="text-error mt-4">
-        {{ error }}
+      <div class="w-full flex flex-col h-full">
+        <div class="flex-1 min-h-0">
+          <ProductsCategoriesTable
+            v-model:q="q"
+            v-model:row-selection="rowSelection"
+            v-model:pagination="pagination"
+            :data="data"
+            :loading="loading"
+          />
+          <div v-if="error" class="text-error mt-4">
+            {{ error }}
+          </div>
+        </div>
       </div>
     </template>
   </UDashboardPanel>

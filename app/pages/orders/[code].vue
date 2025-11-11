@@ -73,6 +73,43 @@ interface RawPayload {
   customer?: RawCustomer
   shippingAddress?: RawAddress
   warehouse?: RawWarehouse
+  return?: {
+    refundedAmount?: number
+    returnedValue?: number
+    pendingRefund?: number
+    netRevenue?: number
+  }
+  returnWorkflow?: {
+    exists?: boolean
+    currentStage?: string | null
+    counts?: Record<string, number>
+    items?: Array<{
+      id: number | string
+      returnNumber: string
+      status: number | string
+      total: number
+      refundAmount: number
+      returnDate?: string | null
+      processedOn?: string | null
+      refundedOn?: string | null
+    }>
+    totalRestockQty?: number
+    pendingRestockQty?: number
+    hasPendingReturn?: boolean
+    canRefundMore?: boolean
+    canCreateMoreReturn?: boolean
+  }
+  lines?: Array<{
+    id: number | string
+    productId: number | string
+    productName: string
+    orderedQuantity: number
+    shippedQuantity: number
+    returnedQuantity: number
+    netDelivered: number
+    unitPrice: number
+    lineTotal: number
+  }>
 }
 
 const route = useRoute()
@@ -92,6 +129,23 @@ interface UIOrderCustomer {
 }
 interface UIOrderDetail extends OrderDetail {
   customer: UIOrderCustomer | null
+  returnData?: {
+    refundedAmount: number
+    returnedValue: number
+    pendingRefund: number
+    netRevenue: number
+  } | null
+  returnWorkflow?: RawPayload['returnWorkflow']
+  returnLines?: Array<{
+    id: number | string
+    productId: number | string
+    productName: string
+    qty: number
+    unitPrice: number
+    lineTotal: number
+    shippedQuantity?: number
+    returnedQuantity?: number
+  }>
 }
 const detail = ref<UIOrderDetail | null>(null)
 const history = ref<OrderHistoryEvent[] | null>(null)
@@ -341,6 +395,29 @@ async function fetchData() {
               zipCode: rawAddress.zipCode || null
             }
           : null
+        // Map return lines (if any) using payload.lines; fall back to empty list otherwise
+        let returnLines: Array<{ id: number | string, productId: number | string, productName: string, qty: number, unitPrice: number, lineTotal: number, shippedQuantity?: number, returnedQuantity?: number }> = []
+        if (Array.isArray(payload.lines)) {
+          returnLines = payload.lines.map(l => ({
+            id: l.id,
+            productId: l.productId,
+            productName: l.productName,
+            qty: l.orderedQuantity,
+            unitPrice: l.unitPrice,
+            lineTotal: l.lineTotal,
+            shippedQuantity: l.shippedQuantity,
+            returnedQuantity: l.returnedQuantity
+          }))
+        }
+        let returnDataLocal: UIOrderDetail['returnData'] = null
+        if (payload.return) {
+          returnDataLocal = {
+            refundedAmount: Number(payload.return.refundedAmount || 0),
+            returnedValue: Number(payload.return.returnedValue || 0),
+            pendingRefund: Number(payload.return.pendingRefund || 0),
+            netRevenue: Number(payload.return.netRevenue || 0)
+          }
+        }
         detail.value = {
           id: o.id,
           orderCode: rawCode || `#${o.id}`,
@@ -374,7 +451,10 @@ async function fetchData() {
             expectedDeliveryDate: null,
             tags: null
           },
-          history: []
+          history: [],
+          returnData: returnDataLocal,
+          returnWorkflow: payload.returnWorkflow || {},
+          returnLines
         }
       }
     }
@@ -391,6 +471,8 @@ onMounted(fetchData)
 function goBack() {
   router.push('/orders')
 }
+
+// (Optional) Derived flags for future return UI can be added here
 </script>
 
 <template>
