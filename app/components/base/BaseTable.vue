@@ -75,6 +75,8 @@ interface Props {
   headerPaddingX?: string
   headerPaddingY?: string
   footerPadding?: string
+  // Body rows vertical padding (applies to td). Defaults to 'py-4'.
+  rowPaddingY?: string
   // Hide built-in search input (so parent can render its own in filters-line)
   hideSearch?: boolean
   // Hide title text completely
@@ -122,6 +124,7 @@ const props = withDefaults(defineProps<Props>(), {
   headerPaddingX: 'px-6',
   headerPaddingY: 'py-3',
   footerPadding: 'px-6 pb-4',
+  rowPaddingY: 'py-4',
   tabsSeparateLine: false,
   hideSearch: false,
   hideTitle: false,
@@ -898,7 +901,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
               class="border-t border-gray-200"
             >
               <!-- Checkbox cell placeholder -->
-              <td v-if="props.selectable" class="py-4 align-middle">
+              <td v-if="props.selectable" :class="[props.rowPaddingY, 'align-middle']">
                 <div class="w-14 h-full flex items-center">
                   <div class="h-5 w-5 rounded-md bg-gray-200 animate-pulse" aria-hidden="true" />
                 </div>
@@ -908,7 +911,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
               <td
                 v-for="(column, cIdx) in columns"
                 :key="`scol-${column.key}-${cIdx}`"
-                :class="['py-4', getAlignClass(getColumnAlign(column))]"
+                :class="[props.rowPaddingY, getAlignClass(getColumnAlign(column))]"
               >
                 <div
                   :class="['h-4 rounded bg-gray-200 animate-pulse', getSkeletonBlockClass(getColumnAlign(column))]"
@@ -918,7 +921,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
               </td>
 
               <!-- Actions cell placeholder -->
-              <td v-if="props.showRowActions" class="py-4 pr-4">
+              <td v-if="props.showRowActions" :class="[props.rowPaddingY, 'pr-4']">
                 <div class="flex justify-end">
                   <div class="h-5 w-5 rounded-md bg-gray-200 animate-pulse" aria-hidden="true" />
                 </div>
@@ -934,7 +937,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
               :class="{ 'is-active': isSelected(String(item.id)) }"
             >
               <!-- Row checkbox -->
-              <td v-if="props.selectable" class="py-4 align-middle">
+              <td v-if="props.selectable" :class="[props.rowPaddingY, 'align-middle']">
                 <div class="w-14 h-full flex items-center justify-start">
                   <button
                     v-if="String(item.id) !== 'summary'"
@@ -971,7 +974,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
               <td
                 v-for="column in columns"
                 :key="column.key"
-                :class="['py-4', getAlignClass(column.align)]"
+                :class="[props.rowPaddingY, getAlignClass(column.align)]"
               >
                 <slot
                   :name="`column-${column.key}`"
@@ -991,7 +994,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
               </td>
 
               <!-- actions -->
-              <td v-if="props.showRowActions" class="py-4 pr-4">
+              <td v-if="props.showRowActions" :class="[props.rowPaddingY, 'pr-4']">
                 <div class="flex justify-end">
                   <template v-if="String(item.id) !== 'summary'">
                     <slot name="row-actions" :item="item">
@@ -1066,7 +1069,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
               :class="{ 'is-active': isSelected(String(item.id)), 'opacity-60': isDragging }"
             >
               <!-- Row checkbox -->
-              <td v-if="props.selectable" class="py-4 align-middle">
+              <td v-if="props.selectable" :class="[props.rowPaddingY, 'align-middle']">
                 <div class="w-14 h-full flex items-center justify-start">
                   <button
                     v-if="String(item.id) !== 'summary'"
@@ -1103,7 +1106,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
               <td
                 v-for="column in columns"
                 :key="column.key"
-                :class="['py-4', getAlignClass(column.align)]"
+                :class="[props.rowPaddingY, getAlignClass(column.align)]"
               >
                 <slot
                   :name="`column-${column.key}`"

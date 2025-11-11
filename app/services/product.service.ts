@@ -15,6 +15,16 @@ export interface ProductCategory {
   isDeleted: boolean
   parentId?: number
   categories: ProductCategory[]
+  // Extended fields from detail endpoint envelope
+  slug?: string
+  metaTitle?: string | null
+  metaKeywords?: string | null
+  metaDescription?: string | null
+  displayOrder?: number
+  includeInMenu?: boolean
+  isPublished?: boolean
+  thumbnailImage?: string | null
+  thumbnailImageUrl?: string | null
 }
 
 export interface CreateProductRequest {
@@ -42,6 +52,15 @@ export interface CreateProductCategoryRequest {
 
 export interface UpdateProductCategoryRequest extends Partial<CreateProductCategoryRequest> {
   id: number
+  slug?: string
+  metaTitle?: string | null
+  metaKeywords?: string | null
+  metaDescription?: string | null
+  displayOrder?: number
+  includeInMenu?: boolean
+  isPublished?: boolean
+  thumbnailImage?: string | null
+  thumbnailImageUrl?: string | null
 }
 
 export class ProductService extends BaseService {
@@ -145,7 +164,12 @@ export class ProductService extends BaseService {
    * Get single product category by ID
    */
   async getCategoryById(id: number) {
-    return this.get<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORY_BY_ID(id))
+    // Prefer singular detail endpoint if available, fallback to plural.
+    try {
+      return await this.get<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORY_DETAIL_BY_ID(id))
+    } catch {
+      return this.get<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORY_BY_ID(id))
+    }
   }
 
   /**
@@ -159,7 +183,8 @@ export class ProductService extends BaseService {
    * Update product category
    */
   async updateCategory(data: UpdateProductCategoryRequest) {
-    return this.put<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORY_BY_ID(data.id), data)
+    // Use explicit update endpoint per backend spec
+    return this.put<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORY_UPDATE(data.id), data)
   }
 
   /**

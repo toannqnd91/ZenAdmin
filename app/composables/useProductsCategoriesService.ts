@@ -13,6 +13,16 @@ export interface ProductCategory {
   children?: ProductCategory[]
   imageUrl?: string
   productCount?: number
+  // Extended detail fields (optional in list context)
+  slug?: string
+  metaTitle?: string | null
+  metaKeywords?: string | null
+  metaDescription?: string | null
+  displayOrder?: number
+  includeInMenu?: boolean
+  isPublished?: boolean
+  thumbnailImage?: string | null
+  thumbnailImageUrl?: string | null
 }
 
 export interface ProductCategoriesApiResponse {
@@ -39,8 +49,8 @@ export const useProductsCategoriesService = (options?: { server?: boolean }) => 
         Pagination: {
           Start: 0,
           TotalItemCount: 0,
-          Number: 20,
-          NumberOfPages: 10
+          Number: 1000,
+          NumberOfPages: 1
         },
         Search: {
           QueryObject: {
@@ -49,7 +59,7 @@ export const useProductsCategoriesService = (options?: { server?: boolean }) => 
         },
         Sort: {
           Field: 'Id',
-          Reverse: false
+          Reverse: true
         }
       }
     }

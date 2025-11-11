@@ -3,6 +3,15 @@ import TinyMCESelfHost from '@/components/TinyMCESelfHost.vue'
 import { productService } from '@/services/product.service'
 import { fileService } from '@/services'
 
+interface Props {
+  mode?: 'create' | 'update'
+  // Optional: pass full category data
+  category?: { id: number, name: string, description?: string, imageUrl?: string | null, slug?: string | null, includeInMenu?: boolean, isPublished?: boolean, displayOrder?: number | null } | null
+  // Or pass only the id and let the form self-load in update mode
+  categoryId?: number | null
+}
+const props = withDefaults(defineProps<Props>(), { mode: 'create', category: null, categoryId: null })
+
 // Form state
 const form = reactive({
   name: '',
@@ -12,12 +21,17 @@ const form = reactive({
   imageUrl: '' as string | null,
   theme: 'collection',
   attachToMenu: false,
-  conditionMode: 'manual' as 'manual' | 'auto'
+  conditionMode: 'manual' as 'manual' | 'auto',
+  slug: '',
+  includeInMenu: false,
+  isPublished: false,
+  displayOrder: 0
 })
 
 const submitting = ref(false)
 const toast = useToast()
 const router = useRouter()
+const isUpdate = computed(() => props.mode === 'update')
 
 function goBack() {
   void router.push('/products-categories')
@@ -34,6 +48,84 @@ const isUploadingImage = ref(false)
 const imageFile = ref<File | null>(null)
 const imagePreview = ref<string | null>('')
 const fileInput = ref<HTMLInputElement>()
+
+// Helper to map backend data to form fields
+function prefillFromCategory(cat: NonNullable<Props['category']>) {
+  form.name = cat.name || ''
+  form.description = cat.description || ''
+  form.imageUrl = cat.imageUrl || ''
+  form.slug = cat.slug || ''
+  form.includeInMenu = !!cat.includeInMenu
+  form.isPublished = !!cat.isPublished
+  form.displayOrder = Number(cat.displayOrder || 0)
+  // preview
+  if (form.imageUrl) {
+    const isAbsolute = /^https?:\/\//i.test(form.imageUrl)
+    try {
+      imagePreview.value = isAbsolute ? form.imageUrl : (fileService.getFileUrl(form.imageUrl) || '')
+    } catch {
+      imagePreview.value = isAbsolute ? form.imageUrl : ''
+    }
+  } else {
+    imagePreview.value = ''
+  }
+}
+
+// Prefill when given full category object
+onMounted(() => {
+  if (isUpdate.value && props.category) {
+    prefillFromCategory(props.category)
+  }
+})
+
+// Self-load when only categoryId is provided
+const loadingCategory = ref(false)
+async function loadCategoryById(id: number) {
+  try {
+    loadingCategory.value = true
+    const res = await productService.getCategoryById(id)
+    const hasData = (v: unknown): v is { data: unknown } => !!v && typeof v === 'object' && 'data' in (v as Record<string, unknown>)
+    const raw = hasData(res) ? (res as { data: unknown }).data : res
+    if (raw && typeof raw === 'object') {
+      const o = raw as Record<string, unknown>
+      const getStr = (obj: Record<string, unknown>, key: string): string | null => {
+        const val = obj[key]
+        return typeof val === 'string' ? val : null
+      }
+      const getNum = (obj: Record<string, unknown>, key: string): number | null => {
+        const val = obj[key]
+        return typeof val === 'number' ? val : null
+      }
+      const getBool = (obj: Record<string, unknown>, key: string): boolean => {
+        const val = obj[key]
+        return typeof val === 'boolean' ? val : false
+      }
+      const imageUrl = getStr(o, 'thumbnailImageUrl') || getStr(o, 'imageUrl') || getStr(o, 'thumbnailImage') || ''
+      prefillFromCategory({
+        id: Number((o.id as number | undefined) ?? id),
+        name: String(o.name ?? ''),
+        description: getStr(o, 'description') || '',
+        imageUrl: imageUrl || '',
+        slug: getStr(o, 'slug') || '',
+        includeInMenu: getBool(o, 'includeInMenu'),
+        isPublished: getBool(o, 'isPublished'),
+        displayOrder: getNum(o, 'displayOrder') ?? 0
+      })
+    }
+  } finally {
+    loadingCategory.value = false
+  }
+}
+
+watch(
+  () => ({ isUpdate: isUpdate.value, id: props.categoryId, cat: props.category }),
+  (st) => {
+    if (st.isUpdate && !st.cat && typeof st.id === 'number' && !Number.isNaN(st.id)) {
+      loadCategoryById(st.id)
+    }
+  },
+  { immediate: true }
+)
 
 const handleImageUpload = async (event: Event) => {
   const target = event.target as HTMLInputElement
@@ -89,20 +181,47 @@ async function onSubmit() {
   }
   submitting.value = true
   try {
-    await productService.createCategory({
-      name: form.name.trim(),
-      description: form.description || '',
-      parentId: undefined,
-      sortOrder: undefined
-    })
-    toast.add({ title: 'Thành công', description: 'Đã tạo danh mục sản phẩm', color: 'success' })
+    if (isUpdate.value && (props.categoryId || props.category?.id)) {
+      await productService.updateCategory({
+        id: Number(props.categoryId || props.category!.id),
+        name: form.name.trim(),
+        description: form.description || '',
+        parentId: undefined,
+        sortOrder: undefined,
+        slug: form.slug || slugify(form.name),
+        includeInMenu: form.includeInMenu,
+        isPublished: form.isPublished,
+        displayOrder: form.displayOrder || 0,
+        thumbnailImage: form.imageUrl || null
+      })
+      toast.add({ title: 'Thành công', description: 'Đã cập nhật danh mục', color: 'success' })
+    } else {
+      await productService.createCategory({
+        name: form.name.trim(),
+        description: form.description || '',
+        parentId: undefined,
+        sortOrder: undefined
+      })
+      toast.add({ title: 'Thành công', description: 'Đã tạo danh mục sản phẩm', color: 'success' })
+    }
     router.push('/products-categories')
   } catch (e) {
-    console.error('Create category failed', e)
-    toast.add({ title: 'Lỗi', description: 'Không thể tạo danh mục, vui lòng thử lại', color: 'error' })
+    console.error('Save category failed', e)
+    toast.add({ title: 'Lỗi', description: 'Không thể lưu danh mục, vui lòng thử lại', color: 'error' })
   } finally {
     submitting.value = false
   }
+}
+
+// Simple slugify helper (Vietnamese accents handled basic by remove diacritics)
+function slugify(input: string): string {
+  return input
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .substring(0, 100)
 }
 
 function cancel() {
@@ -111,7 +230,7 @@ function cancel() {
 </script>
 
 <template>
-  <UDashboardPanel id="product-category-create">
+  <UDashboardPanel :id="isUpdate ? 'product-category-update' : 'product-category-create'">
     <template #header>
       <UDashboardNavbar>
         <template #leading>
@@ -131,7 +250,7 @@ function cancel() {
               </svg>
             </button>
             <div class="text-lg font-semibold">
-              Thêm danh mục sản phẩm
+              {{ isUpdate ? 'Cập nhật danh mục' : 'Thêm danh mục sản phẩm' }}
             </div>
           </div>
         </template>
@@ -144,7 +263,7 @@ function cancel() {
               @click="cancel"
             />
             <UButton
-              :label="'Lưu'"
+              :label="isUpdate ? 'Cập nhật' : 'Lưu'"
               :loading="submitting"
               @click="() => onSubmit()"
             />
@@ -154,7 +273,7 @@ function cancel() {
     </template>
 
     <template #body>
-      <div class="w-full max-w-6xl mx-auto px-4 lg:px-6">
+      <div class="w-full mx-auto px-4 lg:px-6">
         <div class="flex flex-col lg:flex-row gap-6">
           <!-- Left column -->
           <div class="flex-1 space-y-6">

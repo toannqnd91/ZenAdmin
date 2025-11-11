@@ -51,6 +51,10 @@ export const API_ENDPOINTS = {
   // Product endpoints
   PRODUCT_CATEGORIES: '/ProductCategories',
   PRODUCT_CATEGORY_BY_ID: (id: number) => `/ProductCategories/${id}`,
+  // Some backends expose singular route for detail fetch
+  PRODUCT_CATEGORY_DETAIL_BY_ID: (id: number) => `/ProductCategory/${id}`,
+  // Explicit update endpoint for a single product category
+  PRODUCT_CATEGORY_UPDATE: (id: number) => `/ProductCategory/${id}/update`,
   PRODUCTS: '/product/grid',
   PRODUCT_BY_ID: (id: number) => `/Product/${id}`,
   PRODUCT_CREATE: '/Product',
