@@ -82,6 +82,22 @@ async function onRowMultiDelete(ids: (string | number)[]) {
     alert('Xoá nhiều sản phẩm thất bại, vui lòng thử lại')
   }
 }
+
+// Toolbar actions (placed above the table, outside ProductsTable)
+const importInputRef = ref<HTMLInputElement | null>(null)
+const onExport = () => {
+  // TODO: hook up real export
+  console.debug('Export products')
+}
+const onImportClick = () => importInputRef.value?.click()
+const onImportFile = (e: Event) => {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  console.debug('Import file selected:', file.name)
+}
+const onMoreAction = () => {
+  console.debug('More actions clicked')
+}
 </script>
 
 <template>
@@ -118,6 +134,43 @@ async function onRowMultiDelete(ids: (string | number)[]) {
 
     <template #body>
       <div class="w-full flex flex-col h-full">
+        <!-- Toolbar above table: right-aligned, tightened and pulled up to align with top rule -->
+        <div class="pt-0 pb-3 -mt-2">
+          <div class="flex items-center justify-end gap-2">
+            <!-- Gray pill buttons to match provided style -->
+            <button
+              type="button"
+              class="h-7 px-3 rounded-xl bg-gray-200 text-gray-900 hover:bg-gray-200 text-sm"
+              @click="onExport"
+            >
+              Xuất file
+            </button>
+            <button
+              type="button"
+              class="h-7 px-3 rounded-xl bg-gray-200 text-gray-900 hover:bg-gray-200 text-sm"
+              @click="onImportClick"
+            >
+              Nhập file
+            </button>
+            <div class="relative">
+              <button
+                type="button"
+                class="h-7 px-3 rounded-xl bg-gray-200 text-gray-900 hover:bg-gray-200 inline-flex items-center gap-1 text-sm"
+                @click="onMoreAction"
+              >
+                Hành động khác
+                <UIcon name="i-lucide-chevron-down" class="h-4 w-4" />
+              </button>
+            </div>
+            <input
+              ref="importInputRef"
+              type="file"
+              accept=".csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              class="hidden"
+              @change="onImportFile"
+            >
+          </div>
+        </div>
         <div class="flex-1 min-h-0">
           <ProductsTable
             v-model:q="q"
