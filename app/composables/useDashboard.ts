@@ -172,7 +172,10 @@ const _useDashboard = () => {
   onMounted(async () => {
     const { accessToken } = useAuthService()
     if (accessToken.value) {
-      await fetchMenu()
+      const alreadyLoaded = Array.isArray(menuData.value?.data) && menuData.value.data.length > 0
+      if (!alreadyLoaded) {
+        await fetchMenu()
+      }
     }
   })
 
@@ -187,7 +190,10 @@ const _useDashboard = () => {
   }, async (newToken, oldToken) => {
     // If user just logged in, fetch menu
     if (newToken && !oldToken) {
-      await fetchMenu()
+      const alreadyLoaded = Array.isArray(menuData.value?.data) && menuData.value.data.length > 0
+      if (!alreadyLoaded) {
+        await fetchMenu()
+      }
     }
     // If user logged out, clear menu data
     else if (!newToken && oldToken) {

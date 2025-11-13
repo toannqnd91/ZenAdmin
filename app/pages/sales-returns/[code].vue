@@ -5,9 +5,11 @@ import { useRoute, useRouter } from 'vue-router'
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
 import TableEmptyState from '@/components/base/TableEmptyState.vue'
 import { salesReturnsService, returnsService } from '@/services'
+import { useGlobalWarehouse } from '@/composables/useWarehouse'
 
 const route = useRoute()
 const router = useRouter()
+const { selectedWarehouse } = useGlobalWarehouse()
 
 const code = computed(() => String(route.params.code || ''))
 
@@ -100,6 +102,8 @@ const totalItemsCount = computed(() => {
   const arr = detail.value?.items || []
   return arr.reduce((s, it) => s + Number(it.approvedQty ?? it.quantity ?? 0), 0)
 })
+
+const isProcessed = computed(() => String(detail.value?.status || '').toLowerCase() === 'processed')
 
 // API envelope for single sales return (based on provided sample JSON)
 interface SalesReturnDetailApiEnvelope {
@@ -226,12 +230,40 @@ async function calculateRefundSuggestion() {
 
 const onRefund = async () => {
   const toast = useToast()
-  toast.add({ title: 'Hoàn tiền', description: 'Tính năng đang được hoàn thiện', color: 'neutral' })
+  try {
+    const amountRaw = detail.value?.totals?.totalRefund
+    const amountNum = Number(amountRaw)
+    const amount = Number.isFinite(amountNum) ? Math.max(0, amountNum) : 0
+    const method = 'cash'
+    const note = ''
+    const res = await salesReturnsService.refund(code.value, { amount, method, note })
+    if (res?.success) {
+      toast.add({ title: 'Hoàn tiền', description: 'Đã hoàn tiền cho phiếu trả hàng', color: 'primary' })
+      await loadDetail()
+    } else {
+      throw new Error((res as any)?.message || 'Hoàn tiền thất bại')
+    }
+  } catch (e) {
+    const err = e as { message?: string }
+    toast.add({ title: 'Hoàn tiền', description: err?.message || 'Có lỗi xảy ra', color: 'error' })
+  }
 }
 
 const onReceive = async () => {
   const toast = useToast()
-  toast.add({ title: 'Nhận hàng', description: 'Tính năng đang được hoàn thiện', color: 'neutral' })
+  try {
+    const whId = selectedWarehouse.value?.id ?? null
+    const res = await salesReturnsService.process(code.value, whId)
+    if (res?.success) {
+      toast.add({ title: 'Nhận hàng', description: 'Đã xử lý phiếu trả hàng', color: 'primary' })
+      await loadDetail()
+    } else {
+      throw new Error(res?.message || 'Xử lý thất bại')
+    }
+  } catch (e) {
+    const err = e as { message?: string }
+    toast.add({ title: 'Nhận hàng', description: err?.message || 'Có lỗi xảy ra', color: 'error' })
+  }
 }
 </script>
 
@@ -351,8 +383,8 @@ const onReceive = async () => {
                   </div>
 
                   <div class="mt-4 flex items-center justify-end gap-3">
-                    <UButton label="Hoàn tiền" color="neutral" @click="onRefund" />
-                    <UButton label="Nhận hàng" color="primary" @click="onReceive" />
+                    <UButton v-if="isProcessed" label="Hoàn tiền" color="neutral" @click="onRefund" />
+                    <UButton label="Nhận hàng" color="primary" :disabled="isProcessed" @click="onReceive" />
                   </div>
                 </div>
               </UPageCard>

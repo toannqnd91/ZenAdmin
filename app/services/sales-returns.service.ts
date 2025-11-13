@@ -68,6 +68,19 @@ export class SalesReturnsService extends BaseService {
     return this.get<unknown>(API_ENDPOINTS.SALES_RETURN_BY_CODE(code))
   }
 
+  // Process a sales return by code: optional warehouseId (query)
+  async process(code: string, warehouseId?: number | string | null) {
+    const query = warehouseId != null && String(warehouseId).trim() !== ''
+      ? `?warehouseId=${encodeURIComponent(String(warehouseId))}`
+      : ''
+    return this.post<unknown>(API_ENDPOINTS.SALES_RETURN_PROCESS(code) + query)
+  }
+
+  async refund(code: string, payload: { amount: number, method: string, note?: string }) {
+    const endpoint = API_ENDPOINTS.SALES_RETURN_REFUND(code)
+    return this.post<unknown>(endpoint, payload)
+  }
+
   async getGridCached(
     body: SalesReturnGridRequest,
     opts?: { onUpdated?: (data: SalesReturnGridResponse['data']) => void }

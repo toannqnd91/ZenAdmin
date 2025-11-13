@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'zen-dashboard',
+      name: 'vela',
       script: 'server/index.mjs',
       exec_mode: 'fork',
       interpreter: 'node',
