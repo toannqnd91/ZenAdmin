@@ -101,9 +101,9 @@ export const API_ENDPOINTS = {
   SUPPLIER_BY_ID: (id: number | string) => `/Supplier/${id}`,
   SUPPLIER_CREATE: '/Supplier',
   // Customer endpoints
-  CUSTOMERS_GRID: '/customers/grid',
+  CUSTOMERS_GRID: '/customers/grid-v2',
   // External customer endpoints
-  CUSTOMER_CREATE_EXTERNAL: '/customer',
+  CUSTOMER_CREATE_EXTERNAL: '/customer-v2',
   CUSTOMER_BY_ID_EXTERNAL: (id: string) => `/customer/${id}`,
   CUSTOMER_GROUPS_EXTERNAL: '/customergroups',
   CUSTOMER_ORDERS_EXTERNAL: (id: string) => `/customer/${id}/orders`,

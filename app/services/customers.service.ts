@@ -3,29 +3,37 @@ import { API_ENDPOINTS } from '@/utils/api'
 import type { ApiRequestBody } from '@/types/common'
 
 export interface CustomerItem {
-  id: string
-  fullName: string
+  id: number
+  customerCode: string | null
+  name: string
   email: string | null
   phoneNumber: string | null
-  createdOn: string
-  isActivated: boolean
-  avatarUrl: string | null
-  customerCode: string | null
-  groups: unknown[]
-  totalOrders: number
-  totalAmount: number
-  paid: number
-  receivable: number
-  totalSales: number
-  totalNetSales: number
+  dateOfBirth: string | null
+  gender: string | null
+  customerGroupId: number | null
+  isActive: boolean
+  createdAt: string
+  createdBy: string
+  totalOrders: number | null
+  totalSpent: number | null
+  debt: number | null
+  // Legacy fields for backward compatibility
+  fullName?: string
+  avatarUrl?: string | null
+  receivable?: number
+  totalSales?: number
+  totalNetSales?: number
 }
 
 export interface CustomersGridResponse {
-  items: CustomerItem[]
-  totalRecord: number
+  numberOfRecords: number
   numberOfPages: number
-  totalSalesAll: number
-  totalNetSalesAll: number
+  data: CustomerItem[]
+  // Legacy fields for backward compatibility
+  items?: CustomerItem[]
+  totalRecord?: number
+  totalSalesAll?: number
+  totalNetSalesAll?: number
 }
 
 // External get-by-id response shape
@@ -150,11 +158,9 @@ export class CustomersService extends BaseService {
   private checksum(d: CustomersGridResponse) {
     try {
       return JSON.stringify({
-        items: d.items,
-        totalRecord: d.totalRecord,
-        numberOfPages: d.numberOfPages,
-        totalSalesAll: d.totalSalesAll,
-        totalNetSalesAll: d.totalNetSalesAll
+        data: d.data,
+        numberOfRecords: d.numberOfRecords,
+        numberOfPages: d.numberOfPages
       })
     } catch {
       return ''
@@ -295,7 +301,7 @@ export class CustomersService extends BaseService {
     const fresh = await this.getCustomers(options)
     if (!fresh.success || !fresh.data) {
       // degrade gracefully
-      return { data: { items: [], totalRecord: 0, numberOfPages: 1, totalSalesAll: 0, totalNetSalesAll: 0 }, fromCache: false }
+      return { data: { data: [], numberOfRecords: 0, numberOfPages: 1 }, fromCache: false }
     }
     this._cache[key] = { data: fresh.data, checksum: this.checksum(fresh.data), ts: Date.now() }
     return { data: fresh.data, fromCache: false }
@@ -304,27 +310,18 @@ export class CustomersService extends BaseService {
 
 export const customersService = new CustomersService()
 
-// Types for create customer
+// Types for create customer (API v2)
 export interface CreateCustomerRequest {
-  fullName: string
-  email?: string | null
-  phoneNumber?: string | null
-  birthDate?: string | null
-  gender?: number | null
-  note?: string | null
-  customerCode?: string | null
-  customerGroupId?: number | null
-  ownerUserId?: string | null
-  tags?: string[]
-  countryId?: string | null
-  stateOrProvinceId?: number | null
-  districtId?: number | null
-  wardId?: number | null
-  addressLine1?: string | null
-  addressLine2?: string | null
-  zipCode?: string | null
-  contactName?: string | null
-  avatarUrl?: string | null
+  CustomerCode?: string | null
+  Name: string // Required
+  Email?: string | null
+  PhoneNumber?: string | null
+  DateOfBirth?: string | null // DateTimeOffset format
+  Gender?: number | null // 0=Nam, 1=Nữ, 2=Khác
+  CustomerGroupId?: string | null
+  Note?: string | null
+  AvatarUrl?: string | null
+  ExtensionData?: string | null
 }
 
 export interface CreateCustomerResponse {

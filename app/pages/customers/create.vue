@@ -135,9 +135,9 @@ function toBirthDateISO(dateStr: string): string | null {
 }
 
 function mapGenderToNumber(g: CustomerForm['gender']): number | null {
-  if (g === 'male') return 1
-  if (g === 'female') return 2
-  if (g === 'other') return 3
+  if (g === 'male') return 0
+  if (g === 'female') return 1
+  if (g === 'other') return 2
   return null
 }
 
@@ -147,25 +147,16 @@ async function onSubmit() {
   submitting.value = true
   try {
     const payload = {
-      fullName: form.value.fullName.trim(),
-      email: form.value.email || null,
-      phoneNumber: form.value.phone || null,
-      birthDate: toBirthDateISO(form.value.birthday),
-      gender: mapGenderToNumber(form.value.gender),
-      note: form.value.note || null,
-      customerCode: form.value.code || null,
-      customerGroupId: null, // can be null per spec
-      ownerUserId: null, // can be null per spec
-      tags: form.value.tags.length ? form.value.tags : [],
-      countryId: 'VN', // default VN per spec
-      stateOrProvinceId: selectedProvince.value?.id as number ?? null,
-      districtId: null,
-      wardId: selectedWard.value?.id as number ?? null,
-      addressLine1: form.value.address || null,
-      addressLine2: null,
-      zipCode: null,
-      contactName: null,
-      avatarUrl: null
+      CustomerCode: form.value.code || null,
+      Name: form.value.fullName.trim(),
+      Email: form.value.email || null,
+      PhoneNumber: form.value.phone || null,
+      DateOfBirth: toBirthDateISO(form.value.birthday),
+      Gender: mapGenderToNumber(form.value.gender),
+      CustomerGroupId: null,
+      Note: form.value.note || null,
+      AvatarUrl: null,
+      ExtensionData: null
     }
     await customersService.createCustomer(payload)
     router.push('/customers')

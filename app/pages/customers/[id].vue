@@ -61,6 +61,15 @@ function initialsFromName(name: string) {
   return lastTwo.map(p => p[0]?.toUpperCase() || '').join('') || 'CU'
 }
 
+function mapGender(genderCode: string | null): string {
+  if (genderCode === null || genderCode === '') return ''
+  const code = Number(genderCode)
+  if (code === 0) return 'Nam'
+  if (code === 1) return 'Nữ'
+  if (code === 2) return 'Chưa xác định'
+  return ''
+}
+
 function formatMoney(n: number) {
   return `${Number(n || 0).toLocaleString('vi-VN')}đ`
 }
@@ -160,7 +169,7 @@ function saveCustomer() {
 const contactText = computed(() => [
   customer.value.fullName || '',
   customer.value.phone || '',
-  customer.value.gender || '',
+  mapGender(customer.value.gender),
   customer.value.birthDate || ''
 ].filter(Boolean).join('\n'))
 
@@ -311,12 +320,6 @@ onMounted(async () => {
 
     <template #body>
       <div class="w-full max-w-6xl mx-auto px-4 lg:px-6 py-6">
-        <div class="mb-6">
-          <div class="text-sm text-gray-500">
-            ID: <span class="font-mono">{{ customerId }}</span>
-          </div>
-        </div>
-
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <!-- Left Column -->
           <div class="lg:col-span-2 space-y-6">

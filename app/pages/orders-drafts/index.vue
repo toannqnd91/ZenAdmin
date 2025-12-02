@@ -6,16 +6,6 @@ import WarehouseSwitcher from '@/components/WarehouseSwitcher.vue'
 import type { WarehouseOption } from '@/components/WarehouseSwitcher.vue'
 import { useGlobalWarehouse } from '@/composables/useWarehouse'
 
-interface OrderCounts {
-  all: number
-  ordered: number
-  inProgress: number
-  completed: number
-  canceled: number
-  // keep byStatus optional if we decide to surface it later
-  byStatus?: Record<string, number>
-}
-
 interface OrderRow {
   id: number
   code: string
@@ -31,35 +21,22 @@ interface OrderRow {
 // Reactive list populated from API
 const orders = ref<OrderRow[]>([])
 
-// Tabs mapped to backend numeric OrderStatusEnum (representative primary states)
-// New=1, OnHold=10, PendingPayment=20, PaymentReceived=30, PaymentFailed=35,
-// Invoiced=40, Shipping=50, Shipped=60, Complete=70, Canceled=80, Refunded=90, Closed=100, PartiallyRefunded=110
-// We group for simplified view: ordered -> (New), inprogress -> (Shipping), completed -> (Complete), canceled -> (Canceled)
-// You can expand / refine mapping later if you need more granular tabs.
+// Tabs for draft orders - simpler than main orders
 const tabs = [
-  { label: 'Tất cả', value: 'all' },
-  { label: 'Đặt hàng', value: 'ordered' }, // New
-  { label: 'Đang giao dịch', value: 'inprogress' }, // Shipping (could include PendingPayment/PaymentReceived etc.)
-  { label: 'Đã hoàn thành', value: 'completed' }, // Complete
-  { label: 'Đã hủy', value: 'canceled' } // Canceled
+  { label: 'Tất cả đơn nháp', value: 'all' }
 ] as const
 const currentTab = ref('all')
 
-// Đếm số lượng cho từng tab
-const apiCounts = ref<Partial<OrderCounts>>({})
+// Tab counts
+const apiCounts = ref({ all: 0 })
 const tabCounts = computed(() => [
-  { ...tabs[0], count: apiCounts.value.all },
-  { ...tabs[1], count: apiCounts.value.ordered },
-  { ...tabs[2], count: apiCounts.value.inProgress },
-  { ...tabs[3], count: apiCounts.value.completed },
-  { ...tabs[4], count: apiCounts.value.canceled }
+  { ...tabs[0], count: apiCounts.value.all }
 ])
 
 function formatDate(iso?: string) {
   if (!iso) return ''
   const d = new Date(iso)
   if (isNaN(d.getTime())) return ''
-  // Format dd/MM/yyyy HH:mm (24h)
   const day = String(d.getDate()).padStart(2, '0')
   const month = String(d.getMonth() + 1).padStart(2, '0')
   const year = d.getFullYear()
@@ -68,8 +45,7 @@ function formatDate(iso?: string) {
   return `${day}/${month}/${year} ${hours}:${mins}`
 }
 
-// Backend enum mapping (numeric -> Vietnamese label)
-// 1 Unpaid, 2 PartiallyPaid, 3 Paid, 4 OverPaid, 5 Refunded
+// Backend enum mapping
 const paymentStatusEnumMap: Record<number, string> = {
   1: 'Chưa thanh toán',
   2: 'Thanh toán một phần',
@@ -88,27 +64,21 @@ function normalizePaymentStatus(raw?: string | number | null): string {
   if (lower.includes('overpaid')) return paymentStatusEnumMap[4] || 'Thanh toán dư'
   if (lower.includes('partial')) return paymentStatusEnumMap[2] || 'Thanh toán một phần'
   if (lower.includes('refunded')) return paymentStatusEnumMap[5] || 'Đã hoàn tiền'
-  // Check unpaid BEFORE generic paid to avoid substring collision
   if (lower.includes('unpaid')) return paymentStatusEnumMap[1] || 'Chưa thanh toán'
-  // Use regex word boundary so 'unpaid' no longer matches generic 'paid'
   if (/\bpaid\b/.test(lower) || lower.includes('đã thanh toán')) return paymentStatusEnumMap[3] || 'Đã thanh toán'
   return str
 }
 
 function mapProcessStatus(raw?: string) {
-  if (!raw) return ''
+  if (!raw) return 'Đơn nháp'
   const lower = raw.toLowerCase()
+  if (lower.includes('draft')) return 'Đơn nháp'
   if (lower === 'new') return 'Đơn hàng mới'
   if (lower.includes('pending') || lower.includes('hold')) return 'Chờ xử lý'
-  if (lower.includes('shipping') || lower.includes('shipped')) return 'Đang giao'
-  if (lower.includes('complete')) return 'Đã hoàn thành'
-  if (lower.includes('cancel')) return 'Đã hủy'
-  if (lower.includes('partially') && lower.includes('refund')) return 'Hoàn tiền 1 phần'
-  if (lower.includes('refund')) return 'Hoàn tiền'
   return raw
 }
 
-// Table binds to unified orders list
+// Table binds
 const data = computed(() => orders.value)
 
 const q = ref('')
@@ -120,7 +90,7 @@ const loading = ref(false)
 const refreshing = ref(false)
 const countsLoading = ref(false)
 
-// Global warehouse state binding for header switcher
+// Global warehouse state
 const { selectedWarehouse: globalWarehouse, setWarehouse } = useGlobalWarehouse()
 const selectedBranch = computed<WarehouseOption | null>({
   get() {
@@ -142,21 +112,13 @@ const selectedBranch = computed<WarehouseOption | null>({
 
 function onTabChange(val: string) {
   currentTab.value = val
-  pagination.value.pageIndex = 0 // reset to first page
+  pagination.value.pageIndex = 0
   fetchOrders()
 }
 
-// Map tab -> representative numeric Status (can expand to arrays if backend supports multi-status filtering)
-const tabStatusMap: Record<string, number | null> = {
-  all: null,
-  ordered: 1, // New
-  inprogress: 50, // Shipping (choose 50 as anchor state)
-  completed: 70, // Complete
-  canceled: 80 // Canceled
-}
-
 function buildGridRequest() {
-  const status = tabStatusMap[currentTab.value]
+  // For draft orders, we might use a specific status code or isDraft flag
+  // Adjust based on your backend API
   return {
     Pagination: {
       Start: pagination.value.pageIndex * pagination.value.pageSize,
@@ -167,7 +129,7 @@ function buildGridRequest() {
     Search: {
       QueryObject: {
         Name: q.value || null,
-        Status: status
+        IsDraft: true // Assuming backend supports this flag
       }
     },
     Sort: {
@@ -240,11 +202,9 @@ async function fetchOrders() {
 async function fetchCounts() {
   try {
     countsLoading.value = true
-    const res = await ordersService.getCountsByStatus()
-    if (res?.success && res.data) {
-      const { byStatus, ...rest } = res.data
-      apiCounts.value = { ...rest }
-    }
+    // TODO: Implement draft orders count API if available
+    // For now, use the total from grid
+    apiCounts.value.all = totalRecords.value
   } catch {
     /* silent */
   } finally {
@@ -253,13 +213,11 @@ async function fetchCounts() {
 }
 
 onMounted(() => {
-  // Kick off orders first to leverage cache for instant paint
   fetchOrders()
-  // Fetch counts in background without blocking list render
   fetchCounts()
 })
 
-// Watchers for search & pagination
+// Watchers
 watch(() => pagination.value.pageIndex, () => fetchOrders())
 watch(() => pagination.value.pageSize, () => {
   pagination.value.pageIndex = 0
@@ -271,21 +229,19 @@ watch(q, () => {
   pagination.value.pageIndex = 0
   searchDebounce = setTimeout(() => fetchOrders(), 400)
 })
-// Refetch when global warehouse changes
 watch(() => globalWarehouse.value?.id, () => {
   pagination.value.pageIndex = 0
   fetchOrders()
   fetchCounts()
 })
 
-// Navbar notifications toggle from dashboard store (standardized across pages)
 const { isNotificationsSlideoverOpen } = useDashboard()
 </script>
 
 <template>
-  <UDashboardPanel id="orders">
+  <UDashboardPanel id="orders-drafts">
     <template #header>
-      <UDashboardNavbar title="Đơn hàng" :ui="{ right: 'gap-3' }">
+      <UDashboardNavbar title="Đơn hàng nháp" :ui="{ right: 'gap-3' }">
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
@@ -322,7 +278,7 @@ const { isNotificationsSlideoverOpen } = useDashboard()
         :tabs="tabCounts"
         :total-records="totalRecords"
         :total-pages="totalPages"
-        :add-button="{ label: 'Tạo đơn hàng', href: '/orders/create' }"
+        :add-button="{ label: 'Tạo đơn nháp', href: '/orders/create?draft=true' }"
         @update:tab="onTabChange"
       />
     </template>

@@ -356,7 +356,7 @@ interface CreatePosOrderRequest {
   items: CreatePosOrderItem[]
   paymentMethod: number
   warehouseId: string | number
-  customerId: string | number
+  customerId: number | null
   deliveryAddress: {
     contactName: string
     phoneNumber: string
@@ -422,11 +422,16 @@ async function handleCreateOrder() {
     orderDiscountAmount.value = (discount?.value ?? 0)
     shippingFeeAmount.value = (shippingFee?.value ?? 0)
 
+    const simpleCustomer = (selectedCustomer.value as SimpleSelectable | null)
+    const customerIdNum = simpleCustomer?.id == null || String(simpleCustomer.id).trim() === ''
+      ? null
+      : Number(simpleCustomer.id)
+
     const body: CreatePosOrderRequest = {
       items: itemsPayload,
       paymentMethod: mapPaymentMethodToApi(paymentMethod.value),
       warehouseId: (selectedBranch.value as SimpleSelectable)?.id ?? 0,
-      customerId: (selectedCustomer.value as SimpleSelectable)?.id ?? '',
+      customerId: Number.isFinite(customerIdNum) ? (customerIdNum as number) : null,
       deliveryAddress: {
         contactName: (selectedCustomer.value as SimpleSelectable)?.name || '',
         phoneNumber: (selectedCustomer.value as SimpleSelectable)?.phone || '',
@@ -533,7 +538,7 @@ async function fetchCustomers(search: string): Promise<CustomerOption[]> {
           search: { name: null, excludeGuests: true },
           sort: { field: 'Id', reverse: false }
         })
-        items = (Array.isArray(res?.data?.items) ? res.data.items : []) as CustomerRecord[]
+        items = (Array.isArray(res?.data?.data) ? res.data.data : []) as CustomerRecord[]
         customersCache.value = items
       }
     } else {
@@ -543,7 +548,7 @@ async function fetchCustomers(search: string): Promise<CustomerOption[]> {
         search: { name: trimmed, excludeGuests: true },
         sort: { field: 'Id', reverse: false }
       })
-      items = (Array.isArray(res?.data?.items) ? res.data.items : []) as CustomerRecord[]
+      items = (Array.isArray(res?.data?.data) ? res.data.data : []) as CustomerRecord[]
     }
     return items.map(cc => ({
       id: cc.id,
@@ -570,7 +575,7 @@ async function fetchMoreCustomers(search: string, page: number): Promise<FetchMo
       search: { name: trimmed || null, excludeGuests: true },
       sort: { field: 'Id', reverse: false }
     })
-    const itemsRaw = Array.isArray(res?.data?.items) ? res.data.items : []
+    const itemsRaw = Array.isArray(res?.data?.data) ? res.data.data : []
     type CustomerLike = {
       id: string | number
       fullName?: string

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ordersService } from '@/services/orders.service'
 import type { OrderDetail, OrderHistoryEvent, OrderDetailRawResponse, OrderHistoryListResponse } from '@/services/orders.service'
@@ -11,6 +11,7 @@ import IconReturn from '@/components/icons/IconReturn.vue'
 import IconPrintOrder from '@/components/icons/IconPrintOrder.vue'
 import IconSuccess from '@/components/icons/IconSuccess.vue'
 import ReceivePaymentModal from '@/components/orders/ReceivePaymentModal.vue'
+import CancelOrderModal from '@/components/orders/CancelOrderModal.vue'
 
 // Raw payload supporting multiple backend shapes
 interface RawOrderItem {
@@ -218,6 +219,29 @@ function formatPaymentMethod(code?: string | null) {
 const paymentStatusDisplay = computed(() => {
   const raw = (detail.value?.paymentStatus || detail.value?.payment?.paymentStatus || '').toString()
   return raw || 'Chưa thanh toán'
+})
+
+const isOrderPaid = computed(() => {
+  const status = paymentStatusDisplay.value
+  console.log('Payment status check:', {
+    status,
+    isPaidCheck: isPaid(status),
+    isUnpaidCheck: isUnpaid(status),
+    paidAmount: detail.value?.payment?.paidAmount,
+    orderTotal: detail.value?.payment?.orderTotal
+  })
+  // IMPORTANT: Check unpaid FIRST before checking paid
+  // because "Unpaid" contains "paid" substring
+  if (isUnpaid(status)) return false
+  // Check if status indicates paid
+  if (isPaid(status)) return true
+  // Check by comparing paid amount with order total
+  const paidAmount = detail.value?.payment?.paidAmount || 0
+  const orderTotal = detail.value?.payment?.orderTotal || 0
+  // Consider paid only if paidAmount > 0 and >= orderTotal
+  const result = paidAmount > 0 && paidAmount >= orderTotal
+  console.log('isOrderPaid result:', result)
+  return result
 })
 function isPartialPayment(s: string) {
   const v = s.toLowerCase()
@@ -472,6 +496,78 @@ function goBack() {
   router.push('/orders')
 }
 
+const onRefundOrder = () => {
+  const toast = useToast()
+  toast.add({ title: 'Hoàn tiền', description: 'Chức năng đang phát triển', color: 'primary' })
+}
+
+const onCopyOrder = () => {
+  const toast = useToast()
+  toast.add({ title: 'Sao chép', description: 'Chức năng đang phát triển', color: 'primary' })
+}
+
+const onUnarchiveOrder = () => {
+  const toast = useToast()
+  toast.add({ title: 'Hủy lưu trữ', description: 'Chức năng đang phát triển', color: 'primary' })
+}
+
+// Cancel order modal
+const showCancelModal = ref(false)
+
+const onCancelOrder = () => {
+  console.log('Opening cancel modal...')
+  showCancelModal.value = true
+  console.log('showCancelModal:', showCancelModal.value)
+  // Force next tick to ensure reactivity
+  nextTick(() => {
+    console.log('After nextTick, showCancelModal:', showCancelModal.value)
+  })
+}
+
+const handleCancelOrderConfirm = async (data: { refundOption: string, restockItems: boolean, reason: string }) => {
+  const toast = useToast()
+  try {
+    // TODO: Call API to cancel order
+    // await ordersService.cancelOrder(orderCodeParam.value, {
+    //   refundNow: data.refundOption === 'full',
+    //   restockItems: data.restockItems,
+    //   reason: data.reason
+    // })
+    
+    toast.add({ 
+      title: 'Đã hủy đơn hàng', 
+      description: 'Đơn hàng đã được hủy thành công', 
+      color: 'success' 
+    })
+    await fetchData()
+  } catch (e) {
+    const err = e as { message?: string }
+    toast.add({ 
+      title: 'Hủy đơn hàng thất bại', 
+      description: err?.message || 'Có lỗi xảy ra', 
+      color: 'error' 
+    })
+  }
+}
+
+const dropdownItems = [
+  // [{
+  //   label: 'Hoàn tiền',
+  //   icon: 'i-heroicons-banknotes',
+  //   onSelect: onRefundOrder
+  // }],
+  // [{
+  //   label: 'Sao chép',
+  //   icon: 'i-heroicons-document-duplicate',
+  //   onSelect: onCopyOrder
+  // }],
+  [{
+    label: 'Hủy đơn hàng',
+    icon: 'i-heroicons-x-circle',
+    onSelect: onCancelOrder
+  }]
+]
+
 // (Optional) Derived flags for future return UI can be added here
 </script>
 
@@ -551,12 +647,8 @@ function goBack() {
                   <IconPrintOrder class="w-4 h-4" />
                   In đơn hàng
                 </UButton>
-                <UDropdown
-                  :items="[[
-                    { label: 'Hủy đơn', click: () => console.debug('cancel order') }
-                  ], [
-                    { label: 'Sao chép', click: () => console.debug('copy order') }
-                  ]]"
+                <UDropdownMenu
+                  :items="dropdownItems"
                   :popper="{ placement: 'bottom-end' }"
                 >
                   <UButton
@@ -568,7 +660,7 @@ function goBack() {
                   >
                     Thao tác khác
                   </UButton>
-                </UDropdown>
+                </UDropdownMenu>
                 <div class="flex border border-gray-200 rounded-md overflow-hidden">
                   <UButton
                     size="sm"
@@ -1263,5 +1355,12 @@ function goBack() {
     v-model="showReceivePayment"
     :remaining-amount="remainingAmount"
     @submit="handleReceivePaymentSubmit"
+  />
+
+  <CancelOrderModal
+    v-model="showCancelModal"
+    :order-total="detail?.payment?.orderTotal"
+    :is-paid="isOrderPaid"
+    @confirm="handleCancelOrderConfirm"
   />
 </template>

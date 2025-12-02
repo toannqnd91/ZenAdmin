@@ -265,6 +265,44 @@ const onReceive = async () => {
     toast.add({ title: 'Nhận hàng', description: err?.message || 'Có lỗi xảy ra', color: 'error' })
   }
 }
+
+const onCopy = () => {
+  const toast = useToast()
+  toast.add({ title: 'Sao chép', description: 'Chức năng đang phát triển', color: 'primary' })
+}
+
+const onUnarchive = () => {
+  const toast = useToast()
+  toast.add({ title: 'Hủy lưu trữ', description: 'Chức năng đang phát triển', color: 'primary' })
+}
+
+const onCancel = () => {
+  const toast = useToast()
+  toast.add({ title: 'Hủy đơn hàng', description: 'Chức năng đang phát triển', color: 'primary' })
+}
+
+const dropdownItems = [
+  [{
+    label: 'Hoàn tiền',
+    icon: 'i-heroicons-banknotes',
+    click: onRefund
+  }],
+  [{
+    label: 'Sao chép',
+    icon: 'i-heroicons-document-duplicate',
+    click: onCopy
+  }],
+  [{
+    label: 'Hủy lưu trữ',
+    icon: 'i-heroicons-archive-box-x-mark',
+    click: onUnarchive
+  },
+  {
+    label: 'Hủy đơn hàng',
+    icon: 'i-heroicons-x-circle',
+    click: onCancel
+  }]
+]
 </script>
 
 <template>
@@ -294,8 +332,15 @@ const onReceive = async () => {
         </template>
         <template #right>
           <div class="flex items-center gap-3">
-            <UButton label="Hủy đơn trả hàng" color="neutral" variant="soft" size="sm" />
-            <UButton label="Lưu trữ" color="neutral" variant="soft" size="sm" />
+            <UDropdownMenu :items="dropdownItems" :popper="{ placement: 'bottom-end' }">
+              <UButton
+                label="Thao tác khác"
+                color="neutral"
+                variant="soft"
+                size="sm"
+                trailing-icon="i-heroicons-chevron-down-20-solid"
+              />
+            </UDropdownMenu>
           </div>
         </template>
       </UDashboardNavbar>

@@ -26,20 +26,20 @@ const fetchCustomers = async () => {
 
   const res = await customersService.getCustomersCached(opts, {
     onUpdated: (grid) => {
-      data.value = grid.items || []
-      totalRecords.value = grid.totalRecord || 0
+      data.value = grid.data || []
+      totalRecords.value = grid.numberOfRecords || 0
       totalPages.value = grid.numberOfPages || 1
-      totals.value.totalSalesAll = grid.totalSalesAll || 0
-      totals.value.totalNetSalesAll = grid.totalNetSalesAll || 0
+      totals.value.totalSalesAll = 0
+      totals.value.totalNetSalesAll = 0
     }
   })
 
   const grid = res.data
-  data.value = grid.items || []
-  totalRecords.value = grid.totalRecord || 0
+  data.value = grid.data || []
+  totalRecords.value = grid.numberOfRecords || 0
   totalPages.value = grid.numberOfPages || 1
-  totals.value.totalSalesAll = grid.totalSalesAll || 0
-  totals.value.totalNetSalesAll = grid.totalNetSalesAll || 0
+  totals.value.totalSalesAll = 0
+  totals.value.totalNetSalesAll = 0
 
   if (res.fromCache) {
     loading.value = false
@@ -59,13 +59,13 @@ watch([q, () => pagination.value.pageIndex, () => pagination.value.pageSize], ()
 
 const mappedRows = computed(() => data.value.map(c => ({
   id: c.id,
-  name: c.fullName,
+  name: c.name,
   code: c.customerCode,
   phone: c.phoneNumber,
-  receivable: c.receivable,
-  totalSale: c.totalSales ?? c.totalAmount,
-  netSale: c.totalNetSales ?? ((c.totalAmount || 0) - (c.paid || 0)),
-  avatar: { src: c.avatarUrl ? c.avatarUrl as string : '/no-avatar.jpg', alt: c.fullName }
+  receivable: c.debt ?? 0,
+  totalSale: c.totalSpent ?? 0,
+  netSale: c.totalSpent ?? 0,
+  avatar: { src: '/no-avatar.jpg', alt: c.name }
 })))
 
 // Add a synthetic summary row at the top using totals from API
