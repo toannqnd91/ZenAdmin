@@ -1,0 +1,62 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - img "ZenWeb Logo" [ref=e6]
+  - main [ref=e7]:
+    - generic [ref=e9]:
+      - generic [ref=e11]:
+        - img "Welcome illustration" [ref=e13]
+        - heading "Welcome To ZenWeb 🎉" [level=2] [ref=e14]
+        - paragraph [ref=e15]: ZenWeb mang đến giải pháp thiết kế web hiện đại, ứng dụng công nghệ mới nhất giúp doanh nghiệp và cá nhân xây dựng thương hiệu trực tuyến chuyên nghiệp, tối ưu trải nghiệm người dùng, bảo mật cao và dễ dàng mở rộng.
+      - generic [ref=e18]:
+        - heading "Đăng nhập" [level=1] [ref=e20]
+        - generic [ref=e23]:
+          - generic [ref=e24]:
+            - generic [ref=e27]: Email
+            - textbox "Email" [active] [ref=e30]:
+              - /placeholder: Enter your email
+              - text: test@example.com
+          - generic [ref=e31]:
+            - generic [ref=e34]: Password
+            - generic [ref=e36]:
+              - textbox "Password" [ref=e37]:
+                - /placeholder: Enter your password
+              - button "Show password" [ref=e39]
+          - button "Đăng nhập" [ref=e41]
+        - generic [ref=e42]:
+          - generic [ref=e43]:
+            - checkbox "Remember me" [ref=e44]
+            - text: Remember me
+          - link "Forgot password?" [ref=e45] [cursor=pointer]:
+            - /url: /
+        - generic [ref=e46]:
+          - generic [ref=e48]: Hoặc
+          - generic [ref=e49]:
+            - button "Continue with Google" [ref=e50]:
+              - generic [ref=e51]:
+                - img [ref=e52]
+                - text: Continue with Google
+            - button "Continue with Youtube" [ref=e57]:
+              - generic [ref=e58]:
+                - img [ref=e59]
+                - text: Continue with Youtube
+            - button "Continue with Facebook" [ref=e61]:
+              - generic [ref=e62]:
+                - img [ref=e63]
+                - text: Continue with Facebook
+        - generic [ref=e65]:
+          - text: Chưa có tài khoản?
+          - link "Đăng ký ngay" [ref=e66] [cursor=pointer]:
+            - /url: /signup
+  - contentinfo [ref=e67]:
+    - generic [ref=e68]:
+      - generic [ref=e69]: Copyright © 2025 ZenWeb. All rights reserved.
+      - generic [ref=e70]:
+        - link "Privacy Policy" [ref=e71] [cursor=pointer]:
+          - /url: "#"
+        - text: "|"
+        - link "Terms and Conditions" [ref=e72] [cursor=pointer]:
+          - /url: "#"
+```

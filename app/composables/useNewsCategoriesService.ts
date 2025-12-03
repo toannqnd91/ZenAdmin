@@ -35,8 +35,6 @@ export const useNewsCategoriesService = () => {
     }
   }
 
-  console.log('[useNewsCategoriesService] Fetching with token:', accessToken.value ? 'Token available' : 'No token')
-
   // Fetch data
   const endpoints = getApiEndpoints()
   const { data, pending: loading, error } = useApiFetch<NewsCategoriesApiResponse>(endpoints.newsCategories, {

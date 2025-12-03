@@ -1,0 +1,129 @@
+{
+  "dashboard": {
+    "title": "Zen Admin - Frontend Monitoring",
+    "tags": ["frontend", "nuxt", "performance"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Page Load Time (P95)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(page_load_time_bucket[5m]))",
+            "legendFormat": "P95 Load Time"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ms",
+            "label": "Time"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Core Web Vitals",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "avg(lcp_value)",
+            "legendFormat": "LCP (Largest Contentful Paint)"
+          },
+          {
+            "expr": "avg(fid_value)",
+            "legendFormat": "FID (First Input Delay)"
+          },
+          {
+            "expr": "avg(cls_value)",
+            "legendFormat": "CLS (Cumulative Layout Shift)"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "API Response Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(api_request_duration_bucket[5m]))",
+            "legendFormat": "P50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(api_request_duration_bucket[5m]))",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(api_request_duration_bucket[5m]))",
+            "legendFormat": "P99"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Cache Hit Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(cache_hits / (cache_hits + cache_misses)) * 100",
+            "legendFormat": "Hit Rate %"
+          }
+        ],
+        "thresholds": [
+          { "value": 0, "color": "red" },
+          { "value": 60, "color": "yellow" },
+          { "value": 80, "color": "green" }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(errors_total[5m])",
+            "legendFormat": "Errors/sec"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Active Users",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "active_users",
+            "legendFormat": "Active Users"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Bundle Size",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "bundle_size_bytes / 1024",
+            "legendFormat": "Bundle Size (KB)"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "avg(memory_usage_mb)",
+            "legendFormat": "Memory (MB)"
+          }
+        ]
+      }
+    ],
+    "refresh": "30s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    }
+  }
+}

@@ -55,7 +55,6 @@ onMounted(async () => {
     }
 
     // Load widget data
-    console.log('Loading carousel widget data for ID:', widgetId)
     const response = await widgetsService.getCarouselWidget(widgetId)
 
     if (response.success && response.data) {

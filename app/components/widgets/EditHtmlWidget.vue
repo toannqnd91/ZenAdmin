@@ -19,8 +19,6 @@ const isLoading = ref(true)
 onMounted(async () => {
   try {
     isLoading.value = true
-    console.log('Loading HTML widget data for ID:', widgetId)
-
     // Mock data
     widgetName.value = 'Sample HTML Widget'
     widgetZone.value = 'Footer'
@@ -51,7 +49,6 @@ async function onUpdate() {
       return
     }
 
-    console.log('Updating HTML widget:', widgetId)
     alert('HTML widget updated successfully!')
     router.push('/widgets')
   } catch (error) {

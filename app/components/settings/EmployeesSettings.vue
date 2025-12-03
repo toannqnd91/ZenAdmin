@@ -79,8 +79,7 @@ function cancelCreate() {
 function submitInvite() {
   // placeholder action
   // In real app, call API then reset/close
-  console.log('Invite employee', { ...form })
-}
+  }
 
 // Permissions assignment state
 const assigning = ref(false)

@@ -137,13 +137,6 @@ interface LinkModalPayload {
 }
 const handleAddLinkModal = (payload: LinkModalPayload) => {
   // TODO: Gọi API thêm liên kết với typeId, typeName, typeEntity
-  console.log('Adding new link:', {
-    name: payload.name,
-    typeId: payload.typeId,
-    typeName: payload.typeName,
-    typeEntity: payload.typeEntity,
-    menuId
-  })
   isAddModalOpen.value = false
 }
 
@@ -196,12 +189,10 @@ const onPointerMove = (e: MouseEvent | TouchEvent | PointerEvent) => {
 }
 
 const editLink = (link: LinkItem) => {
-  console.log('Edit link:', link)
   // TODO: Implement edit functionality
 }
 
 const deleteLink = async (link: LinkItem) => {
-  console.log('Delete link:', link)
   // TODO: Implement delete functionality using API
   try {
     await linksService.deleteMenuItem(menuId, link.id)
@@ -266,14 +257,6 @@ const onDragEnd = async (event: SortableEvent) => {
         draggedLink.parentId = newParentId ?? undefined
         draggedLink.level = newLevel
 
-        console.log('Hierarchy change:', {
-          item: draggedLink.name,
-          newParentId,
-          newLevel,
-          oldIndex: event.oldIndex,
-          newIndex: event.newIndex
-        })
-
         // Tính lại toàn bộ thứ tự trong nhóm cha mới (gửi full danh sách cùng cấp)
         const siblings = currentLinks.value.filter(l => (l.parentId ?? null) === newParentId)
         const items = siblings.map((l, sIdx) => ({
@@ -282,14 +265,7 @@ const onDragEnd = async (event: SortableEvent) => {
           sortOrder: sIdx
         }))
 
-        console.log('Calling reorder API with full sibling list:', {
-          items,
-          siblingCount: siblings.length
-        })
-
         await linksService.reorderMenuItemsV2(items)
-        console.log('Successfully saved new order to API')
-
         // Refresh để cập nhật hierarchy từ server
         await refreshMenuData()
       } catch (error) {

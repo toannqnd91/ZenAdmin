@@ -173,7 +173,6 @@ export function useCreateProductPage() {
       // Patch submitForm to accept productImages at root
       const ok = await submitForm({ options, variations, productImages })
       if (ok) {
-        console.log('Sản phẩm đã được tạo thành công.')
         const newId = Number(formData.value.id || 0)
         return newId > 0 ? newId : null
       }

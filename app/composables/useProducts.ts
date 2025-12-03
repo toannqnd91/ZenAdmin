@@ -161,8 +161,7 @@ export const useProducts = () => {
 
   // Debug API response
   watch(data, (val) => {
-    console.log('API Response:', val)
-  }, { immediate: true, deep: true })
+    }, { immediate: true, deep: true })
 
   return {
     // Data

@@ -28,8 +28,6 @@ const neutrals = ['slate', 'gray', 'zinc', 'neutral', 'stone']
 // })
 
 const user = computed(() => {
-  console.log('UserMenu - userInfo.value:', userInfo.value)
-
   return {
     name: userInfo.value?.display_name || userInfo.value?.fullName || 'User',
     avatar: {

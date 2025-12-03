@@ -14,9 +14,6 @@ export class FileService extends BaseService {
     }
 
     try {
-      console.log('Starting file upload:', { fileName: file.name, fileSize: file.size, folder })
-      console.log('API Base URL:', this.getBaseURL())
-
       const response = await this.request<ApiFileUploadResponse>(API_ENDPOINTS.UPLOAD_FILE, {
         method: 'POST',
         body: formData,
@@ -26,7 +23,6 @@ export class FileService extends BaseService {
         }
       })
 
-      console.log('Upload successful:', response)
       // Return the full API response (not just data) for component compatibility
       return response
     } catch (error: unknown) {

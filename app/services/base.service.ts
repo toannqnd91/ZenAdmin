@@ -1,5 +1,9 @@
 import type { ApiResponse, ApiRequestBody } from '@/types/common'
 import { httpInterceptor } from '@/utils/http-interceptor'
+import { logger } from '@/utils/logger'
+import { errorTracker } from '@/utils/error-tracker'
+import { apiCache } from '@/utils/cache-manager'
+import { performanceMonitor } from '@/utils/performance-monitor'
 
 export abstract class BaseService {
   protected baseURL: string
@@ -38,11 +42,18 @@ export abstract class BaseService {
   ): Promise<ApiResponse<T>> {
     const baseURL = this.getBaseURL()
     const url = endpoint.startsWith('http') ? endpoint : `${baseURL}${endpoint}`
+    const method = options.method || 'GET'
+    const metricName = `${this.constructor.name}.${method}.${endpoint}`
+    
+    // Start performance monitoring
+    performanceMonitor.start(metricName)
 
-    // Log request details
-    console.log('[BaseService] API Request:', {
-      method: options.method || 'GET',
+    // Structured logging for API request
+    logger.debug('API Request initiated', {
+      service: this.constructor.name,
+      method,
       url,
+      endpoint,
       body: this.getBodyForLogging(options.body)
     })
 
@@ -51,9 +62,25 @@ export abstract class BaseService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        console.error('API Error Response:', {
-          status: response.status,
+        
+        // End performance monitoring for error case
+        const errorDuration = performanceMonitor.end(metricName, {
+          service: this.constructor.name,
+          method,
+          endpoint,
+          statusCode: response.status,
+          success: false
+        })
+        
+        // Structured error logging
+        logger.error('API Request failed', {
+          service: this.constructor.name,
+          method,
+          url,
+          endpoint,
+          statusCode: response.status,
           statusText: response.statusText,
+          duration: errorDuration,
           errorData
         })
 
@@ -86,7 +113,15 @@ export abstract class BaseService {
         if (parts.length === 0) push(errorData)
 
         const msg = parts.filter(Boolean).join(' \n ')
-        throw new Error(`API Error ${response.status} ${response.statusText}${msg ? `: ${msg}` : ''}`)
+        const error = new Error(`API Error ${response.status} ${response.statusText}${msg ? `: ${msg}` : ''}`)
+        
+        // Track error in monitoring system
+        errorTracker.captureApiError(endpoint, method, response.status, error, {
+          service: this.constructor.name,
+          errorData
+        })
+        
+        throw error
       }
 
       // Handle empty response body (e.g. for DELETE)
@@ -102,10 +137,52 @@ export abstract class BaseService {
           data = JSON.parse(text)
         }
       }
-      console.log('API Success Response:', data)
+      // End performance monitoring
+      const duration = performanceMonitor.end(metricName, {
+        service: this.constructor.name,
+        method,
+        endpoint,
+        statusCode: response.status,
+        success: true
+      })
+      
+      // Log successful response
+      logger.info('API Request succeeded', {
+        service: this.constructor.name,
+        method,
+        url,
+        endpoint,
+        statusCode: response.status,
+        duration
+      })
+      
       return data as ApiResponse<T>
     } catch (error) {
-      console.error('API Request failed:', error)
+      // End performance monitoring
+      const duration = performanceMonitor.end(metricName, {
+        service: this.constructor.name,
+        method,
+        endpoint,
+        success: false,
+        error
+      })
+      
+      // Log and track unexpected errors
+      logger.error('API Request exception', {
+        service: this.constructor.name,
+        method,
+        url,
+        endpoint,
+        duration,
+        error
+      })
+      
+      errorTracker.captureException(error, {
+        service: this.constructor.name,
+        action: `${method} ${endpoint}`,
+        url
+      })
+      
       throw error
     }
   }
@@ -119,6 +196,40 @@ export abstract class BaseService {
       )}`
       : endpoint
     return this.request<T>(url, { method: 'GET' })
+  }
+
+  /**
+   * GET request with caching support
+   */
+  protected async getCached<T>(
+    endpoint: string,
+    params?: Record<string, unknown>,
+    cacheTTL?: number
+  ): Promise<ApiResponse<T>> {
+    const url = params
+      ? `${endpoint}?${new URLSearchParams(
+        Object.fromEntries(
+          Object.entries(params).map(([k, v]) => [k, v == null ? '' : String(v)])
+        )
+      )}`
+      : endpoint
+    
+    const cacheKey = `${this.constructor.name}:GET:${url}`
+    
+    return apiCache.getOrSet(
+      cacheKey,
+      () => this.request<T>(url, { method: 'GET' }),
+      cacheTTL
+    )
+  }
+
+  /**
+   * Invalidate cache for this service
+   */
+  protected invalidateCache(pattern?: string): void {
+    const prefix = pattern || `${this.constructor.name}:`
+    apiCache.invalidatePattern(prefix)
+    logger.info('Cache invalidated', { service: this.constructor.name, pattern: prefix })
   }
 
   protected post<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {

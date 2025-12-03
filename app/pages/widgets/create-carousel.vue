@@ -22,23 +22,17 @@ const items = ref([
 // Load widget zones on component mount
 onMounted(async () => {
   try {
-    console.log('Loading widget zones...')
     const response = await widgetsService.getWidgetZones()
-    console.log('Widget zones response:', response)
-
     if (response.success && response.data) {
       widgetZones.value = response.data
 
       // Try different option formats for USelect
       widgetZoneItems.value = response.data.map((zone: WidgetZone) => zone.name)
 
-      console.log('Widget zone items:', widgetZoneItems.value)
-
       // Set default value to first zone if available
       if (response.data.length > 0) {
         widgetZone.value = response.data[0]?.name || undefined
-        console.log('Set default widget zone:', widgetZone.value)
-      }
+        }
     } else {
       console.error('Failed to load widget zones:', response.message)
     }

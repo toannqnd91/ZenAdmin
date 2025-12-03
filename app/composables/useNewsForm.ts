@@ -163,8 +163,7 @@ export const useNewsForm = (newsId?: number) => {
 
         if (fileData && fileData.fileName) {
           formData.value.imageUrl = fileData.fileName
-          console.log('Upload ảnh thành công! FileName:', fileData.fileName)
-        } else {
+          } else {
           console.error('Lỗi upload ảnh: Không tìm thấy fileName trong response data', fileData)
         }
       } else {
@@ -261,8 +260,6 @@ export const useNewsForm = (newsId?: number) => {
     isSubmitting.value = true
 
     try {
-      console.log('Form data before sending:', formData.value)
-
       let response
       if (newsId) {
         // Update mode
@@ -275,8 +272,6 @@ export const useNewsForm = (newsId?: number) => {
       }
 
       if (response.success) {
-        console.log(newsId ? 'Cập nhật tin tức thành công!' : 'Tạo tin tức thành công!')
-
         // Redirect to news list
         await navigateTo('/news')
       } else {

@@ -458,8 +458,7 @@ async function handleCreateOrder() {
     }
     // Print JSON payload before creating the order (as requested)
     try {
-      console.log('[CreatePOS] Request body:', body)
-      console.log('[CreatePOS] JSON:', JSON.stringify(body, null, 2))
+      // Order payload logging removed for production
     } catch {
       // ignore logging errors
     }

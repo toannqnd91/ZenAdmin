@@ -22,8 +22,6 @@ export default defineNuxtPlugin(async () => {
 
         if (isExpired && refreshTokenCookie.value) {
           // Token is expired, try to refresh
-          console.log('Access token expired, attempting refresh...')
-
           const { getApiEndpoints } = await import('@/utils/api')
           const endpoints = getApiEndpoints()
           const response = await fetch(endpoints.refreshToken, {
@@ -46,8 +44,7 @@ export default defineNuxtPlugin(async () => {
               if (data.data.refreshToken) {
                 refreshTokenCookie.value = data.data.refreshToken
               }
-              console.log('Token refreshed successfully')
-            } else {
+              } else {
               console.warn('Token refresh failed:', data.message)
               // Clear invalid tokens
               accessTokenCookie.value = null

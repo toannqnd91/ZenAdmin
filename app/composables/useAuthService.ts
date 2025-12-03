@@ -25,8 +25,6 @@ export const useAuthService = () => {
       // Use the correct format that worked: {email, password}
       const response = await authService.login(credentials)
 
-      console.log('Full API response:', response)
-
       // Check if response has accessToken (success) or success flag
       if ((response as any).success || (response as any).accessToken) {
         // Store tokens - check both data structure formats
@@ -40,8 +38,7 @@ export const useAuthService = () => {
             if (parts[1]) {
               const payload = JSON.parse(atob(parts[1]))
               user.value = payload
-              console.log('Decoded user from login token:', payload)
-            }
+              }
           } catch (error) {
             console.error('Failed to decode login token:', error)
             user.value = tokenData.user || { fullName: 'User' } // fallback
@@ -187,8 +184,6 @@ export const useAuthService = () => {
   function initialize() {
     const accessTokenCookie = useCookie('access_token')
 
-    console.log('Initialize - accessTokenCookie.value:', accessTokenCookie.value)
-
     if (accessTokenCookie.value) {
       // Decode token like useAuth stores it
       try {
@@ -204,8 +199,6 @@ export const useAuthService = () => {
         }
 
         accessToken.value = token
-        console.log('Initialize - final token:', token)
-
         // Decode JWT token to get user info
         if (token && typeof token === 'string' && token.includes('.')) {
           const parts = token.split('.')
@@ -213,8 +206,7 @@ export const useAuthService = () => {
             try {
               const payload = JSON.parse(atob(parts[1]))
               user.value = payload
-              console.log('Initialize - decoded user from JWT token:', payload)
-            } catch (jwtError) {
+              } catch (jwtError) {
               console.error('Failed to decode JWT payload:', jwtError)
             }
           }
@@ -224,8 +216,7 @@ export const useAuthService = () => {
         accessToken.value = accessTokenCookie.value
       }
     } else {
-      console.log('No access token cookie found')
-    }
+      }
   }
 
   // Auto-initialize on composable creation

@@ -214,12 +214,10 @@ const _useDashboard = () => {
   // Debug watchers in development
   if (import.meta.dev) {
     watch(menuData, (val) => {
-      console.log('Dashboard menu data:', val)
-    }, { immediate: true, deep: true })
+      }, { immediate: true, deep: true })
 
     watch(menuLoading, (val) => {
-      console.log('Dashboard menu loading:', val)
-    })
+      })
 
     watch(menuError, (val) => {
       if (val) {

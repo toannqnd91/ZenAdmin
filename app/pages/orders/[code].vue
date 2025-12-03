@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+// useRoute and useRouter are auto-imported in Nuxt
 import { ordersService } from '@/services/orders.service'
 import type { OrderDetail, OrderHistoryEvent, OrderDetailRawResponse, OrderHistoryListResponse } from '@/services/orders.service'
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
@@ -223,13 +223,6 @@ const paymentStatusDisplay = computed(() => {
 
 const isOrderPaid = computed(() => {
   const status = paymentStatusDisplay.value
-  console.log('Payment status check:', {
-    status,
-    isPaidCheck: isPaid(status),
-    isUnpaidCheck: isUnpaid(status),
-    paidAmount: detail.value?.payment?.paidAmount,
-    orderTotal: detail.value?.payment?.orderTotal
-  })
   // IMPORTANT: Check unpaid FIRST before checking paid
   // because "Unpaid" contains "paid" substring
   if (isUnpaid(status)) return false
@@ -240,7 +233,6 @@ const isOrderPaid = computed(() => {
   const orderTotal = detail.value?.payment?.orderTotal || 0
   // Consider paid only if paidAmount > 0 and >= orderTotal
   const result = paidAmount > 0 && paidAmount >= orderTotal
-  console.log('isOrderPaid result:', result)
   return result
 })
 function isPartialPayment(s: string) {
@@ -515,13 +507,10 @@ const onUnarchiveOrder = () => {
 const showCancelModal = ref(false)
 
 const onCancelOrder = () => {
-  console.log('Opening cancel modal...')
   showCancelModal.value = true
-  console.log('showCancelModal:', showCancelModal.value)
   // Force next tick to ensure reactivity
   nextTick(() => {
-    console.log('After nextTick, showCancelModal:', showCancelModal.value)
-  })
+    })
 }
 
 const handleCancelOrderConfirm = async (data: { refundOption: string, restockItems: boolean, reason: string }) => {

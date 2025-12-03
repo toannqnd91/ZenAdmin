@@ -261,7 +261,7 @@ export const useProductForm = () => {
       }
 
       // Log payload to console
-      console.log('Product payload:', JSON.stringify(payload, null, 2))
+      )
 
       // Write payload to file for user inspection (Node.js/SSR only)
       if (typeof window === 'undefined') {

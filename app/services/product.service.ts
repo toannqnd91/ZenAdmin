@@ -65,10 +65,10 @@ export interface UpdateProductCategoryRequest extends Partial<CreateProductCateg
 
 export class ProductService extends BaseService {
   /**
-   * Lấy danh sách kho
+   * Lấy danh sách kho (cached)
    */
   async getWarehouses() {
-    return this.get<WarehouseItem[]>(API_ENDPOINTS.WAREHOUSES)
+    return this.getCached<WarehouseItem[]>(API_ENDPOINTS.WAREHOUSES, {}, 5 * 60 * 1000) // Cache 5 minutes
   }
 
   /**
@@ -98,31 +98,43 @@ export class ProductService extends BaseService {
   }
 
   /**
-   * Get single product by ID
+   * Get single product by ID (cached)
    */
   async getProductById(id: number) {
-    return this.get<ProductItem>(API_ENDPOINTS.PRODUCT_BY_ID(id))
+    return this.getCached<ProductItem>(API_ENDPOINTS.PRODUCT_BY_ID(id), {}, 2 * 60 * 1000) // Cache 2 minutes
   }
 
   /**
    * Create new product
    */
   async createProduct(data: CreateProductRequest) {
-    return this.post<ProductItem>(API_ENDPOINTS.PRODUCT_CREATE, data)
+    const result = await this.post<ProductItem>(API_ENDPOINTS.PRODUCT_CREATE, data)
+    // Auto-invalidate product cache
+    this.invalidateCache('ProductService:GET:/products')
+    this.invalidateCache('ProductService:GET:/product/')
+    return result
   }
 
   /**
    * Update product
    */
   async updateProduct(data: UpdateProductRequest) {
-    return this.put<ProductItem>(API_ENDPOINTS.PRODUCT_UPDATE(data.id), data)
+    const result = await this.put<ProductItem>(API_ENDPOINTS.PRODUCT_UPDATE(data.id), data)
+    // Auto-invalidate product cache
+    this.invalidateCache('ProductService:GET:/products')
+    this.invalidateCache(`ProductService:GET:/product/${data.id}`)
+    return result
   }
 
   /**
    * Delete product
    */
   async deleteProduct(id: number) {
-    return this.delete(API_ENDPOINTS.PRODUCT_BY_ID(id))
+    const result = await this.delete(API_ENDPOINTS.PRODUCT_BY_ID(id))
+    // Auto-invalidate product cache
+    this.invalidateCache('ProductService:GET:/products')
+    this.invalidateCache(`ProductService:GET:/product/${id}`)
+    return result
   }
 
   /**
@@ -161,14 +173,14 @@ export class ProductService extends BaseService {
   }
 
   /**
-   * Get single product category by ID
+   * Get single product category by ID (cached)
    */
   async getCategoryById(id: number) {
     // Prefer singular detail endpoint if available, fallback to plural.
     try {
-      return await this.get<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORY_DETAIL_BY_ID(id))
+      return await this.getCached<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORY_DETAIL_BY_ID(id), {}, 5 * 60 * 1000)
     } catch {
-      return this.get<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORY_BY_ID(id))
+      return this.getCached<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORY_BY_ID(id), {}, 5 * 60 * 1000)
     }
   }
 
@@ -176,7 +188,10 @@ export class ProductService extends BaseService {
    * Create new product category
    */
   async createCategory(data: CreateProductCategoryRequest) {
-    return this.post<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORIES, data)
+    const result = await this.post<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORIES, data)
+    // Auto-invalidate category cache
+    this.invalidateCache('ProductService:GET:/product-categories')
+    return result
   }
 
   /**
@@ -184,14 +199,22 @@ export class ProductService extends BaseService {
    */
   async updateCategory(data: UpdateProductCategoryRequest) {
     // Use explicit update endpoint per backend spec
-    return this.put<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORY_UPDATE(data.id), data)
+    const result = await this.put<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORY_UPDATE(data.id), data)
+    // Auto-invalidate category cache
+    this.invalidateCache('ProductService:GET:/product-categories')
+    this.invalidateCache(`ProductService:GET:/product-category/${data.id}`)
+    return result
   }
 
   /**
    * Delete product category
    */
   async deleteCategory(id: number) {
-    return this.delete(API_ENDPOINTS.PRODUCT_CATEGORY_BY_ID(id))
+    const result = await this.delete(API_ENDPOINTS.PRODUCT_CATEGORY_BY_ID(id))
+    // Auto-invalidate category cache
+    this.invalidateCache('ProductService:GET:/product-categories')
+    this.invalidateCache(`ProductService:GET:/product-category/${id}`)
+    return result
   }
 
   /**

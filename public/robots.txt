@@ -1,0 +1,14 @@
+# Robots.txt for Zen Admin Dashboard
+
+User-agent: *
+Disallow: /api/
+Disallow: /admin/
+Disallow: /_nuxt/
+Disallow: /login
+Disallow: /logout
+
+# Allow public pages
+Allow: /
+
+# Sitemap
+Sitemap: https://yourdomain.com/sitemap.xml

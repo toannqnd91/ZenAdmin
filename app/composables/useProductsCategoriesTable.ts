@@ -51,8 +51,6 @@ export const useProductsCategoriesTable = async () => {
     }
   }
 
-  console.log('[useProductsCategoriesTable] Fetching with token:', accessToken.value ? 'Token available' : 'No token')
-
   // Fetch data
   const endpoints = getApiEndpoints()
   const { data, pending: loading, error } = await useApiFetch<ProductCategoriesApiResponse>(endpoints.productCategories, {
@@ -172,8 +170,7 @@ export const useProductsCategoriesTable = async () => {
 
   // Watch data changes
   watch(data, (val) => {
-    console.log('Products Categories API Response:', val)
-  }, { immediate: true, deep: true })
+    }, { immediate: true, deep: true })
 
   return {
     // State

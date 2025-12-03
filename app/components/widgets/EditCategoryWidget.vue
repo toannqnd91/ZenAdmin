@@ -27,8 +27,6 @@ const categories = ref([
 onMounted(async () => {
   try {
     isLoading.value = true
-    console.log('Loading category widget data for ID:', widgetId)
-
     // Mock data
     widgetName.value = 'Sample Category Widget'
     widgetZone.value = 'Sidebar'
@@ -59,7 +57,6 @@ async function onUpdate() {
       return
     }
 
-    console.log('Updating category widget:', widgetId)
     alert('Category widget updated successfully!')
     router.push('/widgets')
   } catch (error) {

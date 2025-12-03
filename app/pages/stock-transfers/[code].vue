@@ -219,7 +219,6 @@ function saveChanges() {
     code: detail.value.code,
     items: detail.value.items.map(it => ({ id: it.id, qty: it.qty }))
   }
-  console.log('Save inventory transfer changes', payload)
   // After successful save, refresh snapshot to current state
   originalItemsSnapshot.value = detail.value.items.map(it => ({ id: it.id, qty: it.qty }))
 }

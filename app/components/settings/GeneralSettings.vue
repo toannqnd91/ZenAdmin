@@ -44,7 +44,7 @@ const chooseFromDevice = () => fileInput.value?.click()
 
 const save = () => {
   // TODO: Call API to persist settings
-  console.log('Saved settings', JSON.parse(JSON.stringify(state)))
+  ))
 }
 </script>
 

@@ -2,15 +2,14 @@
 import type { NavigationMenuItem } from '@nuxt/ui'
 
 const { user: userInfo } = useAuthService()
+const { isOnline, isOffline, connectionQuality } = useOffline()
 const userRoles = computed(() => {
-  console.log('userInfo in default.vue:', userInfo.value)
   return userInfo.value?.role
 })
 
 // Print out the user's roles
 watch(userRoles, (val) => {
-  console.log('User roles:', val)
-}, { immediate: true })
+  }, { immediate: true })
 
 const route = useRoute()
 const toast = useToast()
@@ -91,6 +90,19 @@ provide('sidebarCollapsed', sidebarCollapsed)
 </script>
 
 <template>
+  <!-- Offline Banner -->
+  <div v-if="isOffline" class="bg-orange-500 text-white px-4 py-2 text-center text-sm font-medium fixed top-0 left-0 right-0 z-50">
+    ⚠️ Chế độ offline - Một số tính năng có thể bị hạn chế
+    <span v-if="connectionQuality !== 'unknown'" class="ml-2 opacity-75">
+      ({{ connectionQuality === 'poor' ? 'Kết nối yếu' : connectionQuality === 'slow' ? 'Kết nối chậm' : 'Kết nối tốt' }})
+    </span>
+  </div>
+  
+  <!-- Connection Status Info -->
+  <div v-if="isOnline && connectionQuality !== 'unknown'" class="bg-blue-500 text-white px-4 py-1 text-center text-xs fixed top-0 right-4 z-40 rounded-b-md">
+    📶 {{ connectionQuality === 'excellent' ? '4G' : connectionQuality === 'good' ? '3G' : connectionQuality === 'poor' ? '2G' : 'Chậm' }}
+  </div>
+
   <UDashboardGroup unit="rem">
     <UDashboardSidebar
       id="default"

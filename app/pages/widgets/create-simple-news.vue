@@ -49,10 +49,10 @@ const {
 } = await useNewsService()
 
 const allNews = computed<NewsItem[]>(() =>
-  filteredNews.value.map((item: NewsServiceItem) => ({
+  filteredNews.value.map((item: any) => ({
     id: item.id,
     name: item.title,
-    isPublished: !!item.published,
+    isPublished: !!item.isPublished,
     selected: false
   }))
 )

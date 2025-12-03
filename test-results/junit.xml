@@ -1,0 +1,633 @@
+<testsuites id="" name="" tests="50" failures="11" skipped="39" errors="0" time="47.869425">
+<testsuite name="example.spec.ts" timestamp="2025-12-03T15:45:04.473Z" hostname="chromium" tests="10" failures="9" skipped="1" time="65.847" errors="0">
+<testcase name="Authentication Flow › should display login page" classname="example.spec.ts" time="8.239">
+<failure message="example.spec.ts:9:3 should display login page" type="FAILURE">
+<![CDATA[  [chromium] › example.spec.ts:9:3 › Authentication Flow › should display login page ───────────────
+
+    Error: expect(page).toHaveTitle(expected) failed
+
+    Expected pattern: /Zen Dashboard/
+    Received string:  "Login"
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toHaveTitle" with timeout 5000ms
+        8 × unexpected value "Login"
+
+
+      11 |     
+      12 |     // Check page title
+    > 13 |     await expect(page).toHaveTitle(/Zen Dashboard/)
+         |                        ^
+      14 |     
+      15 |     // Check login form elements
+      16 |     await expect(page.getByLabel(/email/i)).toBeVisible()
+        at C:\Users\toann\Desktop\zen-admin\tests\e2e\example.spec.ts:13:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\example-Authentication-Flow-should-display-login-page-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\example-Authentication-Flow-should-display-login-page-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\example-Authentication-Flow-should-display-login-page-chromium\error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|example-Authentication-Flow-should-display-login-page-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|example-Authentication-Flow-should-display-login-page-chromium\video.webm]]
+
+[[ATTACHMENT|example-Authentication-Flow-should-display-login-page-chromium\error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Authentication Flow › should show validation errors for empty form" classname="example.spec.ts" time="23.142">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Authentication Flow › should login successfully with valid credentials" classname="example.spec.ts" time="3.271">
+<failure message="example.spec.ts:32:3 should login successfully with valid credentials" type="FAILURE">
+<![CDATA[  [chromium] › example.spec.ts:32:3 › Authentication Flow › should login successfully with valid credentials 
+
+    Error: locator.fill: Error: strict mode violation: getByLabel(/password/i) resolved to 2 elements:
+        1) <input id="v-0-2" type="password" name="password" autocomplete="off" aria-invalid="false" placeholder="Enter your password" class="w-full rounded-md border-0 placeholder:text-dimmed focus:outline-none disabled:cursor-not-allowed disabled:opacity-75 transition-colors px-2.5 py-1.5 text-sm gap-1.5 text-highlighted bg-default ring ring-inset ring-accented focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary pe-9"/> aka getByRole('textbox', { name: 'Password' })
+        2) <button type="button" aria-pressed="false" aria-controls="password" aria-label="Show password" class="rounded-md font-medium inline-flex items-center disabled:cursor-not-allowed aria-disabled:cursor-not-allowed disabled:opacity-75 aria-disabled:opacity-75 transition-colors text-xs gap-1.5 text-muted hover:text-default active:text-default disabled:text-muted aria-disabled:text-muted focus:outline-none focus-visible:ring-inset focus-visible:ring-2 focus-visible:ring-inverted p-1.5">…</button> aka getByRole('button', { name: 'Show password' })
+
+    Call log:
+      - waiting for getByLabel(/password/i)
+
+
+      35 |     // Fill login form
+      36 |     await page.getByLabel(/email/i).fill('test@example.com')
+    > 37 |     await page.getByLabel(/password/i).fill('password123')
+         |                                        ^
+      38 |     
+      39 |     // Submit form
+      40 |     await page.getByRole('button', { name: /login/i }).click()
+        at C:\Users\toann\Desktop\zen-admin\tests\e2e\example.spec.ts:37:40
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\example-Authentication-Flo-6a080-ully-with-valid-credentials-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\example-Authentication-Flo-6a080-ully-with-valid-credentials-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\example-Authentication-Flo-6a080-ully-with-valid-credentials-chromium\error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|example-Authentication-Flo-6a080-ully-with-valid-credentials-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|example-Authentication-Flo-6a080-ully-with-valid-credentials-chromium\video.webm]]
+
+[[ATTACHMENT|example-Authentication-Flo-6a080-ully-with-valid-credentials-chromium\error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Dashboard › should display dashboard widgets" classname="example.spec.ts" time="3.158">
+<failure message="example.spec.ts:57:3 should display dashboard widgets" type="FAILURE">
+<![CDATA[  [chromium] › example.spec.ts:57:3 › Dashboard › should display dashboard widgets ─────────────────
+
+    Error: locator.fill: Error: strict mode violation: getByLabel(/password/i) resolved to 2 elements:
+        1) <input id="v-0-2" type="password" name="password" autocomplete="off" aria-invalid="false" placeholder="Enter your password" class="w-full rounded-md border-0 placeholder:text-dimmed focus:outline-none disabled:cursor-not-allowed disabled:opacity-75 transition-colors px-2.5 py-1.5 text-sm gap-1.5 text-highlighted bg-default ring ring-inset ring-accented focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary pe-9"/> aka getByRole('textbox', { name: 'Password' })
+        2) <button type="button" aria-pressed="false" aria-controls="password" aria-label="Show password" class="rounded-md font-medium inline-flex items-center disabled:cursor-not-allowed aria-disabled:cursor-not-allowed disabled:opacity-75 aria-disabled:opacity-75 transition-colors text-xs gap-1.5 text-muted hover:text-default active:text-default disabled:text-muted aria-disabled:text-muted focus:outline-none focus-visible:ring-inset focus-visible:ring-2 focus-visible:ring-inverted p-1.5">…</button> aka getByRole('button', { name: 'Show password' })
+
+    Call log:
+      - waiting for getByLabel(/password/i)
+
+
+      50 |     await page.goto('/login')
+      51 |     await page.getByLabel(/email/i).fill('test@example.com')
+    > 52 |     await page.getByLabel(/password/i).fill('password123')
+         |                                        ^
+      53 |     await page.getByRole('button', { name: /login/i }).click()
+      54 |     await page.waitForURL(/\/dashboard/)
+      55 |   })
+        at C:\Users\toann\Desktop\zen-admin\tests\e2e\example.spec.ts:52:40
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\example-Dashboard-should-display-dashboard-widgets-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\example-Dashboard-should-display-dashboard-widgets-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\example-Dashboard-should-display-dashboard-widgets-chromium\error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|example-Dashboard-should-display-dashboard-widgets-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|example-Dashboard-should-display-dashboard-widgets-chromium\video.webm]]
+
+[[ATTACHMENT|example-Dashboard-should-display-dashboard-widgets-chromium\error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Dashboard › should navigate to products page" classname="example.spec.ts" time="3.255">
+<failure message="example.spec.ts:66:3 should navigate to products page" type="FAILURE">
+<![CDATA[  [chromium] › example.spec.ts:66:3 › Dashboard › should navigate to products page ─────────────────
+
+    Error: locator.fill: Error: strict mode violation: getByLabel(/password/i) resolved to 2 elements:
+        1) <input id="v-0-2" type="password" name="password" autocomplete="off" aria-invalid="false" placeholder="Enter your password" class="w-full rounded-md border-0 placeholder:text-dimmed focus:outline-none disabled:cursor-not-allowed disabled:opacity-75 transition-colors px-2.5 py-1.5 text-sm gap-1.5 text-highlighted bg-default ring ring-inset ring-accented focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary pe-9"/> aka getByRole('textbox', { name: 'Password' })
+        2) <button type="button" aria-pressed="false" aria-controls="password" aria-label="Show password" class="rounded-md font-medium inline-flex items-center disabled:cursor-not-allowed aria-disabled:cursor-not-allowed disabled:opacity-75 aria-disabled:opacity-75 transition-colors text-xs gap-1.5 text-muted hover:text-default active:text-default disabled:text-muted aria-disabled:text-muted focus:outline-none focus-visible:ring-inset focus-visible:ring-2 focus-visible:ring-inverted p-1.5">…</button> aka getByRole('button', { name: 'Show password' })
+
+    Call log:
+      - waiting for getByLabel(/password/i)
+
+
+      50 |     await page.goto('/login')
+      51 |     await page.getByLabel(/email/i).fill('test@example.com')
+    > 52 |     await page.getByLabel(/password/i).fill('password123')
+         |                                        ^
+      53 |     await page.getByRole('button', { name: /login/i }).click()
+      54 |     await page.waitForURL(/\/dashboard/)
+      55 |   })
+        at C:\Users\toann\Desktop\zen-admin\tests\e2e\example.spec.ts:52:40
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\example-Dashboard-should-navigate-to-products-page-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\example-Dashboard-should-navigate-to-products-page-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\example-Dashboard-should-navigate-to-products-page-chromium\error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|example-Dashboard-should-navigate-to-products-page-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|example-Dashboard-should-navigate-to-products-page-chromium\video.webm]]
+
+[[ATTACHMENT|example-Dashboard-should-navigate-to-products-page-chromium\error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Products Management › should display products list" classname="example.spec.ts" time="3.039">
+<failure message="example.spec.ts:87:3 should display products list" type="FAILURE">
+<![CDATA[  [chromium] › example.spec.ts:87:3 › Products Management › should display products list ───────────
+
+    Error: locator.fill: Error: strict mode violation: getByLabel(/password/i) resolved to 2 elements:
+        1) <input id="v-0-2" type="password" name="password" autocomplete="off" aria-invalid="false" placeholder="Enter your password" class="w-full rounded-md border-0 placeholder:text-dimmed focus:outline-none disabled:cursor-not-allowed disabled:opacity-75 transition-colors px-2.5 py-1.5 text-sm gap-1.5 text-highlighted bg-default ring ring-inset ring-accented focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary pe-9"/> aka getByRole('textbox', { name: 'Password' })
+        2) <button type="button" aria-pressed="false" aria-controls="password" aria-label="Show password" class="rounded-md font-medium inline-flex items-center disabled:cursor-not-allowed aria-disabled:cursor-not-allowed disabled:opacity-75 aria-disabled:opacity-75 transition-colors text-xs gap-1.5 text-muted hover:text-default active:text-default disabled:text-muted aria-disabled:text-muted focus:outline-none focus-visible:ring-inset focus-visible:ring-2 focus-visible:ring-inverted p-1.5">…</button> aka getByRole('button', { name: 'Show password' })
+
+    Call log:
+      - waiting for getByLabel(/password/i)
+
+
+      79 |     await page.goto('/login')
+      80 |     await page.getByLabel(/email/i).fill('test@example.com')
+    > 81 |     await page.getByLabel(/password/i).fill('password123')
+         |                                        ^
+      82 |     await page.getByRole('button', { name: /login/i }).click()
+      83 |     await page.waitForURL(/\/dashboard/)
+      84 |     await page.getByRole('link', { name: /products/i }).click()
+        at C:\Users\toann\Desktop\zen-admin\tests\e2e\example.spec.ts:81:40
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\example-Products-Management-should-display-products-list-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\example-Products-Management-should-display-products-list-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\example-Products-Management-should-display-products-list-chromium\error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|example-Products-Management-should-display-products-list-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|example-Products-Management-should-display-products-list-chromium\video.webm]]
+
+[[ATTACHMENT|example-Products-Management-should-display-products-list-chromium\error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Products Management › should open create product modal" classname="example.spec.ts" time="2.969">
+<failure message="example.spec.ts:96:3 should open create product modal" type="FAILURE">
+<![CDATA[  [chromium] › example.spec.ts:96:3 › Products Management › should open create product modal ───────
+
+    Error: locator.fill: Error: strict mode violation: getByLabel(/password/i) resolved to 2 elements:
+        1) <input id="v-0-2" type="password" name="password" autocomplete="off" aria-invalid="false" placeholder="Enter your password" class="w-full rounded-md border-0 placeholder:text-dimmed focus:outline-none disabled:cursor-not-allowed disabled:opacity-75 transition-colors px-2.5 py-1.5 text-sm gap-1.5 text-highlighted bg-default ring ring-inset ring-accented focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary pe-9"/> aka getByRole('textbox', { name: 'Password' })
+        2) <button type="button" aria-pressed="false" aria-controls="password" aria-label="Show password" class="rounded-md font-medium inline-flex items-center disabled:cursor-not-allowed aria-disabled:cursor-not-allowed disabled:opacity-75 aria-disabled:opacity-75 transition-colors text-xs gap-1.5 text-muted hover:text-default active:text-default disabled:text-muted aria-disabled:text-muted focus:outline-none focus-visible:ring-inset focus-visible:ring-2 focus-visible:ring-inverted p-1.5">…</button> aka getByRole('button', { name: 'Show password' })
+
+    Call log:
+      - waiting for getByLabel(/password/i)
+
+
+      79 |     await page.goto('/login')
+      80 |     await page.getByLabel(/email/i).fill('test@example.com')
+    > 81 |     await page.getByLabel(/password/i).fill('password123')
+         |                                        ^
+      82 |     await page.getByRole('button', { name: /login/i }).click()
+      83 |     await page.waitForURL(/\/dashboard/)
+      84 |     await page.getByRole('link', { name: /products/i }).click()
+        at C:\Users\toann\Desktop\zen-admin\tests\e2e\example.spec.ts:81:40
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\example-Products-Management-should-open-create-product-modal-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\example-Products-Management-should-open-create-product-modal-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\example-Products-Management-should-open-create-product-modal-chromium\error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|example-Products-Management-should-open-create-product-modal-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|example-Products-Management-should-open-create-product-modal-chromium\video.webm]]
+
+[[ATTACHMENT|example-Products-Management-should-open-create-product-modal-chromium\error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Products Management › should search products" classname="example.spec.ts" time="3.179">
+<failure message="example.spec.ts:105:3 should search products" type="FAILURE">
+<![CDATA[  [chromium] › example.spec.ts:105:3 › Products Management › should search products ────────────────
+
+    Error: locator.fill: Error: strict mode violation: getByLabel(/password/i) resolved to 2 elements:
+        1) <input id="v-0-2" type="password" name="password" autocomplete="off" aria-invalid="false" placeholder="Enter your password" class="w-full rounded-md border-0 placeholder:text-dimmed focus:outline-none disabled:cursor-not-allowed disabled:opacity-75 transition-colors px-2.5 py-1.5 text-sm gap-1.5 text-highlighted bg-default ring ring-inset ring-accented focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary pe-9"/> aka getByRole('textbox', { name: 'Password' })
+        2) <button type="button" aria-pressed="false" aria-controls="password" aria-label="Show password" class="rounded-md font-medium inline-flex items-center disabled:cursor-not-allowed aria-disabled:cursor-not-allowed disabled:opacity-75 aria-disabled:opacity-75 transition-colors text-xs gap-1.5 text-muted hover:text-default active:text-default disabled:text-muted aria-disabled:text-muted focus:outline-none focus-visible:ring-inset focus-visible:ring-2 focus-visible:ring-inverted p-1.5">…</button> aka getByRole('button', { name: 'Show password' })
+
+    Call log:
+      - waiting for getByLabel(/password/i)
+
+
+      79 |     await page.goto('/login')
+      80 |     await page.getByLabel(/email/i).fill('test@example.com')
+    > 81 |     await page.getByLabel(/password/i).fill('password123')
+         |                                        ^
+      82 |     await page.getByRole('button', { name: /login/i }).click()
+      83 |     await page.waitForURL(/\/dashboard/)
+      84 |     await page.getByRole('link', { name: /products/i }).click()
+        at C:\Users\toann\Desktop\zen-admin\tests\e2e\example.spec.ts:81:40
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\example-Products-Management-should-search-products-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\example-Products-Management-should-search-products-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\example-Products-Management-should-search-products-chromium\error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|example-Products-Management-should-search-products-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|example-Products-Management-should-search-products-chromium\video.webm]]
+
+[[ATTACHMENT|example-Products-Management-should-search-products-chromium\error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Performance › should load dashboard within 3 seconds" classname="example.spec.ts" time="6.869">
+<failure message="example.spec.ts:119:3 should load dashboard within 3 seconds" type="FAILURE">
+<![CDATA[  [chromium] › example.spec.ts:119:3 › Performance › should load dashboard within 3 seconds ────────
+
+    Error: locator.fill: Error: strict mode violation: getByLabel(/password/i) resolved to 2 elements:
+        1) <input id="v-0-2" type="password" name="password" autocomplete="off" aria-invalid="false" placeholder="Enter your password" class="w-full rounded-md border-0 placeholder:text-dimmed focus:outline-none disabled:cursor-not-allowed disabled:opacity-75 transition-colors px-2.5 py-1.5 text-sm gap-1.5 text-highlighted bg-default ring ring-inset ring-accented focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary pe-9"/> aka getByRole('textbox', { name: 'Password' })
+        2) <button type="button" aria-pressed="false" aria-controls="password" aria-label="Show password" class="rounded-md font-medium inline-flex items-center disabled:cursor-not-allowed aria-disabled:cursor-not-allowed disabled:opacity-75 aria-disabled:opacity-75 transition-colors text-xs gap-1.5 text-muted hover:text-default active:text-default disabled:text-muted aria-disabled:text-muted focus:outline-none focus-visible:ring-inset focus-visible:ring-2 focus-visible:ring-inverted p-1.5">…</button> aka getByRole('button', { name: 'Show password' })
+
+    Call log:
+      - waiting for getByLabel(/password/i)
+
+
+      122 |     await page.goto('/login')
+      123 |     await page.getByLabel(/email/i).fill('test@example.com')
+    > 124 |     await page.getByLabel(/password/i).fill('password123')
+          |                                        ^
+      125 |     await page.getByRole('button', { name: /login/i }).click()
+      126 |     await page.waitForURL(/\/dashboard/)
+      127 |     
+        at C:\Users\toann\Desktop\zen-admin\tests\e2e\example.spec.ts:124:40
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\example-Performance-should-load-dashboard-within-3-seconds-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\example-Performance-should-load-dashboard-within-3-seconds-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\example-Performance-should-load-dashboard-within-3-seconds-chromium\error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|example-Performance-should-load-dashboard-within-3-seconds-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|example-Performance-should-load-dashboard-within-3-seconds-chromium\video.webm]]
+
+[[ATTACHMENT|example-Performance-should-load-dashboard-within-3-seconds-chromium\error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Performance › should have good Core Web Vitals" classname="example.spec.ts" time="8.726">
+<failure message="example.spec.ts:133:3 should have good Core Web Vitals" type="FAILURE">
+<![CDATA[  [chromium] › example.spec.ts:133:3 › Performance › should have good Core Web Vitals ──────────────
+
+    Error: expect(received).toBeLessThan(expected)
+
+    Expected: < 1500
+    Received:   6876
+
+      147 |     expect(metrics.domContentLoaded).toBeLessThan(1000) // < 1s
+      148 |     expect(metrics.loadComplete).toBeLessThan(2000) // < 2s
+    > 149 |     expect(metrics.firstPaint).toBeLessThan(1500) // < 1.5s
+          |                                ^
+      150 |   })
+      151 | })
+      152 |
+        at C:\Users\toann\Desktop\zen-admin\tests\e2e\example.spec.ts:149:32
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\example-Performance-should-have-good-Core-Web-Vitals-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\example-Performance-should-have-good-Core-Web-Vitals-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\example-Performance-should-have-good-Core-Web-Vitals-chromium\error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|example-Performance-should-have-good-Core-Web-Vitals-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|example-Performance-should-have-good-Core-Web-Vitals-chromium\video.webm]]
+
+[[ATTACHMENT|example-Performance-should-have-good-Core-Web-Vitals-chromium\error-context.md]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="example.spec.ts" timestamp="2025-12-03T15:45:04.473Z" hostname="firefox" tests="10" failures="2" skipped="8" time="82.929" errors="0">
+<testcase name="Authentication Flow › should display login page" classname="example.spec.ts" time="9.47">
+<failure message="example.spec.ts:9:3 should display login page" type="FAILURE">
+<![CDATA[  [firefox] › example.spec.ts:9:3 › Authentication Flow › should display login page ────────────────
+
+    Error: expect(page).toHaveTitle(expected) failed
+
+    Expected pattern: /Zen Dashboard/
+    Received string:  "Starting Nuxt... | Nuxt"
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toHaveTitle" with timeout 5000ms
+        8 × unexpected value "Starting Nuxt... | Nuxt"
+
+
+      11 |     
+      12 |     // Check page title
+    > 13 |     await expect(page).toHaveTitle(/Zen Dashboard/)
+         |                        ^
+      14 |     
+      15 |     // Check login form elements
+      16 |     await expect(page.getByLabel(/email/i)).toBeVisible()
+        at C:\Users\toann\Desktop\zen-admin\tests\e2e\example.spec.ts:13:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\example-Authentication-Flow-should-display-login-page-firefox\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\example-Authentication-Flow-should-display-login-page-firefox\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\example-Authentication-Flow-should-display-login-page-firefox\error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|example-Authentication-Flow-should-display-login-page-firefox\test-failed-1.png]]
+
+[[ATTACHMENT|example-Authentication-Flow-should-display-login-page-firefox\video.webm]]
+
+[[ATTACHMENT|example-Authentication-Flow-should-display-login-page-firefox\error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Authentication Flow › should show validation errors for empty form" classname="example.spec.ts" time="16.543">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Authentication Flow › should login successfully with valid credentials" classname="example.spec.ts" time="15.8">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Dashboard › should display dashboard widgets" classname="example.spec.ts" time="7.412">
+<failure message="example.spec.ts:57:3 should display dashboard widgets" type="FAILURE">
+<![CDATA[  [firefox] › example.spec.ts:57:3 › Dashboard › should display dashboard widgets ──────────────────
+
+    Error: locator.fill: Error: strict mode violation: getByLabel(/password/i) resolved to 2 elements:
+        1) <input id="v-0-2" type="password" name="password" autocomplete="off" aria-invalid="false" placeholder="Enter your password" class="w-full rounded-md border-0 placeholder:text-dimmed focus:outline-none disabled:cursor-not-allowed disabled:opacity-75 transition-colors px-2.5 py-1.5 text-sm gap-1.5 text-highlighted bg-default ring ring-inset ring-accented focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary pe-9"/> aka getByRole('textbox', { name: 'Password' })
+        2) <button type="button" aria-pressed="false" aria-controls="password" aria-label="Show password" class="rounded-md font-medium inline-flex items-center disabled:cursor-not-allowed aria-disabled:cursor-not-allowed disabled:opacity-75 aria-disabled:opacity-75 transition-colors text-xs gap-1.5 text-muted hover:text-default active:text-default disabled:text-muted aria-disabled:text-muted focus:outline-none focus-visible:ring-inset focus-visible:ring-2 focus-visible:ring-inverted p-1.5">…</button> aka getByRole('button', { name: 'Show password' })
+
+    Call log:
+      - waiting for getByLabel(/password/i)
+
+
+      50 |     await page.goto('/login')
+      51 |     await page.getByLabel(/email/i).fill('test@example.com')
+    > 52 |     await page.getByLabel(/password/i).fill('password123')
+         |                                        ^
+      53 |     await page.getByRole('button', { name: /login/i }).click()
+      54 |     await page.waitForURL(/\/dashboard/)
+      55 |   })
+        at C:\Users\toann\Desktop\zen-admin\tests\e2e\example.spec.ts:52:40
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\example-Dashboard-should-display-dashboard-widgets-firefox\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\example-Dashboard-should-display-dashboard-widgets-firefox\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\example-Dashboard-should-display-dashboard-widgets-firefox\error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|example-Dashboard-should-display-dashboard-widgets-firefox\test-failed-1.png]]
+
+[[ATTACHMENT|example-Dashboard-should-display-dashboard-widgets-firefox\video.webm]]
+
+[[ATTACHMENT|example-Dashboard-should-display-dashboard-widgets-firefox\error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Dashboard › should navigate to products page" classname="example.spec.ts" time="11.609">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Products Management › should display products list" classname="example.spec.ts" time="7.845">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Products Management › should open create product modal" classname="example.spec.ts" time="6.643">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Products Management › should search products" classname="example.spec.ts" time="5.874">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Performance › should load dashboard within 3 seconds" classname="example.spec.ts" time="1.733">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Performance › should have good Core Web Vitals" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+<testsuite name="example.spec.ts" timestamp="2025-12-03T15:45:04.473Z" hostname="webkit" tests="10" failures="0" skipped="10" time="0" errors="0">
+<testcase name="Authentication Flow › should display login page" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Authentication Flow › should show validation errors for empty form" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Authentication Flow › should login successfully with valid credentials" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Dashboard › should display dashboard widgets" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Dashboard › should navigate to products page" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Products Management › should display products list" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Products Management › should open create product modal" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Products Management › should search products" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Performance › should load dashboard within 3 seconds" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Performance › should have good Core Web Vitals" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+<testsuite name="example.spec.ts" timestamp="2025-12-03T15:45:04.473Z" hostname="Mobile Chrome" tests="10" failures="0" skipped="10" time="0" errors="0">
+<testcase name="Authentication Flow › should display login page" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Authentication Flow › should show validation errors for empty form" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Authentication Flow › should login successfully with valid credentials" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Dashboard › should display dashboard widgets" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Dashboard › should navigate to products page" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Products Management › should display products list" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Products Management › should open create product modal" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Products Management › should search products" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Performance › should load dashboard within 3 seconds" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Performance › should have good Core Web Vitals" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+<testsuite name="example.spec.ts" timestamp="2025-12-03T15:45:04.473Z" hostname="Mobile Safari" tests="10" failures="0" skipped="10" time="0" errors="0">
+<testcase name="Authentication Flow › should display login page" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Authentication Flow › should show validation errors for empty form" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Authentication Flow › should login successfully with valid credentials" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Dashboard › should display dashboard widgets" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Dashboard › should navigate to products page" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Products Management › should display products list" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Products Management › should open create product modal" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Products Management › should search products" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Performance › should load dashboard within 3 seconds" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Performance › should have good Core Web Vitals" classname="example.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+</testsuites>

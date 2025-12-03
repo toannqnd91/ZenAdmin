@@ -8,7 +8,7 @@ const baseOrigin = process.env.NUXT_PUBLIC_BASE_ORIGIN?.replace(/\/$/, '')
 const derivedApi = baseOrigin ? `${baseOrigin}/api/v1` : ''
 
 export default defineNuxtConfig({
-  modules: ['@nuxt/eslint', '@nuxt/ui-pro', '@vueuse/nuxt'],
+  modules: ['@nuxt/eslint', '@nuxt/ui-pro', '@vueuse/nuxt', '@pinia/nuxt'],
 
   devtools: { enabled: false },
 
@@ -16,15 +16,36 @@ export default defineNuxtConfig({
 
   colorMode: { preference: 'light' },
 
+  app: {
+    head: {
+      htmlAttrs: { lang: 'vi' },
+      link: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'manifest', href: '/manifest.json' },
+        { rel: 'apple-touch-icon', href: '/icon-192.png' }
+      ],
+      meta: [
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        { name: 'theme-color', content: '#3b82f6' }
+      ]
+    }
+  },
+
   runtimeConfig: {
     public: {
-      // Final resolved API base (single source). Allows overriding fully or just base origin.
+      // API Configuration
       apiBaseUrl: (process.env.NUXT_PUBLIC_API_BASE_URL || derivedApi || '').replace(/\/$/, ''),
       imageBaseUrl: (process.env.NUXT_PUBLIC_IMAGE_BASE_URL || baseOrigin || '').replace(/\/$/, ''),
       appTitle: process.env.NUXT_PUBLIC_APP_TITLE || 'Zen Dashboard',
-      testUser: process.env.NUXT_PUBLIC_TEST_USER || 'tester@example.com'
+      testUser: process.env.NUXT_PUBLIC_TEST_USER || 'tester@example.com',
+      
+      // Analytics & Monitoring
+      gaId: process.env.NUXT_PUBLIC_GA_ID || '',
+      sentryDsn: process.env.NUXT_PUBLIC_SENTRY_DSN || '',
+      sentryEnvironment: process.env.NUXT_PUBLIC_SENTRY_ENVIRONMENT || 'production',
+      sentryTracesSampleRate: process.env.NUXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE || '0.1'
     },
-    // server-only secret (accessible on server via useRuntimeConfig().testPassword)
+    // server-only secret
     testPassword: process.env.NUXT_TEST_PASSWORD || 'Test@1234'
   },
 

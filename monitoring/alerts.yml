@@ -1,0 +1,106 @@
+# Prometheus Alert Rules for Zen Admin
+
+groups:
+  - name: frontend_alerts
+    interval: 30s
+    rules:
+      # High error rate
+      - alert: HighErrorRate
+        expr: rate(errors_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors/sec (threshold: 0.05)"
+
+      # Slow page load
+      - alert: SlowPageLoad
+        expr: histogram_quantile(0.95, rate(page_load_time_bucket[5m])) > 3000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow page load time"
+          description: "P95 page load time is {{ $value }}ms (threshold: 3000ms)"
+
+      # Poor Core Web Vitals
+      - alert: PoorLCP
+        expr: avg(lcp_value) > 2500
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Poor LCP score"
+          description: "Average LCP is {{ $value }}ms (threshold: 2500ms)"
+
+      - alert: PoorFID
+        expr: avg(fid_value) > 100
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Poor FID score"
+          description: "Average FID is {{ $value }}ms (threshold: 100ms)"
+
+      - alert: PoorCLS
+        expr: avg(cls_value) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Poor CLS score"
+          description: "Average CLS is {{ $value }} (threshold: 0.1)"
+
+      # Low cache hit rate
+      - alert: LowCacheHitRate
+        expr: (cache_hits / (cache_hits + cache_misses)) * 100 < 60
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Low cache hit rate"
+          description: "Cache hit rate is {{ $value }}% (threshold: 60%)"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: avg(memory_usage_mb) > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Average memory usage is {{ $value }}MB (threshold: 500MB)"
+
+      # API response time
+      - alert: SlowAPIResponse
+        expr: histogram_quantile(0.95, rate(api_request_duration_bucket[5m])) > 1000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow API response time"
+          description: "P95 API response time is {{ $value }}ms (threshold: 1000ms)"
+
+  - name: availability_alerts
+    interval: 1m
+    rules:
+      # Service down
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service is down"
+          description: "{{ $labels.job }} has been down for more than 2 minutes"
+
+      # High request rate (potential DDoS)
+      - alert: HighRequestRate
+        expr: rate(http_requests_total[1m]) > 1000
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request rate detected"
+          description: "Request rate is {{ $value }} req/sec (threshold: 1000)"
