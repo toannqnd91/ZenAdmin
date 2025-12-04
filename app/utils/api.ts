@@ -69,6 +69,8 @@ export const API_ENDPOINTS = {
   ORDER_HISTORY: (id: number | string) => `/Orders/${id}/history`,
   // Order payments
   ORDER_PAY: (orderCode: string) => `/orders/${orderCode}/pay`,
+  // Order cancellation
+  ORDER_CANCEL: (orderCode: string) => `/orders/${orderCode}/cancel`,
 
   // Sales returns
   SALES_RETURNS: '/sales-returns',

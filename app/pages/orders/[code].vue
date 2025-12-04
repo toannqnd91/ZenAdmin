@@ -2,7 +2,8 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 // useRoute and useRouter are auto-imported in Nuxt
 import { ordersService } from '@/services/orders.service'
-import type { OrderDetail, OrderHistoryEvent, OrderDetailRawResponse, OrderHistoryListResponse } from '@/services/orders.service'
+import type { OrderDetail, OrderHistoryEvent, OrderDetailRawResponse, OrderHistoryListResponse, CancelOrderRequest } from '@/services/orders.service'
+import { useOrderCancel } from '@/composables/useOrderCancel'
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
 import IconEdit from '@/components/icons/IconEdit.vue'
 import IconInvoicePending from '@/components/icons/IconInvoicePending.vue'
@@ -513,22 +514,29 @@ const onCancelOrder = () => {
     })
 }
 
-const handleCancelOrderConfirm = async (data: { refundOption: string, restockItems: boolean, reason: string }) => {
+const { cancelOrder, isLoading: isCancelling, error: cancelError } = useOrderCancel()
+
+const handleCancelOrderConfirm = async (request: CancelOrderRequest) => {
   const toast = useToast()
   try {
-    // TODO: Call API to cancel order
-    // await ordersService.cancelOrder(orderCodeParam.value, {
-    //   refundNow: data.refundOption === 'full',
-    //   restockItems: data.restockItems,
-    //   reason: data.reason
-    // })
+    const code = (orderCodeParam.value || '').replace(/^#/, '')
+    const result = await cancelOrder(code, request)
     
-    toast.add({ 
-      title: 'Đã hủy đơn hàng', 
-      description: 'Đơn hàng đã được hủy thành công', 
-      color: 'success' 
-    })
-    await fetchData()
+    if (result) {
+      toast.add({ 
+        title: 'Đã gửi yêu cầu hủy đơn hàng', 
+        description: `Đơn hàng ${result.orderCode} đang được xử lý hủy. Trạng thái: ${result.orderStatus}`, 
+        color: 'success' 
+      })
+      // Refresh order data
+      await fetchData()
+    } else {
+      toast.add({ 
+        title: 'Hủy đơn hàng thất bại', 
+        description: cancelError.value || 'Có lỗi xảy ra', 
+        color: 'error' 
+      })
+    }
   } catch (e) {
     const err = e as { message?: string }
     toast.add({ 
@@ -1348,6 +1356,7 @@ const dropdownItems = [
 
   <CancelOrderModal
     v-model="showCancelModal"
+    :order-code="orderCodeParam"
     :order-total="detail?.payment?.orderTotal"
     :is-paid="isOrderPaid"
     @confirm="handleCancelOrderConfirm"

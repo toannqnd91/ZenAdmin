@@ -98,10 +98,10 @@ export class ProductService extends BaseService {
   }
 
   /**
-   * Get single product by ID (cached)
+   * Get single product by ID (no cache - realtime)
    */
   async getProductById(id: number) {
-    return this.getCached<ProductItem>(API_ENDPOINTS.PRODUCT_BY_ID(id), {}, 2 * 60 * 1000) // Cache 2 minutes
+    return this.get<ProductItem>(API_ENDPOINTS.PRODUCT_BY_ID(id))
   }
 
   /**

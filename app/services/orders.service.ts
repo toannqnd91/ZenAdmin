@@ -95,6 +95,11 @@ export class OrdersService extends BaseService {
     // Backend expects numeric method per user's sample
     return this.post<PayOrderResponse | null>(API_ENDPOINTS.ORDER_PAY(orderCode), body)
   }
+
+  // Cancel order ---------------------------------------------------------
+  async cancelOrder(orderCode: string, body: CancelOrderRequest) {
+    return this.post<CancelOrderResponseData | null>(API_ENDPOINTS.ORDER_CANCEL(orderCode), body)
+  }
 }
 
 // Types for order grid endpoint
@@ -409,6 +414,46 @@ export interface PayOrderResponse {
   success: boolean
   message: string
   data: unknown
+}
+
+// Cancel order types -----------------------------------------------------
+export enum CancellationReasonEnum {
+  CustomerRequested = 1,      // Khách hàng yêu cầu
+  CreatedByMistake = 2,       // Tạo nhầm
+  OutOfStock = 3,             // Hết hàng
+  PriceChanged = 4,           // Thay đổi giá
+  PaymentIssue = 5,           // Vấn đề thanh toán
+  Other = 99                  // Lý do khác
+}
+
+export enum RefundOptionEnum {
+  RefundNow = 1,              // Hoàn tiền ngay
+  RefundLater = 2             // Hoàn trả sau
+}
+
+export interface CancelOrderRequest {
+  reason: CancellationReasonEnum
+  note: string
+  refundOption: RefundOptionEnum
+  restockAllItems: boolean
+  idempotencyKey: string | null
+  createdById: string | null
+}
+
+export interface CancelOrderResponseData {
+  message: string
+  orderCode: string
+  sagaId: string
+  correlationId: string
+  orderStatus: string
+  note: string
+}
+
+export interface CancelOrderResponse {
+  code: string
+  success: boolean
+  message: string
+  data: CancelOrderResponseData | null
 }
 
 export const ordersService = new OrdersService()

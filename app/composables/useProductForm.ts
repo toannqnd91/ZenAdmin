@@ -260,9 +260,6 @@ export const useProductForm = () => {
         delete payload.imageUrls
       }
 
-      // Log payload to console
-      )
-
       // Write payload to file for user inspection (Node.js/SSR only)
       if (typeof window === 'undefined') {
         const fs = await import('fs')

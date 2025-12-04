@@ -32,7 +32,7 @@ const onDrop = (e: DragEvent) => {
   const files = e.dataTransfer?.files
   if (files && files.length) {
     const file = files[0]
-    state.logo = URL.createObjectURL(file)
+    if (file) state.logo = URL.createObjectURL(file)
   }
 }
 const onChooseFile = (e: Event) => {
@@ -44,7 +44,6 @@ const chooseFromDevice = () => fileInput.value?.click()
 
 const save = () => {
   // TODO: Call API to persist settings
-  ))
 }
 </script>
 

@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import BaseModal from '@/components/base/BaseModal.vue'
+import { 
+  CancellationReasonEnum, 
+  RefundOptionEnum,
+  type CancelOrderRequest 
+} from '@/services/orders.service'
 
 interface Props {
   modelValue?: boolean
+  orderCode: string
   orderTotal?: number
   isPaid?: boolean // true if order has been paid
 }
@@ -16,7 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:modelValue': [boolean]
-  'confirm': [{ refundOption: string, restockItems: boolean, reason: string }]
+  'confirm': [CancelOrderRequest]
 }>()
 
 const open = ref<boolean>(props.modelValue)
@@ -26,22 +32,24 @@ watch(() => props.modelValue, (v) => {
 watch(open, v => emit('update:modelValue', v))
 
 // Form state
-const refundOption = ref('full')
+const refundOption = ref<RefundOptionEnum>(RefundOptionEnum.RefundNow)
 const restockItems = ref(true)
-const reason = ref('')
+const note = ref('')
 
 const cancelReasons = [
-  { label: 'Lý do khác', value: 'other' },
-  { label: 'Khách hàng yêu cầu', value: 'customer_request' },
-  { label: 'Hết hàng', value: 'out_of_stock' },
-  { label: 'Sai thông tin', value: 'wrong_info' },
-  { label: 'Trùng đơn', value: 'duplicate' }
+  { label: 'Khách hàng yêu cầu', value: CancellationReasonEnum.CustomerRequested },
+  { label: 'Tạo nhầm', value: CancellationReasonEnum.CreatedByMistake },
+  { label: 'Hết hàng', value: CancellationReasonEnum.OutOfStock },
+  { label: 'Thay đổi giá', value: CancellationReasonEnum.PriceChanged },
+  { label: 'Vấn đề thanh toán', value: CancellationReasonEnum.PaymentIssue },
+  { label: 'Lý do khác', value: CancellationReasonEnum.Other }
 ]
 
-const selectedReason = ref<{ label: string, value: string } | null>(null)
+const defaultReason = { label: 'Lý do khác', value: CancellationReasonEnum.Other }
+const selectedReason = ref<{ label: string, value: CancellationReasonEnum } | null>(defaultReason)
 
 async function fetchReasons() {
-  return Promise.resolve(cancelReasons)
+  return Promise.resolve([...cancelReasons])
 }
 
 function formatCurrency(v?: number | null) {
@@ -52,19 +60,23 @@ function formatCurrency(v?: number | null) {
 watch(open, (v) => {
   if (v) {
     // Reset form when opening
-    refundOption.value = 'full'
+    refundOption.value = RefundOptionEnum.RefundNow
     restockItems.value = true
-    reason.value = ''
-    selectedReason.value = null
+    note.value = ''
+    selectedReason.value = defaultReason
   }
 })
 
 function confirm() {
-  emit('confirm', {
+  const request: CancelOrderRequest = {
+    reason: selectedReason.value?.value ?? CancellationReasonEnum.Other,
+    note: note.value,
     refundOption: refundOption.value,
-    restockItems: restockItems.value,
-    reason: selectedReason.value?.value || ''
-  })
+    restockAllItems: restockItems.value,
+    idempotencyKey: null,
+    createdById: null
+  }
+  emit('confirm', request)
   open.value = false
 }
 </script>
@@ -87,16 +99,16 @@ function confirm() {
             <input
               v-model="refundOption"
               type="radio"
-              value="full"
+              :value="RefundOptionEnum.RefundNow"
               class="w-5 h-5 text-primary-600 border-gray-300 focus:ring-primary-500"
             >
-            <span class="text-sm text-gray-700">Hoàn tiền {{ formatCurrency(orderTotal) }}</span>
+            <span class="text-sm text-gray-700">Hoàn tiền ngay {{ formatCurrency(orderTotal) }}</span>
           </label>
           <label class="flex items-center gap-3 cursor-pointer">
             <input
               v-model="refundOption"
               type="radio"
-              value="later"
+              :value="RefundOptionEnum.RefundLater"
               class="w-5 h-5 text-primary-600 border-gray-300 focus:ring-primary-500"
             >
             <span class="text-sm text-gray-700">Hoàn trả sau</span>
@@ -123,12 +135,23 @@ function confirm() {
           v-model="selectedReason"
           :fetch-fn="fetchReasons"
           label-field="label"
-          :get-item-key="(item: any) => item.value as string"
-          placeholder="Lý do khác"
+          :get-item-key="(item: any) => item.value.toString()"
+          placeholder="Chọn lý do"
           :searchable="false"
           :clearable="false"
           :full-width="true"
           :append-to-body="true"
+        />
+      </div>
+
+      <!-- Note (optional) -->
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-gray-900">Ghi chú (tùy chọn)</label>
+        <textarea
+          v-model="note"
+          rows="3"
+          placeholder="Nhập ghi chú..."
+          class="w-full px-3 py-2 text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
       </div>
     </div>
