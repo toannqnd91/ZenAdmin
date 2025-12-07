@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // date-fns no longer needed after fixed period list
 import type { DropdownMenuItem } from '@nuxt/ui'
-import { ref, watch, computed, onMounted } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 // removed Period/Range type imports because they are not exported from ~/types in this workspace
 
 import { useAuthService } from '~/composables/useAuthService'
@@ -157,8 +157,16 @@ onMounted(() => {
   loadTopProducts()
   loadTopCustomers()
 })
+
+// Consolidated watch with debounce to prevent flickering
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
 watch([selectedOrderSource, selectedBranch, selectedPeriod], () => {
-  loadOverview()
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    loadOverview()
+    loadTopProducts()
+    loadTopCustomers()
+  }, 300)
 })
 
 // Helper: format numbers (simple locale for now)
@@ -241,16 +249,20 @@ async function loadTopProducts() {
   topProductsLoading.value = true
   try {
     const rangeKey = deriveRangeKey()
-    const res = await statisticsService.getTopProducts({
+    const params = {
       range: rangeKey,
       metric: topProductsMetric.value,
       limit: 10,
       sourceId: selectedOrderSource.value?.id ?? undefined,
       warehouseId: selectedBranch.value?.id ?? undefined
-    })
+    }
+    console.log('[Top Products] Loading with params:', params)
+    const res = await statisticsService.getTopProducts(params)
+    console.log('[Top Products] Response:', res)
     topProducts.value = Array.isArray(res.data) ? res.data : []
+    console.log('[Top Products] Items count:', topProducts.value.length)
   } catch (e) {
-    console.error('Failed to load top products', e)
+    console.error('[Top Products] Failed to load:', e)
     topProducts.value = []
   } finally {
     topProductsLoading.value = false
@@ -261,34 +273,33 @@ async function loadTopCustomers() {
   topCustomersLoading.value = true
   try {
     const rangeKey = deriveRangeKey()
-    const res = await statisticsService.getTopCustomers({
+    const params = {
       range: rangeKey,
       limit: 10,
       sourceId: selectedOrderSource.value?.id ?? undefined,
       warehouseId: selectedBranch.value?.id ?? undefined
-    })
+    }
+    console.log('[Top Customers] Loading with params:', params)
+    const res = await statisticsService.getTopCustomers(params)
+    console.log('[Top Customers] Response:', res)
     topCustomers.value = Array.isArray(res.data) ? res.data : []
+    console.log('[Top Customers] Items count:', topCustomers.value.length)
   } catch (e) {
-    console.error('Failed to load top customers', e)
+    console.error('[Top Customers] Failed to load:', e)
     topCustomers.value = []
   } finally {
     topCustomersLoading.value = false
   }
 }
 
-watch([topProductsMetric, selectedPeriod, selectedOrderSource, selectedBranch], () => {
+// Watch metric changes separately (no debounce needed for metric toggle)
+watch(topProductsMetric, () => {
   loadTopProducts()
-  loadTopCustomers()
 })
 
-// metric changes now handled directly via v-model like interaction (TopHorizontalBar emits update:metric which we can add later if needed)
-
-// Placeholder watcher: integrate filtering logic for dashboard stats when backend supports it
-watch(selectedOrderSource, (val) => {
-  // TODO: trigger dashboard data refresh with selected source filter
-  // Example: refreshOverview({ sourceId: val?.id ?? null })
-  // For now this is a no-op.
-  void val
+// Cleanup debounce timer on unmount
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer)
 })
 </script>
 
