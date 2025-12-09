@@ -100,6 +100,11 @@ export class OrdersService extends BaseService {
   async cancelOrder(orderCode: string, body: CancelOrderRequest) {
     return this.post<CancelOrderResponseData | null>(API_ENDPOINTS.ORDER_CANCEL(orderCode), body)
   }
+
+  // Calculate prices based on pricebook -----------------------------------
+  async calculatePrices(body: CalculatePricesRequest) {
+    return this.post<CalculatePricesResponse>(API_ENDPOINTS.ORDER_CALCULATE_PRICES, body)
+  }
 }
 
 // Types for order grid endpoint
@@ -182,7 +187,7 @@ export interface CreatePosOrderRequest {
   items: CreatePosOrderItemRequest[]
   paymentMethod: number // backend expects numeric enum per sample
   warehouseId: number | string
-  customerId: string | number
+  customerId: number | null
   deliveryAddress: {
     contactName: string
     phoneNumber: string
@@ -206,6 +211,8 @@ export interface CreatePosOrderRequest {
   orderNote: string | null
   couponCode: string | null
   applyCouponToEachItem: boolean
+  priceBookId: number | null // NEW: PriceBook Id selected for this order
+  employeeId: number | null // NEW: Employee responsible for this order
 }
 
 // Detail page types -------------------------------------------------------
@@ -454,6 +461,58 @@ export interface CancelOrderResponse {
   success: boolean
   message: string
   data: CancelOrderResponseData | null
+}
+
+// Calculate prices types -------------------------------------------------
+export interface CalculatePricesRequestItem {
+  productId: number | string
+  quantity: number
+  originalPrice: number
+}
+
+export interface CalculatePricesRequest {
+  priceBookId: number | string
+  customerId: number | string | null
+  items: CalculatePricesRequestItem[]
+}
+
+export interface CalculatePricesResponseItem {
+  productId: number
+  sku: string | null
+  quantity: number
+  originalPrice: number
+  priceBookPrice: number
+  discountAmount: number
+  discountPercent: number
+  finalPrice: number
+  lineTotal: number
+}
+
+export interface CalculatePricesSummary {
+  subtotal: number
+  totalDiscount: number
+  couponDiscount: number
+  total: number
+}
+
+export interface CalculatePricesData {
+  success: boolean
+  data: {
+    priceBookId: number
+    priceBookName: string | null
+    couponCode: string | null
+    isCouponValid: boolean
+    couponValidationMessage: string | null
+    items: CalculatePricesResponseItem[]
+    summary: CalculatePricesSummary
+  }
+}
+
+export interface CalculatePricesResponse {
+  code: string
+  success: boolean
+  message: string
+  data: CalculatePricesData | null
 }
 
 export const ordersService = new OrdersService()

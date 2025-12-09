@@ -10,6 +10,9 @@ interface Supplier {
   phone?: string | null
   email?: string | null
   address?: string | null
+  debtBalance: number
+  totalPurchase: number
+  netPurchase: number
   // Backend may return either status/statusEnum or legacy isPublished
   status?: string | null
   statusEnum?: number | null
@@ -39,18 +42,23 @@ const columns: TableColumn[] = [
     class: 'py-3 text-left font-medium'
   },
   {
+    key: 'address',
+    label: 'Địa chỉ',
+    class: 'py-3 text-left font-medium'
+  },
+  {
     key: 'phone',
     label: 'Số điện thoại',
     class: 'py-3 text-left font-medium'
   },
   {
-    key: 'email',
-    label: 'Email',
+    key: 'debtBalance',
+    label: 'Nợ cần trả',
     class: 'py-3 text-left font-medium'
   },
   {
-    key: 'address',
-    label: 'Địa chỉ',
+    key: 'totalPurchase',
+    label: 'Tổng mua',
     class: 'py-3 text-left font-medium'
   },
   {
@@ -61,12 +69,13 @@ const columns: TableColumn[] = [
 ]
 
 // Column widths align with the columns order above
-// Name (wider for readability), Phone (compact), Email (medium), Address (flex), Status (compact)
+// Note: BaseTable automatically handles checkbox column width, don't include it here
 const colWidths = [
-  '320px', // Tên nhà cung cấp
+  '', // Tên nhà cung cấp
+  '200px', // Địa chỉ
   '140px', // Số điện thoại
-  '240px', // Email
-  '', // Địa chỉ (auto)
+  '140px', // Nợ cần trả
+  '150px', // Tổng mua
   '120px' // Trạng thái
 ]
 
@@ -112,6 +121,10 @@ const tableData = computed(() =>
     const st = mapStatus(s)
 
     const safe = (v: unknown) => v == null || v === '' ? '-' : v
+    const formatCurrency = (val: number) => {
+      if (val === 0) return '0₫'
+      return val.toLocaleString('vi-VN') + '₫'
+    }
 
     return {
       id: s.id,
@@ -119,7 +132,10 @@ const tableData = computed(() =>
       slug: s.slug,
       name: safe(s.name) as string,
       phone: safe(s.phone) as string,
-      email: safe(s.email) as string,
+      debtBalance: formatCurrency(s.debtBalance),
+      debtBalanceRaw: s.debtBalance,
+      totalPurchase: formatCurrency(s.totalPurchase),
+      totalPurchaseRaw: s.totalPurchase,
       address: safe(s.address) as string,
       statusLabel: st.label,
       statusClass: st.cls
@@ -146,6 +162,33 @@ const tableData = computed(() =>
     @update:pagination="emit('update:pagination', $event)"
     @delete="ids => emit('delete', ids)"
   >
+    <template #column-name="{ item }">
+      {{ item.name }}
+    </template>
+
+    <template #column-phone="{ item }">
+      {{ item.phone }}
+    </template>
+
+    <template #column-debtBalance="{ item }">
+      <span 
+        :class="(item as any).debtBalanceRaw < 0 ? 'text-green-600' : (item as any).debtBalanceRaw > 0 ? 'text-red-600' : 'text-gray-600'"
+        class="font-medium"
+      >
+        {{ (item as any).debtBalance }}
+      </span>
+    </template>
+
+    <template #column-totalPurchase="{ item }">
+      <span class="text-gray-900 font-medium">
+        {{ (item as any).totalPurchase }}
+      </span>
+    </template>
+
+    <template #column-address="{ item }">
+      {{ item.address }}
+    </template>
+
     <template #column-isPublished="{ item }">
       <span :class="item.statusClass">
         {{ item.statusLabel }}

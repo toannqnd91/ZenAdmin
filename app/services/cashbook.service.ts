@@ -1,13 +1,34 @@
 import { BaseService } from './base.service'
 import { API_ENDPOINTS } from '@/utils/api'
 
+// Enums matching backend
+export enum CashBookTypeEnum {
+  All = 0,
+  Thu = 1,
+  Chi = 2
+}
+
+export enum CashBookMethodEnum {
+  All = 0,
+  TienMat = 1,
+  ChuyenKhoan = 2,
+  ViDienTu = 3
+}
+
+export enum CashBookStatusEnum {
+  All = 0,
+  Paid = 1,
+  Canceled = 2,
+  Draft = 3
+}
+
 // Cash Book (Sổ quỹ) API types
 export interface CashBookFilterRequest {
   from: string // ISO datetime
   to: string // ISO datetime
-  type: number // CashBookTypeEnum (1=Thu,2=Chi,0=All)
-  method: number // CashBookMethodEnum (1=Tiền mặt,2=Chuyển khoản,3=Ví điện tử,0=All)
-  status: number // CashBookStatusEnum (1=Đã hạch toán/hoàn thành?,2=Hủy,0=All) - based on description
+  type: number // CashBookTypeEnum (0=All, 1=Thu, 2=Chi)
+  method: number // CashBookMethodEnum (0=All, 1=TienMat, 2=ChuyenKhoan, 3=ViDienTu)
+  status: number // CashBookStatusEnum (0=All, 1=Paid, 2=Canceled, 3=Draft)
   page: number
   pageSize: number
   keyword: string
@@ -79,6 +100,21 @@ export interface CashBookApiResponse {
   data: CashBookResponseData
 }
 
+// Create Cash Book Request (based on API spec)
+export interface CreateCashBookRequest {
+  type: number // CashBookTypeEnum: 1=Thu, 2=Chi
+  method: number // CashBookMethodEnum: 1=TienMat, 2=ChuyenKhoan, 3=ViDienTu
+  amount: number
+  description: string
+  category: string
+  partyType: string
+  partyId: string
+  discountCodeId?: string
+  referenceId?: string
+  ordCode?: string
+  affectBusinessResult: boolean
+}
+
 class CashBookService extends BaseService {
   // In-memory cache by serialized request body
   private _cache: Record<string, { data: CashBookResponseData, checksum: string, ts: number }> = {}
@@ -138,6 +174,10 @@ class CashBookService extends BaseService {
     // Endpoint pattern: /cashbook/{code}
     const endpoint = API_ENDPOINTS.CASHBOOK_DETAIL(code)
     return this.get<unknown>(endpoint)
+  }
+
+  async createCashBook(request: CreateCashBookRequest) {
+    return this.post<any>(API_ENDPOINTS.CASHBOOK_CREATE, request)
   }
 }
 

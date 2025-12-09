@@ -14,14 +14,16 @@ export interface CustomerItem {
   isActive: boolean
   createdAt: string
   createdBy: string
-  totalOrders: number | null
-  totalSpent: number | null
-  debt: number | null
+  currentReceivables: number
+  totalSales: number
+  netSales: number
   // Legacy fields for backward compatibility
+  totalOrders?: number | null
+  totalSpent?: number | null
+  debt?: number | null
   fullName?: string
   avatarUrl?: string | null
   receivable?: number
-  totalSales?: number
   totalNetSales?: number
 }
 

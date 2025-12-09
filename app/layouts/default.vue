@@ -99,9 +99,9 @@ provide('sidebarCollapsed', sidebarCollapsed)
   </div>
   
   <!-- Connection Status Info -->
-  <div v-if="isOnline && connectionQuality !== 'unknown'" class="bg-blue-500 text-white px-4 py-1 text-center text-xs fixed top-0 right-4 z-40 rounded-b-md">
+  <!-- <div v-if="isOnline && connectionQuality !== 'unknown'" class="bg-blue-500 text-white px-4 py-1 text-center text-xs fixed top-0 right-4 z-40 rounded-b-md">
     📶 {{ connectionQuality === 'excellent' ? '4G' : connectionQuality === 'good' ? '3G' : connectionQuality === 'poor' ? '2G' : 'Chậm' }}
-  </div>
+  </div> -->
 
   <UDashboardGroup unit="rem">
     <UDashboardSidebar

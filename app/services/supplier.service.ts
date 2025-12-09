@@ -3,6 +3,7 @@ import { API_ENDPOINTS } from '@/utils/api'
 
 export interface Supplier {
   id: number
+  code: string
   name: string
   slug: string
   phone?: string | null
@@ -10,6 +11,11 @@ export interface Supplier {
   address?: string | null
   isPublished: boolean
   isDeleted: boolean
+  debtBalance: number
+  totalPurchase: number
+  netPurchase: number
+  status?: string | null
+  statusEnum?: number
 }
 
 export interface SuppliersApiResponse {
@@ -121,6 +127,18 @@ export class SupplierService extends BaseService {
    */
   async updateSupplier(id: number | string, payload: UpdateSupplierRequest) {
     return this.put(API_ENDPOINTS.SUPPLIER_BY_ID(id), payload)
+  }
+
+  /**
+   * Import suppliers from Excel file
+   */
+  async importExcel(file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    return this.request<{ jobId: string }>(API_ENDPOINTS.SUPPLIER_IMPORT_EXCEL, {
+      method: 'POST',
+      body: formData
+    })
   }
 }
 

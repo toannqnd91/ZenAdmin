@@ -62,9 +62,9 @@ const mappedRows = computed(() => data.value.map(c => ({
   name: c.name,
   code: c.customerCode,
   phone: c.phoneNumber,
-  receivable: c.debt ?? 0,
-  totalSale: c.totalSpent ?? 0,
-  netSale: c.totalSpent ?? 0,
+  receivable: c.currentReceivables ?? 0,
+  totalSale: c.totalSales ?? 0,
+  netSale: c.netSales ?? 0,
   avatar: { src: '/no-avatar.jpg', alt: c.name }
 })))
 

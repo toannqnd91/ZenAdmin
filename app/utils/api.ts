@@ -67,6 +67,8 @@ export const API_ENDPOINTS = {
   ORDER_CREATE_POS: '/Orders/create-pos-order',
   ORDER_BY_ID: (id: number | string) => `/Orders/${id}`,
   ORDER_HISTORY: (id: number | string) => `/Orders/${id}/history`,
+  // Order calculate prices based on pricebook
+  ORDER_CALCULATE_PRICES: '/Orders/calculate-prices',
   // Order payments
   ORDER_PAY: (orderCode: string) => `/orders/${orderCode}/pay`,
   // Order cancellation
@@ -102,6 +104,7 @@ export const API_ENDPOINTS = {
   SUPPLIERS: '/Supplier/grid',
   SUPPLIER_BY_ID: (id: number | string) => `/Supplier/${id}`,
   SUPPLIER_CREATE: '/Supplier',
+  SUPPLIER_IMPORT_EXCEL: '/Supplier/import-excel',
   // Customer endpoints
   CUSTOMERS_GRID: '/customers/grid-v2',
   // External customer endpoints
@@ -139,6 +142,7 @@ export const API_ENDPOINTS = {
   // Cash Book endpoints
   CASHBOOK_FILTER: '/cashbook/filter',
   CASHBOOK_DETAIL: (code: string) => `/cashbook/${code}`,
+  CASHBOOK_CREATE: '/cashbook',
 
   // Location endpoints
   LOCATIONS_PROVINCES: '/locations/provinces',

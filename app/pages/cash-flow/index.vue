@@ -316,20 +316,35 @@ const totalPayments = computed(() => totalOut.value)
 const cashBalance = computed(() => methodBreakdown.value.find(m => m.method === 1)?.net ?? closingBalance.value)
 const bankBalance = computed(() => methodBreakdown.value.find(m => m.method === 2)?.net ?? 0)
 
+// Handler for slip creation
+function handleCreateSlip(type: 'receipt' | 'payment' | 'transfer') {
+  console.log('Creating slip type:', type)
+  if (type === 'receipt') {
+    router.push('/cash-flow/create-receipt')
+  } else if (type === 'payment') {
+    router.push('/cash-flow/create-payment')
+  } else if (type === 'transfer') {
+    router.push('/cash-flow/internal-transfer')
+  }
+}
+
 // Create slip dropdown items
 const createSlipItems = [
   [
     {
       label: 'Tạo phiếu thu',
-      click: () => { /* TODO: open create receipt modal */ }
+      icon: 'i-lucide-arrow-down-to-line',
+      onSelect: () => handleCreateSlip('receipt')
     },
     {
       label: 'Tạo phiếu chi',
-      click: () => { /* TODO: open create payment modal */ }
+      icon: 'i-lucide-arrow-up-from-line',
+      onSelect: () => handleCreateSlip('payment')
     },
     {
       label: 'Chuyển quỹ nội bộ',
-      click: () => { /* TODO: open internal transfer modal */ }
+      icon: 'i-lucide-repeat',
+      onSelect: () => handleCreateSlip('transfer')
     }
   ]
 ]

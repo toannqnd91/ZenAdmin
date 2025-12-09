@@ -25,6 +25,7 @@ interface ProductSearchItem {
   normalizedName?: string
   thumbnailImageUrl?: string | null
   costPrice?: number
+  priceMin?: number | null
   stockQuantity?: number
 }
 interface TransferProduct extends ProductSearchItem {
@@ -215,8 +216,8 @@ function addProductToTransfer(item: ProductSearchItem) {
   transferProducts.value.push({
     ...item,
     quantity: 1,
-    unitPrice: item.costPrice || 0,
-    total: item.costPrice || 0
+    unitPrice: item.costPrice || item.priceMin || 0,
+    total: item.costPrice || item.priceMin || 0
   })
   closeProductSearch()
 }
@@ -665,7 +666,7 @@ function saveDraft() {
                           </div>
                           <div class="text-right min-w-[100px]">
                             <div class="font-semibold">
-                              {{ item.costPrice ? item.costPrice.toLocaleString() + '₫' : '---' }}
+                              {{ (item.costPrice || item.priceMin) ? (item.costPrice || item.priceMin || 0).toLocaleString() + '₫' : '---' }}
                             </div>
                             <div class="text-xs text-gray-500">
                               Có thể bán: <span class="text-primary-600 font-medium">{{ item.stockQuantity }}</span>

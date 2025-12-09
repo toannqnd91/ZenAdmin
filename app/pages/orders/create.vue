@@ -16,7 +16,10 @@ import { productService } from '@/services/product.service'
 import { warehouseService } from '@/services/warehouse.service'
 import { orderSourceService } from '@/services/order-source.service'
 import type { OrderSourceItem } from '@/services/order-source.service'
-import { customersService, ordersService } from '@/services'
+import { customersService, ordersService, priceBooksService } from '@/services'
+import { employeesService } from '@/services/employees.service'
+import type { EmployeeItem } from '@/services/employees.service'
+import type { CreatePosOrderRequest, CalculatePricesResponseItem } from '@/services/orders.service'
 import { useAuthService } from '@/composables/useAuthService'
 import type { ShippingMethod } from '@/types/shipping'
 import { SHIPPING_METHOD_OPTIONS, ShippingMethodLabels } from '@/types/shipping'
@@ -104,18 +107,24 @@ const orderProducts = ref<OrderProduct[]>([])
 const showAddProductModal = ref(false)
 type NewProductLike = { id: string | number, name: string, price?: number, sku?: string, thumbnailImageUrl?: string | null, [key: string]: unknown }
 
-function handleProductCreated(evt: unknown) {
+async function handleProductCreated(evt: unknown) {
   const newProduct = evt as NewProductLike
   showAddProductModal.value = false
   if (newProduct && newProduct.id) {
-    orderProducts.value.unshift({
+    const product = {
       ...newProduct,
       quantity: 1,
       unitPrice: newProduct.price || 0,
       baseUnitPrice: newProduct.price || 0,
       total: newProduct.price || 0,
       discountReason: undefined
-    })
+    }
+    orderProducts.value.unshift(product)
+    
+    // Apply pricebook if selected
+    if (selectedPriceBook.value) {
+      await applyPriceBookToProduct(product)
+    }
   }
   try {
     fetchProducts(true)
@@ -127,6 +136,7 @@ function handleProductCreated(evt: unknown) {
 const selectedCustomer = ref<GenericItem | null>(null)
 const selectedSource = ref<GenericItem | null>(null)
 const selectedBranch = ref<GenericItem | null>(null)
+const selectedPriceBook = ref<GenericItem | null>(null)
 
 // Global warehouse binding for header switcher
 const { selectedWarehouse: globalWarehouse, setWarehouse } = useGlobalWarehouse()
@@ -177,6 +187,7 @@ watch(selectedBranch, (b: { id?: number | string | null, name?: string } | null)
 // Staff in charge (current logged-in user)
 const { user: authUser, getProfile } = useAuthService()
 const staffInCharge = ref<string>('')
+const selectedStaff = ref<GenericItem | null>(null)
 interface AuthUserLike {
   display_name?: string
   fullName?: string
@@ -188,6 +199,154 @@ function extractDisplayName(u: unknown): string {
     if (o.fullName) return o.fullName
   }
   return ''
+}
+
+// Sync selectedStaff with staffInCharge
+watch(selectedStaff, (staff) => {
+  if (staff && typeof staff === 'object') {
+    const emp = staff as { fullName?: string, code?: string }
+    staffInCharge.value = emp.fullName || emp.code || ''
+  } else {
+    staffInCharge.value = ''
+  }
+})
+
+// Calculate prices when pricebook is selected
+const calculatingPrices = ref(false)
+async function calculatePricesWithPriceBook() {
+  if (!selectedPriceBook.value || orderProducts.value.length === 0) return
+  
+  const priceBookId = (selectedPriceBook.value as { id?: string | number }).id
+  if (!priceBookId) return
+  
+  calculatingPrices.value = true
+  try {
+    const payload = {
+      priceBookId,
+      customerId: (selectedCustomer.value as { id?: string | number })?.id || null,
+      items: orderProducts.value.map(p => ({
+        productId: p.id,
+        quantity: p.quantity,
+        originalPrice: p.baseUnitPrice ?? p.unitPrice
+      }))
+    }
+    
+    const res = await ordersService.calculatePrices(payload)
+    
+    // Update product prices based on response
+    const innerData = res?.data?.data as { 
+      items?: CalculatePricesResponseItem[], 
+      summary?: { subtotal: number, totalDiscount: number, couponDiscount: number, total: number } 
+    } | undefined
+    
+    if (innerData?.items && Array.isArray(innerData.items)) {
+      const priceMap = new Map<string, CalculatePricesResponseItem>(
+        innerData.items.map((item: CalculatePricesResponseItem) => [String(item.productId), item])
+      )
+      
+      orderProducts.value.forEach(prod => {
+        const priceData = priceMap.get(String(prod.id))
+        if (priceData) {
+          // Store original price if not already set
+          if (prod.baseUnitPrice === undefined) {
+            prod.baseUnitPrice = priceData.originalPrice
+          }
+          // Update with final price from pricebook
+          prod.unitPrice = priceData.finalPrice
+          prod.total = priceData.lineTotal
+        }
+      })
+      
+      const summary = innerData.summary
+      toast.add({ 
+        title: 'Đã áp dụng bảng giá', 
+        description: `Tổng giảm: ${summary?.totalDiscount?.toLocaleString() || 0}₫`,
+        color: 'success' 
+      })
+    }
+  } catch (err) {
+    console.error('Calculate prices failed:', err)
+    toast.add({ title: 'Không thể tính giá từ bảng giá', color: 'error' })
+  } finally {
+    calculatingPrices.value = false
+  }
+}
+
+watch(selectedPriceBook, (newVal, oldVal) => {
+  if (orderProducts.value.length === 0) return
+  
+  // If pricebook is cleared, reset all products to original price
+  if (!newVal && oldVal) {
+    resetProductPrices()
+  }
+  // If pricebook is selected or changed, calculate new prices
+  else if (newVal && newVal !== oldVal) {
+    calculatePricesWithPriceBook()
+  }
+})
+
+// Reset all products to their original prices
+function resetProductPrices() {
+  orderProducts.value.forEach(prod => {
+    if (prod.baseUnitPrice !== undefined) {
+      prod.unitPrice = prod.baseUnitPrice
+      prod.total = prod.quantity * prod.baseUnitPrice
+    }
+  })
+  toast.add({ 
+    title: 'Đã xóa bảng giá', 
+    description: 'Giá sản phẩm đã được khôi phục về giá gốc',
+    color: 'info' 
+  })
+}
+
+// Apply pricebook to a single product
+async function applyPriceBookToProduct(product: OrderProduct) {
+  if (!selectedPriceBook.value) return
+  
+  const priceBookId = (selectedPriceBook.value as { id?: string | number }).id
+  if (!priceBookId) return
+  
+  try {
+    const payload = {
+      priceBookId,
+      customerId: (selectedCustomer.value as { id?: string | number })?.id || null,
+      items: [{
+        productId: product.id,
+        quantity: product.quantity,
+        originalPrice: product.baseUnitPrice ?? product.unitPrice
+      }]
+    }
+    
+    console.log('Calculate prices payload:', payload)
+    const res = await ordersService.calculatePrices(payload)
+    console.log('Calculate prices response:', res)
+    
+    const innerData = res?.data?.data as { items?: CalculatePricesResponseItem[], summary?: any } | undefined
+    
+    if (innerData?.items && innerData.items.length > 0) {
+      const priceData = innerData.items[0]
+      console.log('Price data for product:', priceData)
+      if (priceData) {
+        // Store original price if not already set
+        if (product.baseUnitPrice === undefined || product.baseUnitPrice === product.unitPrice) {
+          product.baseUnitPrice = priceData.originalPrice
+        }
+        // Update with final price from pricebook
+        product.unitPrice = priceData.finalPrice
+        product.total = priceData.lineTotal
+        
+        // Force reactivity update by finding and replacing the product
+        const key = String(product.sku || product.id)
+        const idx = orderProducts.value.findIndex(p => String(p.sku || p.id) === key)
+        if (idx !== -1) {
+          orderProducts.value[idx] = { ...product }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to apply pricebook to product:', err)
+  }
 }
 
 // Add customer modal state (new component based)
@@ -303,6 +462,8 @@ watch(shippingMethod, (m) => {
 const sourcesCache = ref<OrderSourceItem[] | null>(null)
 const branchesRawCache = ref<WarehouseLike[] | null>(null)
 const customersCache = ref<CustomerRecord[] | null>(null)
+const priceBooksCache = ref<Array<Record<string, unknown>> | null>(null)
+const employeesCache = ref<EmployeeItem[] | null>(null)
 
 // Order note & coupon
 const orderNote = ref('')
@@ -344,43 +505,6 @@ function mapDeliveryOptionToApi(opt: string): DeliveryOption {
 const creatingOrder = ref(false)
 const createError = ref<string | null>(null)
 const toast = useToast()
-// Define CreatePosOrderRequest (approximation based on payload usage)
-interface CreatePosOrderItem {
-  productId: string | number
-  quantity: number
-  productPrice: number
-  discountAmount: number
-  unitPrice: number
-}
-interface CreatePosOrderRequest {
-  items: CreatePosOrderItem[]
-  paymentMethod: number
-  warehouseId: string | number
-  customerId: number | null
-  deliveryAddress: {
-    contactName: string
-    phoneNumber: string
-    email: string | null
-    addressLine1: string
-    addressLine2: string
-    countryId: string
-    stateOrProvinceId: number | null
-    districtId: number | null
-    city: string
-    zipCode: string
-  }
-  payLater: boolean
-  paidAmount: number
-  orderSourceId: string | number | null
-  shippingFeeAmount: number
-  discountAmount: number
-  deliveryOption: DeliveryOption
-  shippingMethod: ShippingMethod | null
-  expectedDeliveryDate: string | null
-  orderNote: string | null
-  couponCode: string | null
-  applyCouponToEachItem: boolean
-}
 interface SimpleSelectable {
   id?: number | string
   name?: string
@@ -431,18 +555,18 @@ async function handleCreateOrder() {
       items: itemsPayload,
       paymentMethod: mapPaymentMethodToApi(paymentMethod.value),
       warehouseId: (selectedBranch.value as SimpleSelectable)?.id ?? 0,
-      customerId: Number.isFinite(customerIdNum) ? (customerIdNum as number) : null,
+      customerId: Number.isFinite(customerIdNum) && customerIdNum! > 0 ? customerIdNum : null,
       deliveryAddress: {
         contactName: (selectedCustomer.value as SimpleSelectable)?.name || '',
         phoneNumber: (selectedCustomer.value as SimpleSelectable)?.phone || '',
         email: null,
-        addressLine1: '',
-        addressLine2: '',
+        addressLine1: null,
+        addressLine2: null,
         countryId: 'VN',
         stateOrProvinceId: null,
         districtId: null,
-        city: '',
-        zipCode: ''
+        city: null,
+        zipCode: null
       },
       payLater: paymentStatus.value === 'later',
       paidAmount,
@@ -454,7 +578,9 @@ async function handleCreateOrder() {
       expectedDeliveryDate: parseDDMMYYYYToISO(scheduledDate.value),
       orderNote: orderNote.value || null,
       couponCode: couponCode.value || null,
-      applyCouponToEachItem: true
+      applyCouponToEachItem: true,
+      priceBookId: selectedPriceBook.value ? Number((selectedPriceBook.value as { id?: string | number }).id) || null : null,
+      employeeId: selectedStaff.value ? Number((selectedStaff.value as { id?: string | number }).id) || null : null
     }
     // Print JSON payload before creating the order (as requested)
     try {
@@ -632,6 +758,45 @@ async function fetchBranches(search: string): Promise<GenericItem[]> {
     return []
   }
 }
+async function fetchPriceBooks(search: string): Promise<GenericItem[]> {
+  try {
+    if (!priceBooksCache.value) {
+      const res = await priceBooksService.getByType()
+      priceBooksCache.value = Array.isArray(res?.data) ? res.data : []
+    }
+    const list = priceBooksCache.value || []
+    const q = (search || '').toLowerCase()
+    return q
+      ? list.filter(pb => {
+          const name = String(pb.name || '').toLowerCase()
+          const code = String(pb.code || '').toLowerCase()
+          return name.includes(q) || code.includes(q)
+        })
+      : list
+  } catch {
+    return []
+  }
+}
+async function fetchEmployees(search: string): Promise<GenericItem[]> {
+  try {
+    if (!employeesCache.value) {
+      const res = await employeesService.getEmployees()
+      employeesCache.value = Array.isArray(res?.data) ? res.data : []
+    }
+    const list = employeesCache.value || []
+    const q = (search || '').toLowerCase()
+    return q
+      ? list.filter(emp => {
+          const name = String(emp.fullName || '').toLowerCase()
+          const code = String(emp.code || '').toLowerCase()
+          const email = String(emp.email || '').toLowerCase()
+          return name.includes(q) || code.includes(q) || email.includes(q)
+        })
+      : list
+  } catch {
+    return []
+  }
+}
 
 // Products
 async function fetchProducts(reset = false) {
@@ -666,7 +831,7 @@ async function fetchProducts(reset = false) {
 }
 
 // Product operations (restored)
-function addProduct(item: ProductSearchItem) {
+async function addProduct(item: ProductSearchItem) {
   const key = String(item.sku || item.id)
   const found = orderProducts.value.find(p => String(p.sku || p.id) === key)
   if (found) {
@@ -675,14 +840,25 @@ function addProduct(item: ProductSearchItem) {
     closeProductSearch()
     return
   }
-  orderProducts.value.unshift({
+  
+  const newProduct = {
     ...item,
     quantity: 1,
     unitPrice: item.price || 0,
     baseUnitPrice: item.price || 0,
     total: item.price || 0,
     discountReason: undefined
-  })
+  }
+  
+  orderProducts.value.unshift(newProduct)
+  
+  // Apply pricebook if selected
+  if (selectedPriceBook.value) {
+    console.log('Applying pricebook to new product:', newProduct.id, selectedPriceBook.value)
+    await applyPriceBookToProduct(newProduct)
+    console.log('Price after pricebook:', newProduct.unitPrice, newProduct.total)
+  }
+  
   closeProductSearch()
 }
 function removeProduct(idx: number) {
@@ -1919,6 +2095,31 @@ function onAddCustomer() {
                 </p>
               </div>
             </UPageCard>
+            <UPageCard id="pricebook-card" variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>Bảng giá</BaseCardHeader>
+              <div class="-mx-6 px-6">
+                <RemoteSearchSelect
+                  v-model="selectedPriceBook"
+                  :fetch-fn="fetchPriceBooks"
+                  placeholder="Chọn bảng giá"
+                  :clearable="true"
+                  :debounce="300"
+                  label-field="name"
+                  :full-width="true"
+                  :class="'w-full'"
+                >
+                  <template #item="{ item }">
+                    <div class="flex items-center gap-2 w-full">
+                      <span class="text-sm text-gray-900 font-medium">{{ item.name }}</span>
+                      <span v-if="item.code" class="ml-auto text-[11px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{{ item.code }}</span>
+                    </div>
+                  </template>
+                </RemoteSearchSelect>
+                <p class="mt-3 text-[11px] leading-4 text-gray-500">
+                  Bảng giá sẽ áp dụng cho các sản phẩm trong đơn hàng
+                </p>
+              </div>
+            </UPageCard>
             <UPageCard id="customer-card" variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>Khách hàng</BaseCardHeader>
               <div class="-mx-6 px-6">
@@ -2027,15 +2228,28 @@ function onAddCustomer() {
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-gray-600 mb-1">Nhân viên phụ trách</label>
-                  <input
-                    v-model="staffInCharge"
-                    type="text"
-                    readonly
-                    class="w-full h-9 px-3 rounded-md border border-gray-300 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="Tên nhân viên"
+                  <RemoteSearchSelect
+                    v-model="selectedStaff"
+                    :fetch-fn="fetchEmployees"
+                    placeholder="Chọn nhân viên"
+                    :clearable="true"
+                    :debounce="300"
+                    label-field="fullName"
+                    :full-width="true"
+                    :class="'w-full'"
                   >
+                    <template #item="{ item }">
+                      <div class="flex items-center gap-2 w-full">
+                        <div class="flex-1">
+                          <div class="text-sm text-gray-900 font-medium">{{ item.fullName }}</div>
+                          <div class="text-xs text-gray-500">{{ item.email }} · {{ item.code }}</div>
+                        </div>
+                        <span v-if="item.department" class="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{{ item.department }}</span>
+                      </div>
+                    </template>
+                  </RemoteSearchSelect>
                 </div>
-                <div>
+                <!-- <div>
                   <label class="text-xs font-medium text-gray-600 mb-1 flex items-center gap-1">Ngày đặt hàng <svg
                     class="w-3 h-3"
                     viewBox="0 0 24 24"
@@ -2056,8 +2270,8 @@ function onAddCustomer() {
                   <p class="text-[11px] text-gray-500 mt-1">
                     Giá trị chỉ ghi nhận khi tạo đơn hàng
                   </p>
-                </div>
-                <div>
+                </div> -->
+                <!-- <div>
                   <label class="block text-xs font-medium text-gray-600 mb-1">Ngày hẹn giao</label>
                   <div class="relative">
                     <input
@@ -2069,7 +2283,7 @@ function onAddCustomer() {
                     >
                     <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
                   </div>
-                </div>
+                </div> -->
                 <div>
                   <label class="block text-xs font-medium text-gray-600 mb-1">Tag</label>
                   <input
