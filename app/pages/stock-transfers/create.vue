@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick, computed, watch } from 'vue'
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
 import BaseDropdownSelect from '@/components/BaseDropdownSelect.vue'
@@ -49,6 +49,12 @@ const tagArray = computed(() => tagsInput.value.split(/[;,\n]/).map(t => t.trim(
 const splitLine = ref(false)
 const showProductSearch = ref(false)
 const productList = ref<any[]>([])
+const productSearchTerm = ref('')
+const loadingMoreProducts = ref(false)
+const perPage = 15
+const productPage = ref(0)
+const totalProductPages = ref<number | null>(null)
+let productSearchDebounce: number | null = null
 // List of products added to transfer
 const transferProducts = ref<any[]>([])
 // Add product from popup to transfer list
@@ -85,7 +91,7 @@ const mainProductInputRef = ref<HTMLInputElement | null>(null)
 function openProductSearch() {
   if (showProductSearch.value) return
   showProductSearch.value = true
-  fetchProducts()
+  fetchProducts(true)
   nextTick(() => {
     document.addEventListener('mousedown', handleClickOutside)
     mainProductInputRef.value?.focus()
@@ -104,20 +110,34 @@ function handleClickOutside(e: MouseEvent) {
   }
 }
 
-async function fetchProducts() {
-  loadingProducts.value = true
+async function fetchProducts(reset = false) {
+  if (reset) {
+    productList.value = []
+    productPage.value = 0
+    totalProductPages.value = null
+  }
+  const isInitial = reset || productList.value.length === 0
+  if (isInitial) loadingProducts.value = true
+  else loadingMoreProducts.value = true
   try {
     const res = await productService.getProducts({
-      search: null,
+      search: productSearchTerm.value.trim() || undefined,
       hasOptions: false,
-      pagination: { start: 0, number: 15 },
+      pagination: { start: productPage.value * perPage, number: perPage },
       sort: { field: 'Id', reverse: true }
     })
-    productList.value = res?.data?.items || []
+    const items = res?.data?.items || []
+    const pages = typeof res?.data?.numberOfPages === 'number' ? res.data.numberOfPages : null
+    if (pages !== null) totalProductPages.value = pages
+    if (reset || isInitial) productList.value = items
+    else productList.value.push(...items)
+    if (items.length > 0) productPage.value += 1
   } catch {
-    productList.value = []
+    if (reset || isInitial) productList.value = []
+  } finally {
+    loadingProducts.value = false
+    loadingMoreProducts.value = false
   }
-  loadingProducts.value = false
 }
 
 function handleF3(e: KeyboardEvent) {
@@ -125,6 +145,29 @@ function handleF3(e: KeyboardEvent) {
     openProductSearch()
   }
 }
+
+function canLoadMoreProducts() {
+  if (loadingProducts.value || loadingMoreProducts.value) return false
+  if (totalProductPages.value === null) return true
+  return productPage.value < totalProductPages.value
+}
+
+function onProductListScroll() {
+  const el = productSearchPopupRef.value
+  if (!el) return
+  const threshold = 120 // px from bottom
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - threshold) {
+    if (canLoadMoreProducts()) fetchProducts(false)
+  }
+}
+
+watch(productSearchTerm, () => {
+  if (!showProductSearch.value) return
+  if (productSearchDebounce) window.clearTimeout(productSearchDebounce)
+  productSearchDebounce = window.setTimeout(() => {
+    fetchProducts(true)
+  }, 350)
+})
 
 onMounted(() => {
   window.addEventListener('keydown', handleF3)
@@ -264,6 +307,7 @@ async function submitTransfer() {
                 <div class="flex-1">
                   <input
                     ref="mainProductInputRef"
+                    v-model="productSearchTerm"
                     type="text"
                     class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="Tìm theo tên, SKU, quét mã vạch... (F3)"
@@ -273,6 +317,7 @@ async function submitTransfer() {
                     v-if="showProductSearch"
                     ref="productSearchPopupRef"
                     class="absolute left-0 top-full z-50 w-full bg-white rounded-lg shadow-lg mt-2 max-h-[420px] overflow-auto border border-gray-200"
+                    @scroll="onProductListScroll"
                   >
                     <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600" @click="closeProductSearch">&times;</button>
                     <div class="flex items-center gap-2 mb-2 p-4 pb-0">
@@ -297,6 +342,9 @@ async function submitTransfer() {
                             <div class="text-xs text-gray-500">Stock: <span class="text-primary-600 font-medium">{{ item.stockQuantity }}</span></div>
                           </div>
                         </div>
+                      </div>
+                      <div v-if="loadingMoreProducts" class="px-4 pb-3 text-center text-gray-500 text-sm">
+                        Đang tải thêm...
                       </div>
                     </div>
                   </div>

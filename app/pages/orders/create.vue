@@ -75,6 +75,8 @@ interface OrderProduct extends ProductSearchItem {
   appliedDiscountInput?: number | null
   usedNewPrice?: boolean
   discountReason?: string
+  note?: string
+  giftQuantity?: number
 }
 type GenericItem = Record<string, unknown>
 interface WarehouseLike {
@@ -373,9 +375,21 @@ function formatDateDDMMYYYY(date: Date) {
   const y = date.getFullYear()
   return `${d}/${m}/${y}`
 }
+function formatDateTimeDDMMYYYY(date: Date) {
+  // Convert to UTC+7 (Vietnam timezone)
+  const utc = date.getTime() + (date.getTimezoneOffset() * 60000)
+  const vietnamTime = new Date(utc + (7 * 3600000))
+  
+  const d = vietnamTime.getDate().toString().padStart(2, '0')
+  const m = (vietnamTime.getMonth() + 1).toString().padStart(2, '0')
+  const y = vietnamTime.getFullYear()
+  const h = vietnamTime.getHours().toString().padStart(2, '0')
+  const min = vietnamTime.getMinutes().toString().padStart(2, '0')
+  return `${d}/${m}/${y} ${h}:${min}`
+}
 const orderDate = ref(formatDateDDMMYYYY(new Date()))
-// Keep both dates as dd/MM/yyyy strings and normalize on blur
-const scheduledDate = ref<string>('') // dd/MM/yyyy (optional)
+// Keep both dates as dd/MM/yyyy HH:mm strings and normalize on blur
+const scheduledDate = ref<string>(formatDateTimeDDMMYYYY(new Date())) // dd/MM/yyyy (optional)
 function normalizeDDMMYYYY(s: string): string {
   if (!s) return ''
   const sep = s.includes('-') ? '-' : s.includes('.') ? '.' : '/'
@@ -520,6 +534,17 @@ function parseDDMMYYYYToISO(s: string): string | null {
   if (isNaN(d.getTime())) return null
   return d.toISOString()
 }
+function parseDateTimeDDMMYYYYToISO(s: string): string | null {
+  if (!s) return null
+  // Format: dd/MM/yyyy HH:mm
+  const match = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})\s+(\d{1,2}):(\d{1,2})$/)
+  if (!match) return null
+  const [, dd, mm, yyyy, hh, min] = match.map(p => Number(p))
+  if (!dd || !mm || !yyyy || hh == null || min == null) return null
+  const d = new Date(yyyy, mm - 1, dd, hh, min, 0)
+  if (isNaN(d.getTime())) return null
+  return d.toISOString()
+}
 
 async function handleCreateOrder() {
   if (!selectedBranch.value) {
@@ -580,7 +605,8 @@ async function handleCreateOrder() {
       couponCode: couponCode.value || null,
       applyCouponToEachItem: true,
       priceBookId: selectedPriceBook.value ? Number((selectedPriceBook.value as { id?: string | number }).id) || null : null,
-      employeeId: selectedStaff.value ? Number((selectedStaff.value as { id?: string | number }).id) || null : null
+      employeeId: selectedStaff.value ? Number((selectedStaff.value as { id?: string | number }).id) || null : null,
+      orderCreatedAt: parseDateTimeDDMMYYYYToISO(scheduledDate.value)
     }
     // Print JSON payload before creating the order (as requested)
     try {
@@ -870,6 +896,20 @@ function updateProductTotal(idx: number) {
   if (!Number.isFinite(prod.quantity) || prod.quantity < 1) prod.quantity = 1
   prod.total = prod.quantity * prod.unitPrice
 }
+function incrementGiftQuantity(idx: number) {
+  const prod = orderProducts.value[idx]
+  if (!prod) return
+  const current = Number(prod.giftQuantity || 0)
+  const next = current + 1
+  prod.giftQuantity = next
+}
+function decrementGiftQuantity(idx: number) {
+  const prod = orderProducts.value[idx]
+  if (!prod) return
+  const current = Number(prod.giftQuantity || 0)
+  const next = current - 1
+  prod.giftQuantity = next > 0 ? next : 0
+}
 function getBaseUnitPrice(prod: OrderProduct) {
   return typeof prod.baseUnitPrice === 'number' ? prod.baseUnitPrice : prod.unitPrice
 }
@@ -931,6 +971,30 @@ function openPriceModal(idx: number) {
 
 function closePriceModal() {
   showPriceModal.value = false
+}
+
+// Note modal logic
+const showNoteModal = ref(false)
+const noteModalIdx = ref<number | null>(null)
+const noteInput = ref('')
+function openNoteModal(idx: number) {
+  noteModalIdx.value = idx
+  const prod = orderProducts.value[idx]
+  if (!prod) return
+  noteInput.value = prod.note || ''
+  showNoteModal.value = true
+}
+function closeNoteModal() {
+  showNoteModal.value = false
+  noteInput.value = ''
+  noteModalIdx.value = null
+}
+function saveNote() {
+  if (noteModalIdx.value === null) return
+  const prod = orderProducts.value[noteModalIdx.value]
+  if (!prod) return
+  prod.note = noteInput.value.trim() || undefined
+  closeNoteModal()
 }
 
 const pricePreview = computed(() => {
@@ -1178,7 +1242,7 @@ interface DraftState {
   shippingOption: ShippingOption
   shippingMethod: string | null
   orderDate: string
-  scheduledDate: string
+  // scheduledDate removed - always use current time
   orderNote: string
   couponCode: string
   splitLine: boolean
@@ -1199,7 +1263,7 @@ function serializeDraft(): DraftState {
     shippingOption: shippingOption.value,
     shippingMethod: shippingMethod.value,
     orderDate: orderDate.value,
-    scheduledDate: scheduledDate.value,
+    // scheduledDate removed - always use current time
     orderNote: orderNote.value,
     couponCode: couponCode.value,
     splitLine: splitLine.value
@@ -1239,7 +1303,7 @@ function restoreDraft() {
       shippingMethod.value = parsed.shippingMethod as ShippingMethod
     }
     if (typeof parsed.orderDate === 'string') orderDate.value = parsed.orderDate
-    if (typeof parsed.scheduledDate === 'string') scheduledDate.value = parsed.scheduledDate
+    // scheduledDate removed - always use current time
     if (typeof parsed.orderNote === 'string') orderNote.value = parsed.orderNote
     if (typeof parsed.couponCode === 'string') couponCode.value = parsed.couponCode
     if (typeof parsed.splitLine === 'boolean') splitLine.value = parsed.splitLine
@@ -1598,7 +1662,7 @@ function onAddCustomer() {
                             class="w-10 h-10 rounded bg-gray-100 object-cover"
                             @error="e => { const t = e.target as HTMLImageElement; if (t) t.src = '/no-image.svg' }"
                           >
-                          <div>
+                          <div class="flex-1">
                             <div class="font-medium">
                               {{ prod.name }}
                             </div>
@@ -1608,7 +1672,21 @@ function onAddCustomer() {
                             <div class="text-xs text-gray-500">
                               SKU: {{ prod.sku || '-' }}
                             </div>
+                            <div v-if="prod.note" class="text-xs text-gray-600 mt-1 italic">
+                              Ghi chú: {{ prod.note }}
+                            </div>
                           </div>
+                          <button
+                            type="button"
+                            class="text-gray-400 hover:text-gray-600 p-1"
+                            @click="openNoteModal(idx)"
+                            title="Thêm ghi chú"
+                          >
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                          </button>
                         </div>
                       </td>
                       <td class="px-6 py-2">
@@ -1636,10 +1714,41 @@ function onAddCustomer() {
                               Lý do: {{ prod.discountReason }}
                             </div>
                           </div>
+                          <div
+                            v-if="prod.giftQuantity && prod.giftQuantity > 0"
+                            class="text-[11px] text-emerald-600 mt-0.5"
+                          >
+                            Tặng kèm: {{ prod.giftQuantity }}
+                          </div>
                         </div>
                       </td>
                       <td class="px-6 py-2">
-                        <span class="font-semibold">{{ (prod.quantity * prod.unitPrice).toLocaleString() }}₫</span>
+                        <div class="flex flex-col items-end gap-1">
+                          <div class="flex items-center gap-3">
+                            <span class="font-semibold">
+                              {{ (prod.quantity * prod.unitPrice).toLocaleString() }}₫
+                            </span>
+                            <div class="flex items-center gap-1">
+                              <button
+                                type="button"
+                                class="h-7 w-7 flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 text-sm hover:bg-gray-50"
+                                @click="decrementGiftQuantity(idx)"
+                                :disabled="!prod.giftQuantity || prod.giftQuantity <= 0"
+                                title="Giảm số lượng tặng kèm"
+                              >
+                                -
+                              </button>
+                              <button
+                                type="button"
+                                class="h-7 w-7 flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 text-sm hover:bg-gray-50"
+                                @click="incrementGiftQuantity(idx)"
+                                title="Thêm số lượng tặng kèm"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </td>
                       <td class="px-6 py-2">
                         <button class="text-error hover:underline" @click="removeProduct(idx)">
@@ -2271,19 +2380,45 @@ function onAddCustomer() {
                     Giá trị chỉ ghi nhận khi tạo đơn hàng
                   </p>
                 </div> -->
-                <!-- <div>
-                  <label class="block text-xs font-medium text-gray-600 mb-1">Ngày hẹn giao</label>
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Thời gian tạo đơn</label>
                   <div class="relative">
                     <input
                       v-model="scheduledDate"
                       type="text"
-                      placeholder="dd/MM/yyyy"
-                      class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      @blur="scheduledDate = normalizeDDMMYYYY(scheduledDate)"
+                      placeholder="dd/MM/yyyy HH:mm"
+                      readonly
+                      class="w-full h-9 px-3 pr-10 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
+                      @click="$refs.datetimeInput?.showPicker?.()"
                     >
-                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      ref="datetimeInput"
+                      type="datetime-local"
+                      class="absolute inset-0 opacity-0 cursor-pointer pointer-events-none"
+                      @change="(e) => {
+                        const target = e.target as HTMLInputElement
+                        if (target.value) {
+                          const dt = new Date(target.value)
+                          scheduledDate = formatDateTimeDDMMYYYY(dt)
+                        }
+                      }"
+                    >
+                    <svg
+                      class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
                   </div>
-                </div> -->
+                </div>
                 <div>
                   <label class="block text-xs font-medium text-gray-600 mb-1">Tag</label>
                   <input
@@ -2331,6 +2466,52 @@ function onAddCustomer() {
   </UDashboardPanel>
   <AddCustomerModal v-model="showAddCustomerModal" @saved="onCustomerAdded" />
   <AddProductModal v-model:open="showAddProductModal" @created="handleProductCreated($event)" />
+  
+  <!-- Note Modal -->
+  <Teleport to="body">
+    <div
+      v-if="showNoteModal"
+      class="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 p-4"
+      @click.self="closeNoteModal"
+    >
+      <div
+        class="bg-white w-full max-w-md rounded-lg shadow-lg"
+        @click.stop
+      >
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-semibold">Ghi chú sản phẩm</h3>
+          <button class="text-gray-400 hover:text-gray-600 text-2xl leading-none" @click="closeNoteModal">
+            &times;
+          </button>
+        </div>
+        <div class="px-6 py-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Nội dung ghi chú</label>
+          <textarea
+            v-model="noteInput"
+            rows="4"
+            class="w-full px-3 py-2 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+            placeholder="Nhập ghi chú cho sản phẩm..."
+          />
+        </div>
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
+          <button
+            type="button"
+            class="h-9 px-4 rounded-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50"
+            @click="closeNoteModal"
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            class="h-9 px-5 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700"
+            @click="saveNote"
+          >
+            Lưu
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>

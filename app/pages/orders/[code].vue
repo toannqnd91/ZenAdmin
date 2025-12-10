@@ -275,10 +275,17 @@ function nextOrder() {
 
 // --- Receive Payment Modal (external component) ---
 const showReceivePayment = ref(false)
-const remainingAmount = computed(() => {
+const paidAmount = computed(() => {
   const paid = detail.value?.payment?.paidAmount || 0
+  console.log('paidAmount computed:', paid)
+  return paid
+})
+const remainingAmount = computed(() => {
+  const paid = paidAmount.value
   const total = detail.value?.payment?.orderTotal || 0
-  return Math.max(0, total - paid)
+  const remaining = Math.max(0, total - paid)
+  console.log('remainingAmount computed - total:', total, 'paid:', paid, 'remaining:', remaining)
+  return remaining
 })
 interface ReceivePaymentPayload {
   method: 'TienMat' | 'ChuyenKhoan' | 'ViDienTu'
@@ -451,7 +458,7 @@ async function fetchData() {
             discountAmount: o.discountAmount || 0,
             shippingFeeAmount: o.shippingAmount || 0,
             orderTotal: o.orderTotal || 0,
-            paidAmount: o.paidAmount || o.orderTotal || 0,
+            paidAmount: o.paidAmount ?? 0, // Use nullish coalescing to only default to 0, not orderTotal
             paymentMethod: o.paymentMethod || null,
             paymentStatus: o.paymentStatus || o.paymentStatusString || o.orderStatusString || null
           },
@@ -547,6 +554,11 @@ const handleCancelOrderConfirm = async (request: CancelOrderRequest) => {
   }
 }
 
+const onEditOrder = () => {
+  const toast = useToast()
+  toast.add({ title: 'Sửa đơn hàng', description: 'Chức năng đang phát triển', color: 'primary' })
+}
+
 const dropdownItems = [
   // [{
   //   label: 'Hoàn tiền',
@@ -558,6 +570,11 @@ const dropdownItems = [
   //   icon: 'i-heroicons-document-duplicate',
   //   onSelect: onCopyOrder
   // }],
+  [{
+    label: 'Sửa đơn hàng',
+    icon: 'i-heroicons-pencil-square',
+    onSelect: onEditOrder
+  }],
   [{
     label: 'Hủy đơn hàng',
     icon: 'i-heroicons-x-circle',
@@ -1146,17 +1163,25 @@ const dropdownItems = [
               </div>
               <!-- Right column -->
               <div class="w-full lg:w-80 space-y-6 flex-shrink-0">
-                <UPageCard variant="soft" class="bg-white rounded-lg">
+                <!-- <UPageCard variant="soft" class="bg-white rounded-lg">
                   <BaseCardHeader>
                     Nguồn đơn
                   </BaseCardHeader>
                   <div class="text-sm">
                     {{ detail.meta?.sourceName || 'POS' }}
                   </div>
-                </UPageCard>
+                </UPageCard> -->
                 <UPageCard variant="soft" class="bg-white rounded-lg">
                   <BaseCardHeader>
-                    Khách hàng
+                    <div class="flex items-center justify-between w-full">
+                      <span>Khách hàng</span>
+                      <span
+                        v-if="detail.customer?.code"
+                        class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-[11px] font-medium text-gray-600"
+                      >
+                        {{ (detail.customer as any).code }}
+                      </span>
+                    </div>
                   </BaseCardHeader>
                   <div class="text-sm">
                     <div class="space-y-4">
@@ -1164,14 +1189,8 @@ const dropdownItems = [
                       <div class="flex items-start">
                         <div class="flex-1 min-w-0">
                           <div class="flex items-center gap-2 flex-wrap">
-                            <span class="font-medium text-primary-600 hover:underline cursor-pointer truncate max-w-[160px]">
+                            <span class="font-medium text-primary-600 hover:underline cursor-pointer">
                               {{ detail.customer?.name || '---' }}
-                            </span>
-                            <span
-                              v-if="detail.customer?.code"
-                              class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-[11px] font-medium text-gray-600"
-                            >
-                              {{ (detail.customer as any).code }}
                             </span>
                           </div>
                           <div class="mt-1 flex flex-col gap-0.5 text-xs text-gray-600">
@@ -1184,16 +1203,6 @@ const dropdownItems = [
                               {{ detail.customer?.email || 'Không có' }}
                             </div>
                           </div>
-                        </div>
-                        <div class="flex flex-col gap-1">
-                          <UButton
-                            color="neutral"
-                            variant="ghost"
-                            size="xs"
-                            aria-label="Sửa khách hàng"
-                          >
-                            <IconEdit />
-                          </UButton>
                         </div>
                       </div>
                       <!-- Spend summary -->
@@ -1351,6 +1360,7 @@ const dropdownItems = [
   <ReceivePaymentModal
     v-model="showReceivePayment"
     :remaining-amount="remainingAmount"
+    :paid-amount="paidAmount"
     @submit="handleReceivePaymentSubmit"
   />
 

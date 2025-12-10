@@ -5,11 +5,13 @@ import BaseModal from '@/components/base/BaseModal.vue'
 interface Props {
   modelValue?: boolean
   remainingAmount: number
+  paidAmount?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
-  remainingAmount: 0
+  remainingAmount: 0,
+  paidAmount: 0
 })
 
 type PaymentMethodStr = 'TienMat' | 'ChuyenKhoan' | 'ViDienTu'
@@ -45,9 +47,13 @@ const amountRaw = ref('')
 
 watch(open, (v) => {
   if (v) {
-    // Prefill with raw number (no separators) to avoid caret jumps
+    // Always prefill with remaining amount (số tiền cần thanh toán)
+    console.log('Modal opened - remainingAmount:', props.remainingAmount)
+    console.log('Modal opened - paidAmount:', props.paidAmount)
     const prefill = Number.isFinite(props.remainingAmount) ? Math.max(0, Math.floor(props.remainingAmount)) : 0
+    console.log('Prefill amount:', prefill)
     amountRaw.value = String(prefill)
+    console.log('amountRaw.value set to:', amountRaw.value)
     method.value = 'TienMat'
     reference.value = ''
   }

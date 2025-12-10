@@ -95,17 +95,80 @@ function normalizePaymentStatus(raw?: string | number | null): string {
   return str
 }
 
-function mapProcessStatus(raw?: string) {
-  if (!raw) return ''
-  const lower = raw.toLowerCase()
-  if (lower === 'new') return 'Đơn hàng mới'
-  if (lower.includes('pending') || lower.includes('hold')) return 'Chờ xử lý'
-  if (lower.includes('shipping') || lower.includes('shipped')) return 'Đang giao'
-  if (lower.includes('complete')) return 'Đã hoàn thành'
-  if (lower.includes('cancel')) return 'Đã hủy'
-  if (lower.includes('partially') && lower.includes('refund')) return 'Hoàn tiền 1 phần'
-  if (lower.includes('refund')) return 'Hoàn tiền'
-  return raw
+// Backend OrderStatusEnum -> Vietnamese label
+// New = 1,
+// OnHold = 10,
+// PendingPayment = 20,
+// PaymentReceived = 30,
+// PaymentFailed = 35,
+// Invoiced = 40,
+// Backordered = 45,
+// Shipping = 50,
+// Shipped = 60,
+// Complete = 70,
+// PendingCancellation = 75,
+// Canceled = 80,
+// Refunded = 90,
+// Closed = 100,
+// PartiallyRefunded = 110,
+// Returned = 120
+const orderStatusEnumMap: Record<number, string> = {
+  1: 'Đơn hàng mới',
+  10: 'Tạm giữ',
+  20: 'Chờ thanh toán',
+  30: 'Đã nhận thanh toán',
+  35: 'Thanh toán thất bại',
+  40: 'Đã xuất hóa đơn',
+  45: 'Thiếu hàng / chờ bổ sung',
+  50: 'Đang giao hàng',
+  60: 'Đã gửi hàng',
+  70: 'Đã hoàn thành',
+  75: 'Đang xử lý hủy',
+  80: 'Đã hủy',
+  90: 'Đã hoàn tiền',
+  100: 'Đã đóng',
+  110: 'Hoàn tiền một phần',
+  120: 'Đã trả hàng'
+}
+
+function mapProcessStatus(raw?: string | number | null): string {
+  if (raw == null || raw === '') return ''
+
+  // Numeric enum value
+  if (typeof raw === 'number') {
+    return orderStatusEnumMap[raw] || String(raw)
+  }
+
+  const str = String(raw).trim()
+  if (!str) return ''
+
+  // Try parse numeric from string
+  const asNum = Number(str)
+  if (!isNaN(asNum) && orderStatusEnumMap[asNum]) {
+    return orderStatusEnumMap[asNum]!
+  }
+
+  // Fallback: map by enum name (case-insensitive)
+  const lower = str.toLowerCase()
+  if (lower === 'new') return orderStatusEnumMap[1]
+  if (lower === 'onhold' || lower === 'on_hold') return orderStatusEnumMap[10]
+  if (lower === 'pendingpayment' || lower === 'pending_payment') return orderStatusEnumMap[20]
+  if (lower === 'paymentreceived' || lower === 'payment_received') return orderStatusEnumMap[30]
+  if (lower === 'paymentfailed' || lower === 'payment_failed') return orderStatusEnumMap[35]
+  if (lower === 'invoiced') return orderStatusEnumMap[40]
+  if (lower === 'backordered' || lower === 'backorder') return orderStatusEnumMap[45]
+  if (lower === 'shipping') return orderStatusEnumMap[50]
+  if (lower === 'shipped') return orderStatusEnumMap[60]
+  if (lower === 'complete' || lower === 'completed') return orderStatusEnumMap[70]
+  if (lower === 'pendingcancellation' || lower === 'pending_cancellation') return orderStatusEnumMap[75]
+  if (lower === 'canceled' || lower === 'cancelled') return orderStatusEnumMap[80]
+  if (lower === 'refunded') return orderStatusEnumMap[90]
+  if (lower === 'closed') return orderStatusEnumMap[100]
+  if (lower === 'partiallyrefunded' || lower === 'partially_refunded') return orderStatusEnumMap[110]
+  if (lower === 'returned') return orderStatusEnumMap[120]
+
+  // Last resort: trả lại nguyên văn để còn debug nếu backend đổi enum
+  return str
 }
 
 // Table binds to unified orders list
@@ -171,7 +234,7 @@ function buildGridRequest() {
       }
     },
     Sort: {
-      Field: 'Id',
+      Field: 'CreatedOn',
       Reverse: true
     }
   }

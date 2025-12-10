@@ -127,25 +127,16 @@ async function save() {
   try {
     const fullName = `${last} ${first}`.trim()
     const payload = {
-      fullName,
+      customerCode: null,
+      name: fullName,
       email: draft.value.email || null,
       phoneNumber: phone,
-      birthDate: null,
-      gender: null,
-      note: null,
-      customerCode: null,
+      dateOfBirth: null,
+      gender: 2, // Default to "Khác" (Other)
       customerGroupId: null,
-      ownerUserId: null,
-      tags: [],
-      countryId: 'VN',
-      stateOrProvinceId: null,
-      districtId: null,
-      wardId: null,
-      addressLine1: draft.value.shipAddress || null,
-      addressLine2: null,
-      zipCode: draft.value.zipcode || null,
-      contactName: null,
-      avatarUrl: null
+      note: null,
+      avatarUrl: null,
+      extensionData: null
     }
     const res = await customersService.createCustomer(payload)
     const rData = (res as unknown as { data?: { customerId?: string, customerCode?: string } })?.data || null

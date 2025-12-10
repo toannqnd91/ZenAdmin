@@ -54,7 +54,7 @@ export abstract class BaseService {
       method,
       url,
       endpoint,
-      body: this.getBodyForLogging(options.body)
+      requestBody: this.getBodyForLogging(options.body)
     })
 
     try {
@@ -153,7 +153,8 @@ export abstract class BaseService {
         url,
         endpoint,
         statusCode: response.status,
-        duration
+        duration,
+        ...(process.dev && { body: data })
       })
       
       return data as ApiResponse<T>

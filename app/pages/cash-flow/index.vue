@@ -427,74 +427,74 @@ function onTabChange(val: string) {
     </template>
     <template #body>
       <!-- Summary Card (formula style) -->
-      <UPageCard variant="soft" class="bg-white rounded-lg">
+      <UPageCard variant="soft" class="rounded-md bg-primary-600 text-white flex items-center justify-between">
         <div
           class="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-6 lg:gap-10 text-[13px] sm:text-[14px] leading-tight"
         >
           <!-- Opening Balance -->
           <div class="flex flex-col justify-center min-w-[90px] sm:min-w-[110px] shrink-0">
-            <div class="text-[14px] text-gray-900 font-medium flex items-center gap-1">
+            <div class="text-[14px] font-medium flex items-center gap-1 text-white/90">
               <span>Quỹ đầu kỳ</span>
               <UTooltip text="Số dư đầu kỳ" />
             </div>
-            <div class="font-semibold text-[16px] mt-1">
+            <div class="font-semibold text-[16px] mt-1 text-white">
               {{ formatCurrency(openingBalance) }}
             </div>
           </div>
           <!-- + separator -->
-          <div class="inline-flex shrink-0 self-center items-center text-sm font-medium text-gray-400 px-1 sm:px-2">
+          <div class="inline-flex shrink-0 self-center items-center text-sm font-medium text-white/60 px-1 sm:px-2">
             +
           </div>
           <!-- Total Receipts -->
           <div class="flex flex-col justify-center min-w-[100px] sm:min-w-[120px] shrink-0">
-            <div class="text-[14px] text-gray-900 font-medium flex items-center gap-1">
+            <div class="text-[14px] font-medium flex items-center gap-1 text-white/90">
               <span>Tổng thu</span>
               <UTooltip text="Tổng số tiền đã thu" />
             </div>
-            <div class="font-semibold text-emerald-600 text-[16px] mt-1">
+            <div class="font-semibold text-[16px] mt-1 text-emerald-200">
               {{ formatCurrency(totalReceipts) }}
             </div>
           </div>
           <!-- - separator -->
-          <div class="inline-flex shrink-0 self-center items-center text-sm font-medium text-gray-400 px-1 sm:px-2">
+          <div class="inline-flex shrink-0 self-center items-center text-sm font-medium text-white/60 px-1 sm:px-2">
             -
           </div>
           <!-- Total Payments -->
           <div class="flex flex-col justify-center min-w-[100px] sm:min-w-[120px] shrink-0">
-            <div class="text-[14px] text-gray-900 font-medium flex items-center gap-1">
+            <div class="text-[14px] font-medium flex items-center gap-1 text-white/90">
               <span>Tổng chi</span>
               <UTooltip text="Tổng số tiền đã chi" />
             </div>
-            <div class="font-semibold text-red-600 text-[16px] mt-1">
+            <div class="font-semibold text-[16px] mt-1 text-rose-200">
               {{ formatCurrency(totalPayments) }}
             </div>
           </div>
           <!-- = separator -->
-          <div class="inline-flex shrink-0 self-center items-center text-sm font-medium text-gray-400 px-1 sm:px-2">
+          <div class="inline-flex shrink-0 self-center items-center text-sm font-medium text-white/60 px-1 sm:px-2">
             =
           </div>
           <!-- Closing Balance -->
           <div class="flex flex-col justify-center min-w-[100px] sm:min-w-[120px] shrink-0">
-            <div class="text-[14px] text-gray-900 font-medium flex items-center gap-1">
+            <div class="text-[14px] font-medium flex items-center gap-1 text-white/90">
               <span>Tồn quỹ</span>
               <UTooltip text="Số dư cuối cùng sau thu - chi" />
             </div>
-            <div class="font-semibold text-sky-700 text-[16px] mt-1">
+            <div class="font-semibold text-[16px] mt-1 text-white">
               {{ formatCurrency(closingBalance) }}
             </div>
           </div>
           <!-- Cash / Bank split -->
           <div
-            class="bg-sky-50 rounded-md px-4 sm:px-5 py-4 flex flex-col justify-center w-full sm:w-auto shrink-0 min-w-0 max-w-[320px] sm:ml-auto mt-4 sm:mt-0 overflow-hidden"
+            class="rounded-md px-4 sm:px-5 py-4 flex flex-col justify-center w-full sm:w-auto shrink-0 min-w-0 max-w-[320px] sm:ml-auto mt-4 sm:mt-0 overflow-hidden bg-white/10"
           >
             <!-- Each row wraps if needed without increasing panel width -->
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 min-w-0">
-              <span class="text-[14px] text-gray-900 font-medium">Quỹ tiền mặt:</span>
-              <span class="text-[16px] font-semibold text-right min-w-0">{{ formatCurrency(cashBalance) }}</span>
+              <span class="text-[14px] font-medium text-white/80">Quỹ tiền mặt:</span>
+              <span class="text-[16px] font-semibold text-right min-w-0 text-white">{{ formatCurrency(cashBalance) }}</span>
             </div>
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 mt-2 min-w-0">
-              <span class="text-[14px] text-gray-900 font-medium">Quỹ tiền gửi:</span>
-              <span class="text-[16px] font-semibold text-right min-w-0">{{ formatCurrency(bankBalance) }}</span>
+              <span class="text-[14px] font-medium text-white/80">Quỹ tiền gửi:</span>
+              <span class="text-[16px] font-semibold text-right min-w-0 text-white">{{ formatCurrency(bankBalance) }}</span>
             </div>
           </div>
         </div>

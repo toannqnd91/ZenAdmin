@@ -314,16 +314,16 @@ export const customersService = new CustomersService()
 
 // Types for create customer (API v2)
 export interface CreateCustomerRequest {
-  CustomerCode?: string | null
-  Name: string // Required
-  Email?: string | null
-  PhoneNumber?: string | null
-  DateOfBirth?: string | null // DateTimeOffset format
-  Gender?: number | null // 0=Nam, 1=Nữ, 2=Khác
-  CustomerGroupId?: string | null
-  Note?: string | null
-  AvatarUrl?: string | null
-  ExtensionData?: string | null
+  customerCode?: string | null
+  name: string // Required
+  email?: string | null
+  phoneNumber?: string | null
+  dateOfBirth?: string | null // DateTimeOffset format (ISO 8601)
+  gender?: number | null // 0=Nam, 1=Nữ, 2=Khác
+  customerGroupId?: string | null
+  note?: string | null
+  avatarUrl?: string | null
+  extensionData?: string | null
 }
 
 export interface CreateCustomerResponse {

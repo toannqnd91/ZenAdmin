@@ -75,7 +75,20 @@ class Logger {
 
       console.log(`${color}[${entry.level.toUpperCase()}]${reset} ${entry.timestamp} - ${entry.message}`)
       if (entry.context) {
-        console.log('Context:', entry.context)
+        // Format body/request/response as single-line JSON
+        const contextCopy = { ...entry.context }
+        if (contextCopy.requestBody) {
+          console.log('Request Body:', JSON.stringify(contextCopy.requestBody))
+          delete contextCopy.requestBody
+        }
+        if (contextCopy.body) {
+          console.log('Response Body:', JSON.stringify(contextCopy.body))
+          delete contextCopy.body
+        }
+        // Show remaining context
+        if (Object.keys(contextCopy).length > 0) {
+          console.log('Context:', contextCopy)
+        }
       }
       if (entry.stack) {
         console.log('Stack:', entry.stack)

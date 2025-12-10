@@ -213,6 +213,7 @@ export interface CreatePosOrderRequest {
   applyCouponToEachItem: boolean
   priceBookId: number | null // NEW: PriceBook Id selected for this order
   employeeId: number | null // NEW: Employee responsible for this order
+  orderCreatedAt: string | null // ISO DateTimeOffset format
 }
 
 // Detail page types -------------------------------------------------------
