@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
+
+const TinyMCESelfHost = defineAsyncComponent(() => import('@/components/TinyMCESelfHost.vue'))
+
 interface Props { newsId?: number }
 const props = defineProps<Props>()
 
@@ -35,6 +39,9 @@ const {
 
 const cancel = () => navigateTo('/news')
 const goBack = () => navigateTo('/news')
+
+const handleSubmitClick = () => { void submitForm() }
+const handleCancel = () => { void cancel() }
 </script>
 
 <template>
@@ -65,12 +72,12 @@ const goBack = () => navigateTo('/news')
               :label="'Hủy'"
               variant="ghost"
               color="neutral"
-              @click="() => cancel()"
+              @click="handleCancel"
             />
             <UButton
               :label="isEdit ? 'Cập nhật' : 'Lưu'"
               :loading="isSubmitting"
-              @click="() => submitForm()"
+              @click="handleSubmitClick"
             />
           </div>
         </template>

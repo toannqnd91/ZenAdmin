@@ -2,9 +2,9 @@
 // Image URL logic like ProductsTable
 import { useRuntimeConfig, useToast, useRouter, useCookie } from '#imports'
 import type { ApiResponse } from '@/types/common'
-import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
-import AddCustomerModal from '~/components/orders/AddCustomerModal.vue'
-import AddProductModal from '~/components/orders/AddProductModal.vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch, defineAsyncComponent } from 'vue'
+const AddCustomerModal = defineAsyncComponent(() => import('~/components/orders/AddCustomerModal.vue'))
+const AddProductModal = defineAsyncComponent(() => import('~/components/orders/AddProductModal.vue'))
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import WarehouseSwitcher from '@/components/WarehouseSwitcher.vue'
 import type { WarehouseOption } from '@/components/WarehouseSwitcher.vue'
@@ -76,7 +76,7 @@ interface OrderProduct extends ProductSearchItem {
   usedNewPrice?: boolean
   discountReason?: string
   note?: string
-  giftQuantity?: number
+  giftQuantity: number
 }
 type GenericItem = Record<string, unknown>
 interface WarehouseLike {
@@ -119,7 +119,8 @@ async function handleProductCreated(evt: unknown) {
       unitPrice: newProduct.price || 0,
       baseUnitPrice: newProduct.price || 0,
       total: newProduct.price || 0,
-      discountReason: undefined
+      discountReason: undefined,
+      giftQuantity: 0
     }
     orderProducts.value.unshift(product)
     
@@ -390,6 +391,7 @@ function formatDateTimeDDMMYYYY(date: Date) {
 const orderDate = ref(formatDateDDMMYYYY(new Date()))
 // Keep both dates as dd/MM/yyyy HH:mm strings and normalize on blur
 const scheduledDate = ref<string>(formatDateTimeDDMMYYYY(new Date())) // dd/MM/yyyy (optional)
+const datetimeInput = ref<HTMLInputElement | null>(null)
 function normalizeDDMMYYYY(s: string): string {
   if (!s) return ''
   const sep = s.includes('-') ? '-' : s.includes('.') ? '.' : '/'
@@ -564,7 +566,9 @@ async function handleCreateOrder() {
       quantity: p.quantity,
       productPrice: p.baseUnitPrice ?? p.unitPrice,
       discountAmount: p.appliedDiscountType ? (p.appliedDiscountType === 'amount' ? (p.appliedDiscountInput || 0) : 0) : 0,
-      unitPrice: p.unitPrice
+      unitPrice: p.unitPrice,
+      giftQuantity: p.giftQuantity || 0,
+      lineNote: p.note?.trim?.() ? p.note!.trim() : null
     }))
     const paidAmount = paymentStatus.value === 'paid' ? (paymentAmount.value || posGrandTotal.value) : 0
     // Sync early placeholders with actual reactive discount/shipping values used in UI totals
@@ -752,6 +756,7 @@ async function fetchMoreCustomers(search: string, page: number): Promise<FetchMo
     return { items: [], hasMore: false }
   }
 }
+
 async function fetchSources(search: string): Promise<GenericItem[]> {
   try {
     if (!sourcesCache.value) {
@@ -873,7 +878,8 @@ async function addProduct(item: ProductSearchItem) {
     unitPrice: item.price || 0,
     baseUnitPrice: item.price || 0,
     total: item.price || 0,
-    discountReason: undefined
+    discountReason: undefined,
+    giftQuantity: 0
   }
   
   orderProducts.value.unshift(newProduct)
@@ -993,7 +999,8 @@ function saveNote() {
   if (noteModalIdx.value === null) return
   const prod = orderProducts.value[noteModalIdx.value]
   if (!prod) return
-  prod.note = noteInput.value.trim() || undefined
+  const trimmed = noteInput.value.trim()
+  prod.note = trimmed || undefined
   closeNoteModal()
 }
 
@@ -2389,7 +2396,7 @@ function onAddCustomer() {
                       placeholder="dd/MM/yyyy HH:mm"
                       readonly
                       class="w-full h-9 px-3 pr-10 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
-                      @click="$refs.datetimeInput?.showPicker?.()"
+                      @click="datetimeInput?.showPicker?.()"
                     >
                     <input
                       ref="datetimeInput"

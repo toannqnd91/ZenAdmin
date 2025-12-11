@@ -91,6 +91,14 @@ const customer = ref({
     orderCount: 0,
     totalSpend: 0,
     avgSpend: 0
+  },
+  financials: {
+    totalSales: 0,
+    totalNetSales: 0,
+    totalAmount: 0,
+    paid: 0,
+    receivable: 0,
+    currentReceivables: 0
   }
 })
 
@@ -195,8 +203,8 @@ onMounted(async () => {
 
     if (customerRes?.success && customerRes.data) {
       const d = customerRes.data
-      customer.value.id = d.id
-      customer.value.fullName = d.fullName || ''
+      customer.value.id = String(d.id ?? customerId.value)
+      customer.value.fullName = d.fullName || d.name || ''
       customer.value.email = d.email || null
       customer.value.phone = d.phoneNumber || null
       // gender mapping: backend returns number|null; leave string for now
@@ -230,10 +238,18 @@ onMounted(async () => {
 
       // stats
       customer.value.orderStats.orderCount = d.totalOrders || 0
-      customer.value.orderStats.totalSpend = d.totalAmount || 0
+      customer.value.orderStats.totalSpend = d.totalAmount || d.totalNetSales || d.totalSales || 0
       customer.value.orderStats.avgSpend = d.totalOrders
         ? Math.round((d.totalAmount || 0) / d.totalOrders)
         : 0
+      customer.value.financials = {
+        totalSales: d.totalSales || 0,
+        totalNetSales: d.totalNetSales || 0,
+        totalAmount: d.totalAmount || 0,
+        paid: d.paid || 0,
+        receivable: d.receivable || 0,
+        currentReceivables: d.currentReceivables || d.receivable || 0
+      }
       // note
       if (typeof d.note === 'string') {
         note.value = d.note
@@ -365,6 +381,34 @@ onMounted(async () => {
                         </div>
                         <div class="text-base font-semibold">
                           {{ formatMoney(customer.orderStats.avgSpend) }}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mt-6 border-t border-gray-100 pt-6">
+                      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="flex flex-col">
+                          <div class="text-xs uppercase tracking-wide text-gray-500">
+                            Tổng bán (Gross)
+                          </div>
+                          <div class="text-base font-semibold">
+                            {{ formatMoney(customer.financials.totalSales) }}
+                          </div>
+                        </div>
+                        <div class="flex flex-col">
+                          <div class="text-xs uppercase tracking-wide text-gray-500">
+                            Tổng bán trừ trả hàng
+                          </div>
+                          <div class="text-base font-semibold">
+                            {{ formatMoney(customer.financials.totalNetSales) }}
+                          </div>
+                        </div>
+                        <div class="flex flex-col">
+                          <div class="text-xs uppercase tracking-wide text-gray-500">
+                            Công nợ hiện tại
+                          </div>
+                          <div class="text-base font-semibold text-red-600">
+                            {{ formatMoney(customer.financials.currentReceivables) }}
+                          </div>
                         </div>
                       </div>
                     </div>

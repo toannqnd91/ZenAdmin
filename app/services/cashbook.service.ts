@@ -1,4 +1,5 @@
 import { BaseService } from './base.service'
+import { performanceMonitor } from '@/utils/performance-monitor'
 import { API_ENDPOINTS } from '@/utils/api'
 
 // Enums matching backend
@@ -136,9 +137,11 @@ class CashBookService extends BaseService {
   }
 
   async filter(request: CashBookFilterRequest): Promise<CashBookResponseData> {
-    const res = await this.post<CashBookResponseData>(API_ENDPOINTS.CASHBOOK_FILTER, request)
-    // API envelope already parsed by BaseService; ensure success
-    return res.data
+    return performanceMonitor.measure('api.cashbook.filter', async () => {
+      const res = await this.post<CashBookResponseData>(API_ENDPOINTS.CASHBOOK_FILTER, request)
+      // API envelope already parsed by BaseService; ensure success
+      return res.data
+    })
   }
 
   /**

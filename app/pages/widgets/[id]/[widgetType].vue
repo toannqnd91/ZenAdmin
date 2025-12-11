@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import EditCarouselWidget from '@/components/widgets/EditCarouselWidget.vue'
-import EditCategoryWidget from '@/components/widgets/EditCategoryWidget.vue'
-import EditHtmlWidget from '@/components/widgets/EditHtmlWidget.vue'
-import EditCustomDataWidget from '@/components/widgets/EditCustomDataWidget.vue'
-import EditSimpleNewsWidget from '@/components/widgets/EditSimpleNewsWidget.vue'
-import EditNewsWidget from '@/components/widgets/EditNewsWidget.vue'
+import { defineAsyncComponent } from 'vue'
+
+const EditCarouselWidget = defineAsyncComponent(() => import('@/components/widgets/EditCarouselWidget.vue'))
+const EditCategoryWidget = defineAsyncComponent(() => import('@/components/widgets/EditCategoryWidget.vue'))
+const EditHtmlWidget = defineAsyncComponent(() => import('@/components/widgets/EditHtmlWidget.vue'))
+const EditCustomDataWidget = defineAsyncComponent(() => import('@/components/widgets/EditCustomDataWidget.vue'))
+const EditSimpleNewsWidget = defineAsyncComponent(() => import('@/components/widgets/EditSimpleNewsWidget.vue'))
+const EditNewsWidget = defineAsyncComponent(() => import('@/components/widgets/EditNewsWidget.vue'))
 
 const route = useRoute()
 

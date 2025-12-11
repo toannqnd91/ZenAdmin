@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import TinyMCESelfHost from '@/components/TinyMCESelfHost.vue'
+import { defineAsyncComponent } from 'vue'
 import { productService } from '@/services/product.service'
 import { fileService } from '@/services'
+
+const TinyMCESelfHost = defineAsyncComponent(() => import('@/components/TinyMCESelfHost.vue'))
 
 interface Props {
   mode?: 'create' | 'update'

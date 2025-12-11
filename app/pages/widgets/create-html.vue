@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
-import TinyMCESelfHost from '~/components/TinyMCESelfHost.vue'
+
+const TinyMCESelfHost = defineAsyncComponent(() => import('@/components/TinyMCESelfHost.vue'))
 
 const router = useRouter()
 
@@ -38,7 +39,11 @@ function onCancel() {
     </template>
     <template #body>
       <UCard class="w-full mt-6">
-        <UForm class="space-y-6" @submit="onSave">
+        <UForm
+          :state="{ widgetName, widgetZone, publishStart, publishEnd, displayOrder, htmlContent }"
+          class="space-y-6"
+          @submit="onSave"
+        >
           <div class="text-3xl font-light mb-8">
             Create Html Widget
           </div>

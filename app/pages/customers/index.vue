@@ -15,7 +15,11 @@ const totalPages = ref(1)
 const loading = ref(false)
 const refreshing = ref(false)
 const data = ref<CustomerItem[]>([])
-const totals = ref({ totalSalesAll: 0, totalNetSalesAll: 0 })
+const totals = ref({
+  totalCurrentReceivables: 0,
+  totalSalesAll: 0,
+  totalNetSalesAll: 0
+})
 
 const fetchCustomers = async () => {
   const opts = {
@@ -25,21 +29,10 @@ const fetchCustomers = async () => {
   } as const
 
   const res = await customersService.getCustomersCached(opts, {
-    onUpdated: (grid) => {
-      data.value = grid.data || []
-      totalRecords.value = grid.numberOfRecords || 0
-      totalPages.value = grid.numberOfPages || 1
-      totals.value.totalSalesAll = 0
-      totals.value.totalNetSalesAll = 0
-    }
+    onUpdated: (grid) => applyGridPayload(grid)
   })
 
-  const grid = res.data
-  data.value = grid.data || []
-  totalRecords.value = grid.numberOfRecords || 0
-  totalPages.value = grid.numberOfPages || 1
-  totals.value.totalSalesAll = 0
-  totals.value.totalNetSalesAll = 0
+  applyGridPayload(res.data)
 
   if (res.fromCache) {
     loading.value = false
@@ -75,13 +68,22 @@ const tableData = computed(() => {
     name: '',
     code: '',
     phone: '',
-    receivable: 0,
+    receivable: totals.value.totalCurrentReceivables,
     totalSale: totals.value.totalSalesAll,
     netSale: totals.value.totalNetSalesAll,
     avatar: { src: '/no-avatar.jpg', alt: '' }
   }
   return [sumRow, ...mappedRows.value]
 })
+
+function applyGridPayload(grid: CustomersGridResponse | { data?: CustomerItem[] } = {}) {
+  data.value = grid.data || []
+  totalRecords.value = grid.numberOfRecords || grid.totalRecord || 0
+  totalPages.value = grid.numberOfPages || grid.data?.length || 1
+  totals.value.totalCurrentReceivables = grid.totalCurrentReceivables ?? grid["totalReceivables"] ?? grid["totalReceivable"] ?? 0
+  totals.value.totalSalesAll = grid.totalSales ?? grid.totalSalesAll ?? 0
+  totals.value.totalNetSalesAll = grid.totalNetSales ?? grid.totalNetSalesAll ?? 0
+}
 </script>
 
 <template>

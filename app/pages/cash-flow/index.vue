@@ -132,6 +132,9 @@ const pagination = ref({ pageIndex: 0, pageSize: 20 })
 const totalRecords = ref(0)
 const totalPages = computed(() => Math.ceil(totalRecords.value / pagination.value.pageSize) || 1)
 
+// Debounce handle for fetch
+let fetchTimeout: ReturnType<typeof setTimeout> | null = null
+
 // Use service-level cache via filterCached
 
 function getRangeFromPreset(preset: { value: string, label: string } | null): { from: string, to: string } {
@@ -239,6 +242,7 @@ function mapMethod(tab: TabKey): number {
 }
 
 async function fetchCashBook() {
+  loading.value = true
   const { from, to } = getRangeFromPreset(selectedDatePreset.value)
   const body = {
     from,
@@ -289,22 +293,41 @@ async function fetchCashBook() {
   }
 }
 
-onMounted(fetchCashBook)
+function triggerFetch(options: { debounce?: boolean } = {}) {
+  const { debounce = false } = options
+  if (fetchTimeout) {
+    clearTimeout(fetchTimeout)
+    fetchTimeout = null
+  }
+  const run = () => {
+    fetchCashBook()
+  }
+  if (debounce) {
+    fetchTimeout = setTimeout(run, 300)
+  } else {
+    run()
+  }
+}
+
+onMounted(() => {
+  triggerFetch()
+})
 // Refetch when global warehouse changes (header switcher)
 watch(() => globalWarehouse.value?.id, () => {
   pagination.value.pageIndex = 0
-  fetchCashBook()
+  triggerFetch()
 })
-watch([selectedDatePreset, () => pagination.value.pageIndex, () => pagination.value.pageSize], () => {
-  fetchCashBook()
+watch(selectedDatePreset, () => {
+  pagination.value.pageIndex = 0
+  triggerFetch()
 })
 watch(activeTab, () => {
   pagination.value.pageIndex = 0
-  fetchCashBook()
+  triggerFetch()
 })
 watch(q, () => {
   pagination.value.pageIndex = 0
-  fetchCashBook()
+  triggerFetch({ debounce: true })
 })
 
 // Computed summaries from API values
@@ -512,7 +535,7 @@ function onTabChange(val: string) {
         :total-pages="totalPages"
         @update:q="val => q = val"
         @update:row-selection="val => rowSelection = val"
-        @update:pagination="val => pagination = val"
+        @update:pagination="val => { pagination = val; triggerFetch() }"
         @update:tab="onTabChange"
         @navigate-code="goToReceipt"
       >

@@ -13,6 +13,255 @@ export abstract class BaseService {
     this.baseURL = baseURL || ''
   }
 
+  protected async requestBlob(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<Blob> {
+    const baseURL = this.getBaseURL()
+    const url = endpoint.startsWith('http') ? endpoint : `${baseURL}${endpoint}`
+    const method = options.method || 'GET'
+    const metricName = `${this.constructor.name}.${method}.${endpoint}.blob`
+
+    performanceMonitor.start(metricName)
+    logger.debug('API Blob Request initiated', {
+      service: this.constructor.name,
+      method,
+      url,
+      endpoint
+    })
+
+    try {
+      const response = await httpInterceptor.request(url, options)
+      if (!response.ok) {
+        const raw = await response.text().catch(() => '')
+        let errorData: any = {}
+        if (raw) {
+          try {
+            errorData = JSON.parse(raw)
+          } catch {
+            errorData = { message: raw }
+          }
+        }
+        const errorDuration = performanceMonitor.end(metricName, {
+          service: this.constructor.name,
+          method,
+          endpoint,
+          statusCode: response.status,
+          success: false
+        })
+        logger.error('API Blob Request failed', {
+          service: this.constructor.name,
+          method,
+          url,
+          endpoint,
+          statusCode: response.status,
+          statusText: response.statusText,
+          duration: errorDuration,
+          errorData
+        })
+        const parts: string[] = []
+        const push = (v?: unknown) => {
+          if (!v) return
+          const s = typeof v === 'string' ? v : JSON.stringify(v)
+          if (s && !parts.includes(s)) parts.push(s)
+        }
+        if (errorData?.message) push(errorData.message)
+        if (errorData?.error) push(errorData.error)
+        if (Array.isArray(errorData?.errors)) push(errorData.errors.join('\n'))
+        if (errorData?.Errors && typeof errorData.Errors === 'object') {
+          for (const [k, v] of Object.entries(errorData.Errors)) {
+            push(`${k}: ${(Array.isArray(v) ? v.join(', ') : String(v))}`)
+          }
+        }
+        if (errorData?.ModelState && typeof errorData.ModelState === 'object') {
+          for (const [k, v] of Object.entries(errorData.ModelState)) {
+            push(`${k}: ${(Array.isArray(v) ? v.join(', ') : String(v))}`)
+          }
+        }
+        push(errorData?.title)
+        push(errorData?.detail)
+        if (parts.length === 0 && raw) push(raw)
+        const msg = parts.filter(Boolean).join(' \n ')
+        const error = new Error(`API Error ${response.status} ${response.statusText}${msg ? `: ${msg}` : ''}`)
+        errorTracker.captureApiError(endpoint, method, response.status, error, {
+          service: this.constructor.name,
+          errorData
+        })
+        throw error
+      }
+
+      const blob = await response.blob()
+      const duration = performanceMonitor.end(metricName, {
+        service: this.constructor.name,
+        method,
+        endpoint,
+        statusCode: response.status,
+        success: true
+      })
+      logger.info('API Blob Request succeeded', {
+        service: this.constructor.name,
+        method,
+        url,
+        endpoint,
+        statusCode: response.status,
+        duration,
+        size: blob.size
+      })
+      return blob
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error))
+      const duration = performanceMonitor.end(metricName, {
+        service: this.constructor.name,
+        method,
+        endpoint,
+        success: false,
+        error: err
+      })
+      logger.error('API Blob Request exception', {
+        service: this.constructor.name,
+        method,
+        url,
+        endpoint,
+        duration,
+        error: err
+      })
+
+      errorTracker.captureException(err, {
+        service: this.constructor.name,
+        action: `${method} ${endpoint}`,
+        url
+      })
+
+      throw err
+    }
+  }
+
+  protected async requestText(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<string> {
+    const baseURL = this.getBaseURL()
+    const url = endpoint.startsWith('http') ? endpoint : `${baseURL}${endpoint}`
+    const method = options.method || 'GET'
+    const metricName = `${this.constructor.name}.${method}.${endpoint}.text`
+
+    performanceMonitor.start(metricName)
+    logger.debug('API Text Request initiated', {
+      service: this.constructor.name,
+      method,
+      url,
+      endpoint
+    })
+
+    try {
+      const response = await httpInterceptor.request(url, options)
+      if (!response.ok) {
+        const raw = await response.text().catch(() => '')
+        let errorData: any = {}
+        if (raw) {
+          try {
+            errorData = JSON.parse(raw)
+          } catch {
+            errorData = { message: raw }
+          }
+        }
+        const errorDuration = performanceMonitor.end(metricName, {
+          service: this.constructor.name,
+          method,
+          endpoint,
+          statusCode: response.status,
+          success: false
+        })
+
+        logger.error('API Text Request failed', {
+          service: this.constructor.name,
+          method,
+          url,
+          endpoint,
+          statusCode: response.status,
+          statusText: response.statusText,
+          duration: errorDuration,
+          errorData
+        })
+
+        const parts: string[] = []
+        const push = (v?: unknown) => {
+          if (!v) return
+          const s = typeof v === 'string' ? v : JSON.stringify(v)
+          if (s && !parts.includes(s)) parts.push(s)
+        }
+        if (errorData?.message) push(errorData.message)
+        if (errorData?.error) push(errorData.error)
+        if (Array.isArray(errorData?.errors)) push(errorData.errors.join('\n'))
+        if (errorData?.Errors && typeof errorData.Errors === 'object') {
+          for (const [k, v] of Object.entries(errorData.Errors)) {
+            push(`${k}: ${(Array.isArray(v) ? v.join(', ') : String(v))}`)
+          }
+        }
+        if (errorData?.ModelState && typeof errorData.ModelState === 'object') {
+          for (const [k, v] of Object.entries(errorData.ModelState)) {
+            push(`${k}: ${(Array.isArray(v) ? v.join(', ') : String(v))}`)
+          }
+        }
+        push(errorData?.title)
+        push(errorData?.detail)
+        if (parts.length === 0 && raw) push(raw)
+
+        const msg = parts.filter(Boolean).join(' \n ')
+        const error = new Error(`API Error ${response.status} ${response.statusText}${msg ? `: ${msg}` : ''}`)
+        errorTracker.captureApiError(endpoint, method, response.status, error, {
+          service: this.constructor.name,
+          errorData
+        })
+        throw error
+      }
+
+      const text = await response.text()
+      const duration = performanceMonitor.end(metricName, {
+        service: this.constructor.name,
+        method,
+        endpoint,
+        statusCode: response.status,
+        success: true
+      })
+      logger.info('API Text Request succeeded', {
+        service: this.constructor.name,
+        method,
+        url,
+        endpoint,
+        statusCode: response.status,
+        duration,
+        contentLength: text.length
+      })
+      return text
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error))
+      const duration = performanceMonitor.end(metricName, {
+        service: this.constructor.name,
+        method,
+        endpoint,
+        success: false,
+        error: err
+      })
+      logger.error('API Request exception', {
+        service: this.constructor.name,
+        method,
+        url,
+        endpoint,
+        duration,
+        error: err
+      })
+
+      errorTracker.captureException(err, {
+        service: this.constructor.name,
+        action: `${method} ${endpoint}`,
+        url
+      })
+
+      throw err
+    }
+  }
+
   protected getBaseURL(): string {
     // Lazy load chỉ khi cần và chưa có baseURL
     if (!this.baseURL) {
@@ -159,15 +408,15 @@ export abstract class BaseService {
       
       return data as ApiResponse<T>
     } catch (error) {
-      // End performance monitoring
+      const err = error instanceof Error ? error : new Error(String(error))
       const duration = performanceMonitor.end(metricName, {
         service: this.constructor.name,
         method,
         endpoint,
         success: false,
-        error
+        error: err
       })
-      
+
       // Log and track unexpected errors
       logger.error('API Request exception', {
         service: this.constructor.name,
@@ -175,16 +424,16 @@ export abstract class BaseService {
         url,
         endpoint,
         duration,
-        error
+        error: err
       })
-      
-      errorTracker.captureException(error, {
+
+      errorTracker.captureException(err, {
         service: this.constructor.name,
         action: `${method} ${endpoint}`,
         url
       })
-      
-      throw error
+
+      throw err
     }
   }
 

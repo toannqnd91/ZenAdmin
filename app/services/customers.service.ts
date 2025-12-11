@@ -32,6 +32,9 @@ export interface CustomersGridResponse {
   numberOfPages: number
   data: CustomerItem[]
   // Legacy fields for backward compatibility
+  totalCurrentReceivables?: number
+  totalSales?: number
+  totalNetSales?: number
   items?: CustomerItem[]
   totalRecord?: number
   totalSalesAll?: number
@@ -44,8 +47,9 @@ export interface ExternalCustomerByIdResponse {
   success: boolean
   message: string
   data: {
-    id: string
-    fullName: string
+    id: number | string
+    name?: string | null
+    fullName?: string | null
     email: string | null
     phoneNumber: string | null
     createdOn: string
@@ -54,6 +58,7 @@ export interface ExternalCustomerByIdResponse {
     gender: number | null
     avatarUrl: string | null
     customerCode: string | null
+    note?: string | null
     address: Array<{
       id: number
       addressLine1: string | null
@@ -71,12 +76,13 @@ export interface ExternalCustomerByIdResponse {
       isDefault: boolean
     }>
     groups: Array<{ groupId: number, name: string }>
-    totalSales: number
-    totalNetSales: number
-    totalOrders: number
-    totalAmount: number
-    paid: number
-    receivable: number
+    totalSales?: number
+    totalNetSales?: number
+    totalOrders?: number
+    totalAmount?: number
+    paid?: number
+    receivable?: number
+    currentReceivables?: number
   } | null
 }
 

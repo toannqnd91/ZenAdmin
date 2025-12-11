@@ -6,6 +6,7 @@
 //   NUXT_PUBLIC_BASE_ORIGIN (then /api/v1 will be appended for apiBaseUrl)
 const baseOrigin = process.env.NUXT_PUBLIC_BASE_ORIGIN?.replace(/\/$/, '')
 const derivedApi = baseOrigin ? `${baseOrigin}/api/v1` : ''
+const isProd = process.env.NODE_ENV === 'production'
 
 export default defineNuxtConfig({
   modules: ['@nuxt/eslint', '@nuxt/ui-pro', '@vueuse/nuxt', '@pinia/nuxt'],
@@ -53,8 +54,8 @@ export default defineNuxtConfig({
 
   compatibilityDate: '2024-07-11',
 
-  // ✅ Thêm: sourcemap cho Nitro (SSR)
-  nitro: { sourceMap: true },
+  // ✅ Thêm: sourcemap cho Nitro (SSR) - tắt ở production để giảm bundle
+  nitro: { sourceMap: !isProd },
 
   // ✅ Thêm: sourcemap cho client (Vite)
   vite: {
@@ -64,7 +65,10 @@ export default defineNuxtConfig({
       allowedHosts: ['web.vnnsoft.com']
     },
     // quan trọng để breakpoint trong .vue/.ts phía client hoạt động
-    build: { sourcemap: true }
+    build: {
+      // Tắt sourcemap cho production để giảm bundle size
+      sourcemap: !isProd
+    }
   },
 
   // (không bắt buộc, nhưng giúp TS map tốt)

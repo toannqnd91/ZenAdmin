@@ -13,6 +13,7 @@ import IconPrintOrder from '@/components/icons/IconPrintOrder.vue'
 import IconSuccess from '@/components/icons/IconSuccess.vue'
 import ReceivePaymentModal from '@/components/orders/ReceivePaymentModal.vue'
 import CancelOrderModal from '@/components/orders/CancelOrderModal.vue'
+import PrintOrderModal from '@/components/orders/PrintOrderModal.vue'
 
 // Raw payload supporting multiple backend shapes
 interface RawOrderItem {
@@ -258,13 +259,15 @@ function isRefunded(s: string) {
 }
 
 // Action toolbar helpers
+const showPrintModal = ref(false)
+
 function startReturn() {
   const raw = (orderCodeParam.value || '').toString()
   const code = raw.replace(/^#/, '')
   router.push({ path: '/orders/returns/create', query: { code } })
 }
 function printOrder() {
-  window.print()
+  showPrintModal.value = true
 }
 function prevOrder() {
   console.debug('prevOrder')
@@ -1370,5 +1373,9 @@ const dropdownItems = [
     :order-total="detail?.payment?.orderTotal"
     :is-paid="isOrderPaid"
     @confirm="handleCancelOrderConfirm"
+  />
+  <PrintOrderModal
+    v-model="showPrintModal"
+    :order-code="detail?.orderCode || orderCodeParam"
   />
 </template>

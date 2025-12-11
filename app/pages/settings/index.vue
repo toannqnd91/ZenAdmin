@@ -1,22 +1,24 @@
 <script setup lang="ts">
 import { useRoute } from '#imports'
-import GeneralSettings from '@/components/settings/GeneralSettings.vue'
-import NotificationsSettings from '@/components/settings/NotificationsSettings.vue'
-import EmployeesSettings from '@/components/settings/EmployeesSettings.vue'
-import BranchesSettings from '@/components/settings/BranchesSettings.vue'
-import OrderProcessingSettings from '@/components/settings/OrderProcessingSettings.vue'
-import PaymentsSettings from '@/components/settings/PaymentsSettings.vue'
-import CheckoutSettings from '@/components/settings/CheckoutSettings.vue'
-import TaxesSettings from '@/components/settings/TaxesSettings.vue'
-import ShippingPartnersSettings from '@/components/settings/ShippingPartnersSettings.vue'
-import ShippingSettings from '@/components/settings/ShippingSettings.vue'
-import ChannelsSettings from '@/components/settings/ChannelsSettings.vue'
-import FilesSettings from '@/components/settings/FilesSettings.vue'
-import PrintTemplatesSettings from '@/components/settings/PrintTemplatesSettings.vue'
-import PlansSettings from '@/components/settings/PlansSettings.vue'
-import AuditLogSettings from '@/components/settings/AuditLogSettings.vue'
-import AIFeaturesSettings from '@/components/settings/AIFeaturesSettings.vue'
-import MetafieldsSettings from '@/components/settings/MetafieldsSettings.vue'
+import { defineAsyncComponent } from 'vue'
+
+const GeneralSettings = defineAsyncComponent(() => import('@/components/settings/GeneralSettings.vue'))
+const NotificationsSettings = defineAsyncComponent(() => import('@/components/settings/NotificationsSettings.vue'))
+const EmployeesSettings = defineAsyncComponent(() => import('@/components/settings/EmployeesSettings.vue'))
+const BranchesSettings = defineAsyncComponent(() => import('@/components/settings/BranchesSettings.vue'))
+const OrderProcessingSettings = defineAsyncComponent(() => import('@/components/settings/OrderProcessingSettings.vue'))
+const PaymentsSettings = defineAsyncComponent(() => import('@/components/settings/PaymentsSettings.vue'))
+const CheckoutSettings = defineAsyncComponent(() => import('@/components/settings/CheckoutSettings.vue'))
+const TaxesSettings = defineAsyncComponent(() => import('@/components/settings/TaxesSettings.vue'))
+const ShippingPartnersSettings = defineAsyncComponent(() => import('@/components/settings/ShippingPartnersSettings.vue'))
+const ShippingSettings = defineAsyncComponent(() => import('@/components/settings/ShippingSettings.vue'))
+const ChannelsSettings = defineAsyncComponent(() => import('@/components/settings/ChannelsSettings.vue'))
+const FilesSettings = defineAsyncComponent(() => import('@/components/settings/FilesSettings.vue'))
+const PrintTemplatesSettings = defineAsyncComponent(() => import('@/components/settings/PrintTemplatesSettings.vue'))
+const PlansSettings = defineAsyncComponent(() => import('@/components/settings/PlansSettings.vue'))
+const AuditLogSettings = defineAsyncComponent(() => import('@/components/settings/AuditLogSettings.vue'))
+const AIFeaturesSettings = defineAsyncComponent(() => import('@/components/settings/AIFeaturesSettings.vue'))
+const MetafieldsSettings = defineAsyncComponent(() => import('@/components/settings/MetafieldsSettings.vue'))
 
 const route = useRoute()
 const currentTab = computed(() => String(route.query.tab || 'general'))

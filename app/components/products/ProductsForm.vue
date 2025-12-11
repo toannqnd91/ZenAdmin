@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, computed, nextTick, onMounted } from 'vue'
+import { reactive, ref, computed, nextTick, onMounted, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useCreateProductPage } from '@/composables/useCreateProductPage'
 import { productService } from '@/services/product.service'
@@ -7,8 +7,9 @@ import { useApiConfig } from '@/composables/useApiConfig'
 // Explicit imports for local components (auto-import may not scan app/components path)
 import CustomCheckbox from '@/components/CustomCheckbox.vue'
 import BaseDropdownSelect from '@/components/BaseDropdownSelect.vue'
-import TinyMCESelfHost from '@/components/TinyMCESelfHost.vue'
 import BaseNumberInput from '@/components/base/BaseNumberInput.vue'
+
+const TinyMCESelfHost = defineAsyncComponent(() => import('@/components/TinyMCESelfHost.vue'))
 
 interface Props { productId?: number | null }
 const props = defineProps<Props>()

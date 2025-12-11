@@ -1,4 +1,5 @@
 import { BaseService } from './base.service'
+import { performanceMonitor } from '@/utils/performance-monitor'
 import type { ShippingMethod } from '@/types/shipping'
 import type { DeliveryOption } from '@/types/delivery'
 import { API_ENDPOINTS } from '@/utils/api'
@@ -30,7 +31,9 @@ export class OrdersService extends BaseService {
   }
   async getCountsByStatus() {
     // POST with empty body per sample
-    return this.post<OrderCountsByStatusResponse['data']>(API_ENDPOINTS.ORDER_COUNT_BY_STATUS_EXTERNAL, {})
+    return performanceMonitor.measure('api.orders.counts', () =>
+      this.post<OrderCountsByStatusResponse['data']>(API_ENDPOINTS.ORDER_COUNT_BY_STATUS_EXTERNAL, {})
+    )
   }
 
 
@@ -40,7 +43,9 @@ export class OrdersService extends BaseService {
    * Matches backend sample provided by user.
    */
   async getOrdersGrid(body: OrderGridRequest) {
-    return this.post<OrderGridResponse['data']>(API_ENDPOINTS.ORDER_GRID_EXTERNAL, body)
+    return performanceMonitor.measure('api.orders.grid', () =>
+      this.post<OrderGridResponse['data']>(API_ENDPOINTS.ORDER_GRID_EXTERNAL, body)
+    )
   }
 
   /**
@@ -83,11 +88,15 @@ export class OrdersService extends BaseService {
 
   // Order detail ----------------------------------------------------------
   async getOrderById(id: number | string) {
-    return this.get<OrderDetailRawResponse | null>(API_ENDPOINTS.ORDER_BY_ID(id))
+    return performanceMonitor.measure('api.orders.detail', () =>
+      this.get<OrderDetailRawResponse | null>(API_ENDPOINTS.ORDER_BY_ID(id))
+    )
   }
 
   async getOrderHistory(id: number | string) {
-    return this.get<OrderHistoryListResponse | null>(API_ENDPOINTS.ORDER_HISTORY(id) + '?page=1&pageSize=20')
+    return performanceMonitor.measure('api.orders.history', () =>
+      this.get<OrderHistoryListResponse | null>(API_ENDPOINTS.ORDER_HISTORY(id) + '?page=1&pageSize=20')
+    )
   }
 
   // Pay order ------------------------------------------------------------
@@ -99,6 +108,19 @@ export class OrdersService extends BaseService {
   // Cancel order ---------------------------------------------------------
   async cancelOrder(orderCode: string, body: CancelOrderRequest) {
     return this.post<CancelOrderResponseData | null>(API_ENDPOINTS.ORDER_CANCEL(orderCode), body)
+  }
+
+  // Print preview --------------------------------------------------------
+  async getOrderPrintPreviewHtml(orderCode: string) {
+    return performanceMonitor.measure('api.orders.printPreview', () =>
+      this.requestText(API_ENDPOINTS.ORDER_PRINT_HTML_PREVIEW(orderCode))
+    )
+  }
+
+  async downloadOrderPrintPdf(orderCode: string) {
+    return performanceMonitor.measure('api.orders.printDownloadPdf', () =>
+      this.requestBlob(API_ENDPOINTS.ORDER_PRINT_DOWNLOAD_PDF(orderCode), { method: 'POST' })
+    )
   }
 
   // Calculate prices based on pricebook -----------------------------------
@@ -182,6 +204,8 @@ export interface CreatePosOrderItemRequest {
   productPrice: number
   discountAmount: number
   unitPrice: number
+  giftQuantity: number
+  lineNote: string | null
 }
 export interface CreatePosOrderRequest {
   items: CreatePosOrderItemRequest[]

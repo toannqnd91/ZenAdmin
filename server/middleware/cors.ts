@@ -10,7 +10,7 @@ export default defineEventHandler((event) => {
   const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:7001',
-    'https://localhost:7001',
+    'https://zenpos.vnnsoft.com',
     'https://web.vnnsoft.com'
   ]
 

@@ -73,6 +73,9 @@ export const API_ENDPOINTS = {
   ORDER_PAY: (orderCode: string) => `/orders/${orderCode}/pay`,
   // Order cancellation
   ORDER_CANCEL: (orderCode: string) => `/orders/${orderCode}/cancel`,
+  // Order print preview
+  ORDER_PRINT_HTML_PREVIEW: (orderCode: string) => `/Orders/print/${encodeURIComponent(orderCode)}/html-preview`,
+  ORDER_PRINT_DOWNLOAD_PDF: (orderCode: string) => `/Orders/print/${encodeURIComponent(orderCode)}/download-pdf`,
 
   // Sales returns
   SALES_RETURNS: '/sales-returns',
