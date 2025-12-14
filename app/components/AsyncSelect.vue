@@ -366,8 +366,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="relative" :class="props.fullWidth !== false ? 'w-full' : 'inline-flex'">
-    <div
-      ref="triggerRef"
+    <div ref="triggerRef"
       class="h-9 px-3 rounded-md text-sm flex items-center cursor-pointer transition-all duration-150 focus:outline-none"
       :class="[
         props.fullWidth !== false ? 'w-full' : 'w-auto',
@@ -377,66 +376,113 @@ onBeforeUnmount(() => {
         !open && props.borderless ? 'bg-transparent hover:bg-gray-50' : '',
         !open && !props.borderless ? 'border border-gray-300 bg-white' : '',
         props.triggerClass || ''
-      ]"
-      tabindex="0"
-      @click="toggleDropdown"
-    >
+      ]" tabindex="0" @click="toggleDropdown">
       <div class="flex-1 min-w-0 flex items-center overflow-hidden">
         <!-- Optional left content in trigger, e.g., icon/avatar of selected item -->
         <slot name="trigger-left" :value="modelValue" />
         <template v-if="searchable !== false && searchInTrigger && open">
-          <input
-            v-model="search"
-            type="text"
+          <input v-model="search" type="text"
             class="w-full h-7 px-0 border-0 outline-none bg-transparent text-gray-900 placeholder-gray-400"
-            :placeholder="placeholder || 'Tìm kiếm...'"
-            @click.stop
-          >
+            :placeholder="placeholder || 'Tìm kiếm...'" @click.stop>
         </template>
-        <span v-else class="block w-full truncate text-gray-900" :class="{ 'text-gray-400': !modelValue }">{{ displayText }}</span>
+        <span v-else class="block w-full truncate text-gray-900" :class="{ 'text-gray-400': !modelValue }">{{
+          displayText
+        }}</span>
       </div>
-      <button
-        v-if="clearable && ((Array.isArray(modelValue) ? modelValue.length > 0 : !!modelValue)) && !disabled"
-        class="mr-1 text-gray-400 hover:text-gray-600"
-        @click.stop="clearSelection"
-      >
+      <button v-if="clearable && ((Array.isArray(modelValue) ? modelValue.length > 0 : !!modelValue)) && !disabled"
+        class="mr-1 text-gray-400 hover:text-gray-600" @click.stop="clearSelection">
         ×
       </button>
-      <svg
-        class="w-4 h-4 text-gray-400 ml-2 flex-shrink-0"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <path
-          d="M19 9l-7 7-7-7"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
+      <svg class="w-4 h-4 text-gray-400 ml-2 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+        <path d="M19 9l-7 7-7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" />
       </svg>
     </div>
     <Teleport v-if="props.appendToBody" to="body">
-      <div
-        v-if="open"
-        ref="dropdownRef"
-        :class="[
-          'z-[2001] bg-white rounded-md shadow-lg fixed left-0 top-0',
-          props.borderless ? 'border border-gray-200' : 'border border-gray-300',
-          'animate-dropdown'
-        ]"
-        :style="{ ...(dropdownFixedStyle || {}), width: lastTriggerWidth ? lastTriggerWidth + 'px' : undefined }"
-      >
+      <div v-if="open" ref="dropdownRef" :class="[
+        'z-[2001] bg-white rounded-md shadow-lg fixed left-0 top-0',
+        props.borderless ? 'border border-gray-200' : 'border border-gray-300',
+        'animate-dropdown'
+      ]" :style="{ ...(dropdownFixedStyle || {}), width: lastTriggerWidth ? lastTriggerWidth + 'px' : undefined }">
+        <div v-if="$slots.panel">
+          <slot name="panel" :close="closeDropdown" />
+        </div>
+        <template v-else>
+          <slot name="add-action" />
+          <div v-if="searchable !== false && !searchInTrigger" class="px-3 pt-2 pb-2">
+            <input v-model="search" type="text"
+              class="w-full h-9 px-3 rounded-md border border-gray-200 bg-gray-50 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-primary-500 placeholder-gray-400"
+              :placeholder="placeholder || 'Tìm kiếm...'"
+              :disabled="((Array.isArray(modelValue) ? modelValue.length > 0 : !!modelValue) && !clearable)"
+              @click.stop>
+          </div>
+          <div v-if="loadingInitial" class="w-full px-3 py-4 text-center text-gray-500 text-sm">
+            Đang tải...
+          </div>
+          <div v-else-if="error" class="w-full px-3 py-4 text-center text-red-500 text-sm">
+            {{ error }}
+          </div>
+          <div v-else-if="items.length === 0" class="w-full px-3 py-4 text-center text-gray-500 text-sm rounded-b-md">
+            Không có kết quả
+          </div>
+          <div v-else>
+            <div class="overflow-auto" :style="[maxListStyle, dynamicListMaxHeight]"
+              @scroll="e => loadMoreIfNeeded(e.target as HTMLElement)">
+              <div v-for="item in items" :key="itemKey(item)"
+                class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-all"
+                :class="{ 'bg-primary-50': isSelected(item) }" @click.stop="selectItem(item)">
+                <slot name="item" :item="item">
+                  <div class="flex-1">
+                    <div class="font-medium text-gray-900 text-sm">
+                      {{ getDisplayText ? getDisplayText(item) : (labelField ? (item[labelField] ?? '') : '') }}
+                    </div>
+                    <div v-if="getItemSubtitle && getItemSubtitle(item)" class="text-xs text-gray-500">
+                      {{ getItemSubtitle(item) }}
+                    </div>
+                  </div>
+                </slot>
+                <svg v-if="isSelected(item)" class="w-4 h-4 text-primary-600 ml-2 flex-shrink-0" viewBox="0 0 20 20"
+                  fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-7.25 7.25a1 1 0 01-1.414 0l-3-3a1 1 0 111.414-1.414L8.5 11.586l6.543-6.543a1 1 0 011.414 0z"
+                    clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div v-if="infiniteScroll && loadingMore" class="px-3 py-2 text-center text-xs text-gray-500">
+                Đang tải thêm...
+              </div>
+              <div v-else-if="infiniteScroll && !hasMore" class="px-3 py-2 text-center text-[11px] text-gray-400">
+                Hết dữ liệu
+              </div>
+            </div>
+          </div>
+          <slot name="footer" />
+        </template>
+      </div>
+    </Teleport>
+
+    <div v-else-if="open" ref="dropdownRef" :class="[
+      'absolute left-0 z-50 bg-white rounded-md shadow-lg',
+      dropDirection === 'down' ? 'top-full mt-2 origin-top' : 'bottom-full mb-2 origin-bottom',
+      props.borderless ? 'border border-gray-200' : 'border border-gray-300',
+      props.autoWidth ? 'w-auto' : 'w-full',
+      'animate-dropdown'
+    ]" :style="props.autoWidth ? {
+      minWidth: (triggerRef?.offsetWidth || 0) + 'px',
+      width: longestLabelPx != null && longestLabelPx > (triggerRef?.offsetWidth || 0)
+        ? longestLabelPx + 'px'
+        : undefined
+    } : undefined">
+      <div v-if="$slots.panel">
+        <slot name="panel" :close="closeDropdown" />
+      </div>
+      <template v-else>
         <slot name="add-action" />
         <div v-if="searchable !== false && !searchInTrigger" class="px-3 pt-2 pb-2">
-          <input
-            v-model="search"
-            type="text"
+          <input v-model="search" type="text"
             class="w-full h-9 px-3 rounded-md border border-gray-200 bg-gray-50 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-primary-500 placeholder-gray-400"
             :placeholder="placeholder || 'Tìm kiếm...'"
-            :disabled="((Array.isArray(modelValue) ? modelValue.length > 0 : !!modelValue) && !clearable)"
-            @click.stop
-          >
+            :disabled="((Array.isArray(modelValue) ? modelValue.length > 0 : !!modelValue) && !clearable)" @click.stop>
         </div>
         <div v-if="loadingInitial" class="w-full px-3 py-4 text-center text-gray-500 text-sm">
           Đang tải...
@@ -448,14 +494,11 @@ onBeforeUnmount(() => {
           Không có kết quả
         </div>
         <div v-else>
-          <div class="overflow-auto" :style="[maxListStyle, dynamicListMaxHeight]" @scroll="e => loadMoreIfNeeded(e.target as HTMLElement)">
-            <div
-              v-for="item in items"
-              :key="itemKey(item)"
+          <div class="overflow-auto" :style="[maxListStyle, dynamicListMaxHeight]"
+            @scroll="e => loadMoreIfNeeded(e.target as HTMLElement)">
+            <div v-for="item in items" :key="itemKey(item)"
               class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-all"
-              :class="{ 'bg-primary-50': isSelected(item) }"
-              @click.stop="selectItem(item)"
-            >
+              :class="{ 'bg-primary-50': isSelected(item) }" @click.stop="selectItem(item)">
               <slot name="item" :item="item">
                 <div class="flex-1">
                   <div class="font-medium text-gray-900 text-sm">
@@ -466,121 +509,23 @@ onBeforeUnmount(() => {
                   </div>
                 </div>
               </slot>
-              <svg
-                v-if="isSelected(item)"
-                class="w-4 h-4 text-primary-600 ml-2 flex-shrink-0"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  fill-rule="evenodd"
+              <svg v-if="isSelected(item)" class="w-4 h-4 text-primary-600 ml-2 flex-shrink-0" viewBox="0 0 20 20"
+                fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd"
                   d="M16.707 5.293a1 1 0 010 1.414l-7.25 7.25a1 1 0 01-1.414 0l-3-3a1 1 0 111.414-1.414L8.5 11.586l6.543-6.543a1 1 0 011.414 0z"
-                  clip-rule="evenodd"
-                />
+                  clip-rule="evenodd" />
               </svg>
             </div>
-            <div
-              v-if="infiniteScroll && loadingMore"
-              class="px-3 py-2 text-center text-xs text-gray-500"
-            >
+            <div v-if="infiniteScroll && loadingMore" class="px-3 py-2 text-center text-xs text-gray-500">
               Đang tải thêm...
             </div>
-            <div
-              v-else-if="infiniteScroll && !hasMore"
-              class="px-3 py-2 text-center text-[11px] text-gray-400"
-            >
+            <div v-else-if="infiniteScroll && !hasMore" class="px-3 py-2 text-center text-[11px] text-gray-400">
               Hết dữ liệu
             </div>
           </div>
         </div>
-      </div>
-    </Teleport>
-
-    <div
-      v-else-if="open"
-      ref="dropdownRef"
-      :class="[
-        'absolute left-0 z-50 bg-white rounded-md shadow-lg',
-        dropDirection === 'down' ? 'top-full mt-2 origin-top' : 'bottom-full mb-2 origin-bottom',
-        props.borderless ? 'border border-gray-200' : 'border border-gray-300',
-        props.autoWidth ? 'w-auto' : 'w-full',
-        'animate-dropdown'
-      ]"
-      :style="props.autoWidth ? {
-        minWidth: (triggerRef?.offsetWidth || 0) + 'px',
-        width: longestLabelPx != null && longestLabelPx > (triggerRef?.offsetWidth || 0)
-          ? longestLabelPx + 'px'
-          : undefined
-      } : undefined"
-    >
-      <slot name="add-action" />
-      <div v-if="searchable !== false && !searchInTrigger" class="px-3 pt-2 pb-2">
-        <input
-          v-model="search"
-          type="text"
-          class="w-full h-9 px-3 rounded-md border border-gray-200 bg-gray-50 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-primary-500 placeholder-gray-400"
-          :placeholder="placeholder || 'Tìm kiếm...'"
-          :disabled="((Array.isArray(modelValue) ? modelValue.length > 0 : !!modelValue) && !clearable)"
-          @click.stop
-        >
-      </div>
-      <div v-if="loadingInitial" class="w-full px-3 py-4 text-center text-gray-500 text-sm">
-        Đang tải...
-      </div>
-      <div v-else-if="error" class="w-full px-3 py-4 text-center text-red-500 text-sm">
-        {{ error }}
-      </div>
-      <div v-else-if="items.length === 0" class="w-full px-3 py-4 text-center text-gray-500 text-sm rounded-b-md">
-        Không có kết quả
-      </div>
-      <div v-else>
-        <div class="overflow-auto" :style="[maxListStyle, dynamicListMaxHeight]" @scroll="e => loadMoreIfNeeded(e.target as HTMLElement)">
-          <div
-            v-for="item in items"
-            :key="itemKey(item)"
-            class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-all"
-            :class="{ 'bg-primary-50': isSelected(item) }"
-            @click.stop="selectItem(item)"
-          >
-            <slot name="item" :item="item">
-              <div class="flex-1">
-                <div class="font-medium text-gray-900 text-sm">
-                  {{ getDisplayText ? getDisplayText(item) : (labelField ? (item[labelField] ?? '') : '') }}
-                </div>
-                <div v-if="getItemSubtitle && getItemSubtitle(item)" class="text-xs text-gray-500">
-                  {{ getItemSubtitle(item) }}
-                </div>
-              </div>
-            </slot>
-            <svg
-              v-if="isSelected(item)"
-              class="w-4 h-4 text-primary-600 ml-2 flex-shrink-0"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414l-7.25 7.25a1 1 0 01-1.414 0l-3-3a1 1 0 111.414-1.414L8.5 11.586l6.543-6.543a1 1 0 011.414 0z"
-                clip-rule="evenodd"
-              />
-            </svg>
-          </div>
-          <div
-            v-if="infiniteScroll && loadingMore"
-            class="px-3 py-2 text-center text-xs text-gray-500"
-          >
-            Đang tải thêm...
-          </div>
-          <div
-            v-else-if="infiniteScroll && !hasMore"
-            class="px-3 py-2 text-center text-[11px] text-gray-400"
-          >
-            Hết dữ liệu
-          </div>
-        </div>
-      </div>
+        <slot name="footer" />
+      </template>
     </div>
   </div>
 </template>
@@ -590,8 +535,16 @@ onBeforeUnmount(() => {
   --pop-scale: 0.98;
   animation: dropdownFade .12s ease-out;
 }
+
 @keyframes dropdownFade {
-  0% { opacity: 0; transform: scale(var(--pop-scale)); }
-  100% { opacity: 1; transform: scale(1); }
+  0% {
+    opacity: 0;
+    transform: scale(var(--pop-scale));
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 </style>

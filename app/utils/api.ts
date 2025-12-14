@@ -76,6 +76,10 @@ export const API_ENDPOINTS = {
   // Order print preview
   ORDER_PRINT_HTML_PREVIEW: (orderCode: string) => `/Orders/print/${encodeURIComponent(orderCode)}/html-preview`,
   ORDER_PRINT_DOWNLOAD_PDF: (orderCode: string) => `/Orders/print/${encodeURIComponent(orderCode)}/download-pdf`,
+  // Order staff assignment
+  ORDER_UPDATE_STAFF: (orderCode: string) => `/orders/${encodeURIComponent(orderCode)}/staff`,
+  // Order note update
+  ORDER_UPDATE_NOTE: (orderCode: string) => `/orders/${encodeURIComponent(orderCode)}/note`,
 
   // Sales returns
   SALES_RETURNS: '/sales-returns',
@@ -146,6 +150,9 @@ export const API_ENDPOINTS = {
   CASHBOOK_FILTER: '/cashbook/filter',
   CASHBOOK_DETAIL: (code: string) => `/cashbook/${code}`,
   CASHBOOK_CREATE: '/cashbook',
+
+  // AR/AP Summary endpoints
+  AR_SUMMARY: '/ar/summary',
 
   // Location endpoints
   LOCATIONS_PROVINCES: '/locations/provinces',

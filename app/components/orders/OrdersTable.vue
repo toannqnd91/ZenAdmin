@@ -52,10 +52,10 @@ const columns = [
 
 // Adjust widths accordingly (removed last width)
 const colWidths = [
-  '120px', // code
+  '160px', // code
   '150px', // createdAt
-  '220px', // customer
-  '140px', // source
+  'null', // customer
+  '100px', // source
   '140px', // total
   '200px', // paymentStatus
   '180px' // processStatus
@@ -86,7 +86,8 @@ const colWidths = [
     <template #column-code="{ value }">
       <NuxtLink
         :to="`/orders/${String(value).replace(/^#/, '')}`"
-        class="text-primary-600 hover:underline font-medium"
+        class="text-primary-600 hover:underline font-medium inline-block max-w-[140px] truncate align-middle"
+        :title="String(value)"
       >
         {{ value }}
       </NuxtLink>

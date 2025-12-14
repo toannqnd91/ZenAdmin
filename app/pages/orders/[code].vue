@@ -3,6 +3,8 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 // useRoute and useRouter are auto-imported in Nuxt
 import { ordersService } from '@/services/orders.service'
 import type { OrderDetail, OrderHistoryEvent, OrderDetailRawResponse, OrderHistoryListResponse, CancelOrderRequest } from '@/services/orders.service'
+import { employeesService } from '@/services/employees.service'
+import type { EmployeeItem } from '@/services/employees.service'
 import { useOrderCancel } from '@/composables/useOrderCancel'
 import BaseCardHeader from '@/components/BaseCardHeader.vue'
 import IconEdit from '@/components/icons/IconEdit.vue'
@@ -14,6 +16,7 @@ import IconSuccess from '@/components/icons/IconSuccess.vue'
 import ReceivePaymentModal from '@/components/orders/ReceivePaymentModal.vue'
 import CancelOrderModal from '@/components/orders/CancelOrderModal.vue'
 import PrintOrderModal from '@/components/orders/PrintOrderModal.vue'
+import EditOrderNoteModal from '@/components/orders/EditOrderNoteModal.vue'
 
 // Raw payload supporting multiple backend shapes
 interface RawOrderItem {
@@ -23,6 +26,7 @@ interface RawOrderItem {
   productImage?: string | null
   productPrice: number
   quantity: number
+  discountAmount?: number
   total?: number
   rowTotal?: number
 }
@@ -70,12 +74,29 @@ interface RawWarehouse {
   id: number | string
   name: string
 }
+interface RawEmployee {
+  id: number | string
+  code: string | null
+  name: string
+  phoneNumber?: string | null
+  email?: string | null
+  department?: string | null
+  position?: string | null
+}
+interface RawCreatedBy {
+  id: string
+  name: string
+  email?: string | null
+  phoneNumber?: string | null
+}
 interface RawPayload {
   order: RawOrder
   customerInfo?: unknown
   customer?: RawCustomer
   shippingAddress?: RawAddress
   warehouse?: RawWarehouse
+  employee?: RawEmployee
+  createdBy?: RawCreatedBy
   return?: {
     refundedAmount?: number
     returnedValue?: number
@@ -120,6 +141,11 @@ const router = useRouter()
 const orderCodeParam = computed(() => route.params.code as string)
 const loading = ref(false)
 
+function openCustomerDetail(id: string | number) {
+  if (!id) return
+  window.open(`/customers/${id}`, '_blank')
+}
+
 // Extend base OrderDetail with UI fields we augment (customer.code etc.)
 interface UIOrderCustomer {
   id: string | number
@@ -132,6 +158,21 @@ interface UIOrderCustomer {
 }
 interface UIOrderDetail extends OrderDetail {
   customer: UIOrderCustomer | null
+  employee?: {
+    id: number | string
+    code: string | null
+    name: string
+    phoneNumber?: string | null
+    email?: string | null
+    department?: string | null
+    position?: string | null
+  } | null
+  createdBy?: {
+    id: string
+    name: string
+    email?: string | null
+    phoneNumber?: string | null
+  } | null
   returnData?: {
     refundedAmount: number
     returnedValue: number
@@ -378,10 +419,10 @@ async function fetchData() {
         if (Array.isArray(o.orderItems)) {
           items = o.orderItems.map((it) => {
             const qty = it.quantity || 1
-            const originalPrice = it.productPrice
-            const effectivePrice = (it.rowTotal && qty > 0) ? (it.rowTotal / qty) : it.productPrice
-            const discountAmount = Math.max(0, originalPrice - effectivePrice)
-            const discountPercent = originalPrice > 0 ? Math.round((discountAmount * 100) / originalPrice) : 0
+            const effectivePrice = typeof it.unitPrice === 'number' ? it.unitPrice : (it.productPrice - (it.discountAmount || 0))
+            const originalPrice = typeof it.productPrice === 'number' ? it.productPrice : effectivePrice
+            const itemDiscountAmount = Math.max(0, originalPrice - effectivePrice)
+            const discountPercent = originalPrice > 0 ? Math.round((itemDiscountAmount * 100) / originalPrice) : 0
             return {
               id: it.id,
               productId: it.productId,
@@ -389,9 +430,9 @@ async function fetchData() {
               quantity: it.quantity,
               unitPrice: effectivePrice,
               originalUnitPrice: originalPrice,
-              discountAmount,
+              discountAmount: itemDiscountAmount,
               discountPercent,
-              lineTotal: (it.rowTotal ?? it.total ?? (effectivePrice * it.quantity)) || 0,
+              lineTotal: effectivePrice * qty,
               thumbnailImageUrl: it.productImage || null
             }
           })
@@ -399,28 +440,28 @@ async function fetchData() {
         const totalQty = items.reduce((a, i) => a + (i.quantity || 0), 0)
         const mappedCustomer: UIOrderCustomer | null = rawCustomer
           ? {
-              id: (rawCustomer.customerId ?? rawCustomer.id) as string | number,
-              name: rawCustomer.name,
-              phone: rawCustomer.phoneNumber || rawCustomer.phone || null,
-              email: rawCustomer.email || null,
-              totalSpent: rawCustomer.totalSpent ?? null,
-              lastOrderCode: rawCustomer.lastOrderCode != null ? String(rawCustomer.lastOrderCode) : null,
-              code: rawCustomer.code || null
-            }
+            id: (rawCustomer.customerId ?? rawCustomer.id) as string | number,
+            name: rawCustomer.name,
+            phone: rawCustomer.phoneNumber || rawCustomer.phone || null,
+            email: rawCustomer.email || null,
+            totalSpent: rawCustomer.totalSpent ?? null,
+            lastOrderCode: rawCustomer.lastOrderCode != null ? String(rawCustomer.lastOrderCode) : null,
+            code: rawCustomer.code || null
+          }
           : null
         const mappedAddress = rawAddress
           ? {
-              contactName: rawAddress.contactName || rawCustomer?.name || null,
-              phoneNumber: rawAddress.phoneNumber || rawAddress.phone || rawCustomer?.phoneNumber || rawCustomer?.phone || null,
-              email: rawCustomer?.email || null,
-              addressLine1: rawAddress.addressLine1 || null,
-              addressLine2: rawAddress.addressLine2 || null,
-              country: rawAddress.countryId || null,
-              stateOrProvince: rawAddress.stateOrProvinceName || null,
-              district: rawAddress.districtName || null,
-              city: rawAddress.city || null,
-              zipCode: rawAddress.zipCode || null
-            }
+            contactName: rawAddress.contactName || rawCustomer?.name || null,
+            phoneNumber: rawAddress.phoneNumber || rawAddress.phone || rawCustomer?.phoneNumber || rawCustomer?.phone || null,
+            email: rawCustomer?.email || null,
+            addressLine1: rawAddress.addressLine1 || null,
+            addressLine2: rawAddress.addressLine2 || null,
+            country: rawAddress.countryId || null,
+            stateOrProvince: rawAddress.stateOrProvinceName || null,
+            district: rawAddress.districtName || null,
+            city: rawAddress.city || null,
+            zipCode: rawAddress.zipCode || null
+          }
           : null
         // Map return lines (if any) using payload.lines; fall back to empty list otherwise
         let returnLines: Array<{ id: number | string, productId: number | string, productName: string, qty: number, unitPrice: number, lineTotal: number, shippedQuantity?: number, returnedQuantity?: number }> = []
@@ -454,6 +495,21 @@ async function fetchData() {
           createdOn: o.createdOn,
           items,
           customer: mappedCustomer,
+          employee: payload.employee ? {
+            id: payload.employee.id,
+            code: payload.employee.code,
+            name: payload.employee.name,
+            phoneNumber: payload.employee.phoneNumber || null,
+            email: payload.employee.email || null,
+            department: payload.employee.department || null,
+            position: payload.employee.position || null
+          } : null,
+          createdBy: payload.createdBy ? {
+            id: payload.createdBy.id,
+            name: payload.createdBy.name,
+            email: payload.createdBy.email || null,
+            phoneNumber: payload.createdBy.phoneNumber || null
+          } : null,
           address: mappedAddress,
           payment: {
             totalQuantity: totalQty,
@@ -521,7 +577,7 @@ const onCancelOrder = () => {
   showCancelModal.value = true
   // Force next tick to ensure reactivity
   nextTick(() => {
-    })
+  })
 }
 
 const { cancelOrder, isLoading: isCancelling, error: cancelError } = useOrderCancel()
@@ -531,28 +587,28 @@ const handleCancelOrderConfirm = async (request: CancelOrderRequest) => {
   try {
     const code = (orderCodeParam.value || '').replace(/^#/, '')
     const result = await cancelOrder(code, request)
-    
+
     if (result) {
-      toast.add({ 
-        title: 'Đã gửi yêu cầu hủy đơn hàng', 
-        description: `Đơn hàng ${result.orderCode} đang được xử lý hủy. Trạng thái: ${result.orderStatus}`, 
-        color: 'success' 
+      toast.add({
+        title: 'Đã gửi yêu cầu hủy đơn hàng',
+        description: `Đơn hàng ${result.orderCode} đang được xử lý hủy. Trạng thái: ${result.orderStatus}`,
+        color: 'success'
       })
       // Refresh order data
       await fetchData()
     } else {
-      toast.add({ 
-        title: 'Hủy đơn hàng thất bại', 
-        description: cancelError.value || 'Có lỗi xảy ra', 
-        color: 'error' 
+      toast.add({
+        title: 'Hủy đơn hàng thất bại',
+        description: cancelError.value || 'Có lỗi xảy ra',
+        color: 'error'
       })
     }
   } catch (e) {
     const err = e as { message?: string }
-    toast.add({ 
-      title: 'Hủy đơn hàng thất bại', 
-      description: err?.message || 'Có lỗi xảy ra', 
-      color: 'error' 
+    toast.add({
+      title: 'Hủy đơn hàng thất bại',
+      description: err?.message || 'Có lỗi xảy ra',
+      color: 'error'
     })
   }
 }
@@ -560,6 +616,121 @@ const handleCancelOrderConfirm = async (request: CancelOrderRequest) => {
 const onEditOrder = () => {
   const toast = useToast()
   toast.add({ title: 'Sửa đơn hàng', description: 'Chức năng đang phát triển', color: 'primary' })
+}
+
+// Edit Order Note
+const showEditNoteModal = ref(false)
+const currentNoteForEdit = ref('')
+
+const openEditNoteModal = () => {
+  currentNoteForEdit.value = detail.value?.note || ''
+  showEditNoteModal.value = true
+}
+
+const handleNoteUpdate = async (newNote: string) => {
+  try {
+    const code = (orderCodeParam.value || '').replace(/^#/, '')
+    const res = await ordersService.updateOrderNote(code, { note: newNote })
+    if (res && res.success) {
+      if (detail.value) {
+        detail.value.note = newNote
+      }
+      useToast().add({ title: 'Cập nhật thành công', description: 'Đã cập nhật ghi chú đơn hàng', color: 'success' })
+      showEditNoteModal.value = false
+    } else {
+      throw new Error(res?.message || 'Cập nhật thất bại')
+    }
+  } catch (err: unknown) {
+    const error = err as { message?: string }
+    useToast().add({ title: 'Lỗi', description: error.message || 'Không thể cập nhật ghi chú', color: 'error' })
+  }
+}
+
+
+// Employee selection
+const showEmployeeDropdown = ref(false)
+const employees = ref<EmployeeItem[]>([])
+const employeeSearchQuery = ref('')
+const loadingEmployees = ref(false)
+
+const filteredEmployees = computed(() => {
+  if (!employeeSearchQuery.value.trim()) return employees.value
+  const q = employeeSearchQuery.value.toLowerCase()
+  return employees.value.filter(e =>
+    e.fullName.toLowerCase().includes(q) ||
+    e.code.toLowerCase().includes(q) ||
+    (e.email && e.email.toLowerCase().includes(q)) ||
+    (e.department && e.department.toLowerCase().includes(q))
+  )
+})
+
+const toggleEmployeeDropdown = async () => {
+  showEmployeeDropdown.value = !showEmployeeDropdown.value
+  if (showEmployeeDropdown.value && employees.value.length === 0) {
+    await loadEmployees()
+  }
+}
+
+const closeEmployeeDropdown = () => {
+  showEmployeeDropdown.value = false
+  employeeSearchQuery.value = ''
+}
+
+const loadEmployees = async () => {
+  try {
+    loadingEmployees.value = true
+    const result = await employeesService.getEmployeesCached()
+    if (result.data) {
+      employees.value = result.data.filter(e => e.isActive)
+    }
+  } catch (err) {
+    console.error('Failed to load employees:', err)
+  } finally {
+    loadingEmployees.value = false
+  }
+}
+
+const selectEmployee = async (employee: EmployeeItem) => {
+  try {
+    const code = (orderCodeParam.value || '').replace(/^#/, '')
+    const authStore = useAuthStore()
+    const userId = authStore.user?.id || ''
+
+    // Call API to update employee assignment
+    await ordersService.updateStaff(code, {
+      employeeId: Number(employee.id),
+      createdById: userId
+    })
+
+    // Update local state after successful API call
+    if (detail.value) {
+      detail.value.employee = {
+        id: employee.id,
+        code: employee.code,
+        name: employee.fullName,
+        phoneNumber: employee.phoneNumber,
+        email: employee.email,
+        department: employee.department,
+        position: employee.position
+      }
+    }
+    showEmployeeDropdown.value = false
+    employeeSearchQuery.value = ''
+
+    const toast = useToast()
+    toast.add({
+      title: 'Đã cập nhật nhân viên phụ trách',
+      description: `Nhân viên: ${employee.fullName}`,
+      color: 'success'
+    })
+  } catch (err) {
+    const toast = useToast()
+    toast.add({
+      title: 'Cập nhật thất bại',
+      description: err instanceof Error ? err.message : 'Đã xảy ra lỗi',
+      color: 'error'
+    })
+  }
 }
 
 const dropdownItems = [
@@ -596,15 +767,8 @@ const dropdownItems = [
           <div class="flex items-center gap-3">
             <button
               class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-              @click="goBack"
-            >
-              <svg
-                class="w-5 h-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
+              @click="goBack">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
@@ -613,7 +777,8 @@ const dropdownItems = [
                 Chi tiết đơn hàng
               </div>
               <div class="text-xs text-gray-500">
-                Mã đơn hàng: <span class="font-medium">{{ (detail && detail.orderCode) ? detail.orderCode : (orderCodeParam || '') }}</span>
+                Mã đơn hàng: <span class="font-medium">{{ (detail && detail.orderCode) ? detail.orderCode :
+                  (orderCodeParam || '') }}</span>
               </div>
             </div>
           </div>
@@ -637,65 +802,36 @@ const dropdownItems = [
                   {{ detail.orderCode }}
                 </div>
                 <div class="flex items-center gap-2">
-                  <span v-for="pill in ['Đã thanh toán', 'Đã xử lý', 'Lưu trữ']" :key="pill" class="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-600">
+                  <span v-for="pill in ['Đã thanh toán', 'Đã xử lý', 'Lưu trữ']" :key="pill"
+                    class="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-600">
                     <span class="w-2 h-2 rounded-full bg-gray-400" />
                     {{ pill }}
                   </span>
                 </div>
               </div>
               <div class="flex items-center gap-4 flex-shrink-0">
-                <UButton
-                  color="neutral"
-                  variant="ghost"
-                  size="sm"
-                  class="font-medium inline-flex items-center gap-2"
-                  @click="startReturn"
-                >
+                <UButton color="neutral" variant="ghost" size="sm" class="font-medium inline-flex items-center gap-2"
+                  @click="startReturn">
                   <IconReturn class="w-4 h-4" />
                   Trả hàng
                 </UButton>
-                <UButton
-                  color="neutral"
-                  variant="ghost"
-                  size="sm"
-                  class="font-medium inline-flex items-center gap-2"
-                  @click="printOrder"
-                >
+                <UButton color="neutral" variant="ghost" size="sm" class="font-medium inline-flex items-center gap-2"
+                  @click="printOrder">
                   <IconPrintOrder class="w-4 h-4" />
                   In đơn hàng
                 </UButton>
-                <UDropdownMenu
-                  :items="dropdownItems"
-                  :popper="{ placement: 'bottom-end' }"
-                >
-                  <UButton
-                    color="neutral"
-                    variant="ghost"
-                    size="sm"
-                    trailing-icon="i-heroicons-chevron-down"
-                    class="font-medium"
-                  >
+                <UDropdownMenu :items="dropdownItems" :popper="{ placement: 'bottom-end' }">
+                  <UButton color="neutral" variant="ghost" size="sm" trailing-icon="i-heroicons-chevron-down"
+                    class="font-medium">
                     Thao tác khác
                   </UButton>
                 </UDropdownMenu>
                 <div class="flex border border-gray-200 rounded-md overflow-hidden">
-                  <UButton
-                    size="sm"
-                    color="neutral"
-                    variant="ghost"
-                    icon="i-heroicons-chevron-left"
-                    class="rounded-none"
-                    @click="prevOrder"
-                  />
+                  <UButton size="sm" color="neutral" variant="ghost" icon="i-heroicons-chevron-left"
+                    class="rounded-none" @click="prevOrder" />
                   <div class="w-px bg-gray-200" />
-                  <UButton
-                    size="sm"
-                    color="neutral"
-                    variant="ghost"
-                    icon="i-heroicons-chevron-right"
-                    class="rounded-none"
-                    @click="nextOrder"
-                  />
+                  <UButton size="sm" color="neutral" variant="ghost" icon="i-heroicons-chevron-right"
+                    class="rounded-none" @click="nextOrder" />
                 </div>
               </div>
             </div>
@@ -709,11 +845,13 @@ const dropdownItems = [
                   <div class="flex items-center gap-2">
                     <span :class="['w-3 h-3 rounded-full', stepTimes[s] ? 'bg-green-500' : 'bg-gray-400']" />
                     <div class="flex flex-col">
-                      <span :class="[stepTimes[s] ? 'text-gray-900 font-medium' : 'text-gray-500 font-medium']">{{ s }}</span>
+                      <span :class="[stepTimes[s] ? 'text-gray-900 font-medium' : 'text-gray-500 font-medium']">{{ s
+                      }}</span>
                       <span v-if="stepTimes[s]" class="text-xs text-gray-500">{{ formatDateTime(stepTimes[s]) }}</span>
                     </div>
                   </div>
-                  <div v-if="idx < statusSteps.length - 1" :class="['flex-1 h-px mx-8 self-center', connectorClass(idx)]" />
+                  <div v-if="idx < statusSteps.length - 1"
+                    :class="['flex-1 h-px mx-8 self-center', connectorClass(idx)]" />
                 </template>
               </div>
             </UPageCard>
@@ -725,26 +863,13 @@ const dropdownItems = [
                   <BaseCardHeader>
                     <span class="inline-flex items-center gap-2">
                       <span class="inline-block w-5 h-5 align-middle" aria-hidden="true">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          focusable="false"
-                          aria-hidden="true"
-                          class="w-5 h-5"
-                        >
-                          <path
-                            fill="#fff"
-                            stroke="#CFF6E7"
-                            stroke-width="4"
-                            d="M12 22c5.523 0 10-4.477 10-10s-4.477-10-10-10-10 4.477-10 10 4.477 10 10 10Z"
-                          />
-                          <path
-                            fill="#0DB473"
-                            fill-rule="evenodd"
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" focusable="false"
+                          aria-hidden="true" class="w-5 h-5">
+                          <path fill="#fff" stroke="#CFF6E7" stroke-width="4"
+                            d="M12 22c5.523 0 10-4.477 10-10s-4.477-10-10-10-10 4.477-10 10 4.477 10 10 10Z" />
+                          <path fill="#0DB473" fill-rule="evenodd"
                             d="M4 12c0-4.416 3.584-8 8-8s8 3.584 8 8-3.584 8-8 8-8-3.584-8-8m6.4 1.736 5.272-5.272 1.128 1.136-6.4 6.4-3.2-3.2 1.128-1.128z"
-                            clip-rule="evenodd"
-                          />
+                            clip-rule="evenodd" />
                         </svg>
                       </span>
                       <span>Đã xử lý giao hàng</span>
@@ -755,7 +880,11 @@ const dropdownItems = [
                     <span class="text-gray-600">Chi nhánh:</span>
                     <span class="text-gray-900">{{ detail.meta?.branchName || '—' }}</span>
                     <span class="text-gray-600">Vận chuyển:</span>
-                    <span class="text-gray-900">{{ (detail.meta?.deliveryOption === 'Pickup' || detail.meta?.deliveryOption === 'PickUp') ? 'Nhận tại cửa hàng' : (detail.meta?.shippingMethod || detail.meta?.deliveryOption || '—') }}</span>
+                    <span class="text-gray-900">{{ (detail.meta?.deliveryOption === 'Pickup' ||
+                      detail.meta?.deliveryOption ===
+                      'PickUp') ? 'Nhận tại cửa hàng' : (detail.meta?.shippingMethod || detail.meta?.deliveryOption ||
+                        '—')
+                    }}</span>
                   </div>
                   <div class="-mx-4 lg:-mx-6 overflow-x-auto">
                     <table class="min-w-full w-full text-sm border-separate border-spacing-0">
@@ -776,16 +905,11 @@ const dropdownItems = [
                         </tr>
                       </thead>
                       <tbody>
-                        <tr
-                          v-for="item in detail.items"
-                          :key="item.id"
-                        >
+                        <tr v-for="item in detail.items" :key="item.id">
                           <td class="px-6 py-2 align-top">
                             <div class="flex items-center gap-2">
-                              <img
-                                :src="item.thumbnailImageUrl || '/no-image.svg'"
-                                class="w-10 h-10 rounded bg-gray-100 object-cover flex-shrink-0"
-                              >
+                              <img :src="item.thumbnailImageUrl || '/no-image.svg'"
+                                class="w-10 h-10 rounded bg-gray-100 object-cover flex-shrink-0">
                               <div>
                                 <div class="font-medium text-gray-800">
                                   {{ item.productName }}
@@ -802,10 +926,13 @@ const dropdownItems = [
                           </td>
                           <td class="px-6 py-2 align-top">
                             <div class="flex flex-col">
-                              <span class="text-primary-600 font-semibold leading-snug">{{ formatCurrency(item.unitPrice) }}</span>
+                              <span class="text-primary-600 font-semibold leading-snug">{{
+                                formatCurrency(item.unitPrice) }}</span>
                               <div v-if="getDiscountAmount(item) > 0" class="text-xs text-gray-500 leading-snug">
                                 <span class="line-through mr-2">{{ formatCurrency(getOriginalPrice(item)) }}</span>
-                                <span class="text-red-600 mr-1">-{{ formatCurrency(getDiscountAmount(item)).replace('đ', '') }}</span>
+                                <span class="text-red-600 mr-1">-{{ formatCurrency(getDiscountAmount(item)).replace('đ',
+                                  '')
+                                }}</span>
                                 <span class="text-red-600">(-{{ getDiscountPercent(item) }}%)</span>
                               </div>
                             </div>
@@ -821,62 +948,26 @@ const dropdownItems = [
                 <!-- Quick Payment Summary (appears only if unpaid or partial) -->
                 <UPageCard
                   v-if="paymentStatusDisplay && (isUnpaid(paymentStatusDisplay) || isPartialPayment(paymentStatusDisplay))"
-                  variant="soft"
-                  class="bg-white rounded-lg"
-                >
+                  variant="soft" class="bg-white rounded-lg">
                   <div class="text-sm">
                     <div class="flex items-center gap-2 mb-4">
                       <!-- Reuse icon logic but only show one icon here -->
                       <span class="inline-block w-5 h-5" aria-hidden="true">
                         <template v-if="isPartialPayment(paymentStatusDisplay)">
-                          <svg
-                            class="w-5 h-5"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            aria-hidden="true"
-                          >
-                            <circle
-                              cx="12"
-                              cy="12"
-                              r="12"
-                              fill="#FFDF9B"
-                            />
-                            <path
-                              fill="#fff"
-                              fill-rule="evenodd"
-                              d="M19 12a7 7 0 1 0-14 0z"
-                              clip-rule="evenodd"
-                            />
-                            <path
-                              fill="#E49C06"
-                              d="M19 12v.75h.75v-.75zm-14 0h-.75v.75h.75zm7-6.25a6.25 6.25 0 0 1 6.25 6.25h1.5a7.75 7.75 0 0 0-7.75-7.75zm-6.25 6.25a6.25 6.25 0 0 1 6.25-6.25v-1.5a7.75 7.75 0 0 0-7.75 7.75zm-.75.75h14v-1.5h-14z"
-                            />
-                            <path
-                              fill="#E49C06"
-                              d="M19 12v-.75h.75v.75zm-14 0h-.75v-.75h.75zm7 7.75a8 8 0 0 1-.759-.037l.145-1.493q.303.03.614.03zm-2.25-.332a7.7 7.7 0 0 1-1.404-.582l.708-1.322q.537.288 1.13.469zm-2.667-1.427a8 8 0 0 1-1.074-1.074l1.16-.952q.391.475.866.867zm-1.919-2.336a7.7 7.7 0 0 1-.582-1.405l1.435-.435q.181.594.47 1.131zm-.877-2.896a8 8 0 0 1-.037-.759h1.5q0 .31.03.614zm.713-1.509h.7v1.5h-.7zm2.1 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h.7v1.5h-.7zm1.45.75q0 .385-.037.759l-1.493-.145q.03-.303.03-.614zm-.332 2.25q-.224.736-.582 1.405l-1.322-.709q.288-.537.469-1.13zm-1.427 2.667a8 8 0 0 1-1.074 1.074l-.952-1.16a6.3 6.3 0 0 0 .867-.866zm-2.336 1.919a7.7 7.7 0 0 1-1.405.582l-.435-1.435q.594-.181 1.131-.47zm-2.896.877a8 8 0 0 1-.759.037v-1.5q.31 0 .614-.03z"
-                            />
+                          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="12" fill="#FFDF9B" />
+                            <path fill="#fff" fill-rule="evenodd" d="M19 12a7 7 0 1 0-14 0z" clip-rule="evenodd" />
+                            <path fill="#E49C06"
+                              d="M19 12v.75h.75v-.75zm-14 0h-.75v.75h.75zm7-6.25a6.25 6.25 0 0 1 6.25 6.25h1.5a7.75 7.75 0 0 0-7.75-7.75zm-6.25 6.25a6.25 6.25 0 0 1 6.25-6.25v-1.5a7.75 7.75 0 0 0-7.75 7.75zm-.75.75h14v-1.5h-14z" />
+                            <path fill="#E49C06"
+                              d="M19 12v-.75h.75v.75zm-14 0h-.75v-.75h.75zm7 7.75a8 8 0 0 1-.759-.037l.145-1.493q.303.03.614.03zm-2.25-.332a7.7 7.7 0 0 1-1.404-.582l.708-1.322q.537.288 1.13.469zm-2.667-1.427a8 8 0 0 1-1.074-1.074l1.16-.952q.391.475.866.867zm-1.919-2.336a7.7 7.7 0 0 1-.582-1.405l1.435-.435q.181.594.47 1.131zm-.877-2.896a8 8 0 0 1-.037-.759h1.5q0 .31.03.614zm.713-1.509h.7v1.5h-.7zm2.1 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h.7v1.5h-.7zm1.45.75q0 .385-.037.759l-1.493-.145q.03-.303.03-.614zm-.332 2.25q-.224.736-.582 1.405l-1.322-.709q.288-.537.469-1.13zm-1.427 2.667a8 8 0 0 1-1.074 1.074l-.952-1.16a6.3 6.3 0 0 0 .867-.866zm-2.336 1.919a7.7 7.7 0 0 1-1.405.582l-.435-1.435q.594-.181 1.131-.47zm-2.896.877a8 8 0 0 1-.759.037v-1.5q.31 0 .614-.03z" />
                           </svg>
                         </template>
                         <template v-else>
-                          <svg
-                            class="w-5 h-5"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            aria-hidden="true"
-                          >
-                            <rect
-                              width="24"
-                              height="24"
-                              fill="#FFDF9B"
-                              rx="12"
-                            />
-                            <path
-                              fill="#fff"
-                              stroke="#E49C06"
-                              stroke-dasharray="2 2"
-                              stroke-width="1.5"
-                              d="M12 19a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"
-                            />
+                          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <rect width="24" height="24" fill="#FFDF9B" rx="12" />
+                            <path fill="#fff" stroke="#E49C06" stroke-dasharray="2 2" stroke-width="1.5"
+                              d="M12 19a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z" />
                           </svg>
                         </template>
                       </span>
@@ -885,79 +976,64 @@ const dropdownItems = [
                     <div class="space-y-2">
                       <div class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
                         <span class="text-gray-600">Tổng tiền hàng</span>
-                        <span v-if="detail.payment?.totalQuantity != null" class="text-gray-500 justify-self-center">{{ detail.payment.totalQuantity }} sản phẩm</span>
+                        <span v-if="detail.payment?.totalQuantity != null" class="text-gray-500 justify-self-center">{{
+                          detail.payment.totalQuantity }} sản phẩm</span>
                         <span v-else class="text-gray-500 justify-self-center" />
-                        <span class="font-medium justify-self-end">{{ formatCurrency(detail.items.reduce((a, i) => a + (i.lineTotal || 0), 0)) }}</span>
+                        <span class="font-medium justify-self-end">{{formatCurrency(detail.items.reduce((a, i) => a +
+                          (i.lineTotal
+                            || 0), 0))}}</span>
                       </div>
-                      <div
-                        v-if="detail.payment?.discountAmount && detail.payment.discountAmount > 0"
-                        class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4"
-                      >
+                      <div v-if="detail.payment?.discountAmount && detail.payment.discountAmount > 0"
+                        class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
                         <span class="text-gray-600">Khuyến mãi</span>
                         <span />
-                        <span class="text-red-600 justify-self-end">-{{ formatCurrency(detail.payment.discountAmount) }}</span>
+                        <span class="text-red-600 justify-self-end">-{{ formatCurrency(detail.payment.discountAmount)
+                        }}</span>
+                      </div>
+                      <div v-if="detail.payment?.shippingFeeAmount && detail.payment.shippingFeeAmount > 0"
+                        class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
+                        <span class="text-gray-600">Phí giao hàng</span>
+                        <span />
+                        <span class="font-medium justify-self-end">{{ formatCurrency(detail.payment.shippingFeeAmount)
+                        }}</span>
                       </div>
                       <div class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
                         <span class="text-gray-600">Thành tiền</span>
                         <span />
-                        <span class="font-semibold justify-self-end">{{ formatCurrency(detail.payment?.orderTotal) }}</span>
+                        <span class="font-semibold justify-self-end">{{ formatCurrency(detail.payment?.orderTotal)
+                        }}</span>
                       </div>
-                      <div
-                        v-if="isPartialPayment(paymentStatusDisplay) && detail.payment?.paidAmount"
-                        class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4 pt-2 border-t border-gray-100"
-                      >
+                      <div v-if="isPartialPayment(paymentStatusDisplay) && detail.payment?.paidAmount"
+                        class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4 pt-2 border-t border-gray-100">
                         <span class="text-gray-600">Khách đã trả</span>
-                        <span class="text-gray-500 justify-self-center">{{ formatPaymentMethod(detail.payment?.paymentMethod) }}</span>
-                        <span class="font-medium justify-self-end">{{ formatCurrency(detail.payment?.paidAmount) }}</span>
+                        <span class="text-gray-500 justify-self-center">{{
+                          formatPaymentMethod(detail.payment?.paymentMethod)
+                        }}</span>
+                        <span class="font-medium justify-self-end">{{ formatCurrency(detail.payment?.paidAmount)
+                        }}</span>
                       </div>
                       <div
                         v-if="isPartialPayment(paymentStatusDisplay) && detail.payment?.paidAmount != null && detail.payment?.orderTotal != null"
-                        class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4"
-                      >
+                        class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
                         <span class="text-gray-900 font-semibold">Khách còn phải trả</span>
                         <span />
-                        <span class="text-gray-900 font-semibold justify-self-end">{{ formatCurrency(Math.max(0, (detail.payment?.orderTotal || 0) - (detail.payment?.paidAmount || 0))) }}</span>
+                        <span class="text-gray-900 font-semibold justify-self-end">{{ formatCurrency(Math.max(0,
+                          (detail.payment?.orderTotal || 0) - (detail.payment?.paidAmount || 0))) }}</span>
                       </div>
                     </div>
-                    <div
-                      class="flex justify-end gap-3 pt-4"
-                      :class="isUnpaid(paymentStatusDisplay) ? 'mt-2 border-t border-gray-100 pt-4' : 'mt-2'"
-                    >
-                      <UButton
-                        color="neutral"
-                        variant="soft"
-                        size="md"
-                        class="font-medium inline-flex items-center gap-2"
-                        icon="i-heroicons-qr-code"
-                      >
+                    <div class="flex justify-end gap-3 pt-4"
+                      :class="isUnpaid(paymentStatusDisplay) ? 'mt-2 border-t border-gray-100 pt-4' : 'mt-2'">
+                      <UButton color="neutral" variant="soft" size="md"
+                        class="font-medium inline-flex items-center gap-2" icon="i-heroicons-qr-code">
                         <span class="flex items-center gap-1">
                           Lấy mã QR
                         </span>
                       </UButton>
-                      <UButton
-                        color="primary"
-                        variant="solid"
-                        size="md"
-                        class="font-medium inline-flex items-center gap-2"
-                        @click="showReceivePayment = true"
-                      >
-                        <svg
-                          class="w-4 h-4"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="1.7"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          aria-hidden="true"
-                        >
-                          <rect
-                            x="2"
-                            y="6"
-                            width="20"
-                            height="12"
-                            rx="2"
-                          />
+                      <UButton color="primary" variant="solid" size="md"
+                        class="font-medium inline-flex items-center gap-2" @click="showReceivePayment = true">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <rect x="2" y="6" width="20" height="12" rx="2" />
                           <path d="M6 10h4" />
                           <path d="M6 14h8" />
                           <path d="M14 10h4" />
@@ -970,77 +1046,39 @@ const dropdownItems = [
                 <!-- Payment (hidden when quick summary shown) -->
                 <UPageCard
                   v-if="!(paymentStatusDisplay && (isUnpaid(paymentStatusDisplay) || isPartialPayment(paymentStatusDisplay)))"
-                  variant="soft"
-                  class="bg-white rounded-lg"
-                >
+                  variant="soft" class="bg-white rounded-lg">
                   <BaseCardHeader>
                     <span class="inline-flex items-center gap-2 select-none">
                       <template v-if="paymentStatusDisplay">
                         <!-- Refunded -->
                         <span v-if="isRefunded(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
-                          <svg
-                            class="w-5 h-5 text-rose-600"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          >
+                          <svg class="w-5 h-5 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M3 10v6h6" />
                             <path d="M21 14a9 9 0 0 1-15.3 6.3L3 16" />
                             <path d="M3 10a9 9 0 0 1 15.3-6.3L21 8" />
                           </svg>
                         </span>
                         <!-- Overpaid -->
-                        <span v-else-if="isOverPaid(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
-                          <svg
-                            class="w-5 h-5 text-violet-600"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="1.6"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          >
-                            <ellipse
-                              cx="12"
-                              cy="6"
-                              rx="7"
-                              ry="3"
-                            />
+                        <span v-else-if="isOverPaid(paymentStatusDisplay)" class="inline-block w-5 h-5"
+                          aria-hidden="true">
+                          <svg class="w-5 h-5 text-violet-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <ellipse cx="12" cy="6" rx="7" ry="3" />
                             <path d="M5 6v4c0 1.66 3.13 3 7 3s7-1.34 7-3V6" />
                             <path d="M5 14v4c0 1.66 3.13 3 7 3s7-1.34 7-3v-4" />
                           </svg>
                         </span>
                         <!-- Partial payment (provided) -->
-                        <span v-else-if="isPartialPayment(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
-                          <svg
-                            class="w-5 h-5"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            aria-hidden="true"
-                          >
-                            <circle
-                              cx="12"
-                              cy="12"
-                              r="12"
-                              fill="#FFDF9B"
-                            />
-                            <path
-                              fill="#fff"
-                              fill-rule="evenodd"
-                              d="M19 12a7 7 0 1 0-14 0z"
-                              clip-rule="evenodd"
-                            />
-                            <path
-                              fill="#E49C06"
-                              d="M19 12v.75h.75v-.75zm-14 0h-.75v.75h.75zm7-6.25a6.25 6.25 0 0 1 6.25 6.25h1.5a7.75 7.75 0 0 0-7.75-7.75zm-6.25 6.25a6.25 6.25 0 0 1 6.25-6.25v-1.5a7.75 7.75 0 0 0-7.75 7.75zm-.75.75h14v-1.5h-14z"
-                            />
-                            <path
-                              fill="#E49C06"
-                              d="M19 12v-.75h.75v.75zm-14 0h-.75v-.75h.75zm7 7.75a8 8 0 0 1-.759-.037l.145-1.493q.303.03.614.03zm-2.25-.332a7.7 7.7 0 0 1-1.404-.582l.708-1.322q.537.288 1.13.469zm-2.667-1.427a8 8 0 0 1-1.074-1.074l1.16-.952q.391.475.866.867zm-1.919-2.336a7.7 7.7 0 0 1-.582-1.405l1.435-.435q.181.594.47 1.131zm-.877-2.896a8 8 0 0 1-.037-.759h1.5q0 .31.03.614zm.713-1.509h.7v1.5h-.7zm2.1 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h.7v1.5h-.7zm1.45.75q0 .385-.037.759l-1.493-.145q.03-.303.03-.614zm-.332 2.25q-.224.736-.582 1.405l-1.322-.709q.288-.537.469-1.13zm-1.427 2.667a8 8 0 0 1-1.074 1.074l-.952-1.16a6.3 6.3 0 0 0 .867-.866zm-2.336 1.919a7.7 7.7 0 0 1-1.405.582l-.435-1.435q.594-.181 1.131-.47zm-2.896.877a8 8 0 0 1-.759.037v-1.5q.31 0 .614-.03z"
-                            />
+                        <span v-else-if="isPartialPayment(paymentStatusDisplay)" class="inline-block w-5 h-5"
+                          aria-hidden="true">
+                          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="12" fill="#FFDF9B" />
+                            <path fill="#fff" fill-rule="evenodd" d="M19 12a7 7 0 1 0-14 0z" clip-rule="evenodd" />
+                            <path fill="#E49C06"
+                              d="M19 12v.75h.75v-.75zm-14 0h-.75v.75h.75zm7-6.25a6.25 6.25 0 0 1 6.25 6.25h1.5a7.75 7.75 0 0 0-7.75-7.75zm-6.25 6.25a6.25 6.25 0 0 1 6.25-6.25v-1.5a7.75 7.75 0 0 0-7.75 7.75zm-.75.75h14v-1.5h-14z" />
+                            <path fill="#E49C06"
+                              d="M19 12v-.75h.75v.75zm-14 0h-.75v-.75h.75zm7 7.75a8 8 0 0 1-.759-.037l.145-1.493q.303.03.614.03zm-2.25-.332a7.7 7.7 0 0 1-1.404-.582l.708-1.322q.537.288 1.13.469zm-2.667-1.427a8 8 0 0 1-1.074-1.074l1.16-.952q.391.475.866.867zm-1.919-2.336a7.7 7.7 0 0 1-.582-1.405l1.435-.435q.181.594.47 1.131zm-.877-2.896a8 8 0 0 1-.037-.759h1.5q0 .31.03.614zm.713-1.509h.7v1.5h-.7zm2.1 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h1.4v1.5h-1.4zm2.8 0h.7v1.5h-.7zm1.45.75q0 .385-.037.759l-1.493-.145q.03-.303.03-.614zm-.332 2.25q-.224.736-.582 1.405l-1.322-.709q.288-.537.469-1.13zm-1.427 2.667a8 8 0 0 1-1.074 1.074l-.952-1.16a6.3 6.3 0 0 0 .867-.866zm-2.336 1.919a7.7 7.7 0 0 1-1.405.582l-.435-1.435q.594-.181 1.131-.47zm-2.896.877a8 8 0 0 1-.759.037v-1.5q.31 0 .614-.03z" />
                           </svg>
                         </span>
                         <!-- Paid (provided) -->
@@ -1048,26 +1086,12 @@ const dropdownItems = [
                           <IconSuccess />
                         </span>
                         <!-- Unpaid (provided) -->
-                        <span v-else-if="isUnpaid(paymentStatusDisplay)" class="inline-block w-5 h-5" aria-hidden="true">
-                          <svg
-                            class="w-5 h-5"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            aria-hidden="true"
-                          >
-                            <rect
-                              width="24"
-                              height="24"
-                              fill="#FFDF9B"
-                              rx="12"
-                            />
-                            <path
-                              fill="#fff"
-                              stroke="#E49C06"
-                              stroke-dasharray="2 2"
-                              stroke-width="1.5"
-                              d="M12 19a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"
-                            />
+                        <span v-else-if="isUnpaid(paymentStatusDisplay)" class="inline-block w-5 h-5"
+                          aria-hidden="true">
+                          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <rect width="24" height="24" fill="#FFDF9B" rx="12" />
+                            <path fill="#fff" stroke="#E49C06" stroke-dasharray="2 2" stroke-width="1.5"
+                              d="M12 19a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z" />
                           </svg>
                         </span>
                         <!-- Fallback dot -->
@@ -1084,28 +1108,40 @@ const dropdownItems = [
                   <div class="pb-3 text-sm space-y-2">
                     <div class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
                       <span class="text-gray-600">Tổng tiền hàng</span>
-                      <span v-if="detail.payment?.totalQuantity != null" class="text-gray-500 justify-self-center">{{ detail.payment.totalQuantity }} sản phẩm</span>
+                      <span v-if="detail.payment?.totalQuantity != null" class="text-gray-500 justify-self-center">{{
+                        detail.payment.totalQuantity }} sản phẩm</span>
                       <span v-else class="text-gray-500 justify-self-center" />
-                      <span class="font-medium justify-self-end">{{ formatCurrency(detail.items.reduce((a, i) => a + (i.lineTotal || 0), 0)) }}</span>
+                      <span class="font-medium justify-self-end">{{formatCurrency(detail.items.reduce((a, i) => a +
+                        (i.lineTotal ||
+                          0), 0))}}</span>
                     </div>
-                    <div
-                      v-if="detail.payment?.discountAmount && detail.payment.discountAmount > 0"
-                      class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4"
-                    >
+                    <div v-if="detail.payment?.discountAmount && detail.payment.discountAmount > 0"
+                      class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
                       <span class="text-gray-600">Khuyến mãi</span>
                       <span />
-                      <span class="text-red-600 justify-self-end">-{{ formatCurrency(detail.payment.discountAmount) }}</span>
+                      <span class="text-red-600 justify-self-end">-{{ formatCurrency(detail.payment.discountAmount)
+                      }}</span>
+                    </div>
+                    <div v-if="detail.payment?.shippingFeeAmount && detail.payment.shippingFeeAmount > 0"
+                      class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
+                      <span class="text-gray-600">Phí giao hàng</span>
+                      <span />
+                      <span class="font-medium justify-self-end">{{ formatCurrency(detail.payment.shippingFeeAmount)
+                      }}</span>
                     </div>
                     <div class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
                       <span class="text-gray-600">Thành tiền</span>
                       <span />
-                      <span class="font-semibold justify-self-end">{{ formatCurrency(detail.payment?.orderTotal) }}</span>
+                      <span class="font-semibold justify-self-end">{{ formatCurrency(detail.payment?.orderTotal)
+                      }}</span>
                     </div>
                   </div>
                   <div class="border-t border-gray-100 py-3 text-sm">
                     <div class="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
                       <span class="text-gray-700 font-medium">Khách đã trả</span>
-                      <span class="text-gray-500 justify-self-center">{{ formatPaymentMethod(detail.payment?.paymentMethod) }}</span>
+                      <span class="text-gray-500 justify-self-center">{{
+                        formatPaymentMethod(detail.payment?.paymentMethod)
+                      }}</span>
                       <span class="font-medium justify-self-end">{{ formatCurrency(detail.payment?.paidAmount) }}</span>
                     </div>
                   </div>
@@ -1127,7 +1163,8 @@ const dropdownItems = [
                       </div>
                     </div>
                     <div class="pt-1">
-                      <button type="button" class="text-primary-600 text-sm font-medium whitespace-nowrap hover:underline">
+                      <button type="button"
+                        class="text-primary-600 text-sm font-medium whitespace-nowrap hover:underline">
                         Yêu cầu hóa đơn
                       </button>
                     </div>
@@ -1178,10 +1215,8 @@ const dropdownItems = [
                   <BaseCardHeader>
                     <div class="flex items-center justify-between w-full">
                       <span>Khách hàng</span>
-                      <span
-                        v-if="detail.customer?.code"
-                        class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-[11px] font-medium text-gray-600"
-                      >
+                      <span v-if="detail.customer?.code"
+                        class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-[11px] font-medium text-gray-600">
                         {{ (detail.customer as any).code }}
                       </span>
                     </div>
@@ -1192,7 +1227,8 @@ const dropdownItems = [
                       <div class="flex items-start">
                         <div class="flex-1 min-w-0">
                           <div class="flex items-center gap-2 flex-wrap">
-                            <span class="font-medium text-primary-600 hover:underline cursor-pointer">
+                            <span class="font-medium text-primary-600 hover:underline cursor-pointer"
+                              @click="detail.customer?.id && openCustomerDetail(detail.customer.id)">
                               {{ detail.customer?.name || '---' }}
                             </span>
                           </div>
@@ -1228,12 +1264,7 @@ const dropdownItems = [
                           <div class="text-xs font-medium text-gray-700">
                             Địa chỉ giao hàng
                           </div>
-                          <UButton
-                            color="neutral"
-                            variant="ghost"
-                            size="xs"
-                            aria-label="Sửa địa chỉ giao hàng"
-                          >
+                          <UButton color="neutral" variant="ghost" size="xs" aria-label="Sửa địa chỉ giao hàng">
                             <IconEdit />
                           </UButton>
                         </div>
@@ -1244,7 +1275,8 @@ const dropdownItems = [
                               {{ detail.address.phoneNumber }}
                             </div>
                             <div>
-                              {{ [detail.address.addressLine1, detail.address.city, detail.address.country].filter(Boolean).join(', ') || 'Vietnam' }}
+                              {{ [detail.address.addressLine1, detail.address.city,
+                              detail.address.country].filter(Boolean).join(', ') || 'Vietnam' }}
                             </div>
                           </template>
                           <template v-else>
@@ -1254,7 +1286,8 @@ const dropdownItems = [
                       </div>
                       <!-- Extra actions -->
                       <div class="pt-3 border-t border-gray-100 flex justify-center">
-                        <button type="button" class="text-primary-600 text-xs font-medium inline-flex items-center gap-1">
+                        <button type="button"
+                          class="text-primary-600 text-xs font-medium inline-flex items-center gap-1">
                           Xem thêm
                           <IconChevronDown class="w-4 h-4" />
                         </button>
@@ -1263,7 +1296,14 @@ const dropdownItems = [
                   </div>
                 </UPageCard>
                 <UPageCard variant="soft" class="bg-white rounded-lg">
-                  <BaseCardHeader>Ghi chú</BaseCardHeader>
+                  <BaseCardHeader>
+                    Ghi chú
+                    <template #actions>
+                      <button type="button" class="text-gray-400 hover:text-gray-600" @click="openEditNoteModal">
+                        <IconEdit class="w-4 h-4" />
+                      </button>
+                    </template>
+                  </BaseCardHeader>
                   <div v-if="!detail.note" class="text-sm text-gray-500">
                     Chưa có ghi chú
                   </div>
@@ -1286,17 +1326,59 @@ const dropdownItems = [
                       </div>
 
                       <!-- Staff in charge -->
-                      <div class="space-y-1">
+                      <div class="space-y-1 relative" v-click-outside="closeEmployeeDropdown">
                         <div class="flex items-center justify-between">
                           <div class="font-medium text-gray-800">
                             Nhân viên phụ trách
                           </div>
-                          <button type="button" class="text-gray-400 hover:text-gray-600" aria-label="Sửa nhân viên phụ trách">
+                          <button type="button" class="text-gray-400 hover:text-gray-600"
+                            aria-label="Sửa nhân viên phụ trách" @click="toggleEmployeeDropdown">
                             <IconEdit class="w-4 h-4" />
                           </button>
                         </div>
                         <div class="text-gray-600">
-                          {{ detail.meta?.staffInCharge || 'Phạm Văn Toàn' }}
+                          <template v-if="detail.employee">
+                            <div>{{ detail.employee.name }}</div>
+                            <div v-if="detail.employee.code" class="text-xs text-gray-500">{{ detail.employee.code }}
+                            </div>
+                            <div v-if="detail.employee.position || detail.employee.department"
+                              class="text-xs text-gray-500">
+                              {{ [detail.employee.position, detail.employee.department].filter(Boolean).join(' - ') }}
+                            </div>
+                          </template>
+                          <template v-else>
+                            {{ detail.meta?.staffInCharge || '---' }}
+                          </template>
+                        </div>
+
+                        <!-- Employee dropdown -->
+                        <div v-if="showEmployeeDropdown"
+                          class="absolute top-full right-0 mt-1 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+                          @click.stop>
+                          <div class="p-3 border-b border-gray-100">
+                            <input v-model="employeeSearchQuery" type="text" placeholder="Tìm kiếm nhân viên..."
+                              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                          </div>
+                          <div class="max-h-64 overflow-y-auto">
+                            <div v-if="loadingEmployees" class="p-4 text-center text-sm text-gray-500">
+                              Đang tải...
+                            </div>
+                            <div v-else-if="filteredEmployees.length === 0"
+                              class="p-4 text-center text-sm text-gray-500">
+                              Không tìm thấy nhân viên
+                            </div>
+                            <button v-for="emp in filteredEmployees" :key="emp.id" type="button"
+                              class="w-full px-4 py-2.5 text-left hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                              @click="selectEmployee(emp)">
+                              <div class="font-medium text-sm text-gray-900">{{ emp.fullName }}</div>
+                              <div class="text-xs text-gray-500 mt-0.5">
+                                <span v-if="emp.code">{{ emp.code }}</span>
+                                <span v-if="emp.position || emp.department" class="ml-2">
+                                  {{ [emp.position, emp.department].filter(Boolean).join(' - ') }}
+                                </span>
+                              </div>
+                            </button>
+                          </div>
                         </div>
                       </div>
 
@@ -1306,7 +1388,16 @@ const dropdownItems = [
                           Nhân viên tạo đơn
                         </div>
                         <div class="text-gray-600">
-                          {{ detail.meta?.creatorName || 'Phạm Văn Toàn' }}
+                          <template v-if="detail.createdBy">
+                            <div>{{ detail.createdBy.name }}</div>
+                            <div v-if="detail.createdBy.email" class="text-xs text-gray-500">{{ detail.createdBy.email
+                            }}</div>
+                            <div v-if="detail.createdBy.phoneNumber" class="text-xs text-gray-500">{{
+                              detail.createdBy.phoneNumber }}</div>
+                          </template>
+                          <template v-else>
+                            {{ detail.meta?.creatorName || '---' }}
+                          </template>
                         </div>
                       </div>
 
@@ -1326,7 +1417,8 @@ const dropdownItems = [
                           <div class="font-medium text-gray-800">
                             Ngày hẹn giao
                           </div>
-                          <button type="button" class="text-gray-400 hover:text-gray-600" aria-label="Sửa ngày hẹn giao">
+                          <button type="button" class="text-gray-400 hover:text-gray-600"
+                            aria-label="Sửa ngày hẹn giao">
                             <IconEdit class="w-4 h-4" />
                           </button>
                         </div>
@@ -1338,11 +1430,8 @@ const dropdownItems = [
                       <!-- Tags -->
                       <div class="space-y-1">
                         <label class="block text-xs font-medium text-gray-600">Tag</label>
-                        <input
-                          type="text"
-                          placeholder="Tìm kiếm hoặc thêm mới tag"
-                          class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
+                        <input type="text" placeholder="Tìm kiếm hoặc thêm mới tag"
+                          class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                         <div class="text-right mt-1">
                           <button type="button" class="text-primary-600 text-xs font-medium hover:underline">
                             Danh sách tag
@@ -1360,22 +1449,11 @@ const dropdownItems = [
     </template>
   </UDashboardPanel>
 
-  <ReceivePaymentModal
-    v-model="showReceivePayment"
-    :remaining-amount="remainingAmount"
-    :paid-amount="paidAmount"
-    @submit="handleReceivePaymentSubmit"
-  />
+  <ReceivePaymentModal v-model="showReceivePayment" :remaining-amount="remainingAmount" :paid-amount="paidAmount"
+    @submit="handleReceivePaymentSubmit" />
 
-  <CancelOrderModal
-    v-model="showCancelModal"
-    :order-code="orderCodeParam"
-    :order-total="detail?.payment?.orderTotal"
-    :is-paid="isOrderPaid"
-    @confirm="handleCancelOrderConfirm"
-  />
-  <PrintOrderModal
-    v-model="showPrintModal"
-    :order-code="detail?.orderCode || orderCodeParam"
-  />
+  <CancelOrderModal v-model="showCancelModal" :order-code="orderCodeParam" :order-total="detail?.payment?.orderTotal"
+    :is-paid="isOrderPaid" @confirm="handleCancelOrderConfirm" />
+  <PrintOrderModal v-model="showPrintModal" :order-code="detail?.orderCode || orderCodeParam" />
+  <EditOrderNoteModal v-model="showEditNoteModal" :current-note="currentNoteForEdit" @submit="handleNoteUpdate" />
 </template>

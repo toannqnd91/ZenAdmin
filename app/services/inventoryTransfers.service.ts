@@ -111,6 +111,7 @@ export interface InventoryTransferCountsResponse {
 export interface InventoryTransferItemDTO {
   id: number
   productId: number
+  productName: string
   quantity: number
   transferredQuantity: number
   stockQuantity?: number

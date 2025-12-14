@@ -127,6 +127,16 @@ export class OrdersService extends BaseService {
   async calculatePrices(body: CalculatePricesRequest) {
     return this.post<CalculatePricesResponse>(API_ENDPOINTS.ORDER_CALCULATE_PRICES, body)
   }
+
+  // Update staff assignment -----------------------------------------------
+  async updateStaff(orderCode: string, body: UpdateStaffRequest) {
+    return this.patch<UpdateStaffResponse | null>(API_ENDPOINTS.ORDER_UPDATE_STAFF(orderCode), body)
+  }
+
+  // Update order note
+  async updateOrderNote(orderCode: string, body: { note: string }) {
+    return this.patch<{ success: boolean, message: string } | null>(API_ENDPOINTS.ORDER_UPDATE_NOTE(orderCode), body)
+  }
 }
 
 // Types for order grid endpoint
@@ -329,6 +339,7 @@ export interface RawOrderItem {
   productName: string
   productImage: string | null
   productPrice: number
+  unitPrice?: number
   quantity: number
   shippedQuantity: number
   taxAmount: number
@@ -538,6 +549,19 @@ export interface CalculatePricesResponse {
   success: boolean
   message: string
   data: CalculatePricesData | null
+}
+
+// Update staff types -----------------------------------------------------
+export interface UpdateStaffRequest {
+  employeeId: number
+  createdById: string | number
+}
+
+export interface UpdateStaffResponse {
+  code: string
+  success: boolean
+  message: string
+  data: unknown
 }
 
 export const ordersService = new OrdersService()

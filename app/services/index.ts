@@ -15,6 +15,7 @@ export { cashBookService } from './cashbook.service'
 export { priceBooksService, PriceBooksService } from './pricebooks.service'
 export { warehouseService, WarehouseService } from './warehouse.service'
 export { returnsService, ReturnsService } from './returns.service'
+export { arService, ARService } from './ar.service'
 
 // Export types
 export type {
@@ -69,3 +70,8 @@ export type {
   CalculateRefundRequestItem,
   CalculateRefundResponseData
 } from './returns.service'
+
+export type {
+  ARSummaryItem,
+  ARSummaryResponse
+} from './ar.service'

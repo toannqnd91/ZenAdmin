@@ -17,6 +17,7 @@ interface TransferItem {
   id: number | string
   name: string
   sku?: string | null
+  productName?: string | null
   normalizedName?: string | null
   availableQty: number
   qty: number
@@ -136,7 +137,7 @@ async function loadDetail() {
       tags: (d.tags || '').split(',').map(s => s.trim()).filter(Boolean),
       items: items.map(it => ({
         id: it.id,
-        name: `Sản phẩm #${it.productId}`,
+        name: `${it.productName}`,
         sku: it.sku || null,
         normalizedName: null,
         availableQty: Number(it.availableQuantity || 0),
