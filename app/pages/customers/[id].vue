@@ -4,6 +4,8 @@ import { computed, ref, onMounted } from 'vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import { customersService } from '@/services/customers.service'
+import ReceivePaymentModal from '@/components/orders/ReceivePaymentModal.vue'
+import BaseTable, { type TableColumn } from '@/components/base/BaseTable.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -57,8 +59,9 @@ function initialsFromName(name: string) {
     .trim()
     .split(/\s+/)
     .filter(Boolean)
-  const lastTwo = parts.slice(-2)
-  return lastTwo.map(p => p[0]?.toUpperCase() || '').join('') || 'CU'
+  if (!parts.length) return 'CU'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[1][0]).toUpperCase()
 }
 
 function mapGender(genderCode: string | null): string {
@@ -88,16 +91,12 @@ const customer = ref({
   tags: [] as string[],
   orderStats: {
     latestOrderNo: '',
+    latestOrderCode: '',
     orderCount: 0,
     totalSpend: 0,
     avgSpend: 0
   },
   financials: {
-    totalSales: 0,
-    totalNetSales: 0,
-    totalAmount: 0,
-    paid: 0,
-    receivable: 0,
     currentReceivables: 0
   }
 })
@@ -124,12 +123,80 @@ async function fetchCustomerGroups(search: string): Promise<GroupOption[]> {
 
 const recentOrders = ref<Array<{
   no: string
+  code: string
   author: string
   time: string
   amount: number
   paymentStatus: UiPaymentStatus
   processStatus: UiProcessStatus
+  id?: string | number // maintain compatibility with BaseTable selection tracking if needed
 }>>([])
+const ordersPage = ref(1)
+const ordersPageSize = ref(5)
+const ordersTotal = ref(0) // Total items count, not total value
+
+// Table columns configured for list-view layout (2 columns, hidden header)
+const orderColumns: TableColumn[] = [
+  { key: 'info', label: 'Thông tin' }, // Will contain Code, Date, Author
+  { key: 'status', label: 'Trạng thái', align: 'right' } // Will contain Amount, PaymentStatus, ProcessStatus
+]
+
+async function loadOrders(pageIndex = 1) {
+  if (!customerId.value) return
+  const start = (pageIndex - 1) * ordersPageSize.value
+  const res = await customersService.getCustomerOrdersExternal(customerId.value, {
+    Pagination: {
+      Start: start,
+      Number: ordersPageSize.value
+    },
+    Sort: {
+      Field: 'Id',
+      Reverse: true
+    }
+  })
+  if (res?.success && res.data) {
+    ordersTotal.value = res.data.totalRecord || 0
+    if (res.data.items) {
+      recentOrders.value = res.data.items.map((i) => {
+        const paymentStatus = mapPaymentStatus(i.paymentStatus, i.paidAmount, i.orderTotal)
+        const rawCode = i.orderCode || `#${i.id}`
+        const normalizedCode = rawCode.startsWith('#') ? rawCode : `#${rawCode}`
+        const linkCode = i.orderCode || String(i.id)
+        return {
+          id: i.id, // needed for BaseTable keying
+          no: normalizedCode,
+          code: linkCode,
+          author: 'Từ POS',
+          time: formatDateTime(i.createdOn),
+          amount: i.orderTotal || 0,
+          paymentStatus,
+          processStatus: mapProcessStatusFromCode(i.orderStatus, i.orderStatusText)
+        }
+      })
+      if (!customer.value.orderStats.latestOrderNo && recentOrders.value[0] && pageIndex === 1) {
+        customer.value.orderStats.latestOrderNo = recentOrders.value[0].no
+        customer.value.orderStats.latestOrderCode = recentOrders.value[0].code
+      }
+    } else {
+      recentOrders.value = []
+    }
+  }
+}
+
+// Map BaseTable 0-based index to our 1-based logic
+const ordersPagination = computed({
+  get: () => ({ pageIndex: ordersPage.value - 1, pageSize: ordersPageSize.value }),
+  set: (v) => {
+    if (v.pageIndex + 1 !== ordersPage.value) {
+      onOrdersPageChange(v.pageIndex + 1)
+    }
+  }
+})
+
+async function onOrdersPageChange(newPage: number) {
+  ordersPage.value = newPage
+  await loadOrders(newPage)
+}
 
 function formatDateTime(iso: string | null | undefined) {
   if (!iso) return ''
@@ -138,6 +205,16 @@ function formatDateTime(iso: string | null | undefined) {
   const time = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
   return `${date} ${time}`
 }
+
+// Real debt history from API
+const debtHistory = ref<Array<{
+  id: string
+  orderCode?: string
+  type: string
+  reason: string
+  date: string
+  amount: number
+}>>([])
 
 // Legacy helper no longer used (replaced by mapProcessStatusFromCode)
 
@@ -163,6 +240,76 @@ function openInviteActivation() {
 
 function viewAllOrders() {
   // Placeholder navigation to orders list filtered by customer
+}
+
+// Payment Modal State
+const isPaymentModalOpen = ref(false)
+const isSubmittingPayment = ref(false)
+
+function openPaymentModal() {
+  isPaymentModalOpen.value = true
+}
+
+async function handlePaymentSubmit(payload: { method: string, amount: number, reference: string }) {
+  const methodMap: Record<string, string> = {
+    'TienMat': 'Cash',
+    'ChuyenKhoan': 'BankTransfer',
+    'ViDienTu': 'EWallet'
+  }
+
+  isSubmittingPayment.value = true
+  try {
+    const res = await customersService.createCustomerPayment(customerId.value, {
+      paymentMethod: methodMap[payload.method] || 'Cash',
+      amount: payload.amount,
+      referenceNumber: payload.reference,
+      note: '' // Component doesn't support note field yet, or we can add it?
+      // Wait, ReceivePaymentModal DOES NOT have a note field in the template.
+      // ReceivePaymentModal emits { method, amount, reference }.
+      // The original modal had a Note field.
+      // If I use ReceivePaymentModal as is, I lose the Note field.
+      // However, the User specifically asked to look at Order Detail modal.
+      // Order Detail modal (ReceivePaymentModal) does NOT have a note field.
+      // It has Reference input.
+      // So I will sacrifice the Note field to match Order Detail modal behavior.
+      // Or I could extend ReceivePaymentModal, but I shouldn't modify it unless necessary.
+      // The User asked to check "how it works in order details".
+      // Presumably they want the same standardized behavior.
+    })
+
+    if (res.success) {
+      isPaymentModalOpen.value = false
+      // Refresh debt data
+      const arRes = await customersService.getCustomerReceivables(customerId.value)
+      const arData = arRes as any
+      if (arData?.success) {
+        if (arData.summary) {
+          customer.value.financials.currentReceivables = arData.summary.totalRemainingAmount
+        } else if (arData.customer) {
+          customer.value.financials.currentReceivables = arData.customer.currentReceivables
+        }
+
+        if (arData.aRs) {
+          debtHistory.value = arData.aRs.map((ar: any) => ({
+            id: ar.arNumber || ar.orderCode,
+            orderCode: ar.orderCode,
+            type: 'Đơn hàng',
+            reason: ar.note || ar.orderCode ? `Tato từ ${ar.orderCode}` : 'Ghi nhận công nợ',
+            date: formatDateTime(ar.createdOn),
+            amount: ar.remainingAmount
+          }))
+        }
+      }
+      // Re-fetch orders too if needed, but debt is main thing
+    } else {
+      alert(res.message || 'Có lỗi xảy ra khi tạo thanh toán')
+    }
+  } catch (e) {
+    console.error(e)
+    alert('Có lỗi xảy ra')
+  } finally {
+    isSubmittingPayment.value = false
+  }
 }
 
 function reloadDebts() {
@@ -192,12 +339,15 @@ const addressText = computed(() => [
 onMounted(async () => {
   try {
     if (!customerId.value) return
-    // Fetch groups, customer details and recent orders in parallel
-    const [groupsRes, customerRes, ordersRes] = await Promise.all([
+    // Fetch groups, customer details, and receivables in parallel (orders fetched separately now)
+    const [groupsRes, customerRes, arRes] = await Promise.all([
       customersService.getCustomerGroupsExternal(),
       customersService.getCustomerByIdExternal(customerId.value),
-      customersService.getCustomerOrdersExternal(customerId.value)
+      customersService.getCustomerReceivables(customerId.value)
     ])
+
+    // Load initial orders
+    await loadOrders(1)
 
     groups.value = Array.isArray(groupsRes?.data) ? groupsRes.data.map(g => ({ id: g.id, name: g.name })) : []
 
@@ -243,11 +393,6 @@ onMounted(async () => {
         ? Math.round((d.totalAmount || 0) / d.totalOrders)
         : 0
       customer.value.financials = {
-        totalSales: d.totalSales || 0,
-        totalNetSales: d.totalNetSales || 0,
-        totalAmount: d.totalAmount || 0,
-        paid: d.paid || 0,
-        receivable: d.receivable || 0,
         currentReceivables: d.currentReceivables || d.receivable || 0
       }
       // note
@@ -257,24 +402,29 @@ onMounted(async () => {
       // latestOrderNo unknown from customer payload → will try to derive from orders response below
     }
     // Orders mapping
-    if (ordersRes?.data?.items?.length) {
-      recentOrders.value = ordersRes.data.items.map((i) => {
-        const paymentStatus = mapPaymentStatus(i.paymentStatus, i.paidAmount, i.orderTotal)
+    // Orders mapping handled in loadOrders
 
-        const rawCode = i.orderCode || `#${i.id}`
-        const normalizedCode = rawCode.startsWith('#') ? rawCode : `#${rawCode}`
 
-        return {
-          no: normalizedCode,
-          author: 'Từ Admin', // API does not supply author; placeholder
-          time: formatDateTime(i.createdOn),
-          amount: i.orderTotal || 0,
-          paymentStatus,
-          processStatus: mapProcessStatusFromCode(i.orderStatus, i.orderStatusText)
-        }
-      })
-      if (!customer.value.orderStats.latestOrderNo && recentOrders.value[0]) {
-        customer.value.orderStats.latestOrderNo = recentOrders.value[0].no
+    // ARs mapping
+    // ARs mapping
+    const arData = arRes as any // Cast to any to handle custom response structure
+    if (arData?.success) {
+      // Update total current receivables from summary if available
+      if (arData.summary) {
+        customer.value.financials.currentReceivables = arData.summary.totalRemainingAmount
+      } else if (arData.customer) {
+        customer.value.financials.currentReceivables = arData.customer.currentReceivables
+      }
+
+      if (arData.aRs) {
+        debtHistory.value = arData.aRs.map((ar: any) => ({
+          id: ar.arNumber || ar.orderCode,
+          orderCode: ar.orderCode, // For link
+          type: 'Đơn hàng', // Most ARs are orders
+          reason: ar.note || ar.orderCode ? `Tạo từ ${ar.orderCode}` : 'Ghi nhận công nợ',
+          date: formatDateTime(ar.createdOn),
+          amount: ar.remainingAmount // Debt is positive
+        }))
       }
     }
   } catch {
@@ -294,39 +444,29 @@ onMounted(async () => {
               <span>
                 {{ customer.fullName }}
               </span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                class="w-4 h-4 text-gray-500"
-              >
-                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 011.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                class="w-4 h-4 text-gray-500">
+                <path fill-rule="evenodd"
+                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 011.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z"
+                  clip-rule="evenodd" />
               </svg>
             </div>
           </div>
         </template>
         <template #right>
           <div class="flex items-center gap-2">
-            <button
-              type="button"
+            <button type="button"
               class="hidden sm:inline-flex items-center gap-2 h-9 px-3 rounded-md border border-transparent bg-white text-sm text-primary-600 hover:text-primary-700"
-              @click="openInviteActivation"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="w-4 h-4"
-              >
-                <path d="M2.25 12l8.954-8.955c.44-.439 1.166-.128 1.166.49V8.5c4.833.208 7.5 2.73 7.5 7.5-1.5-2-3.75-3-7.5-3v4.965c0 .618-.725.929-1.166.49L2.25 12z" />
+              @click="openInviteActivation">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                <path
+                  d="M2.25 12l8.954-8.955c.44-.439 1.166-.128 1.166.49V8.5c4.833.208 7.5 2.73 7.5 7.5-1.5-2-3.75-3-7.5-3v4.965c0 .618-.725.929-1.166.49L2.25 12z" />
               </svg>
               Gửi lời mời kích hoạt tài khoản
             </button>
-            <button
-              type="button"
+            <button type="button"
               class="h-9 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50"
-              @click="goBack"
-            >
+              @click="goBack">
               Quay lại
             </button>
           </div>
@@ -341,76 +481,53 @@ onMounted(async () => {
           <div class="lg:col-span-2 space-y-6">
             <!-- Summary card -->
             <UPageCard variant="soft" class="bg-white rounded-lg">
-              <div class="-mx-6 px-6 pt-4">
-                <div class="flex items-start gap-4">
-                  <div class="h-14 w-14 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold">
-                    {{ initialsFromName(customer.fullName) }}
-                  </div>
-                  <div class="flex-1">
-                    <div class="text-lg font-semibold text-gray-900">
+              <div class="-mx-6 px-6 -mt-2">
+                <div class="flex items-center justify-between pb-4 border-b border-gray-100">
+                  <div class="flex items-center gap-4">
+                    <div
+                      class="h-14 w-14 rounded-full bg-green-200 text-green-700 flex items-center justify-center text-xl font-semibold">
+                      {{ initialsFromName(customer.fullName) }}
+                    </div>
+                    <div class="text-xl font-semibold text-gray-900">
                       {{ customer.fullName }}
                     </div>
-                    <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div class="flex flex-col">
-                        <div class="text-sm text-gray-500">
-                          Đơn hàng mới nhất
-                        </div>
-                        <div class="text-sm">
-                          <a href="#" class="text-primary-600 hover:underline">
-                            {{ customer.orderStats.latestOrderNo }}
-                          </a>
-                        </div>
-                        <div class="text-xs text-gray-500">
-                          Từ Admin
-                        </div>
-                      </div>
-                      <div class="flex flex-col">
-                        <div class="text-sm text-gray-500">
-                          Tổng chi tiêu
-                        </div>
-                        <div class="text-base font-semibold">
-                          {{ formatMoney(customer.orderStats.totalSpend) }}
-                        </div>
-                        <div class="text-xs text-gray-500">
-                          {{ customer.orderStats.orderCount }} đơn hàng
-                        </div>
-                      </div>
-                      <div class="flex flex-col">
-                        <div class="text-sm text-gray-500">
-                          Chi tiêu trung bình
-                        </div>
-                        <div class="text-base font-semibold">
-                          {{ formatMoney(customer.orderStats.avgSpend) }}
-                        </div>
-                      </div>
+                  </div>
+                </div>
+
+                <div class="pt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div class="flex flex-col gap-1">
+                    <div class="text-sm text-gray-500 font-medium">
+                      Đơn hàng mới nhất
                     </div>
-                    <div class="mt-6 border-t border-gray-100 pt-6">
-                      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div class="flex flex-col">
-                          <div class="text-xs uppercase tracking-wide text-gray-500">
-                            Tổng bán (Gross)
-                          </div>
-                          <div class="text-base font-semibold">
-                            {{ formatMoney(customer.financials.totalSales) }}
-                          </div>
-                        </div>
-                        <div class="flex flex-col">
-                          <div class="text-xs uppercase tracking-wide text-gray-500">
-                            Tổng bán trừ trả hàng
-                          </div>
-                          <div class="text-base font-semibold">
-                            {{ formatMoney(customer.financials.totalNetSales) }}
-                          </div>
-                        </div>
-                        <div class="flex flex-col">
-                          <div class="text-xs uppercase tracking-wide text-gray-500">
-                            Công nợ hiện tại
-                          </div>
-                          <div class="text-base font-semibold text-red-600">
-                            {{ formatMoney(customer.financials.currentReceivables) }}
-                          </div>
-                        </div>
-                      </div>
+                    <div class="text-base font-semibold text-primary-600">
+                      <a :href="`/orders/${customer.orderStats.latestOrderCode}`" target="_blank"
+                        class="hover:underline">
+                        {{ customer.orderStats.latestOrderNo }}
+                      </a>
+                    </div>
+                    <div class="text-sm text-gray-900">
+                      Từ POS
+                    </div>
+                  </div>
+
+                  <div class="flex flex-col gap-1">
+                    <div class="text-sm text-gray-500 font-medium">
+                      Tổng chi tiêu
+                    </div>
+                    <div class="text-base font-semibold text-gray-900">
+                      {{ formatMoney(customer.orderStats.totalSpend) }}
+                    </div>
+                    <div class="text-sm text-gray-900">
+                      {{ customer.orderStats.orderCount }} đơn hàng
+                    </div>
+                  </div>
+
+                  <div class="flex flex-col gap-1">
+                    <div class="text-sm text-gray-500 font-medium">
+                      Chi tiêu trung bình
+                    </div>
+                    <div class="text-base font-semibold text-gray-900">
+                      {{ formatMoney(customer.orderStats.avgSpend) }}
                     </div>
                   </div>
                 </div>
@@ -422,104 +539,127 @@ onMounted(async () => {
               <BaseCardHeader>
                 Đơn hàng gần đây
                 <template #actions>
-                  <a href="#" class="text-sm text-primary-600 hover:underline" @click.prevent="viewAllOrders">Danh sách đơn hàng</a>
+                  <a href="#" class="text-sm text-primary-600 hover:underline" @click.prevent="viewAllOrders">Danh sách
+                    đơn hàng</a>
                 </template>
               </BaseCardHeader>
-              <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
-                <div class="divide-y divide-gray-200 dark:divide-gray-700">
-                  <div
-                    v-for="o in recentOrders"
-                    :key="o.no"
-                    class="py-3 flex items-center justify-between gap-4"
-                  >
-                    <div>
-                      <div class="text-sm">
-                        <a href="#" class="text-primary-600 hover:underline">
-                          {{ o.no }}
+              <div class="-mx-6 pt-2 overflow-hidden">
+                <BaseTable :data="recentOrders" :columns="orderColumns" :pagination="ordersPagination"
+                  :total-records="ordersTotal" :total-pages="Math.ceil(ordersTotal / ordersPageSize)"
+                  :selectable="false" :show-row-actions="false" :hide-title="true" :hide-search="true"
+                  header-row-class="hidden" header-padding-x="px-6" body-padding="px-0" table-min-width="0"
+                  class="border-none shadow-none" @update:pagination="p => ordersPagination = p">
+                  <template #column-info="{ item }">
+                    <div class="px-6">
+                      <div class="text-sm font-medium">
+                        <a :href="`/orders/${item.code}`" target="_blank" class="text-blue-600 hover:underline">
+                          {{ item.no }}
                         </a>
                       </div>
-                      <div class="text-xs text-gray-500">
-                        {{ o.author }} | {{ o.time }}
+                      <div class="text-xs text-gray-500 mt-0.5" v-if="item.time">
+                        {{ item.author }} | {{ item.time }}
+                      </div>
+                      <div class="text-xs text-gray-500 mt-0.5" v-else>
+                        {{ item.author }}
                       </div>
                     </div>
-                    <div class="flex flex-col items-end gap-1">
-                      <div class="text-sm font-medium">
-                        {{ formatMoney(o.amount) }}
-                      </div>
+                  </template>
+
+                  <template #column-status="{ item }">
+                    <div class="px-6 flex flex-col items-end gap-1.5">
+                      <span class="font-bold text-gray-900 text-sm">{{ formatMoney(item.amount as number) }}</span>
                       <div class="flex items-center gap-2">
-                        <span
-                          v-if="o.paymentStatus === 'Thanh toán một phần'"
-                          class="inline-flex items-center rounded-full bg-blue-50 text-blue-700 text-xs px-3 h-7"
-                        >
-                          <svg
-                            class="w-3 h-3 mr-2 text-blue-600"
-                            viewBox="0 0 10 10"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                            aria-hidden="true"
-                          >
-                            <circle
-                              cx="5"
-                              cy="5"
-                              r="4"
-                              stroke="currentColor"
-                              stroke-width="1.5"
-                              fill="white"
-                            />
-                            <path d="M1 5 A4 4 0 0 1 9 5 L1 5 Z" fill="currentColor" />
-                          </svg>
+                        <span v-if="item.paymentStatus === 'Thanh toán một phần'"
+                          class="inline-flex items-center rounded-full bg-white text-orange-600 text-xs px-2.5 py-0.5 font-medium whitespace-nowrap border border-orange-200">
+                          <span class="w-1.5 h-1.5 rounded-full bg-orange-500 mr-1.5"></span>
                           Thanh toán một phần
                         </span>
-                        <span
-                          v-else-if="o.paymentStatus === 'Đã thanh toán'"
-                          class="inline-flex items-center rounded-full bg-gray-100 text-gray-700 text-xs px-3 h-7"
-                        >
-                          <span class="w-1.5 h-1.5 rounded-full bg-gray-500 mr-2" />
+                        <span v-else-if="item.paymentStatus === 'Đã thanh toán'"
+                          class="inline-flex items-center rounded-full bg-white text-green-700 text-xs px-2.5 py-0.5 font-medium whitespace-nowrap border border-green-200">
+                          <!-- No dot for Paid? Sample image has dot for Unpaid/Pending -->
+                          <!-- Image shows: Paid Orders have no special styling or maybe gray pill?
+                                Let's follow the image styles:
+                                - "Chưa thanh toán" (Unpaid): Orange border pill with dot.
+                                - "Đã xử lý" process status: Gray pill with dot.
+                           -->
+                          <!-- Let's map strict to image: -->
+                          <span class="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5"></span>
                           Đã thanh toán
                         </span>
-                        <span
-                          v-else
-                          class="inline-flex items-center rounded-full bg-amber-50 text-amber-700 text-xs px-3 h-7"
-                        >
-                          <span class="w-1.5 h-1.5 rounded-full bg-amber-600 mr-2" />
+                        <span v-else
+                          class="inline-flex items-center rounded-full bg-white text-orange-600 text-xs px-2.5 py-0.5 font-medium whitespace-nowrap border border-orange-200">
+                          <span class="w-1.5 h-1.5 rounded-full bg-orange-500 mr-1.5"></span>
                           Chưa thanh toán
                         </span>
-                        <span class="inline-flex items-center rounded-full bg-gray-100 text-gray-700 text-xs px-3 h-7">
-                          <span class="w-1.5 h-1.5 rounded-full bg-gray-500 mr-2" />
-                          {{ o.processStatus }}
+
+                        <span
+                          class="inline-flex items-center rounded-full bg-gray-100 text-gray-700 text-xs px-2.5 py-0.5 font-medium whitespace-nowrap">
+                          <span class="w-1.5 h-1.5 rounded-full bg-gray-500 mr-1.5"></span>
+                          {{ item.processStatus }}
                         </span>
                       </div>
                     </div>
-                  </div>
-                </div>
+                  </template>
+                </BaseTable>
               </div>
             </UPageCard>
 
             <!-- Debt management card -->
             <UPageCard variant="soft" class="bg-white rounded-lg">
-              <template #title>
+              <BaseCardHeader>
                 <div class="flex items-center gap-2">
                   <UIcon name="i-heroicons-banknotes-20-solid" class="w-4 h-4" />
-                  <div class="text-base font-medium">
-                    Quản lý công nợ
+                  <span>Quản lý công nợ</span>
+                </div>
+                <template #actions>
+                  <button type="button" @click="openPaymentModal"
+                    class="px-3 h-8 rounded-md bg-primary-600 text-white hover:bg-primary-700 text-xs font-medium">
+                    Thanh toán
+                  </button>
+                </template>
+              </BaseCardHeader>
+
+              <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
+                <div class="mb-4">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <span class="text-sm font-medium mr-2">Công nợ hiện tại:</span>
+                      <span class="text-red-500 font-semibold text-base">{{
+                        formatMoney(customer.financials.currentReceivables) }}</span>
+                    </div>
+                    <button class="text-primary-600 text-sm hover:underline flex items-center gap-1">
+                      <UIcon name="i-heroicons-pencil-square" class="w-4 h-4" />
+                      Điều chỉnh công nợ
+                    </button>
                   </div>
                 </div>
-              </template>
-              <div class="-mx-6 px-6 pt-10 border-t-1 border-gray-200 dark:border-gray-700">
-                <div class="flex flex-col items-center justify-center gap-4 text-center">
-                  <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center text-3xl">
-                    <UIcon name="i-heroicons-document-currency-dollar-20-solid" class="w-10 h-10 text-gray-500" />
-                  </div>
-                  <div class="text-sm text-gray-500">
-                    Lỗi tải dữ liệu
-                  </div>
-                  <button
-                    type="button"
-                    class="h-9 px-4 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700"
-                    @click="reloadDebts"
-                  >
-                    Tải lại
+
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-sm font-medium text-gray-900">
+                    Công nợ gần nhất
+                  </h3>
+                  <button class="text-primary-600 text-sm hover:underline">
+                    Xem chi tiết
                   </button>
+                </div>
+
+                <div class="divide-y divide-gray-200 dark:divide-gray-700">
+                  <div v-for="(item, index) in debtHistory" :key="index"
+                    class="py-3 flex items-center justify-between gap-4">
+                    <div>
+                      <div class="text-sm font-medium">
+                        <a v-if="item.orderCode" :href="`/orders/${item.orderCode}`" target="_blank"
+                          class="text-primary-600 hover:underline">{{ item.id }}</a>
+                        <span v-else>{{ item.id || item.type }}</span>
+                      </div>
+                      <div class="text-xs text-gray-500">
+                        {{ item.reason }} | {{ item.date }}
+                      </div>
+                    </div>
+                    <div class="text-sm font-medium" :class="item.amount > 0 ? 'text-green-600' : 'text-red-500'">
+                      {{ formatMoney(item.amount) }}
+                    </div>
+                  </div>
                 </div>
               </div>
             </UPageCard>
@@ -543,22 +683,38 @@ onMounted(async () => {
                     {{ customer.email }}
                   </a>
                 </div>
-                <div class="text-sm whitespace-pre-line text-gray-700">
-                  {{ contactText }}
+                <div class="text-sm font-medium text-gray-900">
+                  {{ customer.fullName }}
                 </div>
+                <div class="text-sm text-gray-500">
+                  Không đồng ý nhận email quảng cáo
+                </div>
+                <!-- Mock status -->
+                <div class="text-sm text-gray-400 italic">
+                  Chưa có tài khoản
+                </div>
+              </div>
+            </UPageCard>
 
-                <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
-                  <div class="flex items-center justify-between">
-                    <h3 class="text-sm font-medium text-gray-900">
-                      Sổ địa chỉ
-                    </h3>
-                    <button class="text-gray-400 hover:text-gray-600" title="Chỉnh sửa">
-                      <UIcon name="i-heroicons-pencil-square-20-solid" class="w-5 h-5" aria-hidden="true" />
-                    </button>
-                  </div>
-                  <div class="mt-2 text-sm whitespace-pre-line text-gray-700">
-                    {{ addressText }}
-                  </div>
+            <!-- Address card -->
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>
+                Số địa chỉ
+                <template #actions>
+                  <button class="text-gray-400 hover:text-gray-600" title="Chỉnh sửa">
+                    <UIcon name="i-heroicons-pencil-square-20-solid" class="w-5 h-5" aria-hidden="true" />
+                  </button>
+                </template>
+              </BaseCardHeader>
+              <div class="-mx-6 px-6 pt-4 border-t border-gray-100 space-y-2 text-sm text-gray-700">
+                <div class="font-medium">
+                  {{ customer.fullName }}
+                </div>
+                <div v-if="customer.address">
+                  {{ customer.address }}
+                </div>
+                <div v-else class="text-gray-400 italic">
+                  Chưa có địa chỉ
                 </div>
               </div>
             </UPageCard>
@@ -572,25 +728,13 @@ onMounted(async () => {
               </template>
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700 space-y-3">
                 <div>
-                  <RemoteSearchSelect
-                    v-model="selectedGroups"
-                    :fetch-fn="fetchCustomerGroups"
-                    placeholder="Chọn nhóm khách hàng"
-                    :clearable="true"
-                    label-field="name"
-                    :searchable="true"
-                    :search-in-trigger="true"
-                    :dropdown-max-height="360"
-                    :multiple="true"
-                    :full-width="true"
-                  />
+                  <RemoteSearchSelect v-model="selectedGroups" :fetch-fn="fetchCustomerGroups"
+                    placeholder="Chọn nhóm khách hàng" :clearable="true" label-field="name" :searchable="true"
+                    :search-in-trigger="true" :dropdown-max-height="360" :multiple="true" :full-width="true" />
                 </div>
                 <div v-if="selectedGroups.length" class="flex flex-wrap gap-2">
-                  <span
-                    v-for="g in selectedGroups"
-                    :key="g.id"
-                    class="inline-flex items-center rounded-full bg-primary-50 text-primary-700 text-xs px-3 h-7"
-                  >
+                  <span v-for="g in selectedGroups" :key="g.id"
+                    class="inline-flex items-center rounded-full bg-primary-50 text-primary-700 text-xs px-3 h-7">
                     {{ g.name }}
                   </span>
                 </div>
@@ -605,12 +749,9 @@ onMounted(async () => {
                 </div>
               </template>
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
-                <textarea
-                  v-model="note"
-                  rows="5"
+                <textarea v-model="note" rows="5"
                   class="w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-                  placeholder="Nhập ghi chú"
-                />
+                  placeholder="Nhập ghi chú" />
               </div>
             </UPageCard>
 
@@ -623,25 +764,14 @@ onMounted(async () => {
                 </template>
               </BaseCardHeader>
               <div class="-mx-6 px-6 pt-4 border-t-1 border-gray-200 dark:border-gray-700">
-                <input
-                  v-model="newTag"
-                  type="text"
+                <input v-model="newTag" type="text"
                   class="w-full px-3 h-[36px] text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Tìm kiếm hoặc thêm mới tag"
-                  @keydown.enter.prevent="addTag"
-                >
+                  placeholder="Tìm kiếm hoặc thêm mới tag" @keydown.enter.prevent="addTag">
                 <div v-if="customer.tags.length" class="flex flex-wrap gap-2 mt-3">
-                  <div
-                    v-for="(t, i) in customer.tags"
-                    :key="t+i"
-                    class="px-2 h-7 rounded-full bg-primary-50 text-primary-700 text-xs inline-flex items-center gap-1"
-                  >
+                  <div v-for="(t, i) in customer.tags" :key="t + i"
+                    class="px-2 h-7 rounded-full bg-primary-50 text-primary-700 text-xs inline-flex items-center gap-1">
                     <span>{{ t }}</span>
-                    <button
-                      type="button"
-                      class="text-primary-500 hover:text-primary-700"
-                      @click="removeTag(i)"
-                    >
+                    <button type="button" class="text-primary-500 hover:text-primary-700" @click="removeTag(i)">
                       ×
                     </button>
                   </div>
@@ -652,16 +782,23 @@ onMounted(async () => {
         </div>
 
         <!-- Save -->
-        <div class="flex justify-end mt-8 mb-4">
-          <button
-            type="button"
-            class="px-6 h-10 rounded-md font-semibold text-sm disabled:opacity-60 disabled:cursor-not-allowed transition shadow sm bg-primary-600 text-white hover:bg-primary-700"
-            @click="saveCustomer"
-          >
-            <span>Lưu</span>
+        <div class="flex items-center justify-end gap-3 mt-8 mb-4">
+          <button type="button"
+            class="px-4 h-9 rounded-md border border-red-500 text-red-600 bg-white hover:bg-red-50 text-sm font-medium">
+            Xóa khách hàng
+          </button>
+          <button type="button"
+            class="px-4 h-9 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm font-medium"
+            @click="saveCustomer">
+            Lưu
           </button>
         </div>
       </div>
     </template>
   </UDashboardPanel>
+
+  <!-- Payment Modal -->
+  <!-- Payment Modal -->
+  <ReceivePaymentModal v-model="isPaymentModalOpen" :remaining-amount="customer.financials.currentReceivables"
+    :paid-amount="0" @submit="handlePaymentSubmit" />
 </template>

@@ -144,6 +144,48 @@ export interface CustomerOrdersListResponse {
   } | null
 }
 
+// External customer receivables response
+export interface CustomerReceivablesResponse {
+  success: boolean
+  customer: {
+    id: number
+    name: string
+    currentReceivables: number
+  }
+  summary: {
+    totalARs: number
+    totalOriginalAmount: number
+    totalPaidAmount: number
+    totalRemainingAmount: number
+    overdueCount: number
+    overdueAmount: number
+  }
+  aRs: Array<{
+    id: number
+    arNumber: string
+    orderId: number
+    orderCode: string
+    originalAmount: number
+    paidAmount: number
+    remainingAmount: number
+    createdOn: string
+    dueDate: string
+    paidOffOn: string | null
+    status: string
+    daysOverdue: number
+    agingBucket: string
+    note: string | null
+    isOverdue: boolean
+  }>
+}
+
+export interface CreatePaymentRequest {
+  paymentMethod: string // Cash, BankTransfer, EWallet
+  amount: number
+  referenceNumber?: string
+  note?: string
+}
+
 // Cached result type for customers grid
 export type CustomersCachedResult = {
   data: CustomersGridResponse
@@ -236,6 +278,16 @@ export class CustomersService extends BaseService {
       }
     }
     return this.post<CustomerOrdersListResponse['data']>(API_ENDPOINTS.CUSTOMER_ORDERS_EXTERNAL(id), request)
+  }
+
+  /** Get customer receivables via external API (no wrapper data key) */
+  async getCustomerReceivables(id: string) {
+    return this.get<CustomerReceivablesResponse>(API_ENDPOINTS.CUSTOMER_RECEIVABLES(id))
+  }
+
+  /** Create customer payment */
+  async createCustomerPayment(id: string, data: CreatePaymentRequest) {
+    return this.post(API_ENDPOINTS.CUSTOMER_PAYMENTS(id), data)
   }
 
   /**

@@ -119,6 +119,8 @@ export const API_ENDPOINTS = {
   CUSTOMER_BY_ID_EXTERNAL: (id: string) => `/customer/${id}`,
   CUSTOMER_GROUPS_EXTERNAL: '/customergroups',
   CUSTOMER_ORDERS_EXTERNAL: (id: string) => `/customer/${id}/orders`,
+  CUSTOMER_RECEIVABLES: (id: string | number) => `/ar/customers/${id}/receivables`,
+  CUSTOMER_PAYMENTS: (id: string | number) => `/ar/customers/${id}/payments`,
   ORDER_COUNT_BY_STATUS_EXTERNAL: '/Orders/count-by-status',
   // Employees
   EMPLOYEES: '/employees',
