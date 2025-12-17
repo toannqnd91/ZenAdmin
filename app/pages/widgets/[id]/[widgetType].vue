@@ -41,29 +41,31 @@ if (!validWidgetTypes.includes(widgetType.toLowerCase())) {
     <template #header>
       <UDashboardNavbar :title="`Edit ${widgetType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}`">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <UButton icon="i-lucide-arrow-left" color="neutral"
+            class="bg-white border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+            @click="$router.push('/widgets')" />
+        </template>
+        <template #right>
+          <div id="navbar-actions" class="flex items-center gap-2"></div>
         </template>
       </UDashboardNavbar>
     </template>
     <template #body>
-      <component
-        :is="
-          widgetType === 'carousel-widget' ? EditCarouselWidget
-          : widgetType === 'category-widget' ? EditCategoryWidget
-            : widgetType === 'html-widget' ? EditHtmlWidget
-              : widgetType === 'custom-data-widget' ? EditCustomDataWidget
-                : widgetType === 'simple-news-widget' ? EditSimpleNewsWidget
-                  : widgetType === 'news-widget' ? EditNewsWidget
-                    : null
+      <component :is="widgetType === 'carousel-widget' ? EditCarouselWidget
+        : widgetType === 'category-widget' ? EditCategoryWidget
+          : widgetType === 'html-widget' ? EditHtmlWidget
+            : widgetType === 'custom-data-widget' ? EditCustomDataWidget
+              : widgetType === 'simple-news-widget' ? EditSimpleNewsWidget
+                : widgetType === 'news-widget' ? EditNewsWidget
+                  : null
         "
-        v-if="['carousel-widget', 'category-widget', 'html-widget', 'custom-data-widget', 'simple-news-widget', 'news-widget'].includes(widgetType)"
-      />
+        v-if="['carousel-widget', 'category-widget', 'html-widget', 'custom-data-widget', 'simple-news-widget', 'news-widget'].includes(widgetType)" />
       <div v-else class="w-full mt-6">
         <UCard class="w-full">
           <div class="text-center py-8">
             <UIcon name="i-lucide-settings" class="text-4xl text-primary mb-4" />
             <h2 class="text-xl font-semibold mb-2">
-              Edit {{ widgetType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()) }}
+              Edit {{widgetType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}}
             </h2>
             <p class="text-gray-600 mb-4">
               Widget ID: {{ widgetId }}

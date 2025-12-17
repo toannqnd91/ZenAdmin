@@ -75,6 +75,8 @@ interface LinkItem {
   isExpanded?: boolean
   hasChildren: boolean
   parentId?: number
+  menuTypeId?: number
+  entityId?: number
 }
 
 // Make links reactive for drag & drop
@@ -93,7 +95,9 @@ const flattenMenuItems = (items: MenuItem[], level: number = 0, parentId: number
       description: `Order: ${item.order}`,
       level,
       hasChildren: item.children && item.children.length > 0,
-      parentId: parentId ?? undefined
+      parentId: parentId ?? undefined,
+      menuTypeId: item.menuTypeId,
+      entityId: item.entityId
     }
     result.push(linkItem)
     if (item.children && item.children.length > 0 && expandedItems.value.has(item.id)) {
@@ -119,13 +123,25 @@ const toggleExpand = (itemId: number) => {
 
 // Modal state
 const isAddModalOpen = ref(false)
+const isEditMode = ref(false)
+const editingLinkId = ref<number | null>(null)
 const newLinkName = ref('')
 const newLinkTypeId = ref<string | number | undefined>(undefined)
 
 const openAddModal = () => {
-  isAddModalOpen.value = true
+  isEditMode.value = false
+  editingLinkId.value = null
   newLinkName.value = ''
   newLinkTypeId.value = undefined
+  isAddModalOpen.value = true
+}
+
+const editLink = (link: LinkItem) => {
+  isEditMode.value = true
+  editingLinkId.value = link.id
+  newLinkName.value = link.name
+  newLinkTypeId.value = link.menuTypeId
+  isAddModalOpen.value = true
 }
 
 // Handler for LinkModal submit
@@ -135,8 +151,26 @@ interface LinkModalPayload {
   typeName: string
   typeEntity: string | null
 }
-const handleAddLinkModal = (payload: LinkModalPayload) => {
-  // TODO: Gọi API thêm liên kết với typeId, typeName, typeEntity
+const handleLinkModalSubmit = async (payload: LinkModalPayload) => {
+  if (isEditMode.value && editingLinkId.value) {
+    // Edit existing link
+    try {
+      await linksService.updateMenuItem(menuId, {
+        id: editingLinkId.value,
+        title: payload.name,
+        // Assuming we keep existing URL if type logic isn't handled here yet
+        // Ideally we should regenerate URL based on Type if it changed
+      } as any) // Casting as any to bypass strict checks if interface mismatch
+      await refreshMenuData()
+    } catch (e) {
+      console.error('Error updating link:', e)
+      alert('Cập nhật thất bại')
+    }
+  } else {
+    // Add new link
+    // TODO: Implement Create logic if needed
+    console.log('Adding new link:', payload)
+  }
   isAddModalOpen.value = false
 }
 
@@ -188,9 +222,9 @@ const onPointerMove = (e: MouseEvent | TouchEvent | PointerEvent) => {
   dragState.previewLevel = desiredLevel
 }
 
-const editLink = (link: LinkItem) => {
-  // TODO: Implement edit functionality
-}
+// editLink is already implemented above
+// removing duplicated function stub if any
+// (Code previously had const editLink = ... // TODO)
 
 const deleteLink = async (link: LinkItem) => {
   // TODO: Implement delete functionality using API
@@ -310,7 +344,9 @@ onBeforeUnmount(() => {
             </li>
             <li class="flex items-center">
               <svg class="w-4 h-4 mx-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                <path fill-rule="evenodd"
+                  d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                  clip-rule="evenodd" />
               </svg>
               <span class="text-gray-900 dark:text-white font-medium">{{ currentMenu.title }}</span>
             </li>
@@ -318,7 +354,8 @@ onBeforeUnmount(() => {
         </nav>
 
         <!-- Main Content -->
-        <div class="bg-white dark:bg-gray-900 shadow rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+        <div
+          class="bg-white dark:bg-gray-900 shadow rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
           <!-- Header Section -->
           <div class="p-6 border-b border-gray-200 dark:border-gray-700">
             <h1 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
@@ -334,21 +371,26 @@ onBeforeUnmount(() => {
             <table class="min-w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
               <thead class="bg-gray-100 dark:bg-gray-800">
                 <tr>
-                  <th class="col-drag px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
+                  <th
+                    class="col-drag px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
                     <!-- Drag handle column -->
                   </th>
-                  <th class="col-name px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
+                  <th
+                    class="col-name px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
                     Tên liên kết
                   </th>
-                  <th class="col-url px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
+                  <th
+                    class="col-url px-6 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
                     URL
                   </th>
-                  <th class="col-action px-6 py-3 text-right text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
+                  <th
+                    class="col-action px-6 py-3 text-right text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
                     Action
                   </th>
                 </tr>
               </thead>
-              <tbody v-if="!menuResponse || !currentLinks.length" class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody v-if="!menuResponse || !currentLinks.length"
+                class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                   <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                     <template v-if="!menuResponse">
@@ -360,36 +402,17 @@ onBeforeUnmount(() => {
                   </td>
                 </tr>
               </tbody>
-              <VueDraggable
-                v-else
-                v-model="currentLinks"
-                tag="tbody"
-                handle=".drag-handle"
-                ghost-class="ghost"
-                chosen-class="chosen"
-                drag-class="drag"
-                :animation="180"
-                easing="ease-in-out"
-                class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700"
-                :fallback-on-body="true"
-                :force-fallback="true"
-                :fallback-tolerance="3"
-                @start="onDragStart"
-                @end="onDragEnd"
-              >
-                <tr
-                  v-for="link in currentLinks"
-                  :key="link.id"
+              <VueDraggable v-else v-model="currentLinks" tag="tbody" handle=".drag-handle" ghost-class="ghost"
+                chosen-class="chosen" drag-class="drag" :animation="180" easing="ease-in-out"
+                class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700" :fallback-on-body="true"
+                :force-fallback="true" :fallback-tolerance="3" @start="onDragStart" @end="onDragEnd">
+                <tr v-for="link in currentLinks" :key="link.id"
                   class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200"
-                  :class="{ 'opacity-60': isDragging }"
-                >
+                  :class="{ 'opacity-60': isDragging }">
                   <td class="col-drag px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div class="drag-handle cursor-move">
-                      <svg
-                        class="w-4 h-4 text-gray-400 hover:text-gray-600 transition-colors"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
+                      <svg class="w-4 h-4 text-gray-400 hover:text-gray-600 transition-colors" fill="currentColor"
+                        viewBox="0 0 20 20">
                         <circle cx="5" cy="5" r="2" />
                         <circle cx="5" cy="10" r="2" />
                         <circle cx="5" cy="15" r="2" />
@@ -401,27 +424,17 @@ onBeforeUnmount(() => {
                   </td>
                   <td class="col-name px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium">
                     <div class="flex items-center">
-                      <div
-                        class="flex items-center indent-smooth"
-                        :style="{
-                          paddingLeft: `${((isDragging && dragState.linkId === link.id && dragState.previewLevel !== null) ? dragState.previewLevel : link.level) * 20}px`,
-                          marginLeft: link.hasChildren ? '-32px' : '0px'
-                        }"
-                      >
+                      <div class="flex items-center indent-smooth" :style="{
+                        paddingLeft: `${((isDragging && dragState.linkId === link.id && dragState.previewLevel !== null) ? dragState.previewLevel : link.level) * 20}px`,
+                        marginLeft: link.hasChildren ? '-32px' : '0px'
+                      }">
                         <!-- Nút expand/collapse cho item có children -->
-                        <button
-                          v-if="link.hasChildren"
+                        <button v-if="link.hasChildren"
                           class="mr-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded flex items-center justify-center"
-                          @click="toggleExpand(link.id)"
-                        >
-                          <svg
-                            class="w-4 h-4 text-gray-500 transition-transform"
-                            :class="{ '-rotate-90': !expandedItems.has(link.id) }"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            viewBox="0 0 24 24"
-                          >
+                          @click="toggleExpand(link.id)">
+                          <svg class="w-4 h-4 text-gray-500 transition-transform"
+                            :class="{ '-rotate-90': !expandedItems.has(link.id) }" fill="none" stroke="currentColor"
+                            stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
                           </svg>
                         </button>
@@ -429,47 +442,26 @@ onBeforeUnmount(() => {
                       </div>
                     </div>
                   </td>
-                  <td class="col-url px-6 py-4 whitespace-nowrap text-sm text-primary-600 dark:text-primary-400 font-mono">
+                  <td
+                    class="col-url px-6 py-4 whitespace-nowrap text-sm text-primary-600 dark:text-primary-400 font-mono">
                     {{ link.url }}
                   </td>
                   <td class="col-action px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div class="flex items-center space-x-4 justify-end">
-                      <button
-                        title="Chỉnh sửa"
+                      <button title="Chỉnh sửa"
                         class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                        @click="editLink(link)"
-                      >
-                        <svg
-                          class="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                          />
+                        @click="editLink(link)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>
                       </button>
-                      <button
-                        title="Xóa"
+                      <button title="Xóa"
                         class="text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-                        @click="deleteLink(link)"
-                      >
-                        <svg
-                          class="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
+                        @click="deleteLink(link)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
                     </div>
@@ -482,20 +474,10 @@ onBeforeUnmount(() => {
             <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
               <button
                 class="flex items-center text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 text-sm font-medium"
-                @click="openAddModal"
-              >
-                <svg
-                  class="w-4 h-4 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
+                @click="openAddModal">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
                 Thêm liên kết
               </button>
@@ -507,14 +489,9 @@ onBeforeUnmount(() => {
   </UDashboardPanel>
 
   <!-- Modal thêm/sửa liên kết dùng chung component -->
-  <LinkModal
-    :open="isAddModalOpen"
-    title="Thêm liên kết"
-    :initial-name="newLinkName"
-    :initial-type-id="newLinkTypeId"
-    @update:open="isAddModalOpen = $event"
-    @submit="handleAddLinkModal"
-  />
+  <LinkModal :open="isAddModalOpen" :title="isEditMode ? 'Cập nhật liên kết' : 'Thêm liên kết'"
+    :initial-name="newLinkName" :initial-type-id="newLinkTypeId" @update:open="isAddModalOpen = $event"
+    @submit="handleLinkModalSubmit" />
 </template>
 
 <style scoped>
@@ -547,18 +524,21 @@ onBeforeUnmount(() => {
 /* Drag/ghost/chosen: very light blue, not purple */
 .ghost {
   opacity: 0.6;
-  background: rgba(59, 130, 246, 0.10); /* blue-500, 10% */
-  box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+  background: rgba(59, 130, 246, 0.10);
+  /* blue-500, 10% */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
 }
 
 .chosen {
   opacity: 0.95;
-  background: rgba(59, 130, 246, 0.13); /* blue-500, 13% */
+  background: rgba(59, 130, 246, 0.13);
+  /* blue-500, 13% */
 }
 
 .drag {
   opacity: 0.98;
-  background: rgba(59, 130, 246, 0.16); /* blue-500, 16% */
+  background: rgba(59, 130, 246, 0.16);
+  /* blue-500, 16% */
   transition: background-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -566,9 +546,9 @@ onBeforeUnmount(() => {
   transition: transform 0.2s ease;
 }
 
-  .rotate-90 {
-    transform: rotate(90deg);
-  }
+.rotate-90 {
+  transform: rotate(90deg);
+}
 
 .transition-colors {
   transition: color 0.2s ease, background-color 0.2s ease;

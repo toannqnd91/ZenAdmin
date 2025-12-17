@@ -16,9 +16,16 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 type PaymentMethodStr = 'TienMat' | 'ChuyenKhoan' | 'ViDienTu'
+export type BankAccountPayload = {
+  bankName: string
+  accountNumber: string
+  accountHolder: string
+  bankBranch: string
+}
+
 const emit = defineEmits<{
   'update:modelValue': [boolean]
-  'submit': [{ method: PaymentMethodStr, amount: number, reference: string }]
+  'submit': [{ method: PaymentMethodStr, amount: number, reference: string, note: string, bankAccount?: BankAccountPayload }]
 }>()
 
 const open = ref<boolean>(props.modelValue)
@@ -43,7 +50,39 @@ function fetchPaymentMethods(_search: string) {
   return Promise.resolve(paymentMethodOptions)
 }
 const reference = ref('')
+const note = ref('')
 const amount = ref(0)
+const bankAccount = ref<BankAccountPayload>({
+  bankName: '',
+  accountNumber: '',
+  accountHolder: '',
+  bankBranch: ''
+})
+
+const presetAccounts = [
+  { bankName: 'BIDV', accountHolder: 'Thuỳ', accountNumber: '8886666339', bankBranch: '', label: 'BIDV - 8886666339 (Thuỳ)' },
+  { bankName: 'BIDV', accountHolder: 'Tùng Phong', accountNumber: '8611026688', bankBranch: '', label: 'Tài khoản công ty - 8611026688 (Tùng Phong)' },
+  { bankName: 'BIDV', accountHolder: 'Chị Hồng', accountNumber: '8800851686', bankBranch: '', label: 'BIDV - 8800851686 (Chị Hồng)' },
+  { bankName: 'Techcombank', accountHolder: 'Hà', accountNumber: '19075091311012', bankBranch: '', label: 'Techcombank - 19075091311012 (Hà)' },
+  { bankName: 'Agribank', accountHolder: 'Châm', accountNumber: '8888348625559', bankBranch: '', label: 'Agribank - 8888348625559 (Châm)' }
+]
+
+const selectedBankAccountItem = computed(() => {
+  if (!bankAccount.value.accountNumber) return null
+  return presetAccounts.find(a => a.accountNumber === bankAccount.value.accountNumber) || null
+})
+
+function fetchBankAccounts(_search: string) {
+  return Promise.resolve(presetAccounts)
+}
+
+function onSelectBankAccount(item: typeof presetAccounts[0] | null) {
+  if (item) {
+    bankAccount.value = { ...item }
+  } else {
+    bankAccount.value = { bankName: '', accountNumber: '', accountHolder: '', bankBranch: '' }
+  }
+}
 
 watch(open, (v) => {
   if (v) {
@@ -52,6 +91,13 @@ watch(open, (v) => {
     amount.value = prefill
     method.value = 'TienMat'
     reference.value = ''
+    note.value = ''
+    bankAccount.value = {
+      bankName: '',
+      accountNumber: '',
+      accountHolder: '',
+      bankBranch: ''
+    }
   }
 })
 
@@ -59,7 +105,13 @@ const canSubmit = () => amount.value > 0
 
 function submit() {
   if (!canSubmit()) return
-  emit('submit', { method: method.value, amount: amount.value, reference: reference.value.trim() })
+  emit('submit', {
+    method: method.value,
+    amount: amount.value,
+    reference: reference.value.trim(),
+    note: note.value.trim(),
+    bankAccount: method.value === 'ChuyenKhoan' ? { ...bankAccount.value } : undefined
+  })
   open.value = false
 }
 </script>
@@ -92,11 +144,48 @@ function submit() {
         </p>
       </div>
     </div>
-    <!-- Reference -->
-    <div class="mt-6 space-y-1">
+
+    <!-- Bank Details & Reference (2 columns) -->
+    <div v-if="method === 'ChuyenKhoan'" class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="space-y-1">
+        <label class="text-sm font-medium text-gray-700">Chọn tài khoản nhận tiền</label>
+        <div class="relative">
+          <RemoteSearchSelect :model-value="selectedBankAccountItem" :fetch-fn="fetchBankAccounts"
+            :get-item-key="(it: any) => it.accountNumber" placeholder="Chọn tài khoản ngân hàng" :full-width="true"
+            :searchable="false" :clearable="false" :reset-search-on-open="true" label-field="label"
+            @update:model-value="onSelectBankAccount">
+            <template #option="{ item: option }">
+              <div class="flex flex-col py-1">
+                <div class="font-medium text-gray-900">{{ option.bankName }} - {{ option.accountNumber }}</div>
+                <div class="text-xs text-gray-500">{{ option.accountHolder }}</div>
+              </div>
+            </template>
+            <template #label="{ item }">
+              <span v-if="item">{{ item.bankName }} - {{ item.accountNumber }} ({{ item.accountHolder }})</span>
+              <span v-else>Chọn tài khoản</span>
+            </template>
+          </RemoteSearchSelect>
+        </div>
+      </div>
+      <div class="space-y-1">
+        <label class="text-sm font-medium text-gray-700">Tham chiếu</label>
+        <input v-model="reference" type="text" placeholder="Nhập tham chiếu"
+          class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+      </div>
+    </div>
+
+    <!-- Reference only (if not transfer) -->
+    <div v-else class="mt-2 space-y-1">
       <label class="text-sm font-medium text-gray-700">Tham chiếu</label>
       <input v-model="reference" type="text" placeholder="Nhập tham chiếu"
         class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+    </div>
+
+    <!-- Note -->
+    <div class="mt-2 space-y-1">
+      <label class="text-sm font-medium text-gray-700">Ghi chú</label>
+      <textarea v-model="note" rows="3" placeholder="Nhập ghi chú"
+        class="w-full p-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
     </div>
     <template #footer>
       <UButton color="neutral" variant="ghost" size="md" @click="open = false">

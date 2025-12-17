@@ -123,7 +123,7 @@ async function handleProductCreated(evt: unknown) {
       giftQuantity: 0
     }
     orderProducts.value.unshift(product)
-    
+
     // Apply pricebook if selected
     if (selectedPriceBook.value) {
       await applyPriceBookToProduct(product)
@@ -218,10 +218,10 @@ watch(selectedStaff, (staff) => {
 const calculatingPrices = ref(false)
 async function calculatePricesWithPriceBook() {
   if (!selectedPriceBook.value || orderProducts.value.length === 0) return
-  
+
   const priceBookId = (selectedPriceBook.value as { id?: string | number }).id
   if (!priceBookId) return
-  
+
   calculatingPrices.value = true
   try {
     const payload = {
@@ -233,20 +233,20 @@ async function calculatePricesWithPriceBook() {
         originalPrice: p.baseUnitPrice ?? p.unitPrice
       }))
     }
-    
+
     const res = await ordersService.calculatePrices(payload)
-    
+
     // Update product prices based on response
-    const innerData = res?.data?.data as { 
-      items?: CalculatePricesResponseItem[], 
-      summary?: { subtotal: number, totalDiscount: number, couponDiscount: number, total: number } 
+    const innerData = res?.data?.data as {
+      items?: CalculatePricesResponseItem[],
+      summary?: { subtotal: number, totalDiscount: number, couponDiscount: number, total: number }
     } | undefined
-    
+
     if (innerData?.items && Array.isArray(innerData.items)) {
       const priceMap = new Map<string, CalculatePricesResponseItem>(
         innerData.items.map((item: CalculatePricesResponseItem) => [String(item.productId), item])
       )
-      
+
       orderProducts.value.forEach(prod => {
         const priceData = priceMap.get(String(prod.id))
         if (priceData) {
@@ -259,12 +259,12 @@ async function calculatePricesWithPriceBook() {
           prod.total = priceData.lineTotal
         }
       })
-      
+
       const summary = innerData.summary
-      toast.add({ 
-        title: 'Đã áp dụng bảng giá', 
+      toast.add({
+        title: 'Đã áp dụng bảng giá',
         description: `Tổng giảm: ${summary?.totalDiscount?.toLocaleString() || 0}₫`,
-        color: 'success' 
+        color: 'success'
       })
     }
   } catch (err) {
@@ -277,7 +277,7 @@ async function calculatePricesWithPriceBook() {
 
 watch(selectedPriceBook, (newVal, oldVal) => {
   if (orderProducts.value.length === 0) return
-  
+
   // If pricebook is cleared, reset all products to original price
   if (!newVal && oldVal) {
     resetProductPrices()
@@ -296,20 +296,20 @@ function resetProductPrices() {
       prod.total = prod.quantity * prod.baseUnitPrice
     }
   })
-  toast.add({ 
-    title: 'Đã xóa bảng giá', 
+  toast.add({
+    title: 'Đã xóa bảng giá',
     description: 'Giá sản phẩm đã được khôi phục về giá gốc',
-    color: 'info' 
+    color: 'info'
   })
 }
 
 // Apply pricebook to a single product
 async function applyPriceBookToProduct(product: OrderProduct) {
   if (!selectedPriceBook.value) return
-  
+
   const priceBookId = (selectedPriceBook.value as { id?: string | number }).id
   if (!priceBookId) return
-  
+
   try {
     const payload = {
       priceBookId,
@@ -320,13 +320,13 @@ async function applyPriceBookToProduct(product: OrderProduct) {
         originalPrice: product.baseUnitPrice ?? product.unitPrice
       }]
     }
-    
+
     console.log('Calculate prices payload:', payload)
     const res = await ordersService.calculatePrices(payload)
     console.log('Calculate prices response:', res)
-    
+
     const innerData = res?.data?.data as { items?: CalculatePricesResponseItem[], summary?: any } | undefined
-    
+
     if (innerData?.items && innerData.items.length > 0) {
       const priceData = innerData.items[0]
       console.log('Price data for product:', priceData)
@@ -338,7 +338,7 @@ async function applyPriceBookToProduct(product: OrderProduct) {
         // Update with final price from pricebook
         product.unitPrice = priceData.finalPrice
         product.total = priceData.lineTotal
-        
+
         // Force reactivity update by finding and replacing the product
         const key = String(product.sku || product.id)
         const idx = orderProducts.value.findIndex(p => String(p.sku || p.id) === key)
@@ -380,7 +380,7 @@ function formatDateTimeDDMMYYYY(date: Date) {
   // Convert to UTC+7 (Vietnam timezone)
   const utc = date.getTime() + (date.getTimezoneOffset() * 60000)
   const vietnamTime = new Date(utc + (7 * 3600000))
-  
+
   const d = vietnamTime.getDate().toString().padStart(2, '0')
   const m = (vietnamTime.getMonth() + 1).toString().padStart(2, '0')
   const y = vietnamTime.getFullYear()
@@ -799,10 +799,10 @@ async function fetchPriceBooks(search: string): Promise<GenericItem[]> {
     const q = (search || '').toLowerCase()
     return q
       ? list.filter(pb => {
-          const name = String(pb.name || '').toLowerCase()
-          const code = String(pb.code || '').toLowerCase()
-          return name.includes(q) || code.includes(q)
-        })
+        const name = String(pb.name || '').toLowerCase()
+        const code = String(pb.code || '').toLowerCase()
+        return name.includes(q) || code.includes(q)
+      })
       : list
   } catch {
     return []
@@ -818,11 +818,11 @@ async function fetchEmployees(search: string): Promise<GenericItem[]> {
     const q = (search || '').toLowerCase()
     return q
       ? list.filter(emp => {
-          const name = String(emp.fullName || '').toLowerCase()
-          const code = String(emp.code || '').toLowerCase()
-          const email = String(emp.email || '').toLowerCase()
-          return name.includes(q) || code.includes(q) || email.includes(q)
-        })
+        const name = String(emp.fullName || '').toLowerCase()
+        const code = String(emp.code || '').toLowerCase()
+        const email = String(emp.email || '').toLowerCase()
+        return name.includes(q) || code.includes(q) || email.includes(q)
+      })
       : list
   } catch {
     return []
@@ -871,7 +871,7 @@ async function addProduct(item: ProductSearchItem) {
     closeProductSearch()
     return
   }
-  
+
   const newProduct = {
     ...item,
     quantity: 1,
@@ -881,16 +881,16 @@ async function addProduct(item: ProductSearchItem) {
     discountReason: undefined,
     giftQuantity: 0
   }
-  
+
   orderProducts.value.unshift(newProduct)
-  
+
   // Apply pricebook if selected
   if (selectedPriceBook.value) {
     console.log('Applying pricebook to new product:', newProduct.id, selectedPriceBook.value)
     await applyPriceBookToProduct(newProduct)
     console.log('Price after pricebook:', newProduct.unitPrice, newProduct.total)
   }
-  
+
   closeProductSearch()
 }
 function removeProduct(idx: number) {
@@ -1215,7 +1215,12 @@ onMounted(async () => {
 
 // Debounce search term changes to refetch products
 watch(productSearchTerm, () => {
-  if (!showProductSearch.value) return
+  if (!showProductSearch.value) {
+    showProductSearch.value = true
+    nextTick(() => {
+      document.addEventListener('mousedown', handleClickOutside)
+    })
+  }
   if (productSearchDebounce) window.clearTimeout(productSearchDebounce)
   productSearchDebounce = window.setTimeout(() => {
     fetchProducts(true)
@@ -1498,15 +1503,8 @@ function onAddCustomer() {
           <div class="flex items-center gap-3">
             <button
               class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-              @click="goBack"
-            >
-              <svg
-                class="w-5 h-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
+              @click="goBack">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
@@ -1516,14 +1514,8 @@ function onAddCustomer() {
           </div>
         </template>
         <template #right>
-          <WarehouseSwitcher
-            v-model="selectedHeaderWarehouse"
-            :include-all="false"
-            :clearable="false"
-            placeholder="Chọn chi nhánh"
-            :borderless="true"
-            :auto-width="true"
-          />
+          <WarehouseSwitcher v-model="selectedHeaderWarehouse" :include-all="false" :clearable="false"
+            placeholder="Chọn chi nhánh" :borderless="true" :auto-width="true" />
         </template>
       </UDashboardNavbar>
     </template>
@@ -1543,50 +1535,27 @@ function onAddCustomer() {
               </BaseCardHeader>
               <div class="flex items-center gap-2 mb-4 relative">
                 <div class="flex-1">
-                  <input
-                    ref="mainProductInputRef"
-                    v-model="productSearchTerm"
-                    type="text"
-                    :class="[
-                      'w-full h-9 px-3 rounded-md border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500',
-                      triedSubmit && !hasProducts ? 'border-red-400 bg-red-50' : 'border-gray-300'
-                    ]"
-                    placeholder="Tìm theo tên, mã SKU, quét mã Barcode... (F3)"
-                    autocomplete="off"
-                    autocorrect="off"
-                    autofill="off"
-                    inputmode="search"
-                    name="ignore_product_search"
-                    autocapitalize="off"
-                    spellcheck="false"
-                    aria-autocomplete="none"
-                    data-lpignore="true"
-                    data-form-type="other"
-                    @focus="openProductSearch"
-                  >
-                  <div
-                    v-if="showProductSearch"
-                    ref="productSearchPopupRef"
+                  <input ref="mainProductInputRef" v-model="productSearchTerm" type="text" :class="[
+                    'w-full h-9 px-3 rounded-md border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500',
+                    triedSubmit && !hasProducts ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                  ]" placeholder="Tìm theo tên, mã SKU, quét mã Barcode... (F3)" autocomplete="off" autocorrect="off"
+                    autofill="off" inputmode="search" name="ignore_product_search" autocapitalize="off"
+                    spellcheck="false" aria-autocomplete="none" data-lpignore="true" data-form-type="other"
+                    @focus="openProductSearch">
+                  <div v-if="showProductSearch" ref="productSearchPopupRef"
                     class="absolute left-0 top-full z-50 w-full bg-white rounded-lg shadow-lg mt-2 max-h-[420px] overflow-auto border border-gray-200"
-                    @scroll="onProductListScroll"
-                  >
-                    <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600" @click="closeProductSearch">
+                    @scroll="onProductListScroll">
+                    <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+                      @click="closeProductSearch">
                       &times;
                     </button>
                     <div class="flex items-center gap-2 mb-2 p-4 pb-0">
-                      <button class="flex items-center text-primary-600 text-sm font-medium hover:underline" style="padding:0" @click.stop="showAddProductModal = true">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          class="w-5 h-5 mr-1"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        ><path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M12 4v16m8-8H4"
-                        /></svg>
+                      <button class="flex items-center text-primary-600 text-sm font-medium hover:underline"
+                        style="padding:0" @click.stop="showAddProductModal = true">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24"
+                          stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
                         Thêm mới sản phẩm
                       </button>
                     </div>
@@ -1598,18 +1567,12 @@ function onAddCustomer() {
                         Không có sản phẩm
                       </div>
                       <div v-else class="p-4 pt-2">
-                        <div
-                          v-for="item in productList"
-                          :key="item.id"
+                        <div v-for="item in productList" :key="item.id"
                           class="flex items-center py-3 gap-4 cursor-pointer"
-                          :style="'border-bottom: 1px solid rgb(232,234,235);' + (item === productList[productList.length-1] ? 'border-bottom: none;' : '')"
-                          @click="addProduct(item)"
-                        >
-                          <img
-                            :src="getProductImageUrl(item)"
-                            class="w-12 h-12 rounded bg-gray-100 object-cover"
-                            @error="e => { const t = e.target as HTMLImageElement; if (t) t.src = '/no-image.svg' }"
-                          >
+                          :style="'border-bottom: 1px solid rgb(232,234,235);' + (item === productList[productList.length - 1] ? 'border-bottom: none;' : '')"
+                          @click="addProduct(item)">
+                          <img :src="getProductImageUrl(item)" class="w-12 h-12 rounded bg-gray-100 object-cover"
+                            @error="e => { const t = e.target as HTMLImageElement; if (t) t.src = '/no-image.svg' }">
                           <div class="flex-1">
                             <div class="font-medium">
                               {{ item.name }}
@@ -1637,7 +1600,9 @@ function onAddCustomer() {
                     </div>
                   </div>
                 </div>
-                <button class="h-9 px-4 rounded-md border border-gray-300 bg-gray-50 text-sm font-medium hover:bg-gray-100" @click="openProductSearch">
+                <button
+                  class="h-9 px-4 rounded-md border border-gray-300 bg-gray-50 text-sm font-medium hover:bg-gray-100"
+                  @click="openProductSearch">
                   Chọn nhiều
                 </button>
               </div>
@@ -1664,11 +1629,8 @@ function onAddCustomer() {
                     <tr v-for="(prod, idx) in orderProducts" :key="prod.sku || prod.id">
                       <td class="px-6 py-2">
                         <div class="flex items-center gap-2">
-                          <img
-                            :src="getProductImageUrl(prod)"
-                            class="w-10 h-10 rounded bg-gray-100 object-cover"
-                            @error="e => { const t = e.target as HTMLImageElement; if (t) t.src = '/no-image.svg' }"
-                          >
+                          <img :src="getProductImageUrl(prod)" class="w-10 h-10 rounded bg-gray-100 object-cover"
+                            @error="e => { const t = e.target as HTMLImageElement; if (t) t.src = '/no-image.svg' }">
                           <div class="flex-1">
                             <div class="font-medium">
                               {{ prod.name }}
@@ -1683,12 +1645,8 @@ function onAddCustomer() {
                               Ghi chú: {{ prod.note }}
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            class="text-gray-400 hover:text-gray-600 p-1"
-                            @click="openNoteModal(idx)"
-                            title="Thêm ghi chú"
-                          >
+                          <button type="button" class="text-gray-400 hover:text-gray-600 p-1"
+                            @click="openNoteModal(idx)" title="Thêm ghi chú">
                             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -1697,34 +1655,28 @@ function onAddCustomer() {
                         </div>
                       </td>
                       <td class="px-6 py-2">
-                        <input
-                          v-model.number="prod.quantity"
-                          type="number"
-                          min="1"
+                        <input v-model.number="prod.quantity" type="number" min="1"
                           class="w-16 h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          @input="updateProductTotal(idx)"
-                        >
+                          @input="updateProductTotal(idx)">
                       </td>
                       <td class="px-6 py-2">
                         <div class="flex flex-col">
-                          <span
-                            class="text-primary-600 font-semibold cursor-pointer hover:underline"
-                            @click="openPriceModal(idx)"
-                          >
+                          <span class="text-primary-600 font-semibold cursor-pointer hover:underline"
+                            @click="openPriceModal(idx)">
                             {{ currency(prod.unitPrice) }}
                           </span>
                           <div v-if="calcDiscountAmount(prod) > 0" class="text-xs text-gray-500">
                             <span class="line-through mr-2">{{ currency(getBaseUnitPrice(prod)) }}</span>
-                            <span class="text-red-600 mr-1">-{{ currency(calcDiscountAmount(prod)).replace('₫', '') }}₫</span>
+                            <span class="text-red-600 mr-1">-{{ currency(calcDiscountAmount(prod)).replace('₫', '')
+                              }}₫</span>
                             <span class="text-red-600">(-{{ calcDiscountPercent(prod) }}%)</span>
-                            <div v-if="prod.discountReason" class="text-[11px] text-gray-400 mt-0.5 truncate max-w-[240px]">
+                            <div v-if="prod.discountReason"
+                              class="text-[11px] text-gray-400 mt-0.5 truncate max-w-[240px]">
                               Lý do: {{ prod.discountReason }}
                             </div>
                           </div>
-                          <div
-                            v-if="prod.giftQuantity && prod.giftQuantity > 0"
-                            class="text-[11px] text-emerald-600 mt-0.5"
-                          >
+                          <div v-if="prod.giftQuantity && prod.giftQuantity > 0"
+                            class="text-[11px] text-emerald-600 mt-0.5">
                             Tặng kèm: {{ prod.giftQuantity }}
                           </div>
                         </div>
@@ -1736,21 +1688,15 @@ function onAddCustomer() {
                               {{ (prod.quantity * prod.unitPrice).toLocaleString() }}₫
                             </span>
                             <div class="flex items-center gap-1">
-                              <button
-                                type="button"
+                              <button type="button"
                                 class="h-7 w-7 flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 text-sm hover:bg-gray-50"
                                 @click="decrementGiftQuantity(idx)"
-                                :disabled="!prod.giftQuantity || prod.giftQuantity <= 0"
-                                title="Giảm số lượng tặng kèm"
-                              >
+                                :disabled="!prod.giftQuantity || prod.giftQuantity <= 0" title="Giảm số lượng tặng kèm">
                                 -
                               </button>
-                              <button
-                                type="button"
+                              <button type="button"
                                 class="h-7 w-7 flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 text-sm hover:bg-gray-50"
-                                @click="incrementGiftQuantity(idx)"
-                                title="Thêm số lượng tặng kèm"
-                              >
+                                @click="incrementGiftQuantity(idx)" title="Thêm số lượng tặng kèm">
                                 +
                               </button>
                             </div>
@@ -1771,7 +1717,9 @@ function onAddCustomer() {
                 <div class="text-gray-500 mb-3">
                   Bạn chưa thêm sản phẩm nào
                 </div>
-                <button class="px-4 h-9 rounded-md bg-primary-600 text-white font-medium hover:bg-primary-700 transition" @click="openProductSearch">
+                <button
+                  class="px-4 h-9 rounded-md bg-primary-600 text-white font-medium hover:bg-primary-700 transition"
+                  @click="openProductSearch">
                   Thêm sản phẩm
                 </button>
               </div>
@@ -1786,18 +1734,21 @@ function onAddCustomer() {
                 <div class="flex items-center justify-between min-h-[28px]">
                   <span class="text-gray-600 font-medium flex items-center gap-2">
                     Tổng tiền hàng
-                    <span v-if="orderProducts.length" class="text-xs text-gray-500">{{ orderProducts.length }} sản phẩm</span>
+                    <span v-if="orderProducts.length" class="text-xs text-gray-500">{{ orderProducts.length }} sản
+                      phẩm</span>
                   </span>
                   <span class="text-gray-600">{{ orderProducts.length ? currency(totalAmount) : '---' }}</span>
                 </div>
                 <div class="flex items-center justify-between min-h-[28px]">
-                  <button type="button" class="text-primary-600 text-left text-sm hover:underline p-0 bg-transparent" @click="openDiscountModal">
+                  <button type="button" class="text-primary-600 text-left text-sm hover:underline p-0 bg-transparent"
+                    @click="openDiscountModal">
                     Thêm giảm giá (F6)
                   </button>
                   <span class="text-gray-600">{{ discount ? '-' + currency(discount) : '---' }}</span>
                 </div>
                 <div class="flex items-center justify-between min-h-[28px]">
-                  <button type="button" class="text-primary-600 text-left text-sm hover:underline p-0 bg-transparent" @click="openShippingFeeModal">
+                  <button type="button" class="text-primary-600 text-left text-sm hover:underline p-0 bg-transparent"
+                    @click="openShippingFeeModal">
                     Thêm phí giao hàng (F7)
                   </button>
                   <span class="text-gray-600">{{ shippingFee ? currency(shippingFee) : '---' }}</span>
@@ -1815,130 +1766,98 @@ function onAddCustomer() {
                         <div class="text-xs text-gray-600 mb-1">
                           Hình thức thanh toán
                         </div>
-                        <RemoteSearchSelect
-                          v-model="paymentMethodOption"
-                          :fetch-fn="fetchPaymentMethods"
-                          placeholder="Chọn hình thức thanh toán"
-                          :clearable="false"
-                          label-field="label"
-                          :searchable="false"
-                          :full-width="true"
-                        />
+                        <RemoteSearchSelect v-model="paymentMethodOption" :fetch-fn="fetchPaymentMethods"
+                          placeholder="Chọn hình thức thanh toán" :clearable="false" label-field="label"
+                          :searchable="false" :full-width="true" />
                       </div>
                       <div>
                         <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
                           <span>Số tiền (Khách hàng trả)</span>
-                          <button
-                            v-if="paymentAmountDirty"
-                            type="button"
+                          <button v-if="paymentAmountDirty" type="button"
                             class="text-primary-600 hover:underline p-0 bg-transparent whitespace-nowrap"
-                            @click="syncPaymentAmount()"
-                          >
+                            @click="syncPaymentAmount()">
                             Đồng bộ với thành tiền
                           </button>
                         </div>
                         <div class="relative">
-                          <BaseNumberInput
-                            v-model="paymentAmount"
-                            :allow-decimal="false"
-                            decimal-separator="."
+                          <BaseNumberInput v-model="paymentAmount" :allow-decimal="false" decimal-separator="."
                             class="w-full h-9 px-3 pr-6 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-right"
-                            @input="paymentAmountDirty = true"
-                          />
-                          <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">đ</span>
+                            @input="paymentAmountDirty = true" />
+                          <span
+                            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">đ</span>
                         </div>
                       </div>
                     </div>
-                    <CustomRadio
-                      v-model="paymentStatus"
-                      class="mt-2"
-                      value="later"
-                      label="Thanh toán sau"
-                    />
+                    <CustomRadio v-model="paymentStatus" class="mt-2" value="later" label="Thanh toán sau" />
                     <div v-if="paymentStatus === 'later'" class="mt-2">
                       <div class="text-xs text-gray-600 mb-1">
                         Hình thức thanh toán
                       </div>
-                      <RemoteSearchSelect
-                        v-model="paymentMethodOption"
-                        :fetch-fn="fetchPaymentMethods"
-                        placeholder="Chọn hình thức thanh toán"
-                        :clearable="false"
-                        label-field="label"
-                        :searchable="false"
-                        class="w-full"
-                      />
+                      <RemoteSearchSelect v-model="paymentMethodOption" :fetch-fn="fetchPaymentMethods"
+                        placeholder="Chọn hình thức thanh toán" :clearable="false" label-field="label"
+                        :searchable="false" class="w-full" />
                     </div>
                   </div>
                 </div>
                 <!-- Modal giảm giá -->
-                <div v-if="showDiscountModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30" @click="closeDiscountModal">
-                  <div class="bg-white rounded-lg w-full max-w-lg p-6 relative shadow-none border-none no-shadow-modal" style="box-shadow:none!important; border:none!important; outline:none!important;" @click.stop>
+                <div v-if="showDiscountModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+                  @click="closeDiscountModal">
+                  <div class="bg-white rounded-lg w-full max-w-lg p-6 relative shadow-none border-none no-shadow-modal"
+                    style="box-shadow:none!important; border:none!important; outline:none!important;" @click.stop>
                     <div class="text-lg font-semibold mb-4">
                       Thêm giảm giá
                     </div>
                     <div class="mb-6 flex items-center gap-4">
                       <label class="text-sm font-medium min-w-[100px]">Loại giảm giá:</label>
                       <div class="flex rounded-lg overflow-hidden border border-gray-200">
-                        <button :class="['px-4 py-2 text-sm font-semibold', discountType === 'amount' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700']" @click="discountType = 'amount'">
+                        <button
+                          :class="['px-4 py-2 text-sm font-semibold', discountType === 'amount' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700']"
+                          @click="discountType = 'amount'">
                           Giá trị
                         </button>
-                        <button :class="['px-4 py-2 text-sm font-semibold', discountType === 'percent' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700']" @click="discountType = 'percent'">
+                        <button
+                          :class="['px-4 py-2 text-sm font-semibold', discountType === 'percent' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700']"
+                          @click="discountType = 'percent'">
                           %
                         </button>
                       </div>
                       <div class="flex items-center gap-1 flex-1">
                         <div class="relative w-full">
-                          <BaseNumberInput
-                            v-model="discountInput"
-                            :allow-decimal="false"
-                            decimal-separator="."
-                            :class="['w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500', discountError ? 'border-red-400 bg-red-50' : 'border-gray-300']"
-                          />
-                          <span v-if="discountType === 'amount'" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₫</span>
-                          <span v-else class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">%</span>
+                          <BaseNumberInput v-model="discountInput" :allow-decimal="false" decimal-separator="."
+                            :class="['w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500', discountError ? 'border-red-400 bg-red-50' : 'border-gray-300']" />
+                          <span v-if="discountType === 'amount'"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₫</span>
+                          <span v-else
+                            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">%</span>
                         </div>
                       </div>
                     </div>
-                    <div v-if="discountError" class="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-600 flex items-center gap-2">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="w-5 h-5 flex-shrink-0"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      ><path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
-                      /></svg>
+                    <div v-if="discountError"
+                      class="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-600 flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+                      </svg>
                       <span>{{ discountError }}</span>
                     </div>
                     <div class="flex justify-end gap-3 mt-6">
-                      <UButton
-                        label="Hủy"
-                        color="primary"
-                        variant="soft"
-                        class="px-6 h-9 font-medium"
-                        @click="closeDiscountModal"
-                      />
-                      <UButton
-                        label="Áp dụng"
-                        color="primary"
-                        class="px-6 h-9 font-semibold"
-                        :disabled="!!discountError"
-                        @click="applyDiscount"
-                      />
+                      <UButton label="Hủy" color="primary" variant="soft" class="px-6 h-9 font-medium"
+                        @click="closeDiscountModal" />
+                      <UButton label="Áp dụng" color="primary" class="px-6 h-9 font-semibold"
+                        :disabled="!!discountError" @click="applyDiscount" />
                     </div>
-                    <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-2xl" @click="closeDiscountModal">
+                    <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-2xl"
+                      @click="closeDiscountModal">
                       &times;
                     </button>
                   </div>
                 </div>
                 <!-- Modal phí giao hàng -->
-                <div v-if="showShippingFeeModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30" @click="closeShippingFeeModal">
-                  <div class="bg-white rounded-lg w-full max-w-lg p-6 relative shadow-none border-none no-shadow-modal" style="box-shadow:none!important; border:none!important; outline:none!important;" @click.stop>
+                <div v-if="showShippingFeeModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+                  @click="closeShippingFeeModal">
+                  <div class="bg-white rounded-lg w-full max-w-lg p-6 relative shadow-none border-none no-shadow-modal"
+                    style="box-shadow:none!important; border:none!important; outline:none!important;" @click.stop>
                     <div class="text-lg font-semibold mb-4">
                       Thêm phí giao hàng
                     </div>
@@ -1946,60 +1865,40 @@ function onAddCustomer() {
                       <label class="text-sm font-medium min-w-[100px]">Giá trị:</label>
                       <div class="flex items-center gap-1 flex-1">
                         <div class="relative w-full">
-                          <BaseNumberInput
-                            v-model="shippingFeeInput"
-                            :allow-decimal="false"
-                            decimal-separator="."
-                            :class="['w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500', shippingFeeError ? 'border-red-400 bg-red-50' : 'border-gray-300']"
-                          />
-                          <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₫</span>
+                          <BaseNumberInput v-model="shippingFeeInput" :allow-decimal="false" decimal-separator="."
+                            :class="['w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500', shippingFeeError ? 'border-red-400 bg-red-50' : 'border-gray-300']" />
+                          <span
+                            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₫</span>
                         </div>
                       </div>
                     </div>
-                    <div v-if="shippingFeeError" class="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-600 flex items-center gap-2">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="w-5 h-5 flex-shrink-0"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      ><path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
-                      /></svg>
+                    <div v-if="shippingFeeError"
+                      class="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-600 flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+                      </svg>
                       <span>{{ shippingFeeError }}</span>
                     </div>
                     <div class="flex justify-end gap-3 mt-6">
-                      <UButton
-                        label="Hủy"
-                        color="primary"
-                        variant="soft"
-                        class="px-6 h-9 font-medium"
-                        @click="closeShippingFeeModal"
-                      />
-                      <UButton
-                        label="Áp dụng"
-                        color="primary"
-                        class="px-6 h-9 font-semibold"
-                        :disabled="!!shippingFeeError"
-                        @click="applyShippingFee"
-                      />
+                      <UButton label="Hủy" color="primary" variant="soft" class="px-6 h-9 font-medium"
+                        @click="closeShippingFeeModal" />
+                      <UButton label="Áp dụng" color="primary" class="px-6 h-9 font-semibold"
+                        :disabled="!!shippingFeeError" @click="applyShippingFee" />
                     </div>
-                    <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-2xl" @click="closeShippingFeeModal">
+                    <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-2xl"
+                      @click="closeShippingFeeModal">
                       &times;
                     </button>
                   </div>
                 </div>
 
                 <!-- Modal điều chỉnh giá sản phẩm -->
-                <div v-if="showPriceModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30" @click="closePriceModal">
-                  <div
-                    class="bg-white rounded-lg w-full max-w-lg p-6 relative shadow-none border-none no-shadow-modal"
-                    style="box-shadow:none!important; border:none!important; outline:none!important;"
-                    @click.stop
-                  >
+                <div v-if="showPriceModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+                  @click="closePriceModal">
+                  <div class="bg-white rounded-lg w-full max-w-lg p-6 relative shadow-none border-none no-shadow-modal"
+                    style="box-shadow:none!important; border:none!important; outline:none!important;" @click.stop>
                     <div class="text-lg font-semibold mb-4">
                       Điều chỉnh giá
                     </div>
@@ -2014,14 +1913,11 @@ function onAddCustomer() {
                     <div v-if="priceUseNew" class="mb-6">
                       <label class="text-sm font-medium text-gray-700 mb-1 block">Giá mới</label>
                       <div class="relative">
-                        <BaseNumberInput
-                          v-model="priceNewValue"
-                          :allow-decimal="false"
-                          decimal-separator="."
+                        <BaseNumberInput v-model="priceNewValue" :allow-decimal="false" decimal-separator="."
                           class="w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          :class="priceError ? 'border-red-400 bg-red-50' : 'border-gray-300'"
-                        />
-                        <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₫</span>
+                          :class="priceError ? 'border-red-400 bg-red-50' : 'border-gray-300'" />
+                        <span
+                          class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₫</span>
                       </div>
                     </div>
 
@@ -2031,45 +1927,42 @@ function onAddCustomer() {
                         <div class="flex rounded-lg overflow-hidden border border-gray-200">
                           <button
                             :class="['px-4 py-2 text-sm font-semibold', priceDiscountType === 'amount' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700']"
-                            @click="priceDiscountType = 'amount'"
-                          >
+                            @click="priceDiscountType = 'amount'">
                             Giá trị
                           </button>
                           <button
                             :class="['px-4 py-2 text-sm font-semibold', priceDiscountType === 'percent' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700']"
-                            @click="priceDiscountType = 'percent'"
-                          >
+                            @click="priceDiscountType = 'percent'">
                             %
                           </button>
                         </div>
                         <div class="flex-1 relative">
-                          <BaseNumberInput
-                            v-model="priceDiscountInput"
-                            :allow-decimal="false"
-                            decimal-separator="."
+                          <BaseNumberInput v-model="priceDiscountInput" :allow-decimal="false" decimal-separator="."
                             class="w-full h-10 px-2 pr-6 rounded border text-right focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            :class="priceError ? 'border-red-400 bg-red-50' : 'border-gray-300'"
-                          />
-                          <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">{{ priceDiscountType === 'amount' ? '₫' : '%' }}</span>
+                            :class="priceError ? 'border-red-400 bg-red-50' : 'border-gray-300'" />
+                          <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">{{
+                            priceDiscountType === 'amount' ? '₫' : '%' }}</span>
                         </div>
                       </div>
                     </div>
 
                     <div class="mb-4">
                       <label class="text-sm font-medium text-gray-700 mb-1 block">Lý do giảm giá</label>
-                      <input
-                        v-model="priceReason"
-                        type="text"
+                      <input v-model="priceReason" type="text"
                         class="w-full h-9 px-2 rounded border focus:outline-none focus:ring-2 focus:ring-primary-500 border-gray-300"
-                        placeholder="Ghi chú (không bắt buộc)"
-                      >
+                        placeholder="Ghi chú (không bắt buộc)">
                     </div>
 
                     <div class="mb-4 text-sm text-gray-700">
                       <div class="flex items-center justify-between">
                         <span>Giá gốc</span>
                         <span>
-                          {{ (() => { const idx = priceModalIdx; if (idx === null) return '---'; const p = orderProducts[idx]; const base = (p && typeof p.baseUnitPrice === 'number') ? p.baseUnitPrice : (p ? p.unitPrice : 0); return currency(base) })() }}
+                          {{(() => {
+                            const idx = priceModalIdx; if (idx === null) return '---'; const p =
+                              orderProducts[idx]; const
+                                base = (p && typeof p.baseUnitPrice === 'number') ? p.baseUnitPrice : (p ? p.unitPrice : 0);
+                          return
+                          currency(base) })() }}
                         </span>
                       </div>
                       <div class="flex items-center justify-between mt-1">
@@ -2078,40 +1971,24 @@ function onAddCustomer() {
                       </div>
                     </div>
 
-                    <div v-if="priceError" class="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-600 text-sm">
+                    <div v-if="priceError"
+                      class="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-600 text-sm">
                       {{ priceError }}
                     </div>
 
                     <div class="flex justify-between gap-3 mt-6">
-                      <UButton
-                        label="Xóa giảm giá"
-                        color="error"
-                        variant="soft"
-                        class="px-4 h-9 font-medium"
-                        @click="removePriceAdjust"
-                      />
+                      <UButton label="Xóa giảm giá" color="error" variant="soft" class="px-4 h-9 font-medium"
+                        @click="removePriceAdjust" />
                       <div class="flex gap-3">
-                        <UButton
-                          label="Hủy"
-                          color="primary"
-                          variant="soft"
-                          class="px-6 h-9 font-medium"
-                          @click="closePriceModal"
-                        />
-                        <UButton
-                          label="Xác nhận"
-                          color="primary"
-                          class="px-6 h-9 font-semibold"
-                          :disabled="!!priceError"
-                          @click="applyPriceAdjust"
-                        />
+                        <UButton label="Hủy" color="primary" variant="soft" class="px-6 h-9 font-medium"
+                          @click="closePriceModal" />
+                        <UButton label="Xác nhận" color="primary" class="px-6 h-9 font-semibold"
+                          :disabled="!!priceError" @click="applyPriceAdjust" />
                       </div>
                     </div>
 
-                    <button
-                      class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-2xl"
-                      @click="closePriceModal"
-                    >
+                    <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-2xl"
+                      @click="closePriceModal">
                       &times;
                     </button>
                   </div>
@@ -2139,29 +2016,31 @@ function onAddCustomer() {
               <BaseCardHeader>Giao hàng</BaseCardHeader>
               <div class="-mx-6 px-6 pb-2">
                 <div class="flex flex-wrap items-center gap-2 mb-4">
-                  <button type="button" :class="['px-3 py-1.5 rounded border text-sm', shippingOption === 'carrier' ? 'border-primary-300 text-primary-700 bg-primary-50' : 'border-gray-200 text-gray-700 bg-white']" @click="shippingOption = 'carrier'">
+                  <button type="button"
+                    :class="['px-3 py-1.5 rounded border text-sm', shippingOption === 'carrier' ? 'border-primary-300 text-primary-700 bg-primary-50' : 'border-gray-200 text-gray-700 bg-white']"
+                    @click="shippingOption = 'carrier'">
                     Cổng vận chuyển
                   </button>
-                  <button type="button" :class="['px-3 py-1.5 rounded border text-sm', shippingOption === 'self' ? 'border-primary-300 text-primary-700 bg-primary-50' : 'border-gray-200 text-gray-700 bg-white']" @click="shippingOption = 'self'">
+                  <button type="button"
+                    :class="['px-3 py-1.5 rounded border text-sm', shippingOption === 'self' ? 'border-primary-300 text-primary-700 bg-primary-50' : 'border-gray-200 text-gray-700 bg-white']"
+                    @click="shippingOption = 'self'">
                     Tự giao hàng
                   </button>
-                  <button type="button" :class="['px-3 py-1.5 rounded border text-sm', shippingOption === 'delivered' ? 'border-primary-300 text-primary-700 bg-primary-50' : 'border-gray-200 text-gray-700 bg-white']" @click="shippingOption = 'delivered'">
+                  <button type="button"
+                    :class="['px-3 py-1.5 rounded border text-sm', shippingOption === 'delivered' ? 'border-primary-300 text-primary-700 bg-primary-50' : 'border-gray-200 text-gray-700 bg-white']"
+                    @click="shippingOption = 'delivered'">
                     Đã giao hàng
                   </button>
-                  <button type="button" :class="['px-3 py-1.5 rounded border text-sm', shippingOption === 'later' ? 'border-primary-300 text-primary-700 bg-primary-50' : 'border-gray-200 text-gray-700 bg-white']" @click="shippingOption = 'later'">
+                  <button type="button"
+                    :class="['px-3 py-1.5 rounded border text-sm', shippingOption === 'later' ? 'border-primary-300 text-primary-700 bg-primary-50' : 'border-gray-200 text-gray-700 bg-white']"
+                    @click="shippingOption = 'later'">
                     Giao hàng sau
                   </button>
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-gray-600 mb-1">Hình thức giao hàng</label>
-                  <RemoteSearchSelect
-                    v-model="shippingMethodOption"
-                    :fetch-fn="fetchShippingMethods"
-                    placeholder="Chọn hình thức giao hàng"
-                    :clearable="true"
-                    label-field="label"
-                    :searchable="false"
-                  />
+                  <RemoteSearchSelect v-model="shippingMethodOption" :fetch-fn="fetchShippingMethods"
+                    placeholder="Chọn hình thức giao hàng" :clearable="true" label-field="label" :searchable="false" />
                 </div>
               </div>
             </UPageCard>
@@ -2171,35 +2050,22 @@ function onAddCustomer() {
             <UPageCard id="source-card" variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>Nguồn đơn</BaseCardHeader>
               <div class="-mx-6 px-6">
-                <RemoteSearchSelect
-                  v-model="selectedSource"
-                  :fetch-fn="fetchSources"
-                  placeholder="Chọn nguồn đơn"
-                  :clearable="true"
-                  :debounce="300"
-                  label-field="name"
+                <RemoteSearchSelect v-model="selectedSource" :fetch-fn="fetchSources" placeholder="Chọn nguồn đơn"
+                  :clearable="true" :debounce="300" label-field="name"
                   :class="[{ 'border border-red-400 rounded-md': triedSubmit && !hasSource }, 'w-full']"
-                  :full-width="true"
-                  :aria-invalid="(triedSubmit && !hasSource) ? 'true' : 'false'"
-                >
+                  :full-width="true" :aria-invalid="(triedSubmit && !hasSource) ? 'true' : 'false'">
                   <template #trigger-left="{ value }">
-                    <img
-                      v-if="value && typeof (value as any).iconUrl === 'string'"
-                      :src="String((value as any).iconUrl)"
-                      class="w-4 h-4 object-contain mr-2"
-                      alt="icon"
-                    >
+                    <img v-if="value && typeof (value as any).iconUrl === 'string'"
+                      :src="String((value as any).iconUrl)" class="w-4 h-4 object-contain mr-2" alt="icon">
                   </template>
                   <template #item="{ item }">
                     <div class="flex items-center gap-2 w-full">
-                      <img
-                        v-if="typeof item.iconUrl === 'string'"
-                        :src="String(item.iconUrl)"
-                        class="w-5 h-5 object-contain"
-                        alt="icon"
-                      >
+                      <img v-if="typeof item.iconUrl === 'string'" :src="String(item.iconUrl)"
+                        class="w-5 h-5 object-contain" alt="icon">
                       <span class="text-sm text-gray-900 font-medium">{{ item.name }}</span>
-                      <span v-if="item.code" class="ml-auto text-[11px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{{ item.code }}</span>
+                      <span v-if="item.code"
+                        class="ml-auto text-[11px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{{ item.code
+                        }}</span>
                     </div>
                   </template>
                 </RemoteSearchSelect>
@@ -2214,20 +2080,14 @@ function onAddCustomer() {
             <UPageCard id="pricebook-card" variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>Bảng giá</BaseCardHeader>
               <div class="-mx-6 px-6">
-                <RemoteSearchSelect
-                  v-model="selectedPriceBook"
-                  :fetch-fn="fetchPriceBooks"
-                  placeholder="Chọn bảng giá"
-                  :clearable="true"
-                  :debounce="300"
-                  label-field="name"
-                  :full-width="true"
-                  :class="'w-full'"
-                >
+                <RemoteSearchSelect v-model="selectedPriceBook" :fetch-fn="fetchPriceBooks" placeholder="Chọn bảng giá"
+                  :clearable="true" :debounce="300" label-field="name" :full-width="true" :class="'w-full'">
                   <template #item="{ item }">
                     <div class="flex items-center gap-2 w-full">
                       <span class="text-sm text-gray-900 font-medium">{{ item.name }}</span>
-                      <span v-if="item.code" class="ml-auto text-[11px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{{ item.code }}</span>
+                      <span v-if="item.code"
+                        class="ml-auto text-[11px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{{ item.code
+                        }}</span>
                     </div>
                   </template>
                 </RemoteSearchSelect>
@@ -2239,64 +2099,31 @@ function onAddCustomer() {
             <UPageCard id="customer-card" variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>Khách hàng</BaseCardHeader>
               <div class="-mx-6 px-6">
-                <RemoteSearchSelect
-                  v-model="selectedCustomer"
-                  :fetch-fn="fetchCustomers"
-                  :fetch-more-fn="fetchMoreCustomers"
-                  placeholder="Tìm theo tên, SDT...(F4)"
-                  :clearable="true"
-                  :debounce="300"
-                  label-field="name"
-                  open-key="F4"
-                  :full-width="true"
-                  :dropdown-max-height="420"
-                  :searchable="true"
-                  :search-in-trigger="true"
-                  infinite-scroll
-                  :class="'w-full'"
-                  :aria-invalid="false"
-                >
+                <RemoteSearchSelect v-model="selectedCustomer" :fetch-fn="fetchCustomers"
+                  :fetch-more-fn="fetchMoreCustomers" placeholder="Tìm theo tên, SDT...(F4)" :clearable="true"
+                  :debounce="300" label-field="name" open-key="F4" :full-width="true" :dropdown-max-height="420"
+                  :searchable="true" :search-in-trigger="true" infinite-scroll :class="'w-full'" :aria-invalid="false">
                   <template #add-action>
-                    <button
-                      type="button"
+                    <button type="button"
                       class="flex items-center w-full px-3 py-3.5 text-primary-600 font-medium text-sm hover:bg-gray-50 border-b border-gray-200 rounded-t-md"
-                      style="border-bottom: 1px solid #e8eaeb;"
-                      @click.stop="onAddCustomer"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="w-4 h-4 mr-2"
-                        fill="none"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          d="M10 4v12m6-6H4"
-                          stroke="currentColor"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
+                      style="border-bottom: 1px solid #e8eaeb;" @click.stop="onAddCustomer">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 20 20">
+                        <path d="M10 4v12m6-6H4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                          stroke-linejoin="round" />
                       </svg>
                       Thêm mới khách hàng
                     </button>
                   </template>
                   <template #trigger-left="{ value }">
-                    <img
-                      v-if="value"
-                      :src="getCustomerAvatarUrl((value as any).avatarUrl)"
-                      class="w-4 h-4 object-cover rounded-full mr-2"
-                      alt="avatar"
-                      @error="e => { const t = e.target as HTMLImageElement; if (t) t.src = '/no-avatar.jpg' }"
-                    >
+                    <img v-if="value" :src="getCustomerAvatarUrl((value as any).avatarUrl)"
+                      class="w-4 h-4 object-cover rounded-full mr-2" alt="avatar"
+                      @error="e => { const t = e.target as HTMLImageElement; if (t) t.src = '/no-avatar.jpg' }">
                   </template>
                   <template #item="{ item }">
                     <div class="flex items-center gap-2 w-full">
-                      <img
-                        :src="getCustomerAvatarUrl(item.avatarUrl)"
-                        class="w-6 h-6 rounded-full object-cover"
+                      <img :src="getCustomerAvatarUrl(item.avatarUrl)" class="w-6 h-6 rounded-full object-cover"
                         alt="avatar"
-                        @error="e => { const t = e.target as HTMLImageElement; if (t) t.src = '/no-avatar.jpg' }"
-                      >
+                        @error="e => { const t = e.target as HTMLImageElement; if (t) t.src = '/no-avatar.jpg' }">
                       <div class="flex-1 min-w-0">
                         <div class="text-sm text-gray-900 font-medium truncate">
                           {{ item.name }}
@@ -2305,7 +2132,9 @@ function onAddCustomer() {
                           {{ item.phone }}
                         </div>
                       </div>
-                      <span v-if="item.code" class="ml-auto text-[11px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{{ item.code }}</span>
+                      <span v-if="item.code"
+                        class="ml-auto text-[11px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{{ item.code
+                        }}</span>
                     </div>
                   </template>
                 </RemoteSearchSelect>
@@ -2315,11 +2144,9 @@ function onAddCustomer() {
             <UPageCard id="branch-card" variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>Ghi chú</BaseCardHeader>
               <div class="-mx-6 px-6">
-                <textarea
-                  rows="3"
+                <textarea rows="3"
                   class="w-full px-3 py-2 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-                  placeholder="VD: Nhận hàng ghi công nợ"
-                />
+                  placeholder="VD: Nhận hàng ghi công nợ" />
               </div>
             </UPageCard>
             <UPageCard variant="soft" class="bg-white rounded-lg">
@@ -2327,40 +2154,27 @@ function onAddCustomer() {
               <div class="-mx-6 px-6 space-y-4">
                 <div>
                   <label class="block text-xs font-medium text-gray-600 mb-1">Bán tại chi nhánh</label>
-                  <RemoteSearchSelect
-                    v-model="selectedBranch"
-                    :fetch-fn="fetchBranches"
-                    placeholder="Cửa hàng chính"
-                    :clearable="false"
-                    :debounce="300"
-                    :full-width="true"
-                    label-field="name"
+                  <RemoteSearchSelect v-model="selectedBranch" :fetch-fn="fetchBranches" placeholder="Cửa hàng chính"
+                    :clearable="false" :debounce="300" :full-width="true" label-field="name"
                     :class="[{ 'border border-red-400 rounded-md': triedSubmit && !hasBranch }]"
-                    :aria-invalid="(triedSubmit && !hasBranch) ? 'true' : 'false'"
-                  />
+                    :aria-invalid="(triedSubmit && !hasBranch) ? 'true' : 'false'" />
                   <p v-if="triedSubmit && !hasBranch" class="mt-2 text-xs text-red-600">
                     Vui lòng chọn chi nhánh bán hàng
                   </p>
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-gray-600 mb-1">Nhân viên phụ trách</label>
-                  <RemoteSearchSelect
-                    v-model="selectedStaff"
-                    :fetch-fn="fetchEmployees"
-                    placeholder="Chọn nhân viên"
-                    :clearable="true"
-                    :debounce="300"
-                    label-field="fullName"
-                    :full-width="true"
-                    :class="'w-full'"
-                  >
+                  <RemoteSearchSelect v-model="selectedStaff" :fetch-fn="fetchEmployees" placeholder="Chọn nhân viên"
+                    :clearable="true" :debounce="300" label-field="fullName" :full-width="true" :class="'w-full'">
                     <template #item="{ item }">
                       <div class="flex items-center gap-2 w-full">
                         <div class="flex-1">
                           <div class="text-sm text-gray-900 font-medium">{{ item.fullName }}</div>
                           <div class="text-xs text-gray-500">{{ item.email }} · {{ item.code }}</div>
                         </div>
-                        <span v-if="item.department" class="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{{ item.department }}</span>
+                        <span v-if="item.department"
+                          class="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{{ item.department
+                          }}</span>
                       </div>
                     </template>
                   </RemoteSearchSelect>
@@ -2390,35 +2204,20 @@ function onAddCustomer() {
                 <div>
                   <label class="block text-xs font-medium text-gray-600 mb-1">Thời gian tạo đơn</label>
                   <div class="relative">
-                    <input
-                      v-model="scheduledDate"
-                      type="text"
-                      placeholder="dd/MM/yyyy HH:mm"
-                      readonly
+                    <input v-model="scheduledDate" type="text" placeholder="dd/MM/yyyy HH:mm" readonly
                       class="w-full h-9 px-3 pr-10 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
-                      @click="datetimeInput?.showPicker?.()"
-                    >
-                    <input
-                      ref="datetimeInput"
-                      type="datetime-local"
-                      class="absolute inset-0 opacity-0 cursor-pointer pointer-events-none"
-                      @change="(e) => {
+                      @click="datetimeInput?.showPicker?.()">
+                    <input ref="datetimeInput" type="datetime-local"
+                      class="absolute inset-0 opacity-0 cursor-pointer pointer-events-none" @change="(e) => {
                         const target = e.target as HTMLInputElement
                         if (target.value) {
                           const dt = new Date(target.value)
                           scheduledDate = formatDateTimeDDMMYYYY(dt)
                         }
-                      }"
-                    >
-                    <svg
-                      class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
+                      }">
+                    <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                      stroke-linejoin="round">
                       <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                       <line x1="16" y1="2" x2="16" y2="6" />
                       <line x1="8" y1="2" x2="8" y2="6" />
@@ -2428,11 +2227,8 @@ function onAddCustomer() {
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-gray-600 mb-1">Tag</label>
-                  <input
-                    type="text"
-                    placeholder="Tìm kiếm hoặc thêm mới tag"
-                    class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  >
+                  <input type="text" placeholder="Tìm kiếm hoặc thêm mới tag"
+                    class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                   <div class="text-right mt-1">
                     <a href="#" class="text-primary-600 text-xs font-medium hover:underline">Danh sách tag</a>
                   </div>
@@ -2445,20 +2241,14 @@ function onAddCustomer() {
         <div class="flex items-center justify-end gap-4 mt-10 border-t border-transparent pt-4">
           <button
             class="h-9 px-5 rounded-md bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
-            :disabled="creatingOrder"
-            :aria-disabled="creatingOrder ? 'true' : 'false'"
-            @click="saveDraft"
-          >
+            :disabled="creatingOrder" :aria-disabled="creatingOrder ? 'true' : 'false'" @click="saveDraft">
             Lưu nháp
           </button>
           <div class="relative inline-flex items-center">
             <button
               class="h-9 px-5 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center justify-center"
-              :disabled="creatingOrder"
-              :aria-busy="creatingOrder ? 'true' : 'false'"
-              aria-live="polite"
-              @click="createAndConfirm"
-            >
+              :disabled="creatingOrder" :aria-busy="creatingOrder ? 'true' : 'false'" aria-live="polite"
+              @click="createAndConfirm">
               <template v-if="creatingOrder">
                 <span class="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
               </template>
@@ -2473,18 +2263,12 @@ function onAddCustomer() {
   </UDashboardPanel>
   <AddCustomerModal v-model="showAddCustomerModal" @saved="onCustomerAdded" />
   <AddProductModal v-model:open="showAddProductModal" @created="handleProductCreated($event)" />
-  
+
   <!-- Note Modal -->
   <Teleport to="body">
-    <div
-      v-if="showNoteModal"
-      class="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 p-4"
-      @click.self="closeNoteModal"
-    >
-      <div
-        class="bg-white w-full max-w-md rounded-lg shadow-lg"
-        @click.stop
-      >
+    <div v-if="showNoteModal" class="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 p-4"
+      @click.self="closeNoteModal">
+      <div class="bg-white w-full max-w-md rounded-lg shadow-lg" @click.stop>
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h3 class="text-lg font-semibold">Ghi chú sản phẩm</h3>
           <button class="text-gray-400 hover:text-gray-600 text-2xl leading-none" @click="closeNoteModal">
@@ -2493,26 +2277,19 @@ function onAddCustomer() {
         </div>
         <div class="px-6 py-4">
           <label class="block text-sm font-medium text-gray-700 mb-2">Nội dung ghi chú</label>
-          <textarea
-            v-model="noteInput"
-            rows="4"
+          <textarea v-model="noteInput" rows="4"
             class="w-full px-3 py-2 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-            placeholder="Nhập ghi chú cho sản phẩm..."
-          />
+            placeholder="Nhập ghi chú cho sản phẩm..." />
         </div>
         <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
-          <button
-            type="button"
+          <button type="button"
             class="h-9 px-4 rounded-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50"
-            @click="closeNoteModal"
-          >
+            @click="closeNoteModal">
             Hủy
           </button>
-          <button
-            type="button"
+          <button type="button"
             class="h-9 px-5 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700"
-            @click="saveNote"
-          >
+            @click="saveNote">
             Lưu
           </button>
         </div>
@@ -2527,9 +2304,11 @@ function onAddCustomer() {
 [aria-invalid="true"] :deep(.border-gray-200) {
   border-color: transparent !important;
 }
+
 [aria-invalid="true"] :deep(.border) {
   border-width: 0 !important;
 }
+
 /* Neutralize gray ring styles (Tailwind) inside invalid controls */
 [aria-invalid="true"] :deep(.ring-gray-200),
 [aria-invalid="true"] :deep(.ring-gray-300) {

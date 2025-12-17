@@ -184,6 +184,12 @@ export interface CreatePaymentRequest {
   amount: number
   referenceNumber?: string
   note?: string
+  bankAccount?: {
+    bankName: string
+    accountNumber: string
+    accountHolder: string
+    bankBranch: string
+  }
 }
 
 // Cached result type for customers grid

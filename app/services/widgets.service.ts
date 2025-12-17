@@ -84,6 +84,35 @@ export interface CarouselWidgetResponse {
   message: string
   data: CarouselWidgetData
 }
+
+// HTML Widget interfaces
+export interface HtmlWidgetData {
+  id: number
+  name: string
+  widgetZoneId: number
+  publishStart: string
+  publishEnd: string
+  displayOrder: number
+  htmlContent: string
+}
+
+export interface CreateHtmlWidgetRequest {
+  id: number
+  name: string
+  widgetZoneId: number
+  publishStart: string
+  publishEnd: string
+  displayOrder: number
+  htmlContent: string
+}
+
+export interface HtmlWidgetResponse {
+  code: string
+  success: boolean
+  message: string
+  data: HtmlWidgetData
+}
+
 // Simple news widget
 export interface SimpleNewsWidgetData {
   id: number
@@ -219,6 +248,27 @@ export class WidgetsService extends BaseService {
    */
   async getCarouselWidget(id: number): Promise<ApiResponse<CarouselWidgetData>> {
     return this.get<CarouselWidgetData>(API_ENDPOINTS.CAROUSEL_WIDGET_BY_ID(id))
+  }
+
+  /**
+   * Create HTML widget
+   */
+  async createHtmlWidget(data: CreateHtmlWidgetRequest) {
+    return this.post<CreateWidgetApiResponse>(API_ENDPOINTS.HTML_WIDGET, data)
+  }
+
+  /**
+   * Get HTML widget by ID
+   */
+  async getHtmlWidget(id: number): Promise<ApiResponse<HtmlWidgetData>> {
+    return this.get<HtmlWidgetData>(API_ENDPOINTS.HTML_WIDGET_BY_ID(id))
+  }
+
+  /**
+   * Update HTML widget by ID
+   */
+  async updateHtmlWidget(id: number, data: CreateHtmlWidgetRequest) {
+    return this.put<CreateWidgetApiResponse>(API_ENDPOINTS.HTML_WIDGET_BY_ID(id), data)
   }
 
   /**

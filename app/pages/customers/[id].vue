@@ -250,7 +250,17 @@ function openPaymentModal() {
   isPaymentModalOpen.value = true
 }
 
-async function handlePaymentSubmit(payload: { method: string, amount: number, reference: string }) {
+async function handlePaymentSubmit(payload: {
+  method: string
+  amount: number
+  reference: string
+  bankAccount?: {
+    bankName: string
+    accountNumber: string
+    accountHolder: string
+    bankBranch: string
+  }
+}) {
   const methodMap: Record<string, string> = {
     'TienMat': 'Cash',
     'ChuyenKhoan': 'BankTransfer',
@@ -263,18 +273,8 @@ async function handlePaymentSubmit(payload: { method: string, amount: number, re
       paymentMethod: methodMap[payload.method] || 'Cash',
       amount: payload.amount,
       referenceNumber: payload.reference,
-      note: '' // Component doesn't support note field yet, or we can add it?
-      // Wait, ReceivePaymentModal DOES NOT have a note field in the template.
-      // ReceivePaymentModal emits { method, amount, reference }.
-      // The original modal had a Note field.
-      // If I use ReceivePaymentModal as is, I lose the Note field.
-      // However, the User specifically asked to look at Order Detail modal.
-      // Order Detail modal (ReceivePaymentModal) does NOT have a note field.
-      // It has Reference input.
-      // So I will sacrifice the Note field to match Order Detail modal behavior.
-      // Or I could extend ReceivePaymentModal, but I shouldn't modify it unless necessary.
-      // The User asked to check "how it works in order details".
-      // Presumably they want the same standardized behavior.
+      note: '',
+      bankAccount: payload.bankAccount
     })
 
     if (res.success) {

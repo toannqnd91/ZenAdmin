@@ -13,6 +13,8 @@ export const API_ENDPOINTS = {
   // Widget endpoints
   CAROUSEL_WIDGET: '/CarouselWidget',
   CAROUSEL_WIDGET_BY_ID: (id: number) => `/CarouselWidget/${id}`,
+  HTML_WIDGET: '/HtmlWidget',
+  HTML_WIDGET_BY_ID: (id: number) => `/HtmlWidget/${id}`,
   NEWS_WIDGET: '/NewsWidget',
   NEWS_WIDGET_BY_ID: (id: number) => `/NewsWidget/${id}`,
   WIDGET_INSTANCES: '/widget-instances',

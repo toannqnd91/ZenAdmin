@@ -8,6 +8,8 @@ export interface MenuItem {
   icon: string | null
   order: number
   children: MenuItem[]
+  menuTypeId?: number
+  entityId?: number
 }
 
 export interface LinkData {

@@ -80,8 +80,8 @@ cp .env.example .env
 Hoặc tạo thủ công với nội dung:
 
 ```env
-NUXT_PUBLIC_API_BASE_URL=https://localhost:7002/api/v1
-NUXT_PUBLIC_IMAGE_BASE_URL=https://localhost:7002
+NUXT_PUBLIC_API_BASE_URL=https://zenpos.vnnsoft.com/api/v1
+NUXT_PUBLIC_IMAGE_BASE_URL=https://zenpos.vnnsoft.com
 NUXT_PUBLIC_APP_TITLE=Zen Dashboard
 ```
 
