@@ -109,7 +109,6 @@ export const useProjectForm = (projectId?: number) => {
         isUploadingImage.value = true
         const res = await fileService.uploadFile(file, 'projects')
         if (res.success && res.data) {
-             console.log('Upload response data:', res.data)
              const fileData = res.data
              // Response is direct object { success: true, url: '...', ... }
              const url = fileData.url

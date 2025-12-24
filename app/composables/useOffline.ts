@@ -67,7 +67,6 @@ export const useOffline = () => {
     // Implement your notification system here
     // For now, just log to console in dev mode
     if (process.dev) {
-      console.log(`[${type.toUpperCase()}] ${message}`)
     }
   }
 

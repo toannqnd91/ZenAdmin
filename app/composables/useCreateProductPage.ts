@@ -158,14 +158,12 @@ export function useCreateProductPage() {
         }
       })
 
-      console.log('Submitting Product. Previews:', imagePreviews.value);
       // Build productImages array from imagePreviews, only filename for mediaUrl
       const productImages = (imagePreviews.value || []).map(img => {
         const payload = {
           caption: 'Image Caption',
           mediaUrl: typeof img === 'string' ? img : img
         };
-        console.log('Image Payload:', payload);
         return payload;
       })
 

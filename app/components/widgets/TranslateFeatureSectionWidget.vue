@@ -157,8 +157,6 @@ async function handleSubmit() {
             Data: JSON.stringify(widgetData)
         }
 
-        console.log('Sending payload:', payload)
-        console.log('Widget data:', widgetData)
 
         const result = await localizationService.updateTranslation(
             entityType,

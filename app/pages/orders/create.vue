@@ -322,15 +322,12 @@ async function applyPriceBookToProduct(product: OrderProduct) {
       }]
     }
 
-    console.log('Calculate prices payload:', payload)
     const res = await ordersService.calculatePrices(payload)
-    console.log('Calculate prices response:', res)
 
     const innerData = res?.data?.data as { items?: CalculatePricesResponseItem[], summary?: any } | undefined
 
     if (innerData?.items && innerData.items.length > 0) {
       const priceData = innerData.items[0]
-      console.log('Price data for product:', priceData)
       if (priceData) {
         // Store original price if not already set
         if (product.baseUnitPrice === undefined || product.baseUnitPrice === product.unitPrice) {
@@ -887,9 +884,7 @@ async function addProduct(item: ProductSearchItem) {
 
   // Apply pricebook if selected
   if (selectedPriceBook.value) {
-    console.log('Applying pricebook to new product:', newProduct.id, selectedPriceBook.value)
     await applyPriceBookToProduct(newProduct)
-    console.log('Price after pricebook:', newProduct.unitPrice, newProduct.total)
   }
 
   closeProductSearch()

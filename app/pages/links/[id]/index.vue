@@ -184,7 +184,6 @@ const handleLinkModalSubmit = async (payload: LinkModalPayload) => {
   } else {
     // Add new link
     // TODO: Implement Create logic if needed
-    console.log('Adding new link:', payload)
   }
   isAddModalOpen.value = false
 }

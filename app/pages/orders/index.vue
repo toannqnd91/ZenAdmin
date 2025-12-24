@@ -262,8 +262,6 @@ function buildGridRequest() {
 async function fetchOrders() {
   loading.value = true
   const body = buildGridRequest()
-  console.log('fetchOrders body:', JSON.stringify(body, null, 2))
-  console.log('Current pageIndex:', pagination.value.pageIndex)
   const res = await ordersService.getOrdersGridCached(body, {
     onUpdated: (grid) => {
       if (!grid) return
@@ -337,7 +335,6 @@ async function fetchCounts() {
 }
 
 onMounted(() => {
-  console.log('onMounted route.query:', route.query)
   let stateChanged = false
 
   // Restore state from URL

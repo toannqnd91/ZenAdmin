@@ -402,7 +402,6 @@ const bankBalance = computed(() => methodBreakdown.value.find(m => m.method === 
 
 // Handler for slip creation
 function handleCreateSlip(type: 'receipt' | 'payment' | 'transfer') {
-  console.log('Creating slip type:', type)
   if (type === 'receipt') {
     router.push('/cash-flow/create-receipt')
   } else if (type === 'payment') {

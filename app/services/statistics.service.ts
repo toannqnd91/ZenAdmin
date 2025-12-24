@@ -147,7 +147,6 @@ export class StatisticsService extends BaseService {
       clean[k] = typeof v === 'number' ? v : String(v)
     }
     if (!clean.limit) clean.limit = 10
-    console.log('[StatisticsService] getTopProducts params:', clean)
     interface RawTopProductsEnvelope {
       period?: { from: string, to: string }
       metric?: string
@@ -161,16 +160,11 @@ export class StatisticsService extends BaseService {
       }>
     }
     const res = await this.get<RawTopProductsEnvelope | TopProductDTO[]>(API_ENDPOINTS.STATISTICS_TOP_PRODUCTS, clean)
-    console.log('[StatisticsService] getTopProducts raw response:', res)
     const data = res.data
-    console.log('[StatisticsService] getTopProducts data:', data)
-    console.log('[StatisticsService] getTopProducts data is array?', Array.isArray(data))
     if (Array.isArray(data)) {
-      console.log('[StatisticsService] getTopProducts returning array directly')
       return res as ApiResponse<TopProductDTO[]>
     }
     if (data && data.items) {
-      console.log('[StatisticsService] getTopProducts mapping items:', data.items)
       const mapped: TopProductDTO[] = data.items.map(it => ({
         productId: it.productId,
         name: it.productName,
@@ -179,10 +173,8 @@ export class StatisticsService extends BaseService {
         orders: it.orders ?? 0,
         profit: it.profit ?? 0
       }))
-      console.log('[StatisticsService] getTopProducts mapped:', mapped)
       return { ...res, data: mapped }
     }
-    console.log('[StatisticsService] getTopProducts returning empty array')
     return { ...res, data: [] }
   }
 
@@ -193,7 +185,6 @@ export class StatisticsService extends BaseService {
       clean[k] = typeof v === 'number' ? v : String(v)
     }
     if (!clean.limit) clean.limit = 10
-    console.log('[StatisticsService] getTopCustomers params:', clean)
     interface RawTopCustomersEnvelope {
       items?: Array<{
         customerId?: string | number
@@ -210,16 +201,11 @@ export class StatisticsService extends BaseService {
       }>
     }
     const res = await this.get<RawTopCustomersEnvelope | TopCustomerDTO[]>(API_ENDPOINTS.STATISTICS_TOP_CUSTOMERS, clean)
-    console.log('[StatisticsService] getTopCustomers raw response:', res)
     const data = res.data
-    console.log('[StatisticsService] getTopCustomers data:', data)
-    console.log('[StatisticsService] getTopCustomers data is array?', Array.isArray(data))
     if (Array.isArray(data)) {
-      console.log('[StatisticsService] getTopCustomers returning array directly')
       return res as ApiResponse<TopCustomerDTO[]>
     }
     if (data && data.items) {
-      console.log('[StatisticsService] getTopCustomers mapping items:', data.items)
       const mapped: TopCustomerDTO[] = data.items.map(it => ({
         customerId: it.customerId ?? it.id ?? it.CustomerId ?? 0,
         name: it.customerName ?? it.name ?? 'Unknown',
@@ -228,10 +214,8 @@ export class StatisticsService extends BaseService {
         quantity: it.quantity ?? it.totalQuantity ?? undefined,
         avatarUrl: it.avatarUrl ?? null
       }))
-      console.log('[StatisticsService] getTopCustomers mapped:', mapped)
       return { ...res, data: mapped }
     }
-    console.log('[StatisticsService] getTopCustomers returning empty array')
     return { ...res, data: [] }
   }
 }

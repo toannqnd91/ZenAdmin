@@ -66,7 +66,6 @@ function goBack() {
 
 function handleSubmit() {
   // TODO: Implement API call to create internal transfer
-  console.log('Creating internal transfer:', {
     transferFrom: transferFrom.value,
     transferTo: transferTo.value,
     sourceBranch: sourceBranch.value,

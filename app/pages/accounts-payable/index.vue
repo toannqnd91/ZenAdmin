@@ -85,7 +85,6 @@ const fetchData = async () => {
 
     const res = await arService.getSummary(params)
 
-    console.log('AR Summary Response:', res)
 
     if (res.success) {
       // API returns data at root level, not wrapped in res.data

@@ -256,11 +256,8 @@ async function loadTopProducts() {
       sourceId: selectedOrderSource.value?.id ?? undefined,
       warehouseId: selectedBranch.value?.id ?? undefined
     }
-    console.log('[Top Products] Loading with params:', params)
     const res = await statisticsService.getTopProducts(params)
-    console.log('[Top Products] Response:', res)
     topProducts.value = Array.isArray(res.data) ? res.data : []
-    console.log('[Top Products] Items count:', topProducts.value.length)
   } catch (e) {
     console.error('[Top Products] Failed to load:', e)
     topProducts.value = []
@@ -279,11 +276,8 @@ async function loadTopCustomers() {
       sourceId: selectedOrderSource.value?.id ?? undefined,
       warehouseId: selectedBranch.value?.id ?? undefined
     }
-    console.log('[Top Customers] Loading with params:', params)
     const res = await statisticsService.getTopCustomers(params)
-    console.log('[Top Customers] Response:', res)
     topCustomers.value = Array.isArray(res.data) ? res.data : []
-    console.log('[Top Customers] Items count:', topCustomers.value.length)
   } catch (e) {
     console.error('[Top Customers] Failed to load:', e)
     topCustomers.value = []

@@ -324,14 +324,12 @@ function nextOrder() {
 const showReceivePayment = ref(false)
 const paidAmount = computed(() => {
   const paid = detail.value?.payment?.paidAmount || 0
-  console.log('paidAmount computed:', paid)
   return paid
 })
 const remainingAmount = computed(() => {
   const paid = paidAmount.value
   const total = detail.value?.payment?.orderTotal || 0
   const remaining = Math.max(0, total - paid)
-  console.log('remainingAmount computed - total:', total, 'paid:', paid, 'remaining:', remaining)
   return remaining
 })
 interface ReceivePaymentPayload {

@@ -58,9 +58,6 @@ function formatDate(dateString: string): string {
 
 // Load data
 async function loadData() {
-    console.log('=== loadData() called ===')
-    console.log('News ID:', newsId)
-    console.log('Entity Type:', entityType)
 
     try {
         isLoading.value = true
@@ -81,9 +78,6 @@ async function loadData() {
             timeoutPromise
         ]) as any
 
-        console.log('=== GET News Response ===')
-        console.log('News Response:', newsResponse)
-        console.log('News Response Type:', typeof newsResponse)
 
         // Load news metadata
         if (newsResponse && newsResponse.success && newsResponse.data) {
@@ -116,8 +110,6 @@ async function loadData() {
             return
         }
 
-        console.log('=== GET Translation Response ===')
-        console.log('Translation Response:', translationResponse)
 
         // Load existing English translation if available
         if (translationResponse?.success && translationResponse.data) {
@@ -129,7 +121,6 @@ async function loadData() {
                     desc: translationData.Desc || translationData.desc || ''
                 }
 
-                console.log('Loaded EN Data from translation:', enData.value)
             } catch (e) {
                 console.error('Error parsing translation data:', e)
             }
@@ -142,7 +133,6 @@ async function loadData() {
 }
 
 onMounted(async () => {
-    console.log('=== onMounted() called ===')
     isMounted.value = true
     await loadData()
 })
@@ -157,11 +147,6 @@ async function handleSubmit() {
             Desc: enData.value.desc
         }
 
-        console.log('=== POST Translation Request ===')
-        console.log('Entity Type:', entityType)
-        console.log('News ID:', newsId)
-        console.log('Culture:', 'en-US')
-        console.log('Payload:', payload)
 
         const result = await localizationService.updateTranslation(
             entityType,
@@ -170,11 +155,8 @@ async function handleSubmit() {
             payload as any
         )
 
-        console.log('=== POST Translation Response ===')
-        console.log('Result:', result)
 
         if (result.success) {
-            console.log('Translation saved successfully')
             router.push('/news')
         } else {
             console.error('Failed to save translation:', result.message)

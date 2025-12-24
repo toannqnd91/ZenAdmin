@@ -292,12 +292,10 @@ async function handleSubmit() {
       affectBusinessResult: true
     }
 
-    console.log('Creating receipt with payload:', requestBody)
     
     const response = await cashBookService.createCashBook(requestBody)
     
     if (response.success) {
-      console.log('Receipt created successfully:', response)
       // Show success message (you can add toast notification here)
       goBack()
     } else {

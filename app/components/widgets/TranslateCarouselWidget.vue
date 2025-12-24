@@ -152,8 +152,6 @@ async function handleSubmit() {
             Data: JSON.stringify(carouselData)
         }
 
-        console.log('Sending payload:', payload)
-        console.log('Carousel data:', carouselData)
 
         const result = await localizationService.updateTranslation(
             entityType,

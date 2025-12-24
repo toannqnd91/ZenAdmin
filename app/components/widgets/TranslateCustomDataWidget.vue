@@ -56,7 +56,6 @@ async function loadData() {
         // Load widget metadata
         if (widgetResponse?.success && widgetResponse.data) {
             const widget = widgetResponse.data
-            console.log('Widget Metadata:', {
                 name: widget.name,
                 zone: widget.zone,
                 displayOrder: widget.displayOrder,
@@ -73,8 +72,6 @@ async function loadData() {
             if (widget.data) {
                 try {
                     const parsedData = typeof widget.data === 'string' ? JSON.parse(widget.data) : widget.data
-                    console.log('Widget Data Structure:', parsedData)
-                    console.log('Is Array:', Array.isArray(parsedData))
 
                     // Handle both formats: array directly or object with items
                     let itemsArray = []
@@ -92,7 +89,6 @@ async function loadData() {
                         vnData.value = { items: [] }
                     }
 
-                    console.log('Items Array:', itemsArray)
 
                     // Initialize empty English data with same structure
                     enData.value = {
@@ -107,7 +103,6 @@ async function loadData() {
                         }))
                     }
 
-                    console.log('Initialized EN Data:', enData.value)
                 } catch (e) {
                     console.error('Error parsing widget data:', e)
                 }
@@ -118,11 +113,6 @@ async function loadData() {
         if (translationResponse?.success && translationResponse.data) {
             try {
                 const translationData = translationResponse.data
-                console.log('=== GET Translation Response ===')
-                console.log('Full Response:', translationResponse)
-                console.log('Translation Data:', translationData)
-                console.log('Data field:', translationData.Data)
-                console.log('Data type:', typeof translationData.Data)
 
                 // Parse Data field (it's a JSON string containing array)
                 if (translationData.Data) {
@@ -130,8 +120,6 @@ async function loadData() {
                         ? JSON.parse(translationData.Data)
                         : translationData.Data
 
-                    console.log('Parsed Translation Data:', parsedData)
-                    console.log('Is Array:', Array.isArray(parsedData))
 
                     // Data is array directly
                     if (Array.isArray(parsedData)) {
@@ -146,7 +134,6 @@ async function loadData() {
                                 Description: item.Description ?? item.description ?? null
                             }))
                         })
-                        console.log('Loaded EN Data from translation:', enData.value)
                     }
                 }
             } catch (e) {
@@ -197,14 +184,6 @@ async function handleSubmit() {
             payload.Data = JSON.stringify(enData.value.items)
         }
 
-        console.log('=== POST Translation Request ===')
-        console.log('Entity Type:', entityType)
-        console.log('Widget ID:', widgetId)
-        console.log('Culture:', 'en-US')
-        console.log('EN Data items:', enData.value.items)
-        console.log('Payload:', payload)
-        console.log('Payload.Data:', payload.Data)
-        console.log('Payload.Data type:', typeof payload.Data)
 
         const result = await localizationService.updateTranslation(
             entityType,
@@ -213,11 +192,8 @@ async function handleSubmit() {
             payload as any
         )
 
-        console.log('=== POST Translation Response ===')
-        console.log('Result:', result)
 
         if (result.success) {
-            console.log('Translation saved successfully')
             router.push('/widgets')
         } else {
             console.error('Failed to save translation:', result.message)

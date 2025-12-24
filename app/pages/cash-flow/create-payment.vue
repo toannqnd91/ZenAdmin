@@ -89,7 +89,6 @@ function goBack() {
 
 function handleSubmit() {
   // TODO: Implement API call to create payment
-  console.log('Creating payment:', {
     paymentType: paymentType.value,
     bankAccount: selectedBankAccount.value,
     group: selectedGroup.value,
