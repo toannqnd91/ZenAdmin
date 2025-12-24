@@ -71,49 +71,31 @@ const handleSubmit = () => {
 </script>
 
 <template>
-  <UModal
-    v-model:open="modalOpen"
-    :title="title"
-    :ui="{ footer: 'justify-end' }"
-    @update:open="emit('update:open', $event)"
-  >
+  <UModal v-model:open="modalOpen" :title="title" :ui="{ footer: 'justify-end' }"
+    @update:open="emit('update:open', $event)">
     <template #body>
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium mb-1">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Tên<span class="text-red-500">*</span>
           </label>
-          <UInput
-            v-model="linkName"
-            placeholder="Nhập tên liên kết"
-            class="w-full"
-          />
+          <input v-model="linkName" type="text" placeholder="Nhập tên liên kết"
+            class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500" />
         </div>
         <div>
-          <label class="block text-sm font-medium mb-1">Loại liên kết</label>
-          <USelect
-            v-model="linkTypeId"
-            :items="menuTypes.map(t => ({ label: t.name, value: t.id }))"
-            class="w-1/2"
-            :loading="loadingMenuTypes"
-            :disabled="loadingMenuTypes"
-          />
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Loại liên kết</label>
+          <select v-model="linkTypeId"
+            class="w-1/2 px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            :disabled="loadingMenuTypes">
+            <option v-if="loadingMenuTypes" disabled>Đang tải...</option>
+            <option v-for="t in menuTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
+          </select>
         </div>
       </div>
     </template>
     <template #footer="{ close }">
-      <UButton
-        label="Hủy"
-        color="neutral"
-        variant="outline"
-        @click="closeModal"
-      />
-      <UButton
-        label="Hoàn thành"
-        color="primary"
-        :disabled="!linkName.trim() || !linkTypeId"
-        @click="handleSubmit"
-      />
+      <UButton label="Hủy" color="neutral" variant="outline" @click="closeModal" />
+      <UButton label="Hoàn thành" color="primary" :disabled="!linkName.trim() || !linkTypeId" @click="handleSubmit" />
     </template>
   </UModal>
 </template>

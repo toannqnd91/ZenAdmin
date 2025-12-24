@@ -18,6 +18,8 @@ import CancelOrderModal from '@/components/orders/CancelOrderModal.vue'
 import PrintOrderModal from '@/components/orders/PrintOrderModal.vue'
 import EditOrderNoteModal from '@/components/orders/EditOrderNoteModal.vue'
 
+
+
 // Raw payload supporting multiple backend shapes
 interface RawOrderItem {
   id: number | string
@@ -27,6 +29,7 @@ interface RawOrderItem {
   productPrice: number
   quantity: number
   discountAmount?: number
+  unitPrice?: number
   total?: number
   rowTotal?: number
 }
@@ -552,7 +555,13 @@ async function fetchData() {
 onMounted(fetchData)
 
 function goBack() {
-  router.push('/orders')
+  if (route.query.page) {
+    router.push({ path: '/orders', query: { page: route.query.page } })
+  } else if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/orders')
+  }
 }
 
 const onRefundOrder = () => {
@@ -561,8 +570,9 @@ const onRefundOrder = () => {
 }
 
 const onCopyOrder = () => {
-  const toast = useToast()
-  toast.add({ title: 'Sao chép', description: 'Chức năng đang phát triển', color: 'primary' })
+  const raw = (orderCodeParam.value || '').toString()
+  const code = raw.replace(/^#/, '')
+  router.push({ path: '/orders/create', query: { copyFrom: code } })
 }
 
 const onUnarchiveOrder = () => {
@@ -734,16 +744,11 @@ const selectEmployee = async (employee: EmployeeItem) => {
 }
 
 const dropdownItems = [
-  // [{
-  //   label: 'Hoàn tiền',
-  //   icon: 'i-heroicons-banknotes',
-  //   onSelect: onRefundOrder
-  // }],
-  // [{
-  //   label: 'Sao chép',
-  //   icon: 'i-heroicons-document-duplicate',
-  //   onSelect: onCopyOrder
-  // }],
+  [{
+    label: 'Sao chép đơn',
+    icon: 'i-heroicons-document-duplicate',
+    onSelect: onCopyOrder
+  }],
   [{
     label: 'Sửa đơn hàng',
     icon: 'i-heroicons-pencil-square',

@@ -40,6 +40,11 @@ export class HttpInterceptor {
       headers.delete('Content-Type')
     }
 
+    // Set Accept-Language to Vietnamese to get Vietnamese content from API
+    if (!headers.has('Accept-Language')) {
+      headers.set('Accept-Language', 'vi-VN')
+    }
+
     try {
       // Add WarehouseId header from global selection or cookie
       try {

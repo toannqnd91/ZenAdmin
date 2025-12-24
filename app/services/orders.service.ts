@@ -479,6 +479,7 @@ export interface CancelOrderRequest {
   note: string
   refundOption: RefundOptionEnum
   restockAllItems: boolean
+  deleteOrder?: boolean
   idempotencyKey: string | null
   createdById: string | null
 }

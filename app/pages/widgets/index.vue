@@ -134,6 +134,7 @@ function getRowItems(row: { original: WidgetInstance }) {
 
   return [
     { type: 'label', label: 'Actions' },
+    { label: 'Translation', icon: 'i-lucide-languages', onSelect: () => navigateTo(`/widgets/${widget.id}/translation`) },
     { label: 'Edit', icon: 'i-lucide-edit', onSelect: () => navigateTo(`/widgets/${widget.id}/${normalizedType}`) },
     { type: 'separator' },
     { label: 'Delete', icon: 'i-lucide-trash', color: 'error', onSelect: () => deleteWidget(widget.id) }
@@ -157,23 +158,20 @@ onMounted(fetchWidgets)
     </template>
     <template #body>
       <div class="flex flex-col h-full">
-        <WidgetsTable
-          v-model:q="q"
-          v-model:row-selection="rowSelection"
-          v-model:pagination="pagination"
-          :data="filteredWidgets"
-          :loading="loading"
-          :add-button-dropdown-items="widgetTypeMenu"
-          :get-row-items="getRowItems"
-          :format-date="formatDate"
-          @reorder="(newOrder) => handleReorder(newOrder)"
-        />
+        <WidgetsTable v-model:q="q" v-model:row-selection="rowSelection" v-model:pagination="pagination"
+          :data="filteredWidgets" :loading="loading" :add-button-dropdown-items="widgetTypeMenu"
+          :get-row-items="getRowItems" :format-date="formatDate" @reorder="(newOrder) => handleReorder(newOrder)" />
         <div v-if="error" class="text-error mt-4">
           {{ error }}
         </div>
       </div>
     </template>
   </UDashboardPanel>
+
+  <!-- Translation Modal -->
+  <TranslationModal v-model="isTranslationModalOpen" entity-type="WidgetInstanceDTO"
+    :entity-id="translatingWidget?.id || 0" :current-name="translatingWidget?.name || ''"
+    @saved="handleTranslationSaved" />
 </template>
 
 <style scoped>

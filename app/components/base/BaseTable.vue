@@ -750,7 +750,7 @@ const onRowDelete = (item: Record<string, unknown>) => {
               <!-- Column placeholders -->
               <td v-for="(column, cIdx) in columns" :key="`scol-${column.key}-${cIdx}`"
                 :class="[props.rowPaddingY, getAlignClass(getColumnAlign(column))]">
-                <div :class="['h-4 rounded bg-gray-200 animate-pulse', getSkeletonBlockClass(getColumnAlign(column))]"
+                <div :class="['h-5 rounded bg-gray-200 animate-pulse', getSkeletonBlockClass(getColumnAlign(column))]"
                   :style="{ width: skeletonWidths[cIdx % skeletonWidths.length] }" aria-hidden="true" />
               </td>
 
@@ -922,14 +922,14 @@ const onRowDelete = (item: Record<string, unknown>) => {
         </table>
       </div>
 
-      <div class="h-6 border-t border-gray-200" />
+      <div v-if="totalRecords > 0" class="h-6 border-t border-gray-200" />
     </div>
 
     <!-- Footer -->
-    <div :class="['flex items-center justify-between', props.footerPadding]">
+    <div v-if="totalRecords > 0" :class="['flex items-center justify-between', props.footerPadding]">
       <slot name="header-actions" />
-      <div class="flex w-full items-center justify-between text-sm text-gray-600">
-        <span v-if="totalRecords">Hiển thị {{ rangeFrom }}–{{ rangeTo }} trên {{ totalRecords }}</span>
+      <div v-if="totalRecords > 0" class="flex w-full items-center justify-between text-sm text-gray-600">
+        <span>Hiển thị {{ rangeFrom }}–{{ rangeTo }} trên {{ totalRecords }}</span>
         <nav class="flex items-center gap-1 ml-auto" aria-label="Pagination">
           <button v-if="canPrev" type="button"
             class="h-8 w-8 inline-flex items-center justify-center rounded-full bg-white hover:bg-gray-50 disabled:opacity-50"

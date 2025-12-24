@@ -161,8 +161,9 @@ const initializeEditor = async () => {
           if (!allowed.includes(file.type)) throw new Error('Định dạng ảnh không hỗ trợ')
           if (file.size > 5 * 1024 * 1024) throw new Error('Ảnh >5MB')
           const response = await fileService.uploadFile(file, 'editor')
-          const data = response?.data ? (Array.isArray(response.data) ? response.data[0] : response.data) : null
-          if (data?.fileName) return fileService.getFileUrl(data.fileName) || ''
+          if (response?.success && response.data?.url) {
+            return response.data.url
+          }
           throw new Error('Upload thất bại')
         } catch (e) {
           console.error('Upload ảnh lỗi:', e)
@@ -246,21 +247,73 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.tinymce-selfhost-wrapper { width: 100%; background: white; }
-.dark .tinymce-selfhost-wrapper { background: #1f2937; }
-.editor-container { width: 100%; min-height: 200px; }
-.loading-container { display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 2rem; color: #6b7280; }
-.loading-spinner { width: 24px; height: 24px; border: 2px solid #e5e7eb; border-top: 2px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
-@keyframes spin { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
-:deep(.tox-tinymce) { border: none !important; }
+.tinymce-selfhost-wrapper {
+  width: 100%;
+  background: white;
+}
+
+.dark .tinymce-selfhost-wrapper {
+  background: #1f2937;
+}
+
+.editor-container {
+  width: 100%;
+  min-height: 200px;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  color: #6b7280;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+:deep(.tox-tinymce) {
+  border: none !important;
+}
+
 :deep(.tox-editor-header),
 :deep(.tox-menubar),
 :deep(.tox-toolbar),
-:deep(.tox-statusbar) { background: #f9fafb; border-color: #e5e7eb; }
+:deep(.tox-statusbar) {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+}
+
 .dark :deep(.tox-editor-header),
 .dark :deep(.tox-menubar),
 .dark :deep(.tox-toolbar),
-.dark :deep(.tox-statusbar) { background: #374151; border-color: #4b5563; }
-:deep(.tox-edit-area) { background: white; }
-.dark :deep(.tox-edit-area) { background: #1f2937; }
+.dark :deep(.tox-statusbar) {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+:deep(.tox-edit-area) {
+  background: white;
+}
+
+.dark :deep(.tox-edit-area) {
+  background: #1f2937;
+}
 </style>

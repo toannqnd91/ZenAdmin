@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import OrdersTable from '@/components/orders/OrdersTable.vue'
 import { ordersService } from '@/services/orders.service'
 import WarehouseSwitcher from '@/components/WarehouseSwitcher.vue'
@@ -15,6 +16,9 @@ interface OrderCounts {
   // keep byStatus optional if we decide to surface it later
   byStatus?: Record<string, number>
 }
+
+const route = useRoute()
+const router = useRouter()
 
 interface OrderRow {
   id: number
@@ -206,8 +210,23 @@ const selectedBranch = computed<WarehouseOption | null>({
 function onTabChange(val: string) {
   currentTab.value = val
   pagination.value.pageIndex = 0 // reset to first page
-  fetchOrders()
 }
+
+// Sync URL with state
+watch(() => pagination.value.pageIndex, (idx) => {
+  router.replace({ query: { ...route.query, page: idx + 1 } })
+  fetchOrders()
+})
+
+watch(() => pagination.value.pageSize, () => {
+  pagination.value.pageIndex = 0
+  fetchOrders()
+})
+
+watch(currentTab, (val) => {
+  router.replace({ query: { ...route.query, tab: val, page: undefined } })
+  fetchOrders()
+})
 
 // Map tab -> representative numeric Status (can expand to arrays if backend supports multi-status filtering)
 const tabStatusMap: Record<string, number | null> = {
@@ -243,6 +262,8 @@ function buildGridRequest() {
 async function fetchOrders() {
   loading.value = true
   const body = buildGridRequest()
+  console.log('fetchOrders body:', JSON.stringify(body, null, 2))
+  console.log('Current pageIndex:', pagination.value.pageIndex)
   const res = await ordersService.getOrdersGridCached(body, {
     onUpdated: (grid) => {
       if (!grid) return
@@ -316,8 +337,34 @@ async function fetchCounts() {
 }
 
 onMounted(() => {
-  // Kick off orders first to leverage cache for instant paint
-  fetchOrders()
+  console.log('onMounted route.query:', route.query)
+  let stateChanged = false
+
+  // Restore state from URL
+  if (route.query.tab) {
+    const t = String(route.query.tab)
+    if (tabs.some(x => x.value === t) && currentTab.value !== t) {
+      currentTab.value = t
+      stateChanged = true
+    }
+  }
+  if (route.query.page) {
+    const p = Number(route.query.page)
+    if (!isNaN(p) && p > 0) {
+      const newIndex = p - 1
+      if (pagination.value.pageIndex !== newIndex) {
+        pagination.value.pageIndex = newIndex
+        // Prevent table from clamping page to 0 if totalRecords is 0 initially
+        totalRecords.value = p * pagination.value.pageSize
+        stateChanged = true
+      }
+    }
+  }
+
+  // If we didn't trigger watchers, fetch manually
+  if (!stateChanged) {
+    fetchOrders()
+  }
   // Fetch counts in background without blocking list render
   fetchCounts()
 })
@@ -353,20 +400,11 @@ const { isNotificationsSlideoverOpen } = useDashboard()
           <UDashboardSidebarCollapse />
         </template>
         <template #right>
-          <WarehouseSwitcher
-            v-model="selectedBranch"
-            :borderless="true"
-            :auto-width="true"
-          />
+          <WarehouseSwitcher v-model="selectedBranch" :borderless="true" :auto-width="true" />
           <div class="h-5 w-px bg-gray-200 mx-2" />
           <UColorModeButton />
           <UTooltip text="Notifications" :shortcuts="['N']">
-            <UButton
-              color="neutral"
-              variant="ghost"
-              square
-              @click="isNotificationsSlideoverOpen = true"
-            >
+            <UButton color="neutral" variant="ghost" square @click="isNotificationsSlideoverOpen = true">
               <UChip color="error" inset>
                 <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
               </UChip>
@@ -376,18 +414,9 @@ const { isNotificationsSlideoverOpen } = useDashboard()
       </UDashboardNavbar>
     </template>
     <template #body>
-      <OrdersTable
-        v-model:q="q"
-        v-model:row-selection="rowSelection"
-        v-model:pagination="pagination"
-        :data="data"
-        :loading="loading"
-        :tabs="tabCounts"
-        :total-records="totalRecords"
-        :total-pages="totalPages"
-        :add-button="{ label: 'Tạo đơn hàng', href: '/orders/create' }"
-        @update:tab="onTabChange"
-      />
+      <OrdersTable v-model:q="q" v-model:row-selection="rowSelection" v-model:pagination="pagination" :data="data"
+        :loading="loading" :tabs="tabCounts" :total-records="totalRecords" :total-pages="totalPages"
+        :add-button="{ label: 'Tạo đơn hàng', href: '/orders/create' }" @update:tab="onTabChange" />
     </template>
   </UDashboardPanel>
 </template>

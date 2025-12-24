@@ -157,14 +157,16 @@ export const useNewsForm = (newsId?: number) => {
     try {
       isUploadingImage.value = true
       const response = await fileService.uploadFile(file, 'news')
-
+      // New format: { success: true, data: { url: "...", ... } }
       if (response && response.success && response.data) {
-        const fileData = Array.isArray(response.data) ? response.data[0] : response.data
-
-        if (fileData && fileData.fileName) {
-          formData.value.imageUrl = fileData.fileName
-          } else {
-          console.error('Lỗi upload ảnh: Không tìm thấy fileName trong response data', fileData)
+        // response.data is the file object e.g. { url: '...', fileName: '...' }
+        const fileData = response.data
+        if (fileData && fileData.url) {
+          formData.value.imageUrl = fileData.url
+          // Update preview to use the returned URL if needed, although we already set a local blob preview
+          // imagePreview.value = fileData.url 
+        } else {
+          console.error('Lỗi upload ảnh: Không tìm thấy url trong response data', fileData)
         }
       } else {
         console.error('Lỗi upload ảnh: Response không hợp lệ', response)

@@ -25,7 +25,7 @@ export type BankAccountPayload = {
 
 const emit = defineEmits<{
   'update:modelValue': [boolean]
-  'submit': [{ method: PaymentMethodStr, amount: number, reference: string, note: string, bankAccount?: BankAccountPayload }]
+  'submit': [{ method: PaymentMethodStr, amount: number, reference: string, note: string, bankAccount?: BankAccountPayload, paymentDate: string }]
 }>()
 
 const open = ref<boolean>(props.modelValue)
@@ -51,6 +51,26 @@ function fetchPaymentMethods(_search: string) {
 }
 const reference = ref('')
 const note = ref('')
+// Helper for datetime-local input: YYYY-MM-DDThh:mm
+const nowFn = () => {
+  const d = new Date()
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+  return d.toISOString().slice(0, 16)
+}
+const paymentDate = ref(nowFn())
+
+const displayDate = computed(() => {
+  if (!paymentDate.value) return ''
+  const date = new Date(paymentDate.value)
+  if (isNaN(date.getTime())) return ''
+  const d = String(date.getDate()).padStart(2, '0')
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const y = date.getFullYear()
+  const h = String(date.getHours()).padStart(2, '0')
+  const min = String(date.getMinutes()).padStart(2, '0')
+  return `${d}/${m}/${y} ${h}:${min}`
+})
+
 const amount = ref(0)
 const bankAccount = ref<BankAccountPayload>({
   bankName: '',
@@ -89,6 +109,7 @@ watch(open, (v) => {
     // Always prefill with remaining amount (số tiền cần thanh toán)
     const prefill = Number.isFinite(props.remainingAmount) ? Math.max(0, Math.floor(props.remainingAmount)) : 0
     amount.value = prefill
+    paymentDate.value = nowFn()
     method.value = 'TienMat'
     reference.value = ''
     note.value = ''
@@ -110,6 +131,7 @@ function submit() {
     amount: amount.value,
     reference: reference.value.trim(),
     note: note.value.trim(),
+    paymentDate: new Date(paymentDate.value).toISOString(), // Convert back to ISO for API
     bankAccount: method.value === 'ChuyenKhoan' ? { ...bankAccount.value } : undefined
   })
   open.value = false
@@ -117,11 +139,11 @@ function submit() {
 </script>
 
 <template>
-  <BaseModal :model-value="open" title="Nhận tiền">
+  <BaseModal :model-value="open" title="Nhận tiền" body-class="px-6 py-5 space-y-4 text-sm">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- Method -->
       <div class="space-y-1">
-        <label class="text-sm font-medium text-gray-700 flex items-center gap-1">Phương thức thanh toán <span
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Phương thức thanh toán <span
             class="text-red-500">*</span></label>
         <div class="relative">
           <RemoteSearchSelect :model-value="selectedMethodItem" :fetch-fn="fetchPaymentMethods" label-field="label"
@@ -131,11 +153,11 @@ function submit() {
       </div>
       <!-- Amount -->
       <div class="space-y-1">
-        <label class="text-sm font-medium text-gray-700 flex items-center gap-1">Số tiền nhận</label>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Số tiền nhận</label>
         <div class="relative">
           <BaseNumberInput v-model="amount" :allow-decimal="false" group-separator="." decimal-separator=","
             placeholder="0"
-            class="w-full h-9 pr-7 pl-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 tracking-wider" />
+            class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 pr-7" />
           <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm select-none">đ</span>
         </div>
         <p v-if="remainingAmount > 0" class="text-xs text-gray-500 mt-1 cursor-pointer hover:text-primary-600"
@@ -146,9 +168,9 @@ function submit() {
     </div>
 
     <!-- Bank Details & Reference (2 columns) -->
-    <div v-if="method === 'ChuyenKhoan'" class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div v-if="method === 'ChuyenKhoan'" class="mt-1 space-y-2">
       <div class="space-y-1">
-        <label class="text-sm font-medium text-gray-700">Chọn tài khoản nhận tiền</label>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Chọn tài khoản nhận tiền</label>
         <div class="relative">
           <RemoteSearchSelect :model-value="selectedBankAccountItem" :fetch-fn="fetchBankAccounts"
             :get-item-key="(it: any) => it.accountNumber" placeholder="Chọn tài khoản ngân hàng" :full-width="true"
@@ -167,25 +189,46 @@ function submit() {
           </RemoteSearchSelect>
         </div>
       </div>
-      <div class="space-y-1">
-        <label class="text-sm font-medium text-gray-700">Tham chiếu</label>
-        <input v-model="reference" type="text" placeholder="Nhập tham chiếu"
-          class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-1">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Thời gian</label>
+          <input v-model="paymentDate" type="datetime-local"
+            class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500">
+        </div>
+        <div class="space-y-1">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tham chiếu</label>
+          <input v-model="reference" type="text" placeholder="Nhập tham chiếu"
+            class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500">
+        </div>
       </div>
     </div>
 
-    <!-- Reference only (if not transfer) -->
-    <div v-else class="mt-2 space-y-1">
-      <label class="text-sm font-medium text-gray-700">Tham chiếu</label>
-      <input v-model="reference" type="text" placeholder="Nhập tham chiếu"
-        class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+    <!-- Date & Reference (if not transfer) -->
+    <div v-else class="mt-1 grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="space-y-1">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Thời gian</label>
+        <div class="relative">
+          <input type="text" :value="displayDate" placeholder="dd/MM/yyyy HH:mm" readonly
+            class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500" />
+          <input v-model="paymentDate" type="datetime-local"
+            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+          <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+            <UIcon name="i-heroicons-calendar" class="w-4 h-4 text-gray-500" />
+          </div>
+        </div>
+      </div>
+      <div class="space-y-1">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tham chiếu</label>
+        <input v-model="reference" type="text" placeholder="Nhập tham chiếu"
+          class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500">
+      </div>
     </div>
 
     <!-- Note -->
-    <div class="mt-2 space-y-1">
-      <label class="text-sm font-medium text-gray-700">Ghi chú</label>
+    <div class="mt-1 space-y-1">
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Ghi chú</label>
       <textarea v-model="note" rows="3" placeholder="Nhập ghi chú"
-        class="w-full p-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
+        class="w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"></textarea>
     </div>
     <template #footer>
       <UButton color="neutral" variant="ghost" size="md" @click="open = false">

@@ -90,6 +90,7 @@ interface WarehouseLike {
 
 // Primary reactive state (restored)
 const router = useRouter()
+const route = useRoute()
 const splitLine = ref(false)
 const showProductSearch = ref(false)
 const productList = ref<ProductSearchItem[]>([])
@@ -1150,10 +1151,106 @@ function handleF3(e: KeyboardEvent) {
   }
 }
 
+async function initFromOrder(code: string) {
+  try {
+    const res = await ordersService.getOrderById(code)
+    if (res && res.success && res.data) {
+      // Clear draft to ensure clean state
+      try { localStorage.removeItem(DRAFT_KEY) } catch { }
+
+      const rawData = res.data as any
+      const d = rawData.order
+      const custInfo = rawData.customerInfo
+      const wh = rawData.warehouse as { id: number | string, name: string } | undefined
+
+      // 1. Warehouse
+      if (wh && wh.id) {
+        selectedBranch.value = { id: wh.id, name: wh.name }
+        setWarehouse({ id: wh.id, name: wh.name })
+      }
+
+      // 1b. Price Book & Source (if available in raw payload or similar)
+      const pbId = (d as any).priceBookId
+      const pbName = (d as any).priceBookName
+      if (pbId) {
+        selectedPriceBook.value = { id: pbId, name: pbName || '' }
+      }
+      const osId = (d as any).orderSourceId
+      const osName = (d as any).orderSourceName || (d as any).sourceName
+      if (osId) {
+        selectedSource.value = { id: osId, name: osName || '' }
+      }
+
+      // 2. Customer
+      if (custInfo && custInfo.customer) {
+        selectedCustomer.value = {
+          id: custInfo.customer.customerId,
+          name: custInfo.customer.name,
+          phone: custInfo.customer.phone,
+          code: (custInfo.customer as any).code
+        }
+      } else if (d.customerId) {
+        selectedCustomer.value = {
+          id: d.customerId,
+          name: d.customerName,
+          email: d.customerEmail
+        }
+      }
+
+      // 3. Products
+      if (d.orderItems && Array.isArray(d.orderItems)) {
+        orderProducts.value = d.orderItems.map((item: any) => {
+          const price = item.productPrice || 0
+          const unitPrice = item.unitPrice ?? price
+          return {
+            id: item.productId,
+            name: item.productName,
+            sku: item.sku || '',
+            thumbnailImageUrl: item.productImage,
+            price: price,
+            unitPrice: unitPrice,
+            baseUnitPrice: price,
+            quantity: item.quantity || 1,
+            total: item.total || (unitPrice * (item.quantity || 1)),
+            giftQuantity: 0,
+            note: '',
+            appliedDiscountType: undefined,
+            appliedDiscountInput: null
+          }
+        })
+      }
+
+      // 4. Totals & Info
+      discount.value = d.discountAmount || 0
+      shippingFee.value = d.shippingAmount || 0
+      orderNote.value = d.orderNote || ''
+
+      // 5. Shipping Method
+      if (d.shippingMethod && typeof d.shippingMethod === 'string') {
+        const sm = d.shippingMethod as string
+        if (sm in ShippingMethodLabels) {
+          shippingMethod.value = sm as ShippingMethod
+        }
+      }
+
+      toast.add({ title: 'Đã sao chép đơn hàng', description: `Mã đơn gốc: ${code}`, color: 'success' })
+    }
+  } catch (e) {
+    console.error('Copy order failed:', e)
+    toast.add({ title: 'Không thể sao chép dữ liệu đơn hàng', color: 'error' })
+  }
+}
+
 onMounted(async () => {
   window.addEventListener('keydown', handleF3)
-  // Restore persisted draft (if any) BEFORE fetching defaults (so defaults only apply when empty)
-  restoreDraft()
+
+  const copyCode = route.query.copyFrom as string
+  if (copyCode) {
+    await initFromOrder(copyCode)
+  } else {
+    // Restore persisted draft (if any) BEFORE fetching defaults (so defaults only apply when empty)
+    restoreDraft()
+  }
   // Fetch sources and set POS as default if available
   try {
     const res = await orderSourceService.getOrderSources()
@@ -1668,7 +1765,7 @@ function onAddCustomer() {
                           <div v-if="calcDiscountAmount(prod) > 0" class="text-xs text-gray-500">
                             <span class="line-through mr-2">{{ currency(getBaseUnitPrice(prod)) }}</span>
                             <span class="text-red-600 mr-1">-{{ currency(calcDiscountAmount(prod)).replace('₫', '')
-                              }}₫</span>
+                            }}₫</span>
                             <span class="text-red-600">(-{{ calcDiscountPercent(prod) }}%)</span>
                             <div v-if="prod.discountReason"
                               class="text-[11px] text-gray-400 mt-0.5 truncate max-w-[240px]">
@@ -1961,8 +2058,9 @@ function onAddCustomer() {
                             const idx = priceModalIdx; if (idx === null) return '---'; const p =
                               orderProducts[idx]; const
                                 base = (p && typeof p.baseUnitPrice === 'number') ? p.baseUnitPrice : (p ? p.unitPrice : 0);
-                          return
-                          currency(base) })() }}
+                            return
+                            currency(base)
+                          })()}}
                         </span>
                       </div>
                       <div class="flex items-center justify-between mt-1">
@@ -2128,13 +2226,12 @@ function onAddCustomer() {
                         <div class="text-sm text-gray-900 font-medium truncate">
                           {{ item.name }}
                         </div>
-                        <div v-if="item.phone" class="text-xs text-gray-500 truncate">
-                          {{ item.phone }}
+                        <div class="text-xs text-gray-500 truncate mt-0.5 flex items-center gap-1.5">
+                          <span v-if="item.code" class="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 text-[11px]">{{
+                            item.code }}</span>
+                          <span v-if="item.phone">{{ item.phone }}</span>
                         </div>
                       </div>
-                      <span v-if="item.code"
-                        class="ml-auto text-[11px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{{ item.code
-                        }}</span>
                     </div>
                   </template>
                 </RemoteSearchSelect>

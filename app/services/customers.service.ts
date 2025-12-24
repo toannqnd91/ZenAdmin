@@ -182,6 +182,7 @@ export interface CustomerReceivablesResponse {
 export interface CreatePaymentRequest {
   paymentMethod: string // Cash, BankTransfer, EWallet
   amount: number
+  paymentDate?: string // ISO 8601
   referenceNumber?: string
   note?: string
   bankAccount?: {

@@ -176,8 +176,7 @@ async function uploadImage(file: File) {
   try {
     isUploadingImage.value = true
     const res = await fileService.uploadFile(file, 'brand')
-    const data = Array.isArray(res?.data) ? res.data[0] : res?.data
-    if (res?.success && data?.fileName) logoUrl.value = String(data.fileName)
+    if (res?.success && res.data?.url) logoUrl.value = res.data.url
   } catch {
     // ignore
   } finally {
@@ -188,59 +187,36 @@ async function uploadImage(file: File) {
 
 <template>
   <Teleport to="body">
-    <div
-      v-if="open"
-      class="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 p-4"
-      @keydown.esc="close"
-    >
-      <div
-        class="bg-white w-full max-w-xl rounded-lg shadow-lg flex flex-col"
-        role="dialog"
-        aria-modal="true"
-        @click.stop
-      >
+    <div v-if="open" class="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 p-4"
+      @keydown.esc="close">
+      <div class="bg-white w-full max-w-xl rounded-lg shadow-lg flex flex-col" role="dialog" aria-modal="true"
+        @click.stop>
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h3 class="text-lg font-semibold">
             {{ isEdit ? 'Cập nhật thương hiệu' : 'Thêm thương hiệu' }}
           </h3>
-          <button
-            class="text-gray-400 hover:text-gray-600"
-            @click="close"
-          >
+          <button class="text-gray-400 hover:text-gray-600" @click="close">
             &times;
           </button>
         </div>
         <div class="px-6 py-5 space-y-4 text-sm">
           <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">Tên thương hiệu <span class="text-red-500">*</span></label>
-            <input
-              v-model="name"
-              type="text"
+            <label class="block text-xs font-medium text-gray-600 mb-1">Tên thương hiệu <span
+                class="text-red-500">*</span></label>
+            <input v-model="name" type="text"
               class="w-full h-9 px-3 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               :class="nameError ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'"
-              placeholder="Nhập tên thương hiệu"
-              @blur="touched = true"
-            >
+              placeholder="Nhập tên thương hiệu" @blur="touched = true">
             <p v-if="nameError" class="text-xs text-red-600 mt-1">
               {{ nameError }}
             </p>
           </div>
           <div>
             <label class="block text-xs font-medium text-gray-600 mb-1">Logo</label>
-            <input
-              ref="fileInput"
-              type="file"
-              class="hidden"
-              accept="image/*"
-              @change="onFileChange"
-            >
-            <div
-              v-if="!imagePreview"
+            <input ref="fileInput" type="file" class="hidden" accept="image/*" @change="onFileChange">
+            <div v-if="!imagePreview"
               class="border border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center text-center min-h-[120px] bg-white cursor-pointer"
-              @click="clickFileInput"
-              @dragover.prevent="onDragOver"
-              @drop="onDrop"
-            >
+              @click="clickFileInput" @dragover.prevent="onDragOver" @drop="onDrop">
               <div class="flex items-center justify-center gap-2 mb-1">
                 <UButton label="Tải logo" size="sm" />
               </div>
@@ -250,31 +226,15 @@ async function uploadImage(file: File) {
             </div>
             <div v-else class="relative inline-block">
               <img :src="imagePreview" alt="Preview" class="w-32 h-32 rounded-lg border border-gray-200 object-cover">
-              <button
-                type="button"
-                class="absolute top-1 right-1 bg-white rounded-full p-1 shadow hover:bg-gray-100"
-                @click="removeImage"
-              >
+              <button type="button" class="absolute top-1 right-1 bg-white rounded-full p-1 shadow hover:bg-gray-100"
+                @click="removeImage">
                 <UIcon name="i-lucide-x" class="h-4 w-4 text-gray-600" />
               </button>
-              <div
-                v-if="isUploadingImage"
-                class="absolute inset-0 bg-white/60 flex items-center justify-center rounded-lg"
-              >
-                <svg
-                  class="animate-spin h-6 w-6 text-gray-400"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    class="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    stroke-width="4"
-                  />
+              <div v-if="isUploadingImage"
+                class="absolute inset-0 bg-white/60 flex items-center justify-center rounded-lg">
+                <svg class="animate-spin h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none"
+                  viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
               </div>
@@ -286,19 +246,14 @@ async function uploadImage(file: File) {
           </p>
         </div>
         <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
-          <button
-            type="button"
+          <button type="button"
             class="h-9 px-4 rounded-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50"
-            @click="close"
-          >
+            @click="close">
             Hủy
           </button>
-          <button
-            type="button"
+          <button type="button"
             class="h-9 px-5 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-60"
-            :disabled="loading || !canSave"
-            @click="save"
-          >
+            :disabled="loading || !canSave" @click="save">
             <span v-if="!loading">{{ isEdit ? 'Cập nhật' : 'Lưu' }}</span>
             <span v-else>Đang xử lý...</span>
           </button>
@@ -308,5 +263,4 @@ async function uploadImage(file: File) {
   </Teleport>
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>

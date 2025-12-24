@@ -47,9 +47,8 @@ async function handleImageUpload(e: Event) {
   try {
     isUploadingImage.value = true
     const res = await fileService.uploadFile(file, 'collection')
-    const data = Array.isArray(res?.data) ? res?.data[0] : res?.data
-    if (res?.success && data?.fileName) {
-      form.value.imageUrl = data.fileName
+    if (res?.success && res.data?.url) {
+      form.value.imageUrl = res.data.url
     }
   } finally {
     isUploadingImage.value = false
@@ -84,14 +83,11 @@ async function submit() {
     <UPageCard title="Thông tin bộ sưu tập" variant="soft" class="bg-white rounded-lg">
       <form class="space-y-5" @submit.prevent="submit">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Tên bộ sưu tập <span class="text-red-500">*</span></label>
-          <input
-            v-model="form.name"
-            type="text"
-            placeholder="Nhập tên bộ sưu tập"
+          <label class="block text-sm font-medium text-gray-700 mb-1">Tên bộ sưu tập <span
+              class="text-red-500">*</span></label>
+          <input v-model="form.name" type="text" placeholder="Nhập tên bộ sưu tập"
             :class="{ 'border-red-500': errors.name }"
-            class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
+            class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500">
           <p v-if="errors.name" class="mt-1 text-sm text-red-600">
             {{ errors.name }}
           </p>
@@ -99,12 +95,8 @@ async function submit() {
 
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
-          <textarea
-            v-model="form.description"
-            rows="4"
-            placeholder="Mô tả ngắn cho bộ sưu tập (tuỳ chọn)"
-            class="w-full px-3 py-2 text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
+          <textarea v-model="form.description" rows="4" placeholder="Mô tả ngắn cho bộ sưu tập (tuỳ chọn)"
+            class="w-full px-3 py-2 text-sm rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500" />
         </div>
 
         <div>
@@ -112,22 +104,19 @@ async function submit() {
           <div class="space-y-3">
             <div v-if="imagePreview" class="relative">
               <img :src="imagePreview" alt="Preview" class="w-40 h-40 object-cover rounded-lg border border-gray-200">
-              <button type="button" class="absolute top-1 right-1 bg-white rounded-full p-1 shadow hover:bg-gray-100" @click="removeImage">
+              <button type="button" class="absolute top-1 right-1 bg-white rounded-full p-1 shadow hover:bg-gray-100"
+                @click="removeImage">
                 <UIcon name="i-lucide-x" class="h-4 w-4 text-gray-500" />
               </button>
             </div>
-            <div v-else class="upload-area border border-dashed border-gray-300 rounded-xl p-6 text-center bg-white hover:border-primary-500 focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500 transition-colors cursor-pointer" @click="clickFileInput">
+            <div v-else
+              class="upload-area border border-dashed border-gray-300 rounded-xl p-6 text-center bg-white hover:border-primary-500 focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500 transition-colors cursor-pointer"
+              @click="clickFileInput">
               <div class="text-sm text-gray-600">
                 <span class="font-medium text-primary-600">Click để tải ảnh</span> hoặc kéo thả vào đây
               </div>
             </div>
-            <input
-              ref="fileInput"
-              type="file"
-              accept="image/*"
-              class="hidden"
-              @change="handleImageUpload"
-            >
+            <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="handleImageUpload">
             <div v-if="isUploadingImage" class="text-sm text-primary-600">
               Đang tải lên...
             </div>
@@ -147,5 +136,7 @@ async function submit() {
 </template>
 
 <style scoped>
-.upload-area { border: 1px dashed #d1d5db !important; }
+.upload-area {
+  border: 1px dashed #d1d5db !important;
+}
 </style>

@@ -92,28 +92,39 @@ export const useProductForm = () => {
     isUploadingImage.value = true
     try {
       const files = Array.from(input.files)
-      // Upload all images in one request
-      const uploadResponse = await fileService.uploadMultipleFiles(files)
-      // API trả về { data: [ { fileName, ... } ] }
-      const uploaded = Array.isArray(uploadResponse?.data)
-        ? uploadResponse.data
-        : []
-      const urls: string[] = uploaded
-        .map(f => f.fileName)
-        .filter((f): f is string => !!f)
+      
+      // Upload files individually in parallel using the known-working single upload endpoint
+      const uploadPromises = files.map(file => fileService.uploadFile(file))
+      const responses = await Promise.all(uploadPromises)
+
+      const newUrls: string[] = []
+      
+      responses.forEach(res => {
+        if (res && res.success && res.data) {
+           // res.data is expected to be { url: "...", ... }
+           const fileData = res.data
+           if (fileData.url) {
+             newUrls.push(fileData.url)
+           }
+        }
+      })
+      
       // Guard: when editing an existing product imageUrls might be undefined
       if (!Array.isArray(formData.value.imageUrls)) {
         formData.value.imageUrls = []
       }
-      formData.value.imageUrls.push(...urls)
+      formData.value.imageUrls.push(...newUrls)
       // Also preview them immediately
-      imagePreviews.value.push(...urls)
+      imagePreviews.value.push(...newUrls)
+      
       // Clear the input so selecting the same file again triggers change
       try {
         input.value = ''
       } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
         // some browsers may restrict setting value; ignore
       }
+    } catch (error) {
+       console.error('Upload error:', error)
     } finally {
       isUploadingImage.value = false
     }

@@ -36,24 +36,25 @@ const news = computed(() =>
 const rowSelection = ref({})
 // pagination now provided by composable
 
+// Delete confirmation modal
+const isDeleteModalOpen = ref(false)
+const deleteTarget = ref<{ id: string | number, title: string } | null>(null)
+const isDeleting = ref(false)
+
 function truncateText(text: string | null | undefined, wordLimit: number = 20): string {
   return truncateContent(text || '', wordLimit * 5) // Adjust word count to character count
 }
 
-function getRowItems(row: { original: { id: number } }) {
+function getRowItems(row: { original: { id: string | number } }) {
   return [
     {
       type: 'label',
       label: 'Actions'
     },
     {
-      label: 'View',
-      icon: 'i-lucide-eye'
-    },
-    {
-      label: 'Edit',
-      icon: 'i-lucide-edit',
-      onSelect: () => navigateTo(`/news/${row.original.id}/edit`)
+      label: 'Translation',
+      icon: 'i-lucide-languages',
+      onSelect: () => navigateTo(`/news/${row.original.id}/translation`)
     },
     {
       type: 'separator'
@@ -62,7 +63,11 @@ function getRowItems(row: { original: { id: number } }) {
       label: 'Delete',
       icon: 'i-lucide-trash',
       color: 'error',
-      onSelect: () => deleteNews(row.original.id)
+      onSelect: () => {
+        const newsItem = news.value.find(n => n.id === row.original.id)
+        deleteTarget.value = { id: row.original.id, title: newsItem?.title || 'tin tức này' }
+        isDeleteModalOpen.value = true
+      }
     }
   ]
 }
@@ -75,10 +80,26 @@ function handleRowClick(item: { id: number | string }) {
 function onRowEdit(id: string | number) {
   navigateTo(`/news/${id}/update`)
 }
+
 async function onRowDelete(id: string | number) {
-  if (confirm('Xoá tin tức này?')) {
-    await deleteNews(Number(id))
+  const newsItem = news.value.find(n => n.id === id)
+  deleteTarget.value = { id, title: newsItem?.title || 'tin tức này' }
+  isDeleteModalOpen.value = true
+}
+
+async function handleConfirmDelete() {
+  if (!deleteTarget.value) return
+
+  isDeleting.value = true
+  try {
+    await deleteNews(Number(deleteTarget.value.id))
     await fetchNews()
+    isDeleteModalOpen.value = false
+    deleteTarget.value = null
+  } catch (error) {
+    console.error('Error deleting news:', error)
+  } finally {
+    isDeleting.value = false
   }
 }
 
@@ -106,12 +127,7 @@ async function onRowMultiDelete(ids: (string | number)[]) {
           <!-- Color mode + notifications -->
           <UColorModeButton />
           <UTooltip text="Notifications" :shortcuts="['N']">
-            <UButton
-              color="neutral"
-              variant="ghost"
-              square
-              @click="isNotificationsSlideoverOpen = true"
-            >
+            <UButton color="neutral" variant="ghost" square @click="isNotificationsSlideoverOpen = true">
               <UChip color="error" inset>
                 <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
               </UChip>
@@ -123,21 +139,10 @@ async function onRowMultiDelete(ids: (string | number)[]) {
 
     <template #body>
       <div class="flex flex-col h-full">
-        <NewsTable
-          v-model:q="q"
-          v-model:row-selection="rowSelection"
-          v-model:pagination="pagination"
-          :data="news"
-          :loading="loading"
-          :total-pages="totalPages"
-          :total-records="totalRecords"
-          :truncate-text="truncateText"
-          :get-row-items="getRowItems"
-          :on-row-click="handleRowClick"
-          @edit="onRowEdit"
-          @delete="onRowDelete"
-          @delete-multi="onRowMultiDelete"
-        />
+        <NewsTable v-model:q="q" v-model:row-selection="rowSelection" v-model:pagination="pagination" :data="news"
+          :loading="loading" :total-pages="totalPages" :total-records="totalRecords" :truncate-text="truncateText"
+          :get-row-items="getRowItems" :on-row-click="handleRowClick" @edit="onRowEdit" @delete="onRowDelete"
+          @delete-multi="onRowMultiDelete" />
 
         <div v-if="error" class="text-error mt-4">
           {{ error }}
@@ -145,4 +150,9 @@ async function onRowMultiDelete(ids: (string | number)[]) {
       </div>
     </template>
   </UDashboardPanel>
+
+  <!-- Delete Confirmation Modal -->
+  <ConfirmDeleteModal v-model:is-open="isDeleteModalOpen" title="Xác nhận xoá tin tức"
+    :message="`Bạn có chắc chắn muốn xoá tin tức &quot;${deleteTarget?.title}&quot;?`" :loading="isDeleting"
+    @confirm="handleConfirmDelete" />
 </template>

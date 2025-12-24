@@ -4,7 +4,9 @@ import { computed, ref, onMounted } from 'vue'
 import BaseCardHeader from '~/components/BaseCardHeader.vue'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import { customersService } from '@/services/customers.service'
+import { arService, type CustomerPayment } from '@/services/ar.service'
 import ReceivePaymentModal from '@/components/orders/ReceivePaymentModal.vue'
+import AdjustDebtModal from '@/components/customers/AdjustDebtModal.vue'
 import BaseTable, { type TableColumn } from '@/components/base/BaseTable.vue'
 
 const route = useRoute()
@@ -134,6 +136,7 @@ const recentOrders = ref<Array<{
 const ordersPage = ref(1)
 const ordersPageSize = ref(5)
 const ordersTotal = ref(0) // Total items count, not total value
+const isLoadingOrders = ref(false)
 
 // Table columns configured for list-view layout (2 columns, hidden header)
 const orderColumns: TableColumn[] = [
@@ -143,6 +146,7 @@ const orderColumns: TableColumn[] = [
 
 async function loadOrders(pageIndex = 1) {
   if (!customerId.value) return
+  isLoadingOrders.value = true
   const start = (pageIndex - 1) * ordersPageSize.value
   const res = await customersService.getCustomerOrdersExternal(customerId.value, {
     Pagination: {
@@ -181,6 +185,7 @@ async function loadOrders(pageIndex = 1) {
       recentOrders.value = []
     }
   }
+  isLoadingOrders.value = false
 }
 
 // Map BaseTable 0-based index to our 1-based logic
@@ -244,16 +249,61 @@ function viewAllOrders() {
 
 // Payment Modal State
 const isPaymentModalOpen = ref(false)
+const isAdjustDebtModalOpen = ref(false)
 const isSubmittingPayment = ref(false)
 
 function openPaymentModal() {
   isPaymentModalOpen.value = true
 }
 
+function openAdjustDebtModal() {
+  isAdjustDebtModalOpen.value = true
+}
+
+async function handleAdjustDebtSubmit(payload: { newDebt: number, note: string }) {
+  try {
+    const res = await arService.adjustDebt(customerId.value, {
+      newBalance: payload.newDebt,
+      note: payload.note
+    })
+
+    if (res.success) {
+      // Re-fetch receivables data
+      const arRes = await customersService.getCustomerReceivables(customerId.value)
+      const arData = arRes as any
+      if (arData?.success) {
+        if (arData.summary) {
+          customer.value.financials.currentReceivables = arData.summary.totalRemainingAmount
+        } else if (arData.customer) {
+          customer.value.financials.currentReceivables = arData.customer.currentReceivables
+        }
+
+        if (arData.aRs) {
+          debtHistory.value = arData.aRs.map((ar: any) => ({
+            id: ar.arNumber || ar.orderCode,
+            orderCode: ar.orderCode,
+            type: 'Đơn hàng',
+            reason: ar.note || (ar.orderCode ? `Tạo từ ${ar.orderCode}` : 'Ghi nhận công nợ'),
+            date: formatDateTime(ar.createdOn),
+            amount: ar.remainingAmount
+          }))
+        }
+      }
+      isAdjustDebtModalOpen.value = false
+    } else {
+      alert(res.message || 'Có lỗi xảy ra')
+    }
+  } catch (e) {
+    console.error(e)
+    alert('Có lỗi xảy ra khi điều chỉnh công nợ')
+  }
+}
+
 async function handlePaymentSubmit(payload: {
   method: string
   amount: number
   reference: string
+  paymentDate: string
   bankAccount?: {
     bankName: string
     accountNumber: string
@@ -272,6 +322,7 @@ async function handlePaymentSubmit(payload: {
     const res = await customersService.createCustomerPayment(customerId.value, {
       paymentMethod: methodMap[payload.method] || 'Cash',
       amount: payload.amount,
+      paymentDate: payload.paymentDate,
       referenceNumber: payload.reference,
       note: '',
       bankAccount: payload.bankAccount
@@ -334,6 +385,46 @@ const addressText = computed(() => [
   customer.value.address || ''
 ].filter(Boolean).join('\n'))
 
+// Payments state
+const payments = ref<CustomerPayment[]>([])
+const paymentsLoading = ref(false)
+const paymentsPagination = ref({ pageIndex: 0, pageSize: 5 })
+const paymentsTotal = ref(0)
+const paymentColumns: TableColumn[] = [
+  { key: 'paymentNumber', label: 'Mã phiếu', class: 'font-medium text-primary-600' },
+  { key: 'paymentDate', label: 'Ngày thanh toán' },
+  { key: 'amount', label: 'Số tiền', align: 'right' },
+  { key: 'paymentMethod', label: 'Phương thức', align: 'right' }
+]
+
+function mapPaymentMethod(method: string) {
+  const map: Record<string, string> = { 'BankTransfer': 'Chuyển khoản', 'Cash': 'Tiền mặt', 'Card': 'Thẻ' }
+  return map[method] || method
+}
+
+async function loadPayments(idx = 0) {
+  if (!customerId.value) return
+  paymentsLoading.value = true
+  try {
+    const res: any = await arService.getPayments({
+      customerId: customerId.value,
+      page: idx + 1,
+      pageSize: paymentsPagination.value.pageSize
+    })
+    if (res.success) {
+      payments.value = res.payments || []
+      paymentsTotal.value = res.pagination?.totalCount || 0
+      paymentsPagination.value.pageIndex = idx
+    }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    paymentsLoading.value = false
+  }
+}
+
+watch(() => paymentsPagination.value.pageIndex, (idx) => loadPayments(idx))
+
 // Fetch data from external API and map to view model
 
 onMounted(async () => {
@@ -347,7 +438,10 @@ onMounted(async () => {
     ])
 
     // Load initial orders
-    await loadOrders(1)
+    await Promise.all([
+      loadOrders(1),
+      loadPayments(0)
+    ])
 
     groups.value = Array.isArray(groupsRes?.data) ? groupsRes.data.map(g => ({ id: g.id, name: g.name })) : []
 
@@ -544,13 +638,14 @@ onMounted(async () => {
                 </template>
               </BaseCardHeader>
               <div class="-mx-6 pt-2 overflow-hidden">
-                <BaseTable :data="recentOrders" :columns="orderColumns" :pagination="ordersPagination"
-                  :total-records="ordersTotal" :total-pages="Math.ceil(ordersTotal / ordersPageSize)"
-                  :selectable="false" :show-row-actions="false" :hide-title="true" :hide-search="true"
-                  header-row-class="hidden" header-padding-x="px-6" body-padding="px-0" table-min-width="0"
-                  class="border-none shadow-none" @update:pagination="p => ordersPagination = p">
+                <BaseTable :loading="isLoadingOrders" :data="recentOrders" :columns="orderColumns"
+                  :pagination="ordersPagination" :total-records="ordersTotal"
+                  :total-pages="Math.ceil(ordersTotal / ordersPageSize)" :selectable="false" :show-row-actions="false"
+                  :hide-title="true" :hide-search="true" header-row-class="hidden" header-padding-x="px-6"
+                  body-padding="px-0" table-min-width="0" class="border-none shadow-none" row-padding-y="py-4 px-6"
+                  header-padding-y="hidden" @update:pagination="p => ordersPagination = p">
                   <template #column-info="{ item }">
-                    <div class="px-6">
+                    <div>
                       <div class="text-sm font-medium">
                         <a :href="`/orders/${item.code}`" target="_blank" class="text-blue-600 hover:underline">
                           {{ item.no }}
@@ -566,7 +661,7 @@ onMounted(async () => {
                   </template>
 
                   <template #column-status="{ item }">
-                    <div class="px-6 flex flex-col items-end gap-1.5">
+                    <div class="flex flex-col items-end gap-1.5">
                       <span class="font-bold text-gray-900 text-sm">{{ formatMoney(item.amount as number) }}</span>
                       <div class="flex items-center gap-2">
                         <span v-if="item.paymentStatus === 'Thanh toán một phần'"
@@ -592,7 +687,12 @@ onMounted(async () => {
                           Chưa thanh toán
                         </span>
 
-                        <span
+                        <span v-if="item.processStatus === 'Đã hủy'"
+                          class="inline-flex items-center rounded-full bg-white text-red-600 text-xs px-2.5 py-0.5 font-medium whitespace-nowrap border border-red-200">
+                          <span class="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5"></span>
+                          {{ item.processStatus }}
+                        </span>
+                        <span v-else
                           class="inline-flex items-center rounded-full bg-gray-100 text-gray-700 text-xs px-2.5 py-0.5 font-medium whitespace-nowrap">
                           <span class="w-1.5 h-1.5 rounded-full bg-gray-500 mr-1.5"></span>
                           {{ item.processStatus }}
@@ -608,8 +708,14 @@ onMounted(async () => {
             <UPageCard variant="soft" class="bg-white rounded-lg">
               <BaseCardHeader>
                 <div class="flex items-center gap-2">
-                  <UIcon name="i-heroicons-banknotes-20-solid" class="w-4 h-4" />
-                  <span>Quản lý công nợ</span>
+                  <svg class="w-5 h-5 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="5" width="20" height="14" rx="2" class="fill-gray-100 stroke-gray-500"
+                      stroke-width="2" />
+                    <circle cx="12" cy="12" r="3" class="fill-green-100 stroke-green-600" stroke-width="2" />
+                    <path d="M18 12H19" class="stroke-green-600" stroke-width="2" stroke-linecap="round" />
+                    <path d="M5 12H6" class="stroke-green-600" stroke-width="2" stroke-linecap="round" />
+                  </svg>
+                  <span class="font-semibold text-gray-800">Quản lý công nợ</span>
                 </div>
                 <template #actions>
                   <button type="button" @click="openPaymentModal"
@@ -627,7 +733,8 @@ onMounted(async () => {
                       <span class="text-red-500 font-semibold text-base">{{
                         formatMoney(customer.financials.currentReceivables) }}</span>
                     </div>
-                    <button class="text-primary-600 text-sm hover:underline flex items-center gap-1">
+                    <button class="text-primary-600 text-sm hover:underline flex items-center gap-1"
+                      @click="openAdjustDebtModal">
                       <UIcon name="i-heroicons-pencil-square" class="w-4 h-4" />
                       Điều chỉnh công nợ
                     </button>
@@ -661,6 +768,49 @@ onMounted(async () => {
                     </div>
                   </div>
                 </div>
+              </div>
+            </UPageCard>
+
+            <!-- Payment History Card -->
+            <UPageCard variant="soft" class="bg-white rounded-lg">
+              <BaseCardHeader>
+                <div class="flex items-center gap-2">
+                  <svg class="w-5 h-5 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="9" class="fill-blue-50 stroke-blue-500" stroke-width="2" />
+                    <path d="M12 7V12L15 15" class="stroke-blue-700" stroke-width="2" stroke-linecap="round"
+                      stroke-linejoin="round" />
+                  </svg>
+                  <span class="font-semibold text-gray-800">Lịch sử thanh toán</span>
+                </div>
+              </BaseCardHeader>
+              <div class="-mx-6 border-t border-gray-200 dark:border-gray-700">
+                <BaseTable :loading="paymentsLoading" :data="payments" :columns="paymentColumns"
+                  :pagination="paymentsPagination" :total-records="paymentsTotal"
+                  :total-pages="Math.ceil(paymentsTotal / paymentsPagination.pageSize)" :selectable="false"
+                  :show-row-actions="false" :hide-title="true" :hide-search="true" header-padding-x="px-6"
+                  body-padding="px-6" table-min-width="0" class="border-none shadow-none" row-padding-y="py-3"
+                  header-padding-y="hidden" q="" :row-selection="{}" title=""
+                  :col-widths="['', '120px', '120px', '200px']" @update:pagination="p => paymentsPagination = p">
+                  <template #column-paymentNumber="{ item }">
+                    <div>
+                      <div class="font-medium text-primary-600">{{ item.paymentNumber }}</div>
+                      <div class="text-xs text-gray-500 mt-0.5 truncate"
+                        :title="(item.note as string) || ((item.accountReceivable as any)?.orderCode ? `Thanh toán đơn ${(item.accountReceivable as any).orderCode}` : '')">
+                        {{ (item.note as string) || ((item.accountReceivable as any)?.orderCode ? `Thanh toán đơn
+                        ${(item.accountReceivable as any).orderCode}` : '') }}
+                      </div>
+                    </div>
+                  </template>
+                  <template #column-paymentDate="{ item }">
+                    {{ item.paymentDate ? new Date(item.paymentDate).toLocaleDateString('vi-VN') : '' }}
+                  </template>
+                  <template #column-amount="{ item }">
+                    {{ formatMoney(item.amount) }}
+                  </template>
+                  <template #column-paymentMethod="{ item }">
+                    {{ mapPaymentMethod(item.paymentMethod as string) }}
+                  </template>
+                </BaseTable>
               </div>
             </UPageCard>
           </div>
@@ -801,4 +951,7 @@ onMounted(async () => {
   <!-- Payment Modal -->
   <ReceivePaymentModal v-model="isPaymentModalOpen" :remaining-amount="customer.financials.currentReceivables"
     :paid-amount="0" @submit="handlePaymentSubmit" />
+
+  <AdjustDebtModal v-model="isAdjustDebtModalOpen" :current-debt="customer.financials.currentReceivables"
+    @submit="handleAdjustDebtSubmit" />
 </template>

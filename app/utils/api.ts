@@ -7,9 +7,9 @@ export const API_ENDPOINTS = {
   WAREHOUSE_DEFAULT: '/Warehouse/default',
   WAREHOUSE_CREATE: '/Warehouse',
   // File endpoints
-  UPLOAD_FILE: '/File/Upload',
-  UPLOAD_MULTIPLE_FILES: '/File/UploadMultiple',
-  DELETE_FILE: (fileName: string) => `/File/${fileName}`,
+  UPLOAD_FILE: '/FileUpload/upload',
+  UPLOAD_MULTIPLE_FILES: '/FileUpload/upload-multiple',
+  DELETE_FILE: (fileName: string) => `/File/${fileName}`, // User didn't specify delete endpoint change, but let's leave it unless specified. Or wait, if controller changed to FileUpload, maybe delete changed too? But user only showed upload endpoints. Let's stick to what is shown.
   // Widget endpoints
   CAROUSEL_WIDGET: '/CarouselWidget',
   CAROUSEL_WIDGET_BY_ID: (id: number) => `/CarouselWidget/${id}`,
@@ -58,6 +58,12 @@ export const API_ENDPOINTS = {
   // Explicit update endpoint for a single product category
   PRODUCT_CATEGORY_UPDATE: (id: number) => `/ProductCategory/${id}/update`,
   PRODUCTS: '/product/grid',
+  PROJECTS_GRID: '/Project/grid',
+  PROJECT_CREATE: '/Project/create',
+  PROJECT_CATEGORIES: '/Project/categories',
+  PROJECT_CATEGORY_DELETE: (id: number) => `/Project/categories/${id}`,
+  PROJECT_BY_ID: (id: number) => `/Project/${id}`,
+  PROJECT_UPDATE: (id: number) => `/Project/${id}/update`,
   PRODUCT_BY_ID: (id: number) => `/Product/${id}`,
   PRODUCT_CREATE: '/Product',
   PRODUCT_UPDATE: (id: number) => `/Product/${id}`,
@@ -123,6 +129,7 @@ export const API_ENDPOINTS = {
   CUSTOMER_ORDERS_EXTERNAL: (id: string) => `/customer/${id}/orders`,
   CUSTOMER_RECEIVABLES: (id: string | number) => `/ar/customers/${id}/receivables`,
   CUSTOMER_PAYMENTS: (id: string | number) => `/ar/customers/${id}/payments`,
+  CUSTOMER_ADJUST_DEBT: (id: string | number) => `/ar/customers/${id}/adjust-debt`,
   ORDER_COUNT_BY_STATUS_EXTERNAL: '/Orders/count-by-status',
   // Employees
   EMPLOYEES: '/employees',
@@ -157,6 +164,7 @@ export const API_ENDPOINTS = {
 
   // AR/AP Summary endpoints
   AR_SUMMARY: '/ar/summary',
+  AR_PAYMENTS: '/ar/payments',
 
   // Location endpoints
   LOCATIONS_PROVINCES: '/locations/provinces',
@@ -179,8 +187,6 @@ export const API_ENDPOINTS = {
   NEWS_LEGACY: '/News',
   PRODUCT_CATEGORIES_LEGACY: '/product-categories',
   PRODUCTS_LEGACY: '/Products',
-  UPLOAD_FILE_LEGACY: '/File/Upload',
-  UPLOAD_FILES_LEGACY: '/File/UploadMultiple',
   DELETE_FILE_LEGACY: (fileName: string) => `/File/${fileName}`,
   CAROUSEL_WIDGET_LEGACY: '/CarouselWidget',
   CAROUSEL_WIDGET_BY_ID_LEGACY: (id: number) => `/CarouselWidget/${id}`

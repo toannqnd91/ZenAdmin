@@ -16,6 +16,7 @@ export { priceBooksService, PriceBooksService } from './pricebooks.service'
 export { warehouseService, WarehouseService } from './warehouse.service'
 export { returnsService, ReturnsService } from './returns.service'
 export { arService, ARService } from './ar.service'
+export { projectService, ProjectService } from './project.service'
 
 // Export types
 export type {

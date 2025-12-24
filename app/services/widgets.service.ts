@@ -305,6 +305,20 @@ export class WidgetsService extends BaseService {
   async createSimpleNewsWidget(data: CreateSimpleNewsWidgetRequest): Promise<ApiResponse<null>> {
     return this.post<null>(API_ENDPOINTS.SIMPLE_NEWS_WIDGETS, data)
   }
+
+  /**
+   * Get widget instance by ID (for widgets with custom data structure)
+   */
+  async getWidgetInstance(id: number): Promise<ApiResponse<any>> {
+    return this.get<any>(`${API_ENDPOINTS.WIDGET_INSTANCES}/${id}`)
+  }
+
+  /**
+   * Update widget instance by ID (for widgets with custom data structure)
+   */
+  async updateWidgetInstance(id: number, data: any): Promise<ApiResponse<any>> {
+    return this.put<any>(`${API_ENDPOINTS.WIDGET_INSTANCES}/${id}`, data)
+  }
 }
 
 // Export singleton instance

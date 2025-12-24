@@ -154,9 +154,10 @@ const handleImageUpload = async (event: Event) => {
     isUploadingImage.value = true
     const res = await fileService.uploadFile(file, 'category')
     if (res?.success && res.data) {
-      const fileData = Array.isArray(res.data) ? res.data[0] : res.data
-      if (fileData?.fileName) {
-        form.imageUrl = fileData.fileName
+      // Expecting { url: "...", ... } from single file upload
+      const fileData = res.data
+      if (fileData?.url) {
+        form.imageUrl = fileData.url
       }
     }
   } catch (err) {
@@ -239,15 +240,8 @@ function cancel() {
           <div class="flex items-center gap-3">
             <button
               class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-              @click="goBack"
-            >
-              <svg
-                class="w-5 h-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
+              @click="goBack">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
@@ -258,17 +252,8 @@ function cancel() {
         </template>
         <template #right>
           <div class="flex items-center gap-2">
-            <UButton
-              :label="'Hủy'"
-              variant="ghost"
-              color="neutral"
-              @click="cancel"
-            />
-            <UButton
-              :label="isUpdate ? 'Cập nhật' : 'Lưu'"
-              :loading="submitting"
-              @click="() => onSubmit()"
-            />
+            <UButton :label="'Hủy'" variant="ghost" color="neutral" @click="cancel" />
+            <UButton :label="isUpdate ? 'Cập nhật' : 'Lưu'" :loading="submitting" @click="() => onSubmit()" />
           </div>
         </template>
       </UDashboardNavbar>
@@ -285,19 +270,15 @@ function cancel() {
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Tên danh mục <span class="text-red-500">*</span>
                   </label>
-                  <input
-                    v-model="form.name"
-                    type="text"
-                    placeholder="Nhập tên danh mục"
+                  <input v-model="form.name" type="text" placeholder="Nhập tên danh mục"
                     :class="{ 'border-red-500': (nameTouched || attemptedSubmit) && isNameInvalid }"
                     class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    @input="nameTouched = true"
-                    @blur="nameTouched = true"
-                  >
+                    @input="nameTouched = true" @blur="nameTouched = true">
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Mô tả</label>
-                  <div class="rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden bg-white dark:bg-gray-800">
+                  <div
+                    class="rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden bg-white dark:bg-gray-800">
                     <TinyMCESelfHost v-model="form.description" />
                   </div>
                 </div>
@@ -306,14 +287,10 @@ function cancel() {
 
             <UPageCard :title="'Điều kiện'" variant="soft" class="bg-white rounded-lg">
               <div class="space-y-3">
-                <URadioGroup
-                  v-model="form.conditionMode"
-                  :items="[
-                    { label: 'Thủ công', value: 'manual' },
-                    { label: 'Tự động', value: 'auto' }
-                  ]"
-                  class="space-y-2"
-                />
+                <URadioGroup v-model="form.conditionMode" :items="[
+                  { label: 'Thủ công', value: 'manual' },
+                  { label: 'Tự động', value: 'auto' }
+                ]" class="space-y-2" />
                 <p class="text-xs text-gray-500">
                   Thiết lập các điều kiện để tự động thêm sản phẩm vào danh mục (chưa hỗ trợ, chọn Thủ công).
                 </p>
@@ -336,50 +313,25 @@ function cancel() {
             <UPageCard title="Ảnh danh mục" variant="soft" class="bg-white rounded-lg">
               <div class="space-y-4">
                 <div v-if="imagePreview" class="relative">
-                  <img
-                    :src="imagePreview"
-                    alt="Preview"
-                    class="w-full h-48 object-cover rounded-lg border border-gray-200"
-                  >
-                  <button
-                    type="button"
+                  <img :src="imagePreview" alt="Preview"
+                    class="w-full h-48 object-cover rounded-lg border border-gray-200">
+                  <button type="button"
                     class="absolute top-1 right-1 bg-white rounded-full p-1 shadow hover:bg-gray-100"
-                    @click="removeImage"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-4 w-4 text-gray-500"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M6 18L18 6M6 6l12 12"
-                      />
+                    @click="removeImage">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none"
+                      viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
-                <div
-                  v-else
+                <div v-else
                   class="upload-area border border-dashed border-gray-300 rounded-xl p-6 text-center bg-white hover:border-primary-500 focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500 transition-colors cursor-pointer"
-                  @click="clickFileInput"
-                >
+                  @click="clickFileInput">
                   <div class="space-y-2">
-                    <svg
-                      class="mx-auto h-12 w-12 text-gray-400"
-                      stroke="currentColor"
-                      fill="none"
-                      viewBox="0 0 48 48"
-                    >
+                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                       <path
                         d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
                     <div class="text-sm text-gray-600">
                       <span class="font-medium text-primary-600">Click để tải lên ảnh danh mục</span>
@@ -387,17 +339,8 @@ function cancel() {
                     </div>
                   </div>
                 </div>
-                <input
-                  ref="fileInput"
-                  type="file"
-                  accept="image/*"
-                  class="hidden"
-                  @change="handleImageUpload"
-                >
-                <div
-                  v-if="isUploadingImage"
-                  class="text-center text-sm text-primary-600"
-                >
+                <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="handleImageUpload">
+                <div v-if="isUploadingImage" class="text-center text-sm text-primary-600">
                   Đang tải lên...
                 </div>
                 <p class="text-xs text-gray-500">
@@ -407,10 +350,8 @@ function cancel() {
             </UPageCard>
 
             <UPageCard title="Khung giao diện" variant="soft" class="bg-white rounded-lg">
-              <select
-                v-model="form.theme"
-                class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
+              <select v-model="form.theme"
+                class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500">
                 <option value="collection">
                   collection
                 </option>
@@ -432,5 +373,4 @@ function cancel() {
   </UDashboardPanel>
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>

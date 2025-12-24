@@ -25,7 +25,7 @@ const columns: TableColumn[] = [
   {
     key: 'objectCode',
     label: 'Tên đối tượng',
-    class: 'py-3 text-left font-medium whitespace-nowrap'
+    class: 'py-3 text-left font-medium whitespace-nowrap -translate-x-3'
   },
   {
     key: 'phoneNumber',
@@ -99,7 +99,7 @@ const formatCurrency = (value: number) => {
     :row-click-handler="handleRowClick" @update:q="emit('update:q', $event)"
     @update:row-selection="emit('update:rowSelection', $event)" @update:pagination="emit('update:pagination', $event)">
     <template #column-objectCode="{ item }">
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 -ml-3">
         <div :class="[
           'w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium',
           getAvatarColor(toItem(item).objectId || 0)
@@ -107,7 +107,7 @@ const formatCurrency = (value: number) => {
           {{ getAvatarInitials(toItem(item).objectName) }}
         </div>
         <div class="flex flex-col">
-          <span class="text-sm font-medium text-gray-900 dark:text-white">{{ toItem(item).objectName }}</span>
+          <span class="text-base font-medium text-gray-900 dark:text-white">{{ toItem(item).objectName }}</span>
           <span class="text-xs text-gray-500 dark:text-gray-400">
             {{ toItem(item).objectType === 'Customer' ? 'Khách hàng' : 'Nhà cung cấp' }} | Mã: {{
               toItem(item).objectCode }}</span>

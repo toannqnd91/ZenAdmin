@@ -6,51 +6,33 @@ export class FileService extends BaseService {
   /**
    * Upload single file
    */
-  async uploadFile(file: File, folder?: string) {
+  /**
+   * Upload single file
+   */
+  async uploadFile(file: File, folder: string = 'uploads') {
     const formData = new FormData()
     formData.append('file', file)
-    if (folder) {
-      formData.append('folder', folder)
-    }
+    
+    // UPLOAD_FILE endpoint expects 'folder' in query string
+    const url = `${API_ENDPOINTS.UPLOAD_FILE}?folder=${encodeURIComponent(folder)}`
 
     try {
-      const response = await this.request<ApiFileUploadResponse>(API_ENDPOINTS.UPLOAD_FILE, {
+      const response = await this.request<any>(url, {
         method: 'POST',
         body: formData,
         headers: {
-          // Set empty Content-Type to let browser handle multipart/form-data
           'Content-Type': ''
         }
       })
 
-      // Return the full API response (not just data) for component compatibility
-      return response
+      // Response format: { success: true, url: "...", ... }
+      // Return consistent success/data structure
+      return {
+          success: true,
+          data: response
+      }
     } catch (error: unknown) {
-      const err = error as Error
-      console.error('Upload error details:', {
-        error,
-        fileName: file.name,
-        fileSize: file.size,
-        folder,
-        errorMessage: err?.message || 'Unknown error',
-        errorStack: err?.stack,
-        errorName: err?.name,
-        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error))
-      })
-
-      // Check if it's a network error
-      if (err?.message?.includes('fetch')) {
-        throw new Error(`Network error uploading "${file.name}": Check internet connection and server availability`)
-      }
-
-      // Check if it's an API error
-      if (err?.message?.includes('API Error:')) {
-        throw new Error(`Server error uploading "${file.name}": ${err.message}`)
-      }
-
-      // Re-throw with more context
-      const errorMsg = err?.message || String(error) || 'Unknown error'
-      throw new Error(`File upload failed for "${file.name}": ${errorMsg}`)
+        throw error
     }
   }
 

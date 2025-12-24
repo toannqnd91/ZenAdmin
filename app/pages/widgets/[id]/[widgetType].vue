@@ -7,8 +7,10 @@ const EditHtmlWidget = defineAsyncComponent(() => import('@/components/widgets/E
 const EditCustomDataWidget = defineAsyncComponent(() => import('@/components/widgets/EditCustomDataWidget.vue'))
 const EditSimpleNewsWidget = defineAsyncComponent(() => import('@/components/widgets/EditSimpleNewsWidget.vue'))
 const EditNewsWidget = defineAsyncComponent(() => import('@/components/widgets/EditNewsWidget.vue'))
+const EditFeatureSectionWidget = defineAsyncComponent(() => import('@/components/widgets/EditFeatureSectionWidget.vue'))
 
 const route = useRoute()
+const router = useRouter()
 
 // Get parameters from URL
 const widgetId = route.params.id as string
@@ -25,7 +27,9 @@ const validWidgetTypes = [
   'simple-product-widget',
   'simple-news-widget',
   'spacebar-widget',
-  'custom-data-widget'
+  'custom-data-widget',
+  'feature-section-widget',
+  'feature-section-widget-widget' // Handle duplicate suffix from database
 ]
 
 if (!validWidgetTypes.includes(widgetType.toLowerCase())) {
@@ -39,11 +43,9 @@ if (!validWidgetTypes.includes(widgetType.toLowerCase())) {
 <template>
   <UDashboardPanel class="flex flex-col h-full w-full">
     <template #header>
-      <UDashboardNavbar :title="`Edit ${widgetType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}`">
+      <UDashboardNavbar title="Widget Translation">
         <template #leading>
-          <UButton icon="i-lucide-arrow-left" color="neutral"
-            class="bg-white border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
-            @click="$router.push('/widgets')" />
+          <UButton icon="i-lucide-arrow-left" variant="ghost" color="neutral" @click="router.push('/widgets')" />
         </template>
         <template #right>
           <div id="navbar-actions" class="flex items-center gap-2"></div>
@@ -57,9 +59,10 @@ if (!validWidgetTypes.includes(widgetType.toLowerCase())) {
             : widgetType === 'custom-data-widget' ? EditCustomDataWidget
               : widgetType === 'simple-news-widget' ? EditSimpleNewsWidget
                 : widgetType === 'news-widget' ? EditNewsWidget
-                  : null
+                  : widgetType === 'feature-section-widget' || widgetType === 'feature-section-widget-widget' ? EditFeatureSectionWidget
+                    : null
         "
-        v-if="['carousel-widget', 'category-widget', 'html-widget', 'custom-data-widget', 'simple-news-widget', 'news-widget'].includes(widgetType)" />
+        v-if="['carousel-widget', 'category-widget', 'html-widget', 'custom-data-widget', 'simple-news-widget', 'news-widget', 'feature-section-widget', 'feature-section-widget-widget'].includes(widgetType)" />
       <div v-else class="w-full mt-6">
         <UCard class="w-full">
           <div class="text-center py-8">

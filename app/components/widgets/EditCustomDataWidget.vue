@@ -158,11 +158,13 @@ async function onFileChange(file: File | null, idx: number) {
   try {
     const res = await fileService.uploadFile(file)
     if (res && res.success && res.data) {
-      const fileData = Array.isArray(res.data) ? res.data[0] : res.data
-      if (fileData && fileData.fileName) {
-        items.value[idx].imageUrl = fileService.getFileUrl(fileData.fileName) || ''
+      // New format: { success: true, data: { url: "...", ... } }
+      // res.data is the file object e.g. { url: '...', fileName: '...' }
+      const fileData = res.data
+      if (fileData && fileData.url) {
+        items.value[idx].imageUrl = fileData.url
       } else {
-        alert('Upload failed: Không tìm thấy fileName trong response')
+        alert('Upload failed: Không tìm thấy url trong response')
         items.value[idx].imageUrl = ''
       }
     } else {

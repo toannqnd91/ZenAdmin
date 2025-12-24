@@ -32,7 +32,7 @@ onMounted(async () => {
       // Set default value to first zone if available
       if (response.data.length > 0) {
         widgetZone.value = response.data[0]?.name || undefined
-        }
+      }
     } else {
       console.error('Failed to load widget zones:', response.message)
     }
@@ -52,23 +52,17 @@ async function onFileChange(file: File | null, idx: number) {
   items.value[idx].image = file
   items.value[idx].imageUrl = ''
   if (!file) return
+
   // Show preview immediately
   items.value[idx].imageUrl = URL.createObjectURL(file)
   items.value[idx].uploading = true
+
   try {
     const res = await fileService.uploadFile(file)
-    // Expecting ApiFileUploadResponse: { success, data: { fileName, url, ... } }
-    if (res && res.success && res.data) {
-      const fileData = Array.isArray(res.data) ? res.data[0] : res.data
-      if (fileData && fileData.fileName) {
-        // Use getFileUrl for preview and API
-        items.value[idx].imageUrl = fileService.getFileUrl(fileData.fileName)
-      } else {
-        alert('Upload failed: Không tìm thấy fileName trong response')
-        items.value[idx].imageUrl = ''
-      }
+    if (res && res.success && res.data?.url) {
+      items.value[idx].imageUrl = res.data.url
     } else {
-      alert('Upload failed: ' + (res.message || 'Unknown error'))
+      alert('Upload failed: ' + 'Unknown error')
       items.value[idx].imageUrl = ''
     }
   } catch (err) {
@@ -207,32 +201,19 @@ function onCancel() {
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Widget Zone</label>
             <div class="col-span-10 w-full">
-              <USelect
-                v-model="widgetZone"
-                :items="widgetZoneItems"
-                placeholder="Select widget zone"
-                class="w-full"
-              />
+              <USelect v-model="widgetZone" :items="widgetZoneItems" placeholder="Select widget zone" class="w-full" />
             </div>
           </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Publish Start</label>
             <div class="col-span-10 w-full">
-              <UInput
-                v-model="publishStart"
-                placeholder="dd/MM/yyyy HH:mm"
-                class="w-full"
-              />
+              <UInput v-model="publishStart" placeholder="dd/MM/yyyy HH:mm" class="w-full" />
             </div>
           </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Publish End</label>
             <div class="col-span-10 w-full">
-              <UInput
-                v-model="publishEnd"
-                placeholder="dd/MM/yyyy HH:mm"
-                class="w-full"
-              />
+              <UInput v-model="publishEnd" placeholder="dd/MM/yyyy HH:mm" class="w-full" />
             </div>
           </div>
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
@@ -244,13 +225,7 @@ function onCancel() {
           <div class="grid grid-cols-12 gap-4 items-center mb-2">
             <label class="col-span-2 text-right pr-2">Display Order</label>
             <div class="col-span-10 w-full">
-              <UInput
-                v-model="displayOrder"
-                type="number"
-                min="0"
-                placeholder="0"
-                class="w-full"
-              />
+              <UInput v-model="displayOrder" type="number" min="0" placeholder="0" class="w-full" />
             </div>
           </div>
           <UDivider label="Items" class="my-4" />
@@ -264,15 +239,8 @@ function onCancel() {
                     <UInput v-model="item.caption" placeholder="Caption" class="w-full" />
                   </div>
                   <div class="col-span-2 flex justify-end">
-                    <UButton
-                      v-if="items.length > 1"
-                      icon="i-lucide-x"
-                      color="error"
-                      variant="soft"
-                      size="xs"
-                      title="Remove item"
-                      @click="() => removeItem(idx)"
-                    />
+                    <UButton v-if="items.length > 1" icon="i-lucide-x" color="error" variant="soft" size="xs"
+                      title="Remove item" @click="() => removeItem(idx)" />
                   </div>
                 </div>
                 <div class="grid grid-cols-12 gap-2 items-center mb-2">
@@ -297,40 +265,24 @@ function onCancel() {
                   <label class="col-span-2 text-right pr-2">Image</label>
                   <div class="col-span-8 w-full">
                     <div v-if="item.imageUrl" class="relative group w-full">
-                      <div class="aspect-[16/9] w-full max-h-56 bg-gray-50 border rounded flex items-center justify-center overflow-hidden">
-                        <img
-                          :src="item.imageUrl"
-                          alt="Preview"
-                          class="w-full h-full object-cover"
-                        >
+                      <div
+                        class="aspect-[16/9] w-full max-h-56 bg-gray-50 border rounded flex items-center justify-center overflow-hidden">
+                        <img :src="item.imageUrl" alt="Preview" class="w-full h-full object-cover">
                       </div>
-                      <button
-                        type="button"
+                      <button type="button"
                         class="absolute top-2 right-2 flex items-center justify-center w-8 h-8 bg-white/80 hover:bg-white text-red-500 rounded-full shadow group-hover:opacity-100 opacity-80 transition"
-                        title="Xoá ảnh"
-                        @click="() => { item.image = null; item.imageUrl = '' }"
-                      >
+                        title="Xoá ảnh" @click="() => { item.image = null; item.imageUrl = '' }">
                         <UIcon name="i-lucide-x" class="w-4 h-4" />
                       </button>
                     </div>
                     <div v-else>
-                      <UFileUpload
-                        v-model="item.image"
-                        class="w-full"
-                        @update:model-value="(file: unknown) => onFileChange(file as File | null, idx)"
-                      />
+                      <UFileUpload v-model="item.image" class="w-full"
+                        @update:model-value="(file: unknown) => onFileChange(file as File | null, idx)" />
                     </div>
                   </div>
                 </div>
               </div>
-              <UButton
-                icon="i-lucide-plus"
-                color="primary"
-                variant="ghost"
-                size="xs"
-                class="mt-2"
-                @click="addItem"
-              >
+              <UButton icon="i-lucide-plus" color="primary" variant="ghost" size="xs" class="mt-2" @click="addItem">
                 Add more
               </UButton>
             </div>

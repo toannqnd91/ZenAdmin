@@ -4,6 +4,7 @@ import { linksService } from '@/services'
 import type { MenuItem } from '@/services'
 import { VueDraggable } from 'vue-draggable-plus'
 import type { SortableEvent } from 'sortablejs'
+import IconEnglish from '@/components/icons/IconEnglish.vue'
 
 const route = useRoute()
 
@@ -142,6 +143,20 @@ const editLink = (link: LinkItem) => {
   newLinkName.value = link.name
   newLinkTypeId.value = link.menuTypeId
   isAddModalOpen.value = true
+}
+
+// Translation modal state
+const isTranslationModalOpen = ref(false)
+const translatingLink = ref<LinkItem | null>(null)
+
+const openTranslationModal = (link: LinkItem) => {
+  translatingLink.value = link
+  isTranslationModalOpen.value = true
+}
+
+const handleTranslationSaved = async () => {
+  // Optionally refresh data after translation is saved
+  await refreshMenuData()
 }
 
 // Handler for LinkModal submit
@@ -448,6 +463,11 @@ onBeforeUnmount(() => {
                   </td>
                   <td class="col-action px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div class="flex items-center space-x-4 justify-end">
+                      <button title="English Content"
+                        class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                        @click="openTranslationModal(link)">
+                        <IconEnglish class="w-4 h-auto" />
+                      </button>
                       <button title="Chỉnh sửa"
                         class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
                         @click="editLink(link)">
@@ -492,6 +512,10 @@ onBeforeUnmount(() => {
   <LinkModal :open="isAddModalOpen" :title="isEditMode ? 'Cập nhật liên kết' : 'Thêm liên kết'"
     :initial-name="newLinkName" :initial-type-id="newLinkTypeId" @update:open="isAddModalOpen = $event"
     @submit="handleLinkModalSubmit" />
+
+  <!-- Translation Modal -->
+  <TranslationModal v-model="isTranslationModalOpen" entity-type="MenuDTO" :entity-id="translatingLink?.id || 0"
+    :current-name="translatingLink?.name || ''" @saved="handleTranslationSaved" />
 </template>
 
 <style scoped>
