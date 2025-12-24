@@ -89,6 +89,7 @@ function goBack() {
 
 function handleSubmit() {
   // TODO: Implement API call to create payment
+  const paymentData = {
     paymentType: paymentType.value,
     bankAccount: selectedBankAccount.value,
     group: selectedGroup.value,
@@ -102,7 +103,8 @@ function handleSubmit() {
     reference: reference.value,
     paymentMethod: selectedPaymentMethod.value,
     attachments: attachments.value
-  })
+  }
+
   // After successful creation, navigate back
   goBack()
 }
@@ -116,15 +118,8 @@ function handleSubmit() {
           <div class="flex items-center gap-3">
             <button
               class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-              @click="goBack"
-            >
-              <svg
-                class="w-5 h-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
+              @click="goBack">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
@@ -149,29 +144,21 @@ function handleSubmit() {
 
                     <!-- Payment Type Tabs -->
                     <div class="flex gap-2">
-                      <button
-                        type="button"
-                        :class="[
-                          'flex items-center gap-2 px-3 py-2 rounded-md border text-sm transition-colors',
-                          paymentType === 'cash'
-                            ? 'border-primary-500 bg-primary-50 text-primary-700'
-                            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                        ]"
-                        @click="paymentType = 'cash'"
-                      >
+                      <button type="button" :class="[
+                        'flex items-center gap-2 px-3 py-2 rounded-md border text-sm transition-colors',
+                        paymentType === 'cash'
+                          ? 'border-primary-500 bg-primary-50 text-primary-700'
+                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      ]" @click="paymentType = 'cash'">
                         <UIcon name="i-lucide-wallet" class="size-4" />
                         <span class="font-medium">Tiền mặt</span>
                       </button>
-                      <button
-                        type="button"
-                        :class="[
-                          'flex items-center gap-2 px-3 py-2 rounded-md border text-sm transition-colors',
-                          paymentType === 'bank'
-                            ? 'border-primary-500 bg-primary-50 text-primary-700'
-                            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                        ]"
-                        @click="paymentType = 'bank'"
-                      >
+                      <button type="button" :class="[
+                        'flex items-center gap-2 px-3 py-2 rounded-md border text-sm transition-colors',
+                        paymentType === 'bank'
+                          ? 'border-primary-500 bg-primary-50 text-primary-700'
+                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      ]" @click="paymentType = 'bank'">
                         <UIcon name="i-lucide-building-2" class="size-4" />
                         <span class="font-medium">Tài khoản ngân hàng</span>
                       </button>
@@ -183,27 +170,16 @@ function handleSubmit() {
                         <label class="block text-xs font-medium text-gray-600 mb-1">
                           Tài khoản chi tiền<span class="text-red-500">*</span>
                         </label>
-                        <RemoteSearchSelect
-                          v-model="selectedBankAccount"
-                          :fetch-fn="fetchBankAccounts"
-                          placeholder="Chọn tài khoản"
-                          label-field="name"
-                          :trigger-class="'h-9 w-full'"
-                          :full-width="true"
-                        />
+                        <RemoteSearchSelect v-model="selectedBankAccount" :fetch-fn="fetchBankAccounts"
+                          placeholder="Chọn tài khoản" label-field="name" :trigger-class="'h-9 w-full'"
+                          :full-width="true" />
                       </div>
                       <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">
                           Nhóm đối tượng chi<span class="text-red-500">*</span>
                         </label>
-                        <RemoteSearchSelect
-                          v-model="selectedGroup"
-                          :fetch-fn="fetchGroups"
-                          placeholder="Chọn nhóm"
-                          label-field="name"
-                          :trigger-class="'h-9 w-full'"
-                          :full-width="true"
-                        />
+                        <RemoteSearchSelect v-model="selectedGroup" :fetch-fn="fetchGroups" placeholder="Chọn nhóm"
+                          label-field="name" :trigger-class="'h-9 w-full'" :full-width="true" />
                       </div>
                     </div>
 
@@ -213,27 +189,16 @@ function handleSubmit() {
                         <label class="block text-xs font-medium text-gray-600 mb-1">
                           Nhóm đối tượng chi<span class="text-red-500">*</span>
                         </label>
-                        <RemoteSearchSelect
-                          v-model="selectedGroup"
-                          :fetch-fn="fetchGroups"
-                          placeholder="Chọn nhóm"
-                          label-field="name"
-                          :trigger-class="'h-9 w-full'"
-                          :full-width="true"
-                        />
+                        <RemoteSearchSelect v-model="selectedGroup" :fetch-fn="fetchGroups" placeholder="Chọn nhóm"
+                          label-field="name" :trigger-class="'h-9 w-full'" :full-width="true" />
                       </div>
                       <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">
                           Đối tượng chi
                         </label>
-                        <RemoteSearchSelect
-                          v-model="selectedObject"
-                          :fetch-fn="fetchObjects"
-                          placeholder="Chọn đối tượng"
-                          label-field="name"
-                          :trigger-class="'h-9 w-full'"
-                          :full-width="true"
-                        />
+                        <RemoteSearchSelect v-model="selectedObject" :fetch-fn="fetchObjects"
+                          placeholder="Chọn đối tượng" label-field="name" :trigger-class="'h-9 w-full'"
+                          :full-width="true" />
                       </div>
                     </div>
 
@@ -243,25 +208,16 @@ function handleSubmit() {
                         <label class="block text-xs font-medium text-gray-600 mb-1">
                           Đối tượng chi
                         </label>
-                        <RemoteSearchSelect
-                          v-model="selectedObject"
-                          :fetch-fn="fetchObjects"
-                          placeholder="Chọn đối tượng"
-                          label-field="name"
-                          :trigger-class="'h-9 w-full'"
-                          :full-width="true"
-                        />
+                        <RemoteSearchSelect v-model="selectedObject" :fetch-fn="fetchObjects"
+                          placeholder="Chọn đối tượng" label-field="name" :trigger-class="'h-9 w-full'"
+                          :full-width="true" />
                       </div>
                       <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">
                           Lý do chi<span class="text-red-500">*</span>
                         </label>
-                        <input
-                          v-model="reason"
-                          type="text"
-                          placeholder="Nhập lý do chi"
-                          class="h-9 w-full px-3 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                        >
+                        <input v-model="reason" type="text" placeholder="Nhập lý do chi"
+                          class="h-9 w-full px-3 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
                       </div>
                     </div>
 
@@ -271,24 +227,16 @@ function handleSubmit() {
                         <label class="block text-xs font-medium text-gray-600 mb-1">
                           Lý do chi<span class="text-red-500">*</span>
                         </label>
-                        <input
-                          v-model="reason"
-                          type="text"
-                          placeholder="Nhập lý do chi"
-                          class="h-9 w-full px-3 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                        >
+                        <input v-model="reason" type="text" placeholder="Nhập lý do chi"
+                          class="h-9 w-full px-3 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
                       </div>
                       <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">
                           Giá trị<span class="text-red-500">*</span>
                         </label>
                         <div class="relative">
-                          <input
-                            v-model="amount"
-                            type="text"
-                            placeholder="Nhập giá trị"
-                            class="h-9 w-full px-3 pr-8 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                          >
+                          <input v-model="amount" type="text" placeholder="Nhập giá trị"
+                            class="h-9 w-full px-3 pr-8 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
                           <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
                             đ
                           </span>
@@ -303,12 +251,8 @@ function handleSubmit() {
                           Giá trị<span class="text-red-500">*</span>
                         </label>
                         <div class="relative">
-                          <input
-                            v-model="amount"
-                            type="text"
-                            placeholder="Nhập giá trị"
-                            class="h-9 w-full px-3 pr-8 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                          >
+                          <input v-model="amount" type="text" placeholder="Nhập giá trị"
+                            class="h-9 w-full px-3 pr-8 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
                           <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
                             đ
                           </span>
@@ -321,12 +265,8 @@ function handleSubmit() {
                       <label class="block text-xs font-medium text-gray-600 mb-1">
                         Diễn giải<span class="text-red-500">*</span>
                       </label>
-                      <textarea
-                        v-model="description"
-                        placeholder="Nhập diễn giải"
-                        rows="3"
-                        class="w-full px-3 py-2 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm resize-none"
-                      />
+                      <textarea v-model="description" placeholder="Nhập diễn giải" rows="3"
+                        class="w-full px-3 py-2 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm resize-none" />
                     </div>
                   </div>
                 </div>
@@ -343,13 +283,8 @@ function handleSubmit() {
                         Kéo thả hoặc
                         <label class="text-primary-600 hover:text-primary-700 cursor-pointer font-medium">
                           tải ảnh từ thiết bị
-                          <input
-                            type="file"
-                            multiple
-                            accept="image/jpeg,image/png"
-                            class="hidden"
-                            @change="handleFileUpload"
-                          >
+                          <input type="file" multiple accept="image/jpeg,image/png" class="hidden"
+                            @change="handleFileUpload">
                         </label>
                       </p>
                       <p class="text-xs text-gray-500">
@@ -358,11 +293,8 @@ function handleSubmit() {
                     </div>
                   </div>
                   <div v-if="attachments.length > 0" class="flex flex-wrap gap-2">
-                    <div
-                      v-for="(file, idx) in attachments"
-                      :key="idx"
-                      class="px-3 py-1 bg-gray-100 rounded-md text-sm text-gray-700"
-                    >
+                    <div v-for="(file, idx) in attachments" :key="idx"
+                      class="px-3 py-1 bg-gray-100 rounded-md text-sm text-gray-700">
                       {{ file.name }}
                     </div>
                   </div>
@@ -381,37 +313,25 @@ function handleSubmit() {
                       <label class="block text-xs font-medium text-gray-600 mb-1">
                         Chi nhánh chi<span class="text-red-500">*</span>
                       </label>
-                      <RemoteSearchSelect
-                        v-model="selectedBranch"
-                        :fetch-fn="fetchBranches"
-                        placeholder="Chọn chi nhánh"
-                        label-field="name"
-                        :trigger-class="'h-9 w-full'"
-                        :full-width="true"
-                      />
+                      <RemoteSearchSelect v-model="selectedBranch" :fetch-fn="fetchBranches"
+                        placeholder="Chọn chi nhánh" label-field="name" :trigger-class="'h-9 w-full'"
+                        :full-width="true" />
                     </div>
 
                     <div>
                       <label class="block text-xs font-medium text-gray-600 mb-1">
                         Ngày chi tiền<span class="text-red-500">*</span>
                       </label>
-                      <input
-                        v-model="paymentDate"
-                        type="date"
-                        class="h-9 w-full px-3 rounded-md border border-gray-300 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                      >
+                      <input v-model="paymentDate" type="date"
+                        class="h-9 w-full px-3 rounded-md border border-gray-300 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
                     </div>
 
                     <div>
                       <label class="block text-xs font-medium text-gray-600 mb-1">
                         Mã phiếu chi
                       </label>
-                      <input
-                        v-model="paymentCode"
-                        type="text"
-                        placeholder="Nhập mã"
-                        class="h-9 w-full px-3 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                      >
+                      <input v-model="paymentCode" type="text" placeholder="Nhập mã"
+                        class="h-9 w-full px-3 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
                     </div>
 
                     <div>
@@ -421,12 +341,8 @@ function handleSubmit() {
                           <UIcon name="i-lucide-info" class="size-4 text-gray-400" />
                         </UTooltip>
                       </label>
-                      <input
-                        v-model="reference"
-                        type="text"
-                        placeholder="Nhập tham chiếu"
-                        class="h-9 w-full px-3 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                      >
+                      <input v-model="reference" type="text" placeholder="Nhập tham chiếu"
+                        class="h-9 w-full px-3 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
                     </div>
 
                   </div>
@@ -437,10 +353,8 @@ function handleSubmit() {
 
           <!-- Action Buttons -->
           <div class="flex justify-end">
-            <button
-              type="submit"
-              class="h-9 px-6 rounded-md bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm"
-            >
+            <button type="submit"
+              class="h-9 px-6 rounded-md bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm">
               Tạo phiếu
             </button>
           </div>

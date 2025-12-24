@@ -66,6 +66,7 @@ function goBack() {
 
 function handleSubmit() {
   // TODO: Implement API call to create internal transfer
+  const transferData = {
     transferFrom: transferFrom.value,
     transferTo: transferTo.value,
     sourceBranch: sourceBranch.value,
@@ -78,7 +79,8 @@ function handleSubmit() {
     code: transferCode.value,
     reference: reference.value,
     attachments: attachments.value
-  })
+  }
+
   // After successful creation, navigate back
   goBack()
 }
@@ -101,15 +103,8 @@ const destLabel = computed(() => {
           <div class="flex items-center gap-3">
             <button
               class="h-8 w-8 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-              @click="goBack"
-            >
-              <svg
-                class="w-5 h-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
+              @click="goBack">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
@@ -138,27 +133,16 @@ const destLabel = computed(() => {
                         <label class="block text-xs font-medium text-gray-600 mb-1">
                           Chuyển từ<span class="text-red-500">*</span>
                         </label>
-                        <RemoteSearchSelect
-                          v-model="transferFrom"
-                          :fetch-fn="fetchFundTypes"
-                          placeholder="Chọn loại quỹ"
-                          label-field="name"
-                          :trigger-class="'h-9 w-full'"
-                          :full-width="true"
-                        />
+                        <RemoteSearchSelect v-model="transferFrom" :fetch-fn="fetchFundTypes"
+                          placeholder="Chọn loại quỹ" label-field="name" :trigger-class="'h-9 w-full'"
+                          :full-width="true" />
                       </div>
                       <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">
                           Chuyển đến<span class="text-red-500">*</span>
                         </label>
-                        <RemoteSearchSelect
-                          v-model="transferTo"
-                          :fetch-fn="fetchFundTypes"
-                          placeholder="Chọn loại quỹ"
-                          label-field="name"
-                          :trigger-class="'h-9 w-full'"
-                          :full-width="true"
-                        />
+                        <RemoteSearchSelect v-model="transferTo" :fetch-fn="fetchFundTypes" placeholder="Chọn loại quỹ"
+                          label-field="name" :trigger-class="'h-9 w-full'" :full-width="true" />
                       </div>
                     </div>
 
@@ -170,25 +154,13 @@ const destLabel = computed(() => {
                           {{ sourceLabel }}<span class="text-red-500">*</span>
                         </label>
                         <!-- Show Bank Account select if From=Bank -->
-                        <RemoteSearchSelect
-                          v-if="transferFrom?.id === 'bank'"
-                          v-model="sourceAccount"
-                          :fetch-fn="fetchBankAccounts"
-                          placeholder="Chọn tài khoản"
-                          label-field="name"
-                          :trigger-class="'h-9 w-full'"
-                          :full-width="true"
-                        />
+                        <RemoteSearchSelect v-if="transferFrom?.id === 'bank'" v-model="sourceAccount"
+                          :fetch-fn="fetchBankAccounts" placeholder="Chọn tài khoản" label-field="name"
+                          :trigger-class="'h-9 w-full'" :full-width="true" />
                         <!-- Show Branch select if From=Cash -->
-                        <RemoteSearchSelect
-                          v-else
-                          v-model="sourceBranch"
-                          :fetch-fn="fetchBranches"
-                          placeholder="Chọn chi nhánh"
-                          label-field="name"
-                          :trigger-class="'h-9 w-full'"
-                          :full-width="true"
-                        />
+                        <RemoteSearchSelect v-else v-model="sourceBranch" :fetch-fn="fetchBranches"
+                          placeholder="Chọn chi nhánh" label-field="name" :trigger-class="'h-9 w-full'"
+                          :full-width="true" />
                       </div>
 
                       <!-- Destination -->
@@ -197,25 +169,13 @@ const destLabel = computed(() => {
                           {{ destLabel }}<span class="text-red-500">*</span>
                         </label>
                         <!-- Show Bank Account select if To=Bank -->
-                        <RemoteSearchSelect
-                          v-if="transferTo?.id === 'bank'"
-                          v-model="destAccount"
-                          :fetch-fn="fetchBankAccounts"
-                          placeholder="Chọn tài khoản"
-                          label-field="name"
-                          :trigger-class="'h-9 w-full'"
-                          :full-width="true"
-                        />
+                        <RemoteSearchSelect v-if="transferTo?.id === 'bank'" v-model="destAccount"
+                          :fetch-fn="fetchBankAccounts" placeholder="Chọn tài khoản" label-field="name"
+                          :trigger-class="'h-9 w-full'" :full-width="true" />
                         <!-- Show Branch select if To=Cash -->
-                        <RemoteSearchSelect
-                          v-else
-                          v-model="destBranch"
-                          :fetch-fn="fetchBranches"
-                          placeholder="Chọn chi nhánh"
-                          label-field="name"
-                          :trigger-class="'h-9 w-full'"
-                          :full-width="true"
-                        />
+                        <RemoteSearchSelect v-else v-model="destBranch" :fetch-fn="fetchBranches"
+                          placeholder="Chọn chi nhánh" label-field="name" :trigger-class="'h-9 w-full'"
+                          :full-width="true" />
                       </div>
                     </div>
 
@@ -226,12 +186,8 @@ const destLabel = computed(() => {
                           Giá trị<span class="text-red-500">*</span>
                         </label>
                         <div class="relative">
-                          <input
-                            v-model="amount"
-                            type="text"
-                            placeholder="Nhập giá trị"
-                            class="h-9 w-full px-3 pr-8 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                          >
+                          <input v-model="amount" type="text" placeholder="Nhập giá trị"
+                            class="h-9 w-full px-3 pr-8 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
                           <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
                             đ
                           </span>
@@ -244,12 +200,8 @@ const destLabel = computed(() => {
                       <label class="block text-xs font-medium text-gray-600 mb-1">
                         Diễn giải
                       </label>
-                      <textarea
-                        v-model="description"
-                        placeholder="Nhập diễn giải"
-                        rows="3"
-                        class="w-full px-3 py-2 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm resize-none"
-                      />
+                      <textarea v-model="description" placeholder="Nhập diễn giải" rows="3"
+                        class="w-full px-3 py-2 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm resize-none" />
                     </div>
                   </div>
                 </div>
@@ -266,13 +218,8 @@ const destLabel = computed(() => {
                         Kéo thả hoặc
                         <label class="text-primary-600 hover:text-primary-700 cursor-pointer font-medium">
                           tải ảnh từ thiết bị
-                          <input
-                            type="file"
-                            multiple
-                            accept="image/jpeg,image/png"
-                            class="hidden"
-                            @change="handleFileUpload"
-                          >
+                          <input type="file" multiple accept="image/jpeg,image/png" class="hidden"
+                            @change="handleFileUpload">
                         </label>
                       </p>
                       <p class="text-xs text-gray-500">
@@ -281,11 +228,8 @@ const destLabel = computed(() => {
                     </div>
                   </div>
                   <div v-if="attachments.length > 0" class="flex flex-wrap gap-2">
-                    <div
-                      v-for="(file, idx) in attachments"
-                      :key="idx"
-                      class="px-3 py-1 bg-gray-100 rounded-md text-sm text-gray-700"
-                    >
+                    <div v-for="(file, idx) in attachments" :key="idx"
+                      class="px-3 py-1 bg-gray-100 rounded-md text-sm text-gray-700">
                       {{ file.name }}
                     </div>
                   </div>
@@ -304,23 +248,16 @@ const destLabel = computed(() => {
                       <label class="block text-xs font-medium text-gray-600 mb-1">
                         Ngày nhận tiền<span class="text-red-500">*</span>
                       </label>
-                      <input
-                        v-model="transferDate"
-                        type="date"
-                        class="h-9 w-full px-3 rounded-md border border-gray-300 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                      >
+                      <input v-model="transferDate" type="date"
+                        class="h-9 w-full px-3 rounded-md border border-gray-300 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
                     </div>
 
                     <div>
                       <label class="block text-xs font-medium text-gray-600 mb-1">
                         Mã phiếu
                       </label>
-                      <input
-                        v-model="transferCode"
-                        type="text"
-                        placeholder="Nhập mã"
-                        class="h-9 w-full px-3 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                      >
+                      <input v-model="transferCode" type="text" placeholder="Nhập mã"
+                        class="h-9 w-full px-3 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
                     </div>
 
                     <div>
@@ -330,12 +267,8 @@ const destLabel = computed(() => {
                           <UIcon name="i-lucide-info" class="size-4 text-gray-400" />
                         </UTooltip>
                       </label>
-                      <input
-                        v-model="reference"
-                        type="text"
-                        placeholder="Nhập tham chiếu"
-                        class="h-9 w-full px-3 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                      >
+                      <input v-model="reference" type="text" placeholder="Nhập tham chiếu"
+                        class="h-9 w-full px-3 rounded-md border border-gray-300 bg-white placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
                     </div>
                   </div>
                 </div>
@@ -345,10 +278,8 @@ const destLabel = computed(() => {
 
           <!-- Action Buttons -->
           <div class="flex justify-end">
-            <button
-              type="submit"
-              class="h-9 px-6 rounded-md bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm"
-            >
+            <button type="submit"
+              class="h-9 px-6 rounded-md bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm">
               Tạo phiếu
             </button>
           </div>
