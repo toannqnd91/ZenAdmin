@@ -36,6 +36,7 @@ interface Props {
   pagination: { pageIndex: number, pageSize: number }
   totalPages?: number
   totalRecords?: number
+  getRowItems?: (row: { original: ProductItem }) => any[]
 }
 
 const props = defineProps<Props>()
@@ -165,41 +166,19 @@ const currencySuffix = 'đ'
 </script>
 
 <template>
-  <BaseTable
-    :q="q"
-    :row-selection="rowSelection"
-    :pagination="pagination"
-    :query-sync="true"
-    :data="data"
-    :loading="loading"
-    title="Danh sách sản phẩm"
-    :columns="columns"
-    :add-button="addButton"
-    :row-click-handler="handleRowClick"
-    :total-pages="props.totalPages"
-    :total-records="props.totalRecords"
-    :tabs="tabs"
-    search-placeholder="Tìm kiếm sản phẩm"
-    tabs-style="underline"
-    @row-copy-id="onRowCopyId"
-    @row-edit="onRowEdit"
-    @row-delete="onRowDelete"
-    @update:q="emit('update:q', $event)"
-    @update:row-selection="emit('update:rowSelection', $event)"
-    @update:pagination="emit('update:pagination', $event)"
-    @update:tab="onTabChange"
-    @delete="emit('delete-multi', $event)"
-  >
+  <BaseTable :q="q" :row-selection="rowSelection" :pagination="pagination" :query-sync="true" :data="data"
+    :loading="loading" title="Danh sách sản phẩm" :columns="columns" :add-button="addButton"
+    :row-click-handler="handleRowClick" :total-pages="props.totalPages" :total-records="props.totalRecords" :tabs="tabs"
+    search-placeholder="Tìm kiếm sản phẩm" tabs-style="underline" @row-copy-id="onRowCopyId" @row-edit="onRowEdit"
+    @row-delete="onRowDelete" @update:q="emit('update:q', $event)"
+    @update:row-selection="emit('update:rowSelection', $event)" @update:pagination="emit('update:pagination', $event)"
+    @update:tab="onTabChange" @delete="emit('delete-multi', $event)">
     <!-- Custom name column with image -->
     <template #column-name="{ item }">
       <div class="flex items-center gap-4">
         <div class="h-11 w-11 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
-          <img
-            :src="getThumbnail(item)"
-            :alt="getItemName(item)"
-            class="h-full w-full object-cover"
-            @error="onImgError"
-          >
+          <img :src="getThumbnail(item)" :alt="getItemName(item)" class="h-full w-full object-cover"
+            @error="onImgError">
         </div>
         <div class="flex flex-col">
           <div class="text-[15px] text-gray-900 font-medium">
@@ -217,7 +196,8 @@ const currencySuffix = 'đ'
     <template #column-price="{ item }">
       <div class="text-gray-900 font-medium">
         <template v-if="item.priceMin != null && item.priceMax != null && item.priceMin !== item.priceMax">
-          {{ formatVNDNumber(item.priceMin as number) }}-{{ formatVNDNumber(item.priceMax as number) }}{{ currencySuffix }}
+          {{ formatVNDNumber(item.priceMin as number) }}-{{ formatVNDNumber(item.priceMax as number) }}{{ currencySuffix
+          }}
         </template>
         <template v-else-if="item.priceMin != null">
           {{ formatVNDNumber(item.priceMin as number) }}{{ currencySuffix }}
@@ -259,6 +239,21 @@ const currencySuffix = 'đ'
       </div>
     </template>
 
-  <!-- no custom actions; use BaseTable built-in actions -->
+    <!-- Row actions -->
+    <template #row-actions="{ item }">
+      <div class="flex items-center space-x-6 justify-end">
+        <template v-for="action in props.getRowItems?.({ original: item as unknown as ProductItem }) as any[]"
+          :key="action.label">
+          <button v-if="action && action.type !== 'label' && action.type !== 'separator'" :class="[
+            'transition-colors',
+            action.label === 'Delete'
+              ? 'text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400'
+              : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'
+          ]" :title="action.label" @click="action.onSelect">
+            <UIcon :name="action.icon" class="w-4 h-4" />
+          </button>
+        </template>
+      </div>
+    </template>
   </BaseTable>
 </template>

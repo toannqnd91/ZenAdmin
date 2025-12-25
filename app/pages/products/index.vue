@@ -98,6 +98,30 @@ const onImportFile = (e: Event) => {
 const onMoreAction = () => {
   console.debug('More actions clicked')
 }
+
+function getRowItems(row: { original: { id: string | number } }) {
+  return [
+    {
+      type: 'label',
+      label: 'Actions'
+    },
+    {
+      label: 'Translation',
+      icon: 'i-lucide-languages',
+      onSelect: () => navigateTo(`/products/${row.original.id}/translation`)
+    },
+    {
+      type: 'separator'
+    },
+    {
+      label: 'Delete',
+      icon: 'i-lucide-trash',
+      color: 'error',
+      onSelect: () => onRowDelete(row.original.id)
+    }
+  ]
+}
+
 </script>
 
 <template>
@@ -109,20 +133,11 @@ const onMoreAction = () => {
         </template>
 
         <template #right>
-          <WarehouseSwitcher
-            v-model="selectedWarehouse"
-            :borderless="true"
-            :auto-width="true"
-          />
+          <WarehouseSwitcher v-model="selectedWarehouse" :borderless="true" :auto-width="true" />
           <div class="h-5 w-px bg-gray-200 mx-2" />
           <UColorModeButton />
           <UTooltip text="Notifications" :shortcuts="['N']">
-            <UButton
-              color="neutral"
-              variant="ghost"
-              square
-              @click="isNotificationsSlideoverOpen = true"
-            >
+            <UButton color="neutral" variant="ghost" square @click="isNotificationsSlideoverOpen = true">
               <UChip color="error" inset>
                 <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
               </UChip>
@@ -138,53 +153,32 @@ const onMoreAction = () => {
         <div class="pt-0 pb-3 -mt-2">
           <div class="flex items-center justify-end gap-2">
             <!-- Gray pill buttons to match provided style -->
-            <button
-              type="button"
-              class="h-7 px-3 rounded-xl bg-gray-200 text-gray-900 hover:bg-gray-200 text-sm"
-              @click="onExport"
-            >
+            <button type="button" class="h-7 px-3 rounded-xl bg-gray-200 text-gray-900 hover:bg-gray-200 text-sm"
+              @click="onExport">
               Xuất file
             </button>
-            <button
-              type="button"
-              class="h-7 px-3 rounded-xl bg-gray-200 text-gray-900 hover:bg-gray-200 text-sm"
-              @click="onImportClick"
-            >
+            <button type="button" class="h-7 px-3 rounded-xl bg-gray-200 text-gray-900 hover:bg-gray-200 text-sm"
+              @click="onImportClick">
               Nhập file
             </button>
             <div class="relative">
-              <button
-                type="button"
+              <button type="button"
                 class="h-7 px-3 rounded-xl bg-gray-200 text-gray-900 hover:bg-gray-200 inline-flex items-center gap-1 text-sm"
-                @click="onMoreAction"
-              >
+                @click="onMoreAction">
                 Hành động khác
                 <UIcon name="i-lucide-chevron-down" class="h-4 w-4" />
               </button>
             </div>
-            <input
-              ref="importInputRef"
-              type="file"
+            <input ref="importInputRef" type="file"
               accept=".csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              class="hidden"
-              @change="onImportFile"
-            >
+              class="hidden" @change="onImportFile">
           </div>
         </div>
         <div class="flex-1 min-h-0">
-          <ProductsTable
-            v-model:q="q"
-            v-model:row-selection="rowSelection"
-            v-model:pagination="pagination"
-            :data="products"
-            :loading="loading"
-            :total-pages="totalPages"
-            :total-records="totalRecords"
-            @copy-id="onRowCopyId"
-            @edit="onRowEdit"
-            @delete="onRowDelete"
-            @delete-multi="onRowMultiDelete"
-          />
+          <ProductsTable v-model:q="q" v-model:row-selection="rowSelection" v-model:pagination="pagination"
+            :data="products" :loading="loading" :total-pages="totalPages" :total-records="totalRecords"
+            :get-row-items="getRowItems" @copy-id="onRowCopyId" @edit="onRowEdit" @delete="onRowDelete"
+            @delete-multi="onRowMultiDelete" />
           <div v-if="error" class="text-error mt-4">
             {{ error }}
           </div>
