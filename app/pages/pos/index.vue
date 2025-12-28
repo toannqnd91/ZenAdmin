@@ -5,6 +5,16 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import PosHeader from '~/components/pos/PosHeader.vue'
 import PosFooter from '~/components/pos/PosFooter.vue'
 import OrderSelector from '~/components/pos/OrderSelector.vue'
+import ProductGrid from '~/components/pos/ProductGrid.vue'
+import PosDropdown from '~/components/pos/PosDropdown.vue'
+
+// Import view components
+import OrderLookup from '~/components/pos/OrderLookup.vue'
+import InventoryLookup from '~/components/pos/InventoryLookup.vue'
+import Cashbook from '~/components/pos/Cashbook.vue'
+import ShiftManagement from '~/components/pos/ShiftManagement.vue'
+import Reports from '~/components/pos/Reports.vue'
+import PosSettings from '~/components/pos/PosSettings.vue'
 
 // Import modal components
 import PaymentModal from '~/components/pos/modals/PaymentModal.vue'
@@ -16,10 +26,18 @@ import CustomProductModal from '~/components/pos/modals/CustomProductModal.vue'
 import ProductSelectorModal from '~/components/pos/modals/ProductSelectorModal.vue'
 
 
+
 definePageMeta({ layout: false })
 
 
 // --- Types ---
+interface PriceList {
+  id: string
+  name: string
+  type: 'percent' | 'fixed'
+  value: number
+}
+
 interface Product {
   id: number
   sku: string
@@ -57,7 +75,41 @@ const activeTabId = ref<number>(1)
 let tabIdCounter = 2
 
 // View Mode: 'sales' (Product Grid) | 'return' (Order List)
-const viewMode = ref<'sales' | 'return'>('sales')
+// View Mode: 'sales' (Product Grid) | 'return' (Order List) | 'orders' | 'inventory' | ...
+const viewMode = ref<'sales' | 'return' | 'orders' | 'inventory' | 'cashbook' | 'shift' | 'reports' | 'settings'>('sales')
+const activeNav = ref('sales') // 'sales', 'orders', 'inventory', 'return', 'cashbook', 'shift', 'reports', 'settings'
+const isReturnOrderSelected = ref(false)
+
+const navItems = [
+  { id: 'sales', label: 'Bán hàng', icon: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z' },
+  { id: 'orders', label: 'Tra cứu đơn hàng', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
+  { id: 'inventory', label: 'Tra cứu tồn kho', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+  { id: 'return', label: 'Trả hàng', icon: 'M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6' },
+  { id: 'cashbook', label: 'Sổ quỹ', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { id: 'shift', label: 'Quản lý ca làm việc', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { id: 'reports', label: 'Báo cáo', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+]
+
+function handleNavClick(id: string) {
+  activeNav.value = id
+  isReturnOrderSelected.value = false
+  // Map nav id to viewMode
+  const viewModeMap: Record<string, typeof viewMode.value> = {
+    sales: 'sales',
+    orders: 'orders',
+    inventory: 'inventory',
+    return: 'return',
+    cashbook: 'cashbook',
+    shift: 'shift',
+    reports: 'reports',
+    settings: 'settings',
+  }
+  if (viewModeMap[id]) {
+    viewMode.value = viewModeMap[id]
+  }
+}
+
+
 
 const tabs = ref<PosTab[]>([
   { id: 1, label: 'Đơn #1' }
@@ -153,7 +205,6 @@ const tempProductNote = ref('')
 // --- Employee State ---
 const employees = ref(['Phạm Văn Toàn', 'Nguyễn Thị Hương', 'Lê Hoài Nam'])
 const selectedEmployee = ref(employees.value[0])
-const showEmployeeMenu = ref(false)
 
 // --- Order History State ---
 const orderHistory = ref<any[]>([])
@@ -168,11 +219,40 @@ const showOrderHistoryModal = ref(false)
 // const searchOrderQuery = ref('')
 const showExchangeModal = ref(false)
 
-
 // --- Branch State ---
 const branches = ref(['Chi nhánh chính', 'Chi nhánh 2 - HN', 'Chi nhánh 3 - HCM'])
-const selectedBranch = ref(branches.value[0])
-const showBranchMenu = ref(false)
+const selectedBranch = ref(branches.value[0]!)
+
+// --- Price List State ---
+const priceLists = ref<PriceList[]>([
+  { id: 'default', name: 'Giá bán lẻ', type: 'percent', value: 0 },
+  { id: 'vip', name: 'Khách VIP (-10%)', type: 'percent', value: -10 },
+  { id: 'npp1', name: 'Đại lý C1 (-20%)', type: 'percent', value: -20 },
+  { id: 'npp2', name: 'Đại lý C2 (-25%)', type: 'percent', value: -25 },
+])
+const selectedPriceList = ref<PriceList>(priceLists.value[0]!)
+
+// Helper to get price based on selected list
+function getProductPrice(product: Product) {
+  if (selectedPriceList.value && selectedPriceList.value.type === 'percent') {
+    return Math.round(product.price * (100 + selectedPriceList.value.value) / 100)
+  }
+  return product.price
+}
+
+// Watcher to update cart when price list changes
+watch(selectedPriceList, () => {
+  cart.value.forEach(item => {
+    if (!item.isReturn) {
+      const original = products.value.find(p => p.id === item.id)
+      if (original) {
+        // Here we override price. If you want to keep manual overrides, you'd need a flag 'isManualPrice'
+        // For now, assume changing price list means "Reset to this list's price"
+        item.price = getProductPrice(original)
+      }
+    }
+  })
+})
 
 // --- Tab Navigation State ---
 const tabsContainer = ref<HTMLElement | null>(null)
@@ -282,13 +362,13 @@ function addToCart(product: Product) {
     item.id === product.id &&
     !item.isReturn &&
     (item.note === '' || item.note === undefined || item.note === null) &&
-    item.price === product.price
+    item.price === getProductPrice(product)
   )
 
   if (existingItem) {
     existingItem.quantity++
   } else {
-    cart.value.push({ ...product, quantity: 1, note: '' })
+    cart.value.push({ ...product, price: getProductPrice(product), quantity: 1, note: '' })
   }
 }
 
@@ -303,28 +383,7 @@ function formatPrice(price: number) {
 }
 
 // --- Image Handling & Colors ---
-const imageErrors = ref<Record<number, boolean>>({})
-
-function handleImageError(id: number) {
-  imageErrors.value[id] = true
-}
-
-const productColors = [
-  'bg-blue-100 text-blue-700',
-  'bg-green-100 text-green-700',
-  'bg-amber-100 text-amber-700',
-  'bg-red-100 text-red-700',
-  'bg-purple-100 text-purple-700',
-  'bg-pink-100 text-pink-700',
-  'bg-indigo-100 text-indigo-700',
-  'bg-teal-100 text-teal-700',
-  'bg-cyan-100 text-cyan-700',
-  'bg-lime-100 text-lime-700'
-]
-
-function getProductColor(id: number) {
-  return productColors[id % productColors.length]
-}
+// Moved to ProductGrid component
 
 // Customer Selection Logic
 function onCustomerSearchInput() {
@@ -820,6 +879,15 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
+function onSelectReturnOrder(order: any) {
+  isReturnOrderSelected.value = true
+  // Reset cart to ensure clean slate for return/exchange session
+  cart.value = []
+  if (order.customer) {
+    selectCustomer(order.customer)
+  }
+}
+
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
@@ -845,49 +913,41 @@ onUnmounted(() => {
     <!-- 2. Main Layout -->
     <div class="flex flex-1 overflow-hidden">
       <!-- Left Sidebar (Navigation) -->
-      <nav class="w-16 bg-white border-r border-slate-200 flex flex-col items-center py-4 gap-4 z-10">
-        <button @click="navigateTo('/')"
-          class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-          title="Trang chủ">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-          </svg>
-        </button>
+      <nav class="w-14 bg-white border-r border-slate-200/80 flex flex-col items-center py-3 gap-1 z-30">
+        <!-- Main Navigation Items -->
+        <div class="flex flex-col gap-0.5 w-full px-1.5">
+          <button v-for="item in navItems" :key="item.id" @click="handleNavClick(item.id)"
+            class="w-full aspect-square rounded-lg flex items-center justify-center transition-all duration-150 group relative"
+            :class="activeNav === item.id
+              ? 'bg-blue-50 text-blue-600'
+              : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'" :title="item.label">
+            <svg class="w-5 h-5 transition-transform duration-150 group-hover:scale-105" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
+            </svg>
+            <div v-if="activeNav === item.id"
+              class="absolute -left-0.5 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-blue-600 rounded-r">
+            </div>
+          </button>
+        </div>
 
-        <button @click="navigateTo('/pos')"
-          class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shadow-sm ring-1 ring-blue-200"
-          title="Bán hàng">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-              d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-          </svg>
-        </button>
-
-        <button @click="navigateTo('/orders')"
-          class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-          title="Hóa đơn">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-        </button>
-
-        <div class="mt-auto flex flex-col gap-4">
-          <button @click="navigateTo('/settings')"
-            class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+        <!-- Bottom Actions (Settings) -->
+        <div class="mt-auto w-full px-1.5 pb-1">
+          <button @click="activeNav = 'settings'"
+            class="w-full aspect-square rounded-lg flex items-center justify-center transition-all duration-150 group"
+            :class="activeNav === 'settings' ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'"
             title="Cài đặt">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            <svg class="w-5 h-5 transition-transform duration-300 group-hover:rotate-90" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
                 d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </button>
         </div>
       </nav>
 
-      <!-- Center Content (Product List / Grid) -->
+      <!-- Center Content (Dynamic Views) -->
       <main class="flex-1 flex flex-col bg-slate-50 relative min-w-0">
 
         <!-- View Mode: Sales (Product Grid) -->
@@ -903,77 +963,40 @@ onUnmounted(() => {
           </div>
 
           <!-- Product Grid Area -->
-          <div class="flex-1 overflow-y-auto p-4">
-            <div v-if="filteredProducts.length > 0"
-              class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              <div v-for="product in filteredProducts" :key="product.id" @click="addToCart(product)"
-                class="group bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md hover:border-blue-400 transition-all flex flex-col">
-                <!-- Image -->
-                <div class="aspect-square relative overflow-hidden transition-colors"
-                  :class="imageErrors[product.id] ? getProductColor(product.id) : 'bg-slate-100'">
-                  <!-- Real Image -->
-                  <img v-if="!imageErrors[product.id] && product.imageUrl" :src="product.imageUrl" :alt="product.name"
-                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    loading="lazy" @error="handleImageError(product.id)">
-
-                  <!-- Fallback Content (Color + Initial/Name) -->
-                  <div v-else class="w-full h-full flex items-center justify-center p-4 text-center">
-                    <span class="font-bold text-lg leading-tight opacity-90 select-none">
-                      {{ product.name }}
-                    </span>
-                  </div>
-
-                  <div v-if="!imageErrors[product.id]"
-                    class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors"></div>
-
-                  <!-- SKU Badge -->
-                  <div
-                    class="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
-                    {{ product.sku }}
-                  </div>
-                </div>
-                <!-- Info -->
-                <div class="p-3 flex flex-col flex-1">
-                  <h3 class="font-medium text-slate-700 text-sm line-clamp-2 mb-1 group-hover:text-blue-700">{{
-                    product.name }}</h3>
-                  <div class="mt-auto flex items-center justify-between">
-                    <span class="font-bold text-slate-900">{{ formatPrice(product.price) }}</span>
-                    <button
-                      class="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-colors">
-                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Empty result -->
-            <div v-else class="h-full flex flex-col items-center justify-center text-slate-400">
-              <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                <svg class="w-10 h-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                    d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <p>Không tìm thấy sản phẩm nào</p>
-            </div>
-          </div>
+          <ProductGrid :products="filteredProducts" :get-price="getProductPrice" @add-to-cart="addToCart" />
         </template>
 
         <!-- View Mode: Return (Order Selector) -->
         <OrderSelector v-else-if="viewMode === 'return'" :orders="orderHistory" :cart="cart"
           @select-return-item="addReturnItemToCart" @open-exchange-modal="handleOpenExchange"
-          @set-customer="selectCustomer" />
+          @set-customer="selectCustomer" @select-order="onSelectReturnOrder" />
+
+        <!-- View Mode: Orders (Order Lookup) -->
+        <OrderLookup v-else-if="viewMode === 'orders'" />
+
+        <!-- View Mode: Inventory (Inventory Lookup) -->
+        <InventoryLookup v-else-if="viewMode === 'inventory'" />
+
+        <!-- View Mode: Cashbook -->
+        <Cashbook v-else-if="viewMode === 'cashbook'" />
+
+        <!-- View Mode: Shift Management -->
+        <ShiftManagement v-else-if="viewMode === 'shift'" />
+
+        <!-- View Mode: Reports -->
+        <Reports v-else-if="viewMode === 'reports'" />
+
+        <!-- View Mode: Settings -->
+        <PosSettings v-else-if="viewMode === 'settings'" />
 
         <ProductSelectorModal :show="showExchangeModal" :products="products" :categories="categories"
           @close="showExchangeModal = false" @add-to-cart="addToCart" />
 
       </main>
 
-      <!-- Right Sidebar (Checkout Cart) -->
-      <aside class="w-96 bg-white border-l border-slate-200 flex flex-col z-10 shadow-xl shrink-0">
+      <!-- Right Sidebar (Checkout Cart) - Only show in sales mode OR return mode IF order is selected -->
+      <aside v-if="viewMode === 'sales' || (viewMode === 'return' && isReturnOrderSelected)"
+        class="w-96 bg-white border-l border-slate-200 flex flex-col z-10 shadow-xl shrink-0">
         <!-- Customer Search -->
         <div class="p-4 border-b border-slate-100 flex flex-col gap-3">
           <!-- Selected Customer View -->
@@ -1005,7 +1028,7 @@ onUnmounted(() => {
               <div class="relative flex-1">
                 <input v-model="customerSearchQuery" @input="onCustomerSearchInput" type="text"
                   placeholder="Tìm khách hàng (F4)"
-                  class="w-full h-10 pl-10 pr-4 rounded-lg bg-slate-50 border-transparent focus:bg-white focus:border-blue-500 focus:ring-0 text-sm transition-all" />
+                  class="w-full h-10 pl-10 pr-4 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-sm transition-all outline-none" />
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -1137,6 +1160,46 @@ onUnmounted(() => {
           </div>
         </div>
 
+
+
+        <!-- Price List Selector (Above Footer) -->
+        <div
+          class="px-4 py-3 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between text-sm shrink-0 z-20">
+          <!-- Left Logic: Icon + Text -->
+          <div class="flex items-center gap-2 text-slate-500 font-bold">
+            <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            <span>Bảng giá</span>
+          </div>
+
+          <!-- Right Logic: Trigger via Component -->
+          <PosDropdown :options="priceLists" :model-value="selectedPriceList"
+            @update:model-value="selectedPriceList = $event" width="w-64" placement="top-right">
+
+            <template #trigger="{ isOpen }">
+              <button
+                class="flex items-center gap-1 text-slate-800 hover:text-blue-600 transition-colors font-bold group">
+                <span>{{ selectedPriceList.name }}</span>
+                <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-500 pt-0.5" :class="isOpen ? 'rotate-180' : ''"
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </template>
+
+            <template #option="{ option }">
+              <span>{{ option.name }}</span>
+              <span v-if="option.type === 'percent' && option.value !== 0"
+                class="text-[10px] px-2 py-0.5 rounded-full font-bold ml-2"
+                :class="option.value < 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+                {{ option.value > 0 ? '+' : '' }}{{ option.value }}%
+              </span>
+            </template>
+          </PosDropdown>
+        </div>
+
         <!-- Totals & Payment -->
         <PosFooter v-model:auto-print="autoPrint" :total-quantity="totalQuantity" :sub-total="subTotal"
           :discount="discount" :total-amount="totalAmount" @open-discount="openDiscountModal"
@@ -1171,33 +1234,21 @@ onUnmounted(() => {
 
       <div class="flex items-center gap-4">
         <div class="relative">
-          <button @click="showEmployeeMenu = !showEmployeeMenu"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-100 hover:bg-slate-100 hover:border-slate-200 transition-colors cursor-pointer">
-            <span class="text-slate-500">Nhân viên:</span>
-            <span class="font-semibold text-slate-800">{{ selectedEmployee }}</span>
-            <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          <!-- Employee Dropdown -->
-          <div v-if="showEmployeeMenu"
-            class="absolute bottom-full right-0 mb-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-20 animate-fade-in-up">
-            <div class="py-1">
-              <button v-for="emp in employees" :key="emp" @click="selectedEmployee = emp; showEmployeeMenu = false"
-                class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 transition-colors flex items-center justify-between"
-                :class="selectedEmployee === emp ? 'text-blue-600 font-medium bg-blue-50' : 'text-slate-700'">
-                {{ emp }}
-                <svg v-if="selectedEmployee === emp" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                  stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          <PosDropdown :options="employees" :model-value="selectedEmployee"
+            @update:model-value="selectedEmployee = $event" placeholder="Chọn nhân viên" width="w-48"
+            placement="top-right">
+            <template #trigger="{ isOpen, value }">
+              <button
+                class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-100 hover:bg-slate-100 hover:border-slate-200 transition-colors cursor-pointer">
+                <span class="text-slate-500">Nhân viên:</span>
+                <span class="font-semibold text-slate-800">{{ value }}</span>
+                <svg class="w-4 h-4 text-slate-400 Transition-transform" :class="isOpen ? 'rotate-180' : ''" fill="none"
+                  viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-            </div>
-          </div>
-
-          <!-- Backdrop for closing dropdown -->
-          <div v-if="showEmployeeMenu" @click="showEmployeeMenu = false" class="fixed inset-0 z-10"></div>
+            </template>
+          </PosDropdown>
         </div>
 
         <button @click="showCustomProductModal = true"
@@ -1209,14 +1260,6 @@ onUnmounted(() => {
           Sản phẩm tùy chỉnh (F2)
         </button>
 
-        <button @click="handleReturnMode"
-          class="px-4 py-2 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium transition-colors flex items-center gap-2">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-          </svg>
-          Trả hàng / Đổi hàng
-        </button>
       </div>
     </div>
 

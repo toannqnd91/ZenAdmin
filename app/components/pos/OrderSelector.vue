@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
+import SearchInput from '~/components/pos/SearchInput.vue'
 
 interface CartItem {
     id: number
@@ -30,6 +31,7 @@ interface Emits {
     (e: 'select-return-item', item: CartItem, order: Order, qty: number): void
     (e: 'open-exchange-modal'): void
     (e: 'set-customer', customer: any): void
+    (e: 'select-order', order: Order): void
 }
 
 const props = defineProps<Props>()
@@ -55,6 +57,7 @@ function formatPrice(price: number) {
 
 function selectOrder(order: Order) {
     selectedOrder.value = order
+    emit('select-order', order)
     // Auto fill customer info when order is selected
     if (order.customer) {
         emit('set-customer', order.customer)
@@ -118,19 +121,9 @@ onMounted(() => {
 
         <div class="flex-1 overflow-hidden flex">
             <!-- Left: Order List -->
-            <div class="w-1/3 border-r border-slate-200 flex flex-col bg-white">
-                <div class="p-4 border-b border-slate-100">
-                    <div class="relative">
-                        <input ref="searchInput" v-model="searchQuery" type="text"
-                            placeholder="Tìm đơn hàng (Mã, Tên, SĐT)..."
-                            class="w-full h-10 pl-9 pr-4 rounded-lg bg-slate-100 border-transparent focus:bg-white focus:border-amber-500 focus:ring-0 transition-all text-sm">
-                        <svg class="w-5 h-5 text-slate-400 absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </div>
-                </div>
+            <div class="w-80 border-r border-slate-200 flex flex-col bg-white">
+                <SearchInput v-model="searchQuery" placeholder="Tìm đơn hàng (Mã, Tên, SĐT)..."
+                    class="border-b border-slate-100" />
 
                 <div class="flex-1 overflow-y-auto">
                     <div v-for="order in filteredOrders" :key="order.id" @click="selectOrder(order)"

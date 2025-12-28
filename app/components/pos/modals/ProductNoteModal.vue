@@ -92,7 +92,7 @@ watch(() => props.show, (newVal) => {
                     <label class="block text-sm font-bold text-slate-700 mb-2">Đơn giá bán</label>
                     <div class="relative">
                         <input ref="priceInput" v-model="tempPrice" type="number"
-                            class="w-full pl-4 pr-12 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-0 font-bold text-lg text-slate-800 transition-all"
+                            class="w-full pl-4 pr-12 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none font-bold text-lg text-slate-800 transition-all"
                             placeholder="0">
                         <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₫</span>
                     </div>
@@ -105,7 +105,7 @@ watch(() => props.show, (newVal) => {
                 <div>
                     <label class="block text-sm font-bold text-slate-700 mb-2">Ghi chú / Yêu cầu thêm</label>
                     <textarea ref="noteInput" v-model="tempNote" rows="3"
-                        class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-0 transition-all font-medium resize-none mb-3"
+                        class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium resize-none mb-3"
                         placeholder="VD: Không đá, Ít ngọt..."></textarea>
 
                     <!-- Quick Tags -->

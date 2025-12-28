@@ -119,7 +119,7 @@ watch(() => props.show, (newVal) => {
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Tiền khách đưa</label>
                     <input v-model.number="customerPaid" type="number" step="1000"
-                        class="w-full h-12 px-4 rounded-lg bg-slate-50 border-2 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-0 transition-all font-bold text-lg"
+                        class="w-full h-12 px-4 rounded-lg bg-slate-50 border-2 border-slate-200 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-bold text-lg"
                         placeholder="0">
                     <!-- Quick amount buttons -->
                     <div class="mt-2 flex gap-2">

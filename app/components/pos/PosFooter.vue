@@ -48,16 +48,9 @@ function formatPrice(price: number) {
         </div>
 
         <!-- Action Buttons -->
-        <div class="pt-2 grid grid-cols-2 gap-3">
-            <div class="col-span-2 flex items-center gap-2 mb-1">
-                <input :checked="autoPrint"
-                    @change="$emit('update:autoPrint', ($event.target as HTMLInputElement).checked)" type="checkbox"
-                    id="autoprint" class="rounded text-blue-600 focus:ring-blue-500 border-slate-300 w-4 h-4">
-                <label for="autoprint" class="text-sm text-slate-600 select-none">In hóa đơn tự động (F10)</label>
-            </div>
-
+        <div class="pt-2">
             <button @click="$emit('openPayment')"
-                class="col-span-2 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-[0.98]">
+                class="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-[0.98]">
                 <span>THANH TOÁN</span>
                 <span class="bg-white/20 text-white text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">F9</span>
             </button>

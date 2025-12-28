@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import PosDropdown from './PosDropdown.vue'
+
 interface Tab {
     id: number
     label: string
@@ -29,7 +32,6 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const tabsContainer = ref<HTMLElement | null>(null)
-const showBranchMenu = ref(false)
 
 // Internal scroll state
 const internalCanScrollLeft = ref(false)
@@ -46,21 +48,17 @@ function updateScrollButtons() {
     const container = tabsContainer.value
     const { scrollLeft, scrollWidth, clientWidth } = container
 
-    // Allow small tolerance for floating point calculations (1px)
     const maxScroll = Math.max(0, scrollWidth - clientWidth)
 
     internalCanScrollLeft.value = scrollLeft > 1
     internalCanScrollRight.value = scrollLeft < maxScroll - 1
-
-    // Debug log to ensure logic works
-    // console.log('Scroll Update:', { scrollLeft, maxScroll, canLeft: internalCanScrollLeft.value, canRight: internalCanScrollRight.value })
 }
 
 function handleScrollTabs(direction: 'left' | 'right') {
     if (!tabsContainer.value) return
 
     const container = tabsContainer.value
-    const tabSize = 120 // width approx + gap
+    const tabSize = 120
     const currentScroll = container.scrollLeft
 
     const targetScroll = direction === 'left'
@@ -72,10 +70,8 @@ function handleScrollTabs(direction: 'left' | 'right') {
         behavior: 'smooth'
     })
 
-    // Emit event if parent needs to know
     emit('scrollTabs', direction)
 
-    // Debounce status update
     setTimeout(updateScrollButtons, 50)
     setTimeout(updateScrollButtons, 350)
 }
@@ -83,20 +79,15 @@ function handleScrollTabs(direction: 'left' | 'right') {
 onMounted(() => {
     if (tabsContainer.value) {
         const container = tabsContainer.value
-
-        // Listen to scroll events
         container.addEventListener('scroll', updateScrollButtons)
 
-        // Listen to resize events (robust detection)
         resizeObserver = new ResizeObserver(() => {
             updateScrollButtons()
         })
         resizeObserver.observe(container)
 
-        // Initial check with delays to ensure DOM is ready
         updateScrollButtons()
         setTimeout(updateScrollButtons, 100)
-        setTimeout(updateScrollButtons, 500)
     }
 })
 
@@ -109,7 +100,6 @@ onUnmounted(() => {
     }
 })
 
-// Watch tabs length to update scroll buttons
 watch(() => props.tabs.length, () => {
     nextTick(() => {
         setTimeout(updateScrollButtons, 100)
@@ -132,7 +122,7 @@ defineExpose({
         </div>
 
         <!-- Search Bar -->
-        <div class="flex-1 max-w-md mx-auto relative group">
+        <div class="flex-1 max-w-sm mx-auto relative group hidden md:block">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg class="h-5 w-5 text-slate-400 group-focus-within:text-blue-400 transition-colors" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
@@ -142,7 +132,7 @@ defineExpose({
             </div>
             <input :value="searchQuery" @input="$emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
                 type="text" placeholder="Tìm kiếm sản phẩm (F3)"
-                class="block w-full h-10 pl-10 pr-4 rounded-md border-0 bg-slate-800 text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:bg-slate-700 transition-all text-sm" />
+                class="block w-full h-10 pl-10 pr-4 rounded-md border border-transparent bg-slate-800 text-slate-200 placeholder-slate-500 focus:outline-none focus:bg-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm" />
             <div class="absolute inset-y-0 right-2 flex items-center">
                 <kbd
                     class="hidden sm:inline-block px-1.5 py-0.5 rounded border border-slate-600 bg-slate-700 text-xs text-slate-400 font-mono">F3</kbd>
@@ -150,12 +140,10 @@ defineExpose({
         </div>
 
         <!-- Tab Navigation -->
-        <!-- Tab Navigation -->
-        <div class="flex-1 max-w-md flex items-center gap-1 relative overflow-hidden pr-9 justify-end">
-            <!-- Left Arrow (Overlay) -->
+        <div class="flex-1 flex items-center gap-1 relative overflow-hidden pr-9 justify-end">
+            <!-- Left Arrow -->
             <button v-show="canScrollLeftComputed" type="button" @click.stop="handleScrollTabs('left')"
-                class="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-6 flex items-center justify-center rounded-r bg-slate-900/90 shadow-md text-slate-200 hover:text-white transition-all z-20 backdrop-blur-sm"
-                title="Cuộn trái">
+                class="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-6 flex items-center justify-center rounded-r bg-slate-900/90 shadow-md text-slate-200 hover:text-white transition-all z-20 backdrop-blur-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
@@ -179,77 +167,65 @@ defineExpose({
                 </div>
             </div>
 
-            <!-- Right Arrow (Overlay) -->
+            <!-- Right Arrow -->
             <button v-show="canScrollRightComputed" type="button" @click.stop="handleScrollTabs('right')"
-                class="absolute right-9 top-1/2 -translate-y-1/2 h-8 w-6 flex items-center justify-center rounded-l bg-slate-900/90 shadow-md text-slate-200 hover:text-white transition-all z-20 backdrop-blur-sm"
-                title="Cuộn phải">
+                class="absolute right-9 top-1/2 -translate-y-1/2 h-8 w-6 flex items-center justify-center rounded-l bg-slate-900/90 shadow-md text-slate-200 hover:text-white transition-all z-20 backdrop-blur-sm">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
                 </svg>
             </button>
 
-            <!-- Add Tab Button (Absolute Fixed Right) -->
+            <!-- Add Tab Button -->
             <button @click="$emit('addTab')"
-                class="absolute right-0 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors shrink-0 z-10"
-                title="Thêm đơn hàng mới">
+                class="absolute right-0 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors shrink-0 z-10">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
             </button>
         </div>
 
+        <!-- Right Side Actions -->
+        <div class="flex items-center gap-3 border-l border-slate-700 pl-4 ml-2">
 
-        <!-- Online/Offline Toggle -->
-        <button @click="$emit('update:isOnline', !isOnline)"
-            class="hidden lg:flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-800 transition-all relative group"
-            :class="isOnline ? 'text-emerald-400' : 'text-slate-500'"
-            :title="isOnline ? 'Hệ thống đang Online' : 'Hệ thống đang Offline'">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                    d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
-            </svg>
-            <span v-if="isOnline"
-                class="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse"></span>
-        </button>
+            <!-- Online Status -->
 
-        <!-- User Info & Branch Selector -->
-        <div class="flex items-center gap-3 border-l border-slate-700 pl-4 ml-2 relative">
-            <div class="flex flex-col items-end text-xs cursor-pointer select-none"
-                @click="showBranchMenu = !showBranchMenu">
-                <div class="flex items-center gap-1 text-slate-200 hover:text-white transition-colors">
-                    <span class="font-medium">{{ selectedBranch }}</span>
-                    <svg class="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
+
+            <!-- User Info & Branch Selector -->
+            <div class="flex items-center gap-3 relative ml-2">
+                <PosDropdown :options="branches" :model-value="selectedBranch"
+                    @update:model-value="$emit('update:selectedBranch', $event)" placement="bottom-right" width="w-56">
+                    <template #trigger="{ isOpen }">
+                        <div class="flex flex-col items-end text-xs cursor-pointer select-none">
+                            <div class="flex items-center gap-2 text-slate-200 hover:text-white transition-colors">
+                                <!-- Connection Dot -->
+                                <button @click.stop="$emit('update:isOnline', !isOnline)"
+                                    class="relative flex h-2.5 w-2.5 my-1 mr-0.5 outline-none"
+                                    :title="isOnline ? 'Online' : 'Offline'">
+                                    <span v-if="isOnline"
+                                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 shadow-sm"
+                                        :class="isOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-amber-700 border border-amber-600'"></span>
+                                </button>
+
+                                <span class="font-medium inline-block max-w-[100px] truncate leading-none">{{
+                                    selectedBranch
+                                }}</span>
+                                <svg class="w-3 h-3 text-slate-400 transition-transform duration-200"
+                                    :class="{ 'rotate-180': isOpen }" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                            <span class="text-slate-500">Quản trị viên</span>
+                        </div>
+                    </template>
+                </PosDropdown>
+
+                <div
+                    class="h-9 w-9 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg ring-2 ring-slate-800">
+                    <span class="text-white font-bold text-xs">AD</span>
                 </div>
-                <span class="text-slate-400">Quản trị viên</span>
-            </div>
-
-            <!-- Branch Dropdown -->
-            <div v-if="showBranchMenu"
-                class="absolute top-full right-0 mt-3 w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-50 text-slate-800 animate-fade-in-up">
-                <div class="py-1">
-                    <button v-for="branch in branches" :key="branch"
-                        @click="$emit('update:selectedBranch', branch); showBranchMenu = false"
-                        class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 transition-colors flex items-center justify-between"
-                        :class="selectedBranch === branch ? 'text-blue-600 font-medium bg-blue-50' : 'text-slate-700'">
-                        {{ branch }}
-                        <svg v-if="selectedBranch === branch" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Close Dropdown Overlay -->
-            <div v-if="showBranchMenu" @click="showBranchMenu = false"
-                class="fixed inset-0 z-40 bg-transparent cursor-default">
-            </div>
-
-            <div
-                class="h-9 w-9 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg ring-2 ring-slate-800">
-                <span class="text-white font-bold text-xs">AD</span>
             </div>
         </div>
     </header>

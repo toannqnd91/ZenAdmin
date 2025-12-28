@@ -1,262 +1,188 @@
 <script setup lang="ts">
 import * as z from 'zod'
-import type { FormSubmitEvent } from '@nuxt/ui'
-import { ref } from 'vue'
 
 const { login } = useAuthService()
+const toast = useToast()
 
 definePageMeta({
   layout: 'auth'
 })
 
 useSeoMeta({
-  title: 'Login',
-  description: 'Login to your account to continue'
+  title: 'Đăng nhập - ZenWeb',
+  description: 'Đăng nhập vào tài khoản của bạn'
 })
 
-const toast = useToast()
-
-const fields = [{
-  name: 'email',
-  type: 'text' as const,
-  label: 'Email',
-  placeholder: 'Enter your email',
-  required: true
-}, {
-  name: 'password',
-  label: 'Password',
-  type: 'password' as const,
-  placeholder: 'Enter your password'
-}]
-
-const providers = [{
-  label: 'Continue with Google',
-  icon: 'i-simple-icons-google',
-  color: 'neutral' as const,
-  onClick: () => {
-    toast.add({ title: 'Google', description: 'Login with Google' })
-  }
-}, {
-  label: 'Continue with Youtube',
-  icon: 'i-simple-icons-youtube',
-  color: 'error' as const,
-  onClick: () => {
-    toast.add({ title: 'YouTube', description: 'Login with YouTube' })
-  }
-}, {
-  label: 'Continue with Facebook',
-  icon: 'i-simple-icons-facebook',
-  color: 'success' as const,
-  onClick: () => {
-    toast.add({ title: 'Facebook', description: 'Login with Facebook' })
-  }
-}]
-
 const schema = z.object({
-  email: z.string().email('Invalid email'),
-  password: z.string().min(8, 'Must be at least 8 characters')
+  email: z.string().email('Email không hợp lệ'),
+  password: z.string().min(6, 'Mật khẩu phải có ít nhất 6 ký tự')
 })
 
 type Schema = z.output<typeof schema>
 
-const rememberMe = ref(false)
+const state = reactive({
+  email: '',
+  password: '',
+  remember: false
+})
 
-async function onSubmit(payload: FormSubmitEvent<Schema>) {
+const isLoading = ref(false)
+const showPassword = ref(false)
+
+async function onSubmit() {
+  if (!state.email || !state.password) return
+
+  isLoading.value = true
   try {
     await login({
-      email: payload.data.email, // Use email directly as API expects
-      password: payload.data.password
+      email: state.email,
+      password: state.password
     })
-    // Login success handled by useAuthService (toast + redirect)
   } catch (err) {
-    // Error handled by useAuthService
-    console.error('Login failed:', err)
+    console.error(err)
+  } finally {
+    isLoading.value = false
   }
 }
 </script>
 
 <template>
-  <div>
-    <div class="mb-8">
-      <h1 class="text-2xl font-bold text-gray-900 mb-2">
-        Đăng nhập
+  <div class="w-full max-w-md mx-auto px-4">
+    <!-- Header -->
+    <div class="text-center mb-10">
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">
+        Chào mừng trở lại
       </h1>
+      <p class="text-gray-600">
+        Đăng nhập để tiếp tục sử dụng ZenWeb
+      </p>
     </div>
 
-    <UAuthForm
-      :fields="fields"
-      :schema="schema"
-      title=""
-      class="custom-auth-form"
-      :submit="{
-        label: 'Đăng nhập'
-      }"
-      @submit="onSubmit"
-    />
+    <!-- Form -->
+    <UForm :schema="schema" :state="state" class="space-y-5" @submit="onSubmit">
+      <!-- Email -->
+      <div class="space-y-2">
+        <label for="email" class="block text-sm font-medium text-gray-700">
+          Địa chỉ email
+        </label>
+        <div class="relative">
+          <input id="email" v-model="state.email" type="email" placeholder="you@example.com" autocomplete="email" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400
+                   focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10
+                   transition-all duration-200 outline-none" />
+        </div>
+      </div>
 
-    <div class="flex items-center justify-between mt-2 mb-4">
-      <label class="flex items-center text-gray-700 text-sm cursor-pointer select-none">
-        <input
-          v-model="rememberMe"
-          type="checkbox"
-          class="sr-only"
-        >
-        <span
-          class="custom-checkbox-ui mr-2 flex items-center justify-center"
-          :class="{ checked: rememberMe }"
-        >
-          <svg
-            v-if="rememberMe"
-            width="14"
-            height="14"
-            viewBox="0 0 14 14"
-            fill="none"
-          >
-            <path
-              d="M3 7L6 10L11 4"
-              stroke="#2563eb"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
+      <!-- Password -->
+      <div class="space-y-2">
+        <label for="password" class="block text-sm font-medium text-gray-700">
+          Mật khẩu
+        </label>
+        <div class="relative">
+          <input id="password" v-model="state.password" :type="showPassword ? 'text' : 'password'"
+            placeholder="Nhập mật khẩu của bạn" autocomplete="current-password" class="w-full px-4 py-2.5 pr-12 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400
+                   focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10
+                   transition-all duration-200 outline-none" />
+          <button type="button" @click="showPassword = !showPassword"
+            class="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors">
+            <svg v-if="!showPassword" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            <svg v-else class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Remember & Forgot -->
+      <div class="flex items-center justify-between text-sm">
+        <label class="flex items-center gap-2 cursor-pointer group">
+          <input v-model="state.remember" type="checkbox"
+            class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer" />
+          <span class="text-gray-700 group-hover:text-gray-900 transition-colors">
+            Ghi nhớ đăng nhập
+          </span>
+        </label>
+        <NuxtLink to="/forgot-password" class="font-medium text-blue-600 hover:text-blue-700 transition-colors">
+          Quên mật khẩu?
+        </NuxtLink>
+      </div>
+
+      <!-- Submit -->
+      <button type="submit" :disabled="isLoading" class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg
+               shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40
+               focus:outline-none focus:ring-4 focus:ring-blue-500/50
+               disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600
+               transform transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0">
+        <span v-if="!isLoading" class="flex items-center justify-center gap-2">
+          Đăng nhập
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
           </svg>
         </span>
-        Remember me
-      </label>
-      <ULink
-        to="/"
-        class="text-blue-500 hover:text-blue-600 text-sm"
-        tabindex="-1"
-      >
-        Forgot password?
-      </ULink>
-    </div>
+        <span v-else class="flex items-center justify-center gap-2">
+          <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+            </path>
+          </svg>
+          Đang xử lý...
+        </span>
+      </button>
+    </UForm>
 
-    <!-- Social Login Buttons -->
-    <div class="mt-6">
-      <div class="relative">
-        <div class="absolute inset-0 flex items-center">
-          <div class="w-full border-t border-gray-300" />
-        </div>
-        <div class="relative flex justify-center text-sm">
-          <span class="px-2 bg-white text-gray-500">Hoặc</span>
-        </div>
+    <!-- Divider -->
+    <div class="relative my-8">
+      <div class="absolute inset-0 flex items-center">
+        <div class="w-full border-t border-gray-200"></div>
       </div>
-
-      <div class="mt-6 space-y-3">
-        <!-- Google Button -->
-        <UButton
-          variant="outline"
-          size="lg"
-          block
-          color="neutral"
-          class="!text-gray-700 !h-[38px]"
-          style="border-width: 0.7px; border-style: solid; border-color: rgb(207 207 207 / 50%); box-shadow: none;"
-          @click="providers[0]?.onClick"
-        >
-          <span class="flex items-center justify-center">
-            <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
-              <path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-              <path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-              <path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-              <path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-            </svg>
-            Continue with Google
-          </span>
-        </UButton>
-
-        <!-- YouTube Button -->
-        <UButton
-          variant="outline"
-          size="lg"
-          block
-          color="neutral"
-          class="!text-gray-700 !h-[38px]"
-          style="border-width: 0.7px; border-style: solid; border-color: rgb(207 207 207 / 50%); box-shadow: none;"
-          @click="providers[1]?.onClick"
-        >
-          <span class="flex items-center justify-center">
-            <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
-              <path fill="#ff0000" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-            </svg>
-            Continue with Youtube
-          </span>
-        </UButton>
-
-        <!-- Facebook Button -->
-        <UButton
-          variant="outline"
-          size="lg"
-          block
-          color="neutral"
-          class="!text-gray-700 !h-[38px]"
-          style="border-width: 0.7px; border-style: solid; border-color: rgb(207 207 207 / 50%); box-shadow: none;"
-          @click="providers[2]?.onClick"
-        >
-          <span class="flex items-center justify-center">
-            <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
-              <path fill="#1877f2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-            </svg>
-            Continue with Facebook
-          </span>
-        </UButton>
+      <div class="relative flex justify-center">
+        <span class="px-4 bg-white text-sm text-gray-500">Hoặc tiếp tục với</span>
       </div>
     </div>
 
-    <!-- Sign up link -->
-    <div class="text-center mt-6">
-      <span class="text-gray-600">Chưa có tài khoản?</span>
-      <ULink
-        to="/signup"
-        class="text-blue-500 hover:text-blue-600 font-medium ml-1"
-      >
+    <!-- Social Login -->
+    <div class="grid grid-cols-2 gap-3">
+      <button type="button" class="flex items-center justify-center gap-3 px-4 py-3 bg-white border border-gray-200 rounded-lg
+               hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm
+               focus:outline-none focus:ring-2 focus:ring-gray-200
+               transition-all duration-200">
+        <svg class="w-5 h-5" viewBox="0 0 24 24">
+          <path fill="#4285f4"
+            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+          <path fill="#34a853"
+            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+          <path fill="#fbbc05"
+            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+          <path fill="#ea4335"
+            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+        </svg>
+        <span class="text-sm font-medium text-gray-700">Google</span>
+      </button>
+
+      <button type="button" class="flex items-center justify-center gap-3 px-4 py-3 bg-white border border-gray-200 rounded-lg
+               hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm
+               focus:outline-none focus:ring-2 focus:ring-gray-200
+               transition-all duration-200">
+        <svg class="w-5 h-5" viewBox="0 0 24 24">
+          <path fill="#1877f2"
+            d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+        </svg>
+        <span class="text-sm font-medium text-gray-700">Facebook</span>
+      </button>
+    </div>
+
+    <!-- Sign Up -->
+    <p class="mt-8 text-center text-sm text-gray-600">
+      Chưa có tài khoản?
+      <NuxtLink to="/signup" class="font-medium text-blue-600 hover:text-blue-700 transition-colors">
         Đăng ký ngay
-      </ULink>
-    </div>
+      </NuxtLink>
+    </p>
   </div>
 </template>
-
-<style scoped>
-.custom-auth-form :deep(input[type="text"]),
-.custom-auth-form :deep(input[type="email"]),
-.custom-auth-form :deep(input[type="password"]) {
-  border-width: 0.7px !important;
-  border-style: solid !important;
-  border-color: rgb(207 207 207 / 50%) !important;
-  box-shadow: none !important;
-  background-color: white !important;
-  height: 37px !important;
-  padding: 0 12px !important;
-}
-
-.custom-auth-form :deep(input[type="text"]:focus),
-.custom-auth-form :deep(input[type="email"]:focus),
-.custom-auth-form :deep(input[type="password"]:focus) {
-  border-color: rgb(207 207 207 / 70%) !important;
-  box-shadow: none !important;
-}
-
-.custom-auth-form :deep(button[type="submit"]) {
-  height: 37px !important;
-}
-
-.custom-checkbox {
-  /* giữ lại cho input gốc, nhưng đã sr-only */
-}
-.custom-checkbox-ui {
-  width: 18px;
-  height: 18px;
-  border-radius: 3px;
-  background: white;
-  box-shadow: none;
-  border: 0.7px solid rgb(207 207 207 / 50%);
-  transition: border-color 0.2s;
-}
-.custom-checkbox-ui.checked {
-  border-color: #2563eb;
-}
-.custom-checkbox-ui:focus {
-  outline: none;
-  border-color: rgb(207 207 207 / 70%);
-}
-</style>

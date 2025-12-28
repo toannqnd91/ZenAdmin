@@ -71,7 +71,7 @@ function getProductColor(id: number) {
                     <!-- Search -->
                     <div class="relative max-w-md w-full">
                         <input v-model="searchQuery" type="text" placeholder="Tìm kiếm sản phẩm..."
-                            class="w-full pl-9 pr-4 py-2 bg-slate-100 border-transparent rounded-lg focus:bg-white focus:border-blue-500 focus:ring-0 transition-all">
+                            class="w-full pl-9 pr-4 py-2 bg-slate-100 border border-slate-200 rounded-lg focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all">
                         <svg class="w-5 h-5 text-slate-400 absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24"
                             stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -101,7 +101,7 @@ function getProductColor(id: number) {
             <!-- Grid -->
             <div class="flex-1 overflow-y-auto p-4 bg-slate-50/50">
                 <div v-if="filteredProducts.length > 0"
-                    class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3">
                     <div v-for="product in filteredProducts" :key="product.id" @click="$emit('add-to-cart', product)"
                         class="group bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md hover:border-blue-400 hover:ring-1 hover:ring-blue-400 transition-all flex flex-col relative h-full">
 
