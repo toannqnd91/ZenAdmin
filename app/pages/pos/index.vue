@@ -111,10 +111,30 @@ const customProductForm = ref({
   price: 0
 })
 
+// --- Payment Modal State ---
+const showPaymentModal = ref(false)
+const paymentMethod = ref<'cash' | 'transfer' | 'card'>('cash')
+const customerPaid = ref(0)
+const autoPrint = ref(false)
+
+// --- Discount Modal State ---
+const showDiscountModal = ref(false)
+const discountType = ref<'percent' | 'amount'>('percent')
+const discountValue = ref(0)
+
+// --- Product Note Modal State ---
+const showProductNoteModal = ref(false)
+const editingProductNote = ref<CartItem | null>(null)
+const tempProductNote = ref('')
+
 // --- Employee State ---
 const employees = ref(['Phạm Văn Toàn', 'Nguyễn Thị Hương', 'Lê Hoài Nam'])
 const selectedEmployee = ref(employees.value[0])
 const showEmployeeMenu = ref(false)
+
+// --- Order History State ---
+const orderHistory = ref<any[]>([])
+const showOrderHistoryModal = ref(false)
 
 
 // --- Branch State ---
@@ -166,8 +186,20 @@ const cart = ref<CartItem[]>([
 // --- Computed Totals ---
 const totalQuantity = computed(() => cart.value.reduce((sum, item) => sum + item.quantity, 0))
 const subTotal = computed(() => cart.value.reduce((sum, item) => sum + (item.price * item.quantity), 0))
-const discount = ref(0)
-const totalAmount = computed(() => subTotal.value - discount.value)
+
+// Discount calculation
+const discount = computed(() => {
+  if (discountType.value === 'percent') {
+    return Math.round(subTotal.value * discountValue.value / 100)
+  } else {
+    return discountValue.value
+  }
+})
+
+const totalAmount = computed(() => Math.max(0, subTotal.value - discount.value))
+
+// Change calculation for payment
+const changeAmount = computed(() => Math.max(0, customerPaid.value - totalAmount.value))
 
 // --- Actions ---
 function setActiveTab(id: number) {
@@ -333,6 +365,190 @@ function addCustomProduct() {
   showCustomProductModal.value = false
 }
 
+// --- Discount Functions ---
+function openDiscountModal() {
+  showDiscountModal.value = true
+}
+
+function applyDiscount() {
+  showDiscountModal.value = false
+}
+
+function clearDiscount() {
+  discountValue.value = 0
+  discountType.value = 'percent'
+  showDiscountModal.value = false
+}
+
+// --- Product Note Functions ---
+function openProductNoteModal(item: CartItem) {
+  editingProductNote.value = item
+  tempProductNote.value = item.note || ''
+  showProductNoteModal.value = true
+}
+
+function saveProductNote() {
+  if (editingProductNote.value) {
+    editingProductNote.value.note = tempProductNote.value
+  }
+  showProductNoteModal.value = false
+  editingProductNote.value = null
+  tempProductNote.value = ''
+}
+
+// --- Payment Functions ---
+function openPaymentModal() {
+  if (cart.value.length === 0) {
+    alert('Giỏ hàng đang trống!')
+    return
+  }
+
+  // Auto-fill customer paid with total amount
+  customerPaid.value = totalAmount.value
+  showPaymentModal.value = true
+}
+
+function completePayment() {
+  if (customerPaid.value < totalAmount.value) {
+    alert('Số tiền khách đưa chưa đủ!')
+    return
+  }
+
+  // Create order object
+  const order = {
+    id: Date.now(),
+    orderNumber: `HD${String(orderHistory.value.length + 1).padStart(4, '0')}`,
+    date: new Date().toISOString(),
+    items: [...cart.value],
+    customer: selectedCustomer.value,
+    employee: selectedEmployee.value,
+    branch: selectedBranch.value,
+    subTotal: subTotal.value,
+    discount: discount.value,
+    total: totalAmount.value,
+    paid: customerPaid.value,
+    change: changeAmount.value,
+    paymentMethod: paymentMethod.value,
+    note: orderNote.value,
+    status: 'completed'
+  }
+
+  // Save to history
+  orderHistory.value.unshift(order)
+
+  // Save to localStorage
+  try {
+    localStorage.setItem('pos_order_history', JSON.stringify(orderHistory.value))
+  } catch (e) {
+    console.error('Failed to save order history:', e)
+  }
+
+  // Print if auto-print is enabled
+  if (autoPrint.value) {
+    printInvoice(order)
+  }
+
+  // Show success message
+  alert(`Thanh toán thành công!\nMã đơn: ${order.orderNumber}\nTiền thừa: ${formatPrice(changeAmount.value)} ₫`)
+
+  // Reset cart and close modal
+  clearCurrentOrder()
+  showPaymentModal.value = false
+}
+
+function clearCurrentOrder() {
+  cart.value = []
+  selectedCustomer.value = null
+  orderNote.value = ''
+  discountValue.value = 0
+  customerPaid.value = 0
+}
+
+function printInvoice(order: any) {
+  // Simple print implementation
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) return
+
+  const invoiceHTML = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Hóa đơn ${order.orderNumber}</title>
+      <style>
+        body { font-family: 'Courier New', monospace; padding: 20px; max-width: 300px; margin: 0 auto; }
+        h2 { text-align: center; margin: 10px 0; }
+        .divider { border-top: 1px dashed #000; margin: 10px 0; }
+        .row { display: flex; justify-content: space-between; margin: 5px 0; }
+        .total { font-weight: bold; font-size: 1.2em; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 5px 0; }
+      </style>
+    </head>
+    <body>
+      <h2>ZenPOS</h2>
+      <div style="text-align: center; margin-bottom: 10px;">
+        <div>${order.branch}</div>
+        <div>Mã đơn: ${order.orderNumber}</div>
+        <div>${new Date(order.date).toLocaleString('vi-VN')}</div>
+      </div>
+      <div class="divider"></div>
+      <table>
+        ${order.items.map((item: CartItem) => `
+          <tr>
+            <td>${item.name}</td>
+            <td style="text-align: right;">${item.quantity} x ${formatPrice(item.price)}</td>
+          </tr>
+          ${item.note ? `<tr><td colspan="2" style="font-size: 0.9em; color: #666;">  Ghi chú: ${item.note}</td></tr>` : ''}
+        `).join('')}
+      </table>
+      <div class="divider"></div>
+      <div class="row"><span>Tạm tính:</span><span>${formatPrice(order.subTotal)} ₫</span></div>
+      ${order.discount > 0 ? `<div class="row"><span>Giảm giá:</span><span>-${formatPrice(order.discount)} ₫</span></div>` : ''}
+      <div class="row total"><span>Tổng cộng:</span><span>${formatPrice(order.total)} ₫</span></div>
+      <div class="row"><span>Tiền khách đưa:</span><span>${formatPrice(order.paid)} ₫</span></div>
+      <div class="row"><span>Tiền thừa:</span><span>${formatPrice(order.change)} ₫</span></div>
+      <div class="divider"></div>
+      ${order.customer ? `<div style="text-align: center;">Khách hàng: ${order.customer.name}</div>` : ''}
+      <div style="text-align: center;">Nhân viên: ${order.employee}</div>
+      ${order.note ? `<div style="margin-top: 10px;">Ghi chú: ${order.note}</div>` : ''}
+      <div style="text-align: center; margin-top: 20px;">Cảm ơn quý khách!</div>
+    </body>
+    </html>
+  `
+
+  printWindow.document.write(invoiceHTML)
+  printWindow.document.close()
+  printWindow.focus()
+  setTimeout(() => {
+    printWindow.print()
+    printWindow.close()
+  }, 250)
+}
+
+// Load order history from localStorage on mount
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+
+  // Setup scroll listener for tabs
+  if (tabsContainer.value) {
+    tabsContainer.value.addEventListener('scroll', updateScrollButtons)
+    updateScrollButtons()
+  }
+
+  // Update scroll buttons after a short delay to ensure proper rendering
+  setTimeout(updateScrollButtons, 100)
+
+  // Load order history
+  try {
+    const saved = localStorage.getItem('pos_order_history')
+    if (saved) {
+      orderHistory.value = JSON.parse(saved)
+    }
+  } catch (e) {
+    console.error('Failed to load order history:', e)
+  }
+})
+
 // --- Tab Navigation Functions ---
 function updateScrollButtons() {
   if (!tabsContainer.value) return
@@ -389,20 +605,30 @@ function handleKeydown(e: KeyboardEvent) {
     e.preventDefault()
     showCustomProductModal.value = true
   }
+  if (e.key === 'F3') {
+    e.preventDefault()
+    const searchInput = document.querySelector('input[placeholder*="Tìm kiếm sản phẩm"]') as HTMLInputElement
+    searchInput?.focus()
+  }
+  if (e.key === 'F4') {
+    e.preventDefault()
+    const customerInput = document.querySelector('input[placeholder*="Tìm khách hàng"]') as HTMLInputElement
+    customerInput?.focus()
+  }
+  if (e.key === 'F6') {
+    e.preventDefault()
+    openDiscountModal()
+  }
+  if (e.key === 'F9') {
+    e.preventDefault()
+    openPaymentModal()
+  }
+  if (e.key === 'F10') {
+    e.preventDefault()
+    autoPrint.value = !autoPrint.value
+  }
 }
 
-onMounted(() => {
-  window.addEventListener('keydown', handleKeydown)
-
-  // Setup scroll listener for tabs
-  if (tabsContainer.value) {
-    tabsContainer.value.addEventListener('scroll', updateScrollButtons)
-    updateScrollButtons()
-  }
-
-  // Update scroll buttons after a short delay to ensure proper rendering
-  setTimeout(updateScrollButtons, 100)
-})
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
@@ -752,26 +978,46 @@ onUnmounted(() => {
               <!-- Item Details -->
               <div class="flex-1 min-w-0 flex flex-col justify-between py-0.5">
                 <div class="flex justify-between items-start gap-2">
-                  <h4 class="text-sm font-medium text-slate-700 truncate cursor-pointer hover:text-blue-600">{{
-                    item.name }}</h4>
+                  <div class="flex-1">
+                    <h4 class="text-sm font-medium text-slate-700 truncate cursor-pointer hover:text-blue-600">{{
+                      item.name }}</h4>
+                    <div v-if="item.note" class="text-xs text-amber-600 mt-0.5 flex items-center gap-1">
+                      <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      <span class="truncate">{{ item.note }}</span>
+                    </div>
+                  </div>
                   <span class="text-sm font-bold text-slate-800">{{ formatPrice(item.price * item.quantity) }}</span>
                 </div>
 
                 <div class="flex items-center justify-between mt-1">
-                  <div class="flex items-center gap-1 bg-slate-100 rounded p-0.5">
-                    <button @click="updateQuantity(item, -1)"
-                      class="w-6 h-6 flex items-center justify-center rounded bg-white text-slate-600 shadow-sm hover:text-blue-600 disabled:opacity-50"
-                      :disabled="item.quantity <= 1">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-                      </svg>
-                    </button>
-                    <input type="text" :value="item.quantity" readonly
-                      class="w-8 text-center bg-transparent text-xs font-semibold focus:outline-none">
-                    <button @click="updateQuantity(item, 1)"
-                      class="w-6 h-6 flex items-center justify-center rounded bg-white text-slate-600 shadow-sm hover:text-blue-600">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  <div class="flex items-center gap-1">
+                    <div class="flex items-center gap-1 bg-slate-100 rounded p-0.5">
+                      <button @click="updateQuantity(item, -1)"
+                        class="w-6 h-6 flex items-center justify-center rounded bg-white text-slate-600 shadow-sm hover:text-blue-600 disabled:opacity-50"
+                        :disabled="item.quantity <= 1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                        </svg>
+                      </button>
+                      <input type="text" :value="item.quantity" readonly
+                        class="w-8 text-center bg-transparent text-xs font-semibold focus:outline-none">
+                      <button @click="updateQuantity(item, 1)"
+                        class="w-6 h-6 flex items-center justify-center rounded bg-white text-slate-600 shadow-sm hover:text-blue-600">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <button @click="openProductNoteModal(item)"
+                      class="p-1.5 text-slate-400 hover:text-amber-500 rounded hover:bg-amber-50 transition-colors"
+                      :class="{ 'text-amber-500 bg-amber-50': item.note }" title="Ghi chú">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
                   </div>
@@ -807,7 +1053,8 @@ onUnmounted(() => {
           </div>
 
           <div class="flex justify-between text-sm items-center">
-            <button class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 group">
+            <button @click="openDiscountModal"
+              class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 group">
               <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -826,12 +1073,12 @@ onUnmounted(() => {
           <!-- Action Buttons -->
           <div class="pt-2 grid grid-cols-2 gap-3">
             <div class="col-span-2 flex items-center gap-2 mb-1">
-              <input type="checkbox" id="autoprint"
+              <input v-model="autoPrint" type="checkbox" id="autoprint"
                 class="rounded text-blue-600 focus:ring-blue-500 border-slate-300 w-4 h-4">
               <label for="autoprint" class="text-sm text-slate-600 select-none">In hóa đơn tự động (F10)</label>
             </div>
 
-            <button
+            <button @click="openPaymentModal"
               class="col-span-2 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-[0.98]">
               <span>THANH TOÁN</span>
               <span class="bg-white/20 text-white text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">F9</span>
@@ -1030,6 +1277,246 @@ onUnmounted(() => {
           <button @click="addCustomProduct"
             class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95">
             Thêm vào đơn
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment Modal -->
+  <div v-if="showPaymentModal"
+    class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in-up">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+      <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-white flex items-center justify-between">
+        <h3 class="font-bold text-xl">Thanh toán đơn hàng</h3>
+        <button @click="showPaymentModal = false" class="p-2 -mr-2 hover:bg-white/20 rounded-full transition-colors">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <!-- Order Summary -->
+        <div class="bg-slate-50 rounded-lg p-4 space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-600">Tạm tính:</span>
+            <span class="font-semibold">{{ formatPrice(subTotal) }} ₫</span>
+          </div>
+          <div v-if="discount > 0" class="flex justify-between text-sm text-amber-600">
+            <span>Giảm giá:</span>
+            <span class="font-semibold">-{{ formatPrice(discount) }} ₫</span>
+          </div>
+          <div class="pt-2 border-t border-slate-200 flex justify-between">
+            <span class="font-bold text-lg">Tổng cộng:</span>
+            <span class="font-bold text-2xl text-blue-600">{{ formatPrice(totalAmount) }} ₫</span>
+          </div>
+        </div>
+
+        <!-- Payment Method -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">Phương thức thanh toán</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button @click="paymentMethod = 'cash'" type="button"
+              class="p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-1"
+              :class="paymentMethod === 'cash' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 hover:border-slate-300'">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <span class="text-xs font-medium">Tiền mặt</span>
+            </button>
+            <button @click="paymentMethod = 'transfer'" type="button"
+              class="p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-1"
+              :class="paymentMethod === 'transfer' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 hover:border-slate-300'">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <span class="text-xs font-medium">Chuyển khoản</span>
+            </button>
+            <button @click="paymentMethod = 'card'" type="button"
+              class="p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-1"
+              :class="paymentMethod === 'card' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 hover:border-slate-300'">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              <span class="text-xs font-medium">Thẻ</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Customer Paid Amount -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Tiền khách đưa</label>
+          <input v-model.number="customerPaid" type="number" step="1000"
+            class="w-full h-12 px-4 rounded-lg bg-slate-50 border-2 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-0 transition-all font-bold text-lg"
+            placeholder="0">
+          <!-- Quick amount buttons -->
+          <div class="mt-2 flex gap-2">
+            <button v-for="amount in [50000, 100000, 200000, 500000]" :key="amount" type="button"
+              @click="customerPaid = totalAmount + amount"
+              class="flex-1 px-3 py-1.5 text-xs rounded-lg bg-slate-100 hover:bg-slate-200 font-medium transition-colors">
+              +{{ formatPrice(amount) }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Change Amount -->
+        <div v-if="customerPaid >= totalAmount" class="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div class="flex justify-between items-center">
+            <span class="text-green-700 font-medium">Tiền thừa trả khách:</span>
+            <span class="text-green-700 font-bold text-xl">{{ formatPrice(changeAmount) }} ₫</span>
+          </div>
+        </div>
+        <div v-else-if="customerPaid > 0" class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div class="flex justify-between items-center">
+            <span class="text-red-700 font-medium">Còn thiếu:</span>
+            <span class="text-red-700 font-bold text-xl">{{ formatPrice(totalAmount - customerPaid) }} ₫</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-50 px-6 py-4 flex gap-3 justify-end">
+        <button @click="showPaymentModal = false"
+          class="px-6 py-3 rounded-xl border border-slate-300 text-slate-600 font-medium hover:bg-slate-100 transition-colors">
+          Hủy bỏ
+        </button>
+        <button @click="completePayment"
+          class="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-200 transition-all active:scale-95">
+          Xác nhận thanh toán
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Discount Modal -->
+  <div v-if="showDiscountModal"
+    class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in-up">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+      <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-bold text-lg text-slate-800">Giảm giá đơn hàng</h3>
+        <button @click="showDiscountModal = false"
+          class="p-2 -mr-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <!-- Discount Type -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">Loại giảm giá</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button @click="discountType = 'percent'" type="button" class="p-3 rounded-lg border-2 transition-all"
+              :class="discountType === 'percent' ? 'border-blue-600 bg-blue-50 text-blue-700 font-semibold' : 'border-slate-200 hover:border-slate-300'">
+              Phần trăm (%)
+            </button>
+            <button @click="discountType = 'amount'" type="button" class="p-3 rounded-lg border-2 transition-all"
+              :class="discountType === 'amount' ? 'border-blue-600 bg-blue-50 text-blue-700 font-semibold' : 'border-slate-200 hover:border-slate-300'">
+              Số tiền (₫)
+            </button>
+          </div>
+        </div>
+
+        <!-- Discount Value -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">
+            {{ discountType === 'percent' ? 'Phần trăm giảm' : 'Số tiền giảm' }}
+          </label>
+          <div class="relative">
+            <input v-model.number="discountValue" type="number" :step="discountType === 'percent' ? 1 : 1000"
+              :max="discountType === 'percent' ? 100 : subTotal"
+              class="w-full h-12 px-4 pr-12 rounded-lg bg-slate-50 border-2 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-0 transition-all font-bold text-lg"
+              placeholder="0">
+            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">
+              {{ discountType === 'percent' ? '%' : '₫' }}
+            </span>
+          </div>
+          <!-- Quick discount buttons -->
+          <div v-if="discountType === 'percent'" class="mt-2 grid grid-cols-4 gap-2">
+            <button v-for="pct in [5, 10, 15, 20]" :key="pct" type="button" @click="discountValue = pct"
+              class="px-3 py-1.5 text-sm rounded-lg bg-slate-100 hover:bg-slate-200 font-medium transition-colors">
+              {{ pct }}%
+            </button>
+          </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div class="space-y-1 text-sm">
+            <div class="flex justify-between">
+              <span class="text-slate-600">Tạm tính:</span>
+              <span class="font-semibold">{{ formatPrice(subTotal) }} ₫</span>
+            </div>
+            <div class="flex justify-between text-amber-600">
+              <span>Giảm giá:</span>
+              <span class="font-semibold">-{{ formatPrice(discount) }} ₫</span>
+            </div>
+            <div class="pt-2 border-t border-blue-200 flex justify-between">
+              <span class="font-bold">Thành tiền:</span>
+              <span class="font-bold text-lg text-blue-600">{{ formatPrice(totalAmount) }} ₫</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-50 px-6 py-4 flex gap-3 justify-end">
+        <button @click="clearDiscount"
+          class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-medium hover:bg-slate-100 transition-colors">
+          Xóa giảm giá
+        </button>
+        <button @click="applyDiscount"
+          class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95">
+          Áp dụng
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product Note Modal -->
+  <div v-if="showProductNoteModal"
+    class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in-up">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+      <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-bold text-lg text-slate-800">Ghi chú sản phẩm</h3>
+        <button @click="showProductNoteModal = false"
+          class="p-2 -mr-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="p-6">
+        <div v-if="editingProductNote" class="mb-4 p-3 bg-blue-50 rounded-lg">
+          <div class="font-medium text-slate-800">{{ editingProductNote.name }}</div>
+          <div class="text-sm text-slate-500">{{ formatPrice(editingProductNote.price) }} ₫ × {{
+            editingProductNote.quantity }}</div>
+        </div>
+
+        <textarea v-model="tempProductNote" rows="4"
+          class="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-0 transition-all font-medium resize-none"
+          placeholder="Ví dụ: Ít đường, nhiều đá, không hành..."></textarea>
+
+        <!-- Quick note suggestions -->
+        <div class="mt-3 flex flex-wrap gap-2">
+          <button v-for="note in ['Ít đường', 'Nhiều đá', 'Không đá', 'Nóng', 'Ít ngọt']" :key="note" type="button"
+            @click="tempProductNote = tempProductNote ? tempProductNote + ', ' + note : note"
+            class="px-3 py-1 text-xs rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
+            {{ note }}
+          </button>
+        </div>
+
+        <div class="mt-6 flex gap-3 justify-end">
+          <button @click="showProductNoteModal = false"
+            class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-medium hover:bg-slate-100 transition-colors">
+            Hủy bỏ
+          </button>
+          <button @click="saveProductNote"
+            class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95">
+            Lưu ghi chú
           </button>
         </div>
       </div>
