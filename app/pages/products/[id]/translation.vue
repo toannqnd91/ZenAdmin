@@ -16,7 +16,7 @@ definePageMeta({
 })
 
 const productId = parseInt(route.params.id as string)
-const entityType = 'ProductCreateUpdateVm'
+const entityType = 'ProductDTO'
 
 // Product metadata (read-only)
 const productName = ref('')
@@ -244,7 +244,7 @@ function handleCancel() {
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Short Description (EN)
                                         <span class="text-xs text-gray-500 ml-2">(VN: {{ vnData.shortDescription
-                                            }})</span>
+                                        }})</span>
                                     </label>
                                     <textarea v-model="enData.shortDescription" rows="4"
                                         placeholder="Enter English short description"

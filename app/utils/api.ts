@@ -145,6 +145,12 @@ export const API_ENDPOINTS = {
   // Menu endpoints
   MENU_CATEGORIES: (menuUrl: string) => `/Menus/${menuUrl}/category`,
   MENU_REORDER: '/Menus/reorder',
+  MENU_UPDATE: (id: number) => `/Menus/${id}`,
+  MENU_DELETE: (id: number) => `/Menus/${id}`,
+  MENU_CREATE: '/Menus',
+  
+  // Menu Category endpoints
+  MENU_CATEGORY_BY_SLUG: (slug: string) => `/MenuCategories/${slug}`,
 
   // Menu type endpoints
   MENU_TYPES: '/MenuTypes',

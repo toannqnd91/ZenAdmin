@@ -56,12 +56,7 @@ async function loadData() {
         // Load widget metadata
         if (widgetResponse?.success && widgetResponse.data) {
             const widget = widgetResponse.data
-                name: widget.name,
-                zone: widget.zone,
-                displayOrder: widget.displayOrder,
-                publishStart: widget.publishStart,
-                publishEnd: widget.publishEnd
-            })
+
             widgetName.value = widget.name
             widgetZone.value = widget.zone
             displayOrder.value = widget.displayOrder

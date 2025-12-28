@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "nuxt build",
-    "dev": "nuxt dev",
+    "build": "nuxt build --dotenv .env.production",
+    "dev": "nuxt dev --dotenv .env.development",
     "debug": "node --inspect-brk ./node_modules/nuxi/bin/nuxi.mjs dev",
     "dev:inspect": "cross-env NODE_OPTIONS=\"--inspect --enable-source-maps\" nuxt dev",
     "generate": "nuxt generate",

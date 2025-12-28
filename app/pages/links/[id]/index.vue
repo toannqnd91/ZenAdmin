@@ -5,6 +5,7 @@ import type { MenuItem } from '@/services'
 import { VueDraggable } from 'vue-draggable-plus'
 import type { SortableEvent } from 'sortablejs'
 import IconEnglish from '@/components/icons/IconEnglish.vue'
+import BaseModal from '@/components/base/BaseModal.vue'
 
 const route = useRoute()
 
@@ -66,6 +67,20 @@ const { data: menuResponse, refresh: refreshMenuData } = await useAsyncData(`men
   return response
 }, { server: false })
 
+// Fetch category info to get the ID using MenuCategories API
+const currentMenuId = ref<number | null>(null)
+const { data: categoryResponse } = await useAsyncData(`menu-category-${menuId}`, async () => {
+  return await linksService.getMenuCategoryBySlug(menuId)
+}, { server: false })
+
+watch(categoryResponse, (res) => {
+  console.log('Menu Category Response:', res)
+  if (res?.success && res.data?.id) {
+    currentMenuId.value = res.data.id
+    console.log('Menu Category ID:', currentMenuId.value)
+  }
+}, { immediate: true })
+
 // Transform API data to display format with children support
 interface LinkItem {
   id: number
@@ -78,6 +93,12 @@ interface LinkItem {
   parentId?: number
   menuTypeId?: number
   entityId?: number
+  icon?: string | null
+  sortOrder?: number
+  isActive?: boolean
+  menuCategoryId?: number
+  autoGenerateChildren?: boolean
+  dynamicConfig?: string | null
 }
 
 // Make links reactive for drag & drop
@@ -97,8 +118,14 @@ const flattenMenuItems = (items: MenuItem[], level: number = 0, parentId: number
       level,
       hasChildren: item.children && item.children.length > 0,
       parentId: parentId ?? undefined,
-      menuTypeId: item.menuTypeId,
-      entityId: item.entityId
+      menuTypeId: item.menuType?.id ?? item.menuTypeId,
+      entityId: item.entityId ?? item.menuType?.entityId,
+      icon: item.icon || undefined,
+      sortOrder: item.sortOrder ?? item.order,
+      isActive: item.isActive,
+      menuCategoryId: item.menuCategoryId,
+      autoGenerateChildren: item.autoGenerateChildren,
+      dynamicConfig: item.dynamicConfig ?? undefined
     }
     result.push(linkItem)
     if (item.children && item.children.length > 0 && expandedItems.value.has(item.id)) {
@@ -128,12 +155,14 @@ const isEditMode = ref(false)
 const editingLinkId = ref<number | null>(null)
 const newLinkName = ref('')
 const newLinkTypeId = ref<string | number | undefined>(undefined)
+const newLinkEntityId = ref<string | number | undefined>(undefined)
 
 const openAddModal = () => {
   isEditMode.value = false
   editingLinkId.value = null
   newLinkName.value = ''
   newLinkTypeId.value = undefined
+  newLinkEntityId.value = undefined
   isAddModalOpen.value = true
 }
 
@@ -141,7 +170,17 @@ const editLink = (link: LinkItem) => {
   isEditMode.value = true
   editingLinkId.value = link.id
   newLinkName.value = link.name
+  // Use menuTypeId from the link item (already extracted from menuType.id in flattenMenuItems)
   newLinkTypeId.value = link.menuTypeId
+
+  // Logic to determine initial entity/url value
+  // If entityId is set and > 0, use it. Otherwise use url.
+  if (link.entityId && link.entityId > 0) {
+    newLinkEntityId.value = link.entityId
+  } else {
+    newLinkEntityId.value = link.url
+  }
+
   isAddModalOpen.value = true
 }
 
@@ -164,18 +203,50 @@ interface LinkModalPayload {
   name: string
   typeId: number | string
   typeName: string
-  typeEntity: string | null
+  typeEntity: string | number | null // Updated type to allow number
+  typeEntityUrl?: string
 }
 const handleLinkModalSubmit = async (payload: LinkModalPayload) => {
   if (isEditMode.value && editingLinkId.value) {
     // Edit existing link
+    const originalItem = currentLinks.value.find(l => l.id === editingLinkId.value)
+    if (!originalItem) return
+
     try {
-      await linksService.updateMenuItem(menuId, {
-        id: editingLinkId.value,
+      // Determine URL: 
+      let url = originalItem.url
+
+      // If we have an Entity URL from the modal (Dropdown selection), use it strictly.
+      // This prevents fallback to originalItem.url which might be corrupted (e.g. repeated prefixes).
+      if (payload.typeEntityUrl !== undefined) {
+        url = payload.typeEntityUrl
+      } else if (typeof payload.typeEntity === 'string' && payload.typeEntity) {
+        url = payload.typeEntity
+      }
+      // If payload.typeEntityUrl is undefined, it means modal didn't resolve it (maybe text mode or error).
+
+      // Specifically: If it is an entity type (number), and typeEntityUrl is empty string, we use empty string.
+      // Do NOT fallback to originalItem.url.
+      if (typeof payload.typeEntity === 'number') {
+        url = payload.typeEntityUrl || ''
+      }
+
+      const updatePayload: any = {
         title: payload.name,
-        // Assuming we keep existing URL if type logic isn't handled here yet
-        // Ideally we should regenerate URL based on Type if it changed
-      } as any) // Casting as any to bypass strict checks if interface mismatch
+        url: url,
+        icon: originalItem.icon || '',
+        sortOrder: originalItem.sortOrder ?? 0,
+        isActive: originalItem.isActive ?? true,
+        parentId: originalItem.parentId ?? 0,
+        menuCategoryId: currentMenuId.value || originalItem.menuCategoryId || 0,
+        menuTypeId: payload.typeId ? Number(payload.typeId) : (originalItem.menuTypeId ?? 0),
+        entityId: payload.typeEntity ? Number(payload.typeEntity) : 0,
+        autoGenerateChildren: originalItem.autoGenerateChildren ?? false,
+        dynamicConfig: originalItem.dynamicConfig || ''
+      }
+
+      console.log('Sending Update Payload:', updatePayload)
+      await linksService.updateMenu(editingLinkId.value, updatePayload)
       await refreshMenuData()
     } catch (e) {
       console.error('Error updating link:', e)
@@ -183,10 +254,46 @@ const handleLinkModalSubmit = async (payload: LinkModalPayload) => {
     }
   } else {
     // Add new link
-    // TODO: Implement Create logic if needed
+    if (!currentMenuId.value) {
+      alert('Không tìm thấy ID của menu category')
+      return
+    }
+
+    try {
+      // Determine URL for new item
+      let url = ''
+      if (payload.typeEntityUrl) {
+        url = payload.typeEntityUrl
+      } else if (typeof payload.typeEntity === 'string' && payload.typeEntity) {
+        url = payload.typeEntity
+      }
+
+      const createPayload: any = {
+        title: payload.name,
+        url: url,
+        icon: '',
+        sortOrder: 0,
+        isActive: true,
+        parentId: 0,
+        menuCategoryId: currentMenuId.value,
+        menuTypeId: payload.typeId ? Number(payload.typeId) : 0,
+        entityId: payload.typeEntity ? Number(payload.typeEntity) : 0,
+        autoGenerateChildren: false,
+        dynamicConfig: ''
+      }
+
+      console.log('Sending Create Payload:', createPayload)
+      await linksService.createMenu(createPayload)
+      await refreshMenuData()
+    } catch (e) {
+      console.error('Error creating link:', e)
+      alert('Tạo mới thất bại')
+    }
   }
   isAddModalOpen.value = false
 }
+
+
 
 // Initialize links from API data
 watch(menuResponse, (newResponse) => {
@@ -240,14 +347,30 @@ const onPointerMove = (e: MouseEvent | TouchEvent | PointerEvent) => {
 // removing duplicated function stub if any
 // (Code previously had const editLink = ... // TODO)
 
-const deleteLink = async (link: LinkItem) => {
-  // TODO: Implement delete functionality using API
+// Delete modal state
+const isDeleteModalOpen = ref(false)
+const linkToDelete = ref<LinkItem | null>(null)
+const isDeleting = ref(false) // loading state for delete action
+
+const deleteLink = (link: LinkItem) => {
+  linkToDelete.value = link
+  isDeleteModalOpen.value = true
+}
+
+const confirmDelete = async () => {
+  if (!linkToDelete.value) return
+
+  isDeleting.value = true
   try {
-    await linksService.deleteMenuItem(menuId, link.id)
-    // Refresh data after deletion
+    await linksService.deleteMenu(linkToDelete.value.id)
     await refreshMenuData()
+    isDeleteModalOpen.value = false
+    linkToDelete.value = null
   } catch (error) {
     console.error('Error deleting link:', error)
+    alert('Xóa menu thất bại')
+  } finally {
+    isDeleting.value = false
   }
 }
 
@@ -508,9 +631,31 @@ onBeforeUnmount(() => {
   </UDashboardPanel>
 
   <!-- Modal thêm/sửa liên kết dùng chung component -->
-  <LinkModal :open="isAddModalOpen" :title="isEditMode ? 'Cập nhật liên kết' : 'Thêm liên kết'"
-    :initial-name="newLinkName" :initial-type-id="newLinkTypeId" @update:open="isAddModalOpen = $event"
-    @submit="handleLinkModalSubmit" />
+  <LinkModal v-if="isAddModalOpen" v-model:open="isAddModalOpen"
+    :title="isEditMode ? 'Cập nhật liên kết' : 'Thêm liên kết mới'" :initial-name="newLinkName"
+    :initial-type-id="newLinkTypeId" :initial-entity-id="newLinkEntityId" @submit="handleLinkModalSubmit" />
+
+  <BaseModal v-model="isDeleteModalOpen" title="Xác nhận xóa" width-class="max-w-md">
+    <div class="py-4">
+      <p>Bạn có chắc chắn muốn xóa liên kết <span class="font-bold">{{ linkToDelete?.name }}</span>?</p>
+      <p class="text-gray-500 text-sm mt-2">Hành động này không thể hoàn tác.</p>
+    </div>
+
+    <template #footer>
+      <div class="flex justify-end gap-3 w-full">
+        <button type="button"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+          @click="isDeleteModalOpen = false">
+          Hủy
+        </button>
+        <button type="button"
+          class="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          :disabled="isDeleting" @click="confirmDelete">
+          {{ isDeleting ? 'Đang xóa...' : 'Xóa' }}
+        </button>
+      </div>
+    </template>
+  </BaseModal>
 
   <!-- Translation Modal -->
   <TranslationModal v-model="isTranslationModalOpen" entity-type="MenuDTO" :entity-id="translatingLink?.id || 0"
