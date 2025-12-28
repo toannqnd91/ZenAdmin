@@ -4,6 +4,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 // Import main components
 import PosHeader from '~/components/pos/PosHeader.vue'
 import PosFooter from '~/components/pos/PosFooter.vue'
+import OrderSelector from '~/components/pos/OrderSelector.vue'
 
 // Import modal components
 import PaymentModal from '~/components/pos/modals/PaymentModal.vue'
@@ -12,7 +13,8 @@ import ProductNoteModal from '~/components/pos/modals/ProductNoteModal.vue'
 import OrderNoteModal from '~/components/pos/modals/OrderNoteModal.vue'
 import AddCustomerModal from '~/components/pos/modals/AddCustomerModal.vue'
 import CustomProductModal from '~/components/pos/modals/CustomProductModal.vue'
-import ReturnExchangeModal from '~/components/pos/modals/ReturnExchangeModal.vue'
+import ProductSelectorModal from '~/components/pos/modals/ProductSelectorModal.vue'
+
 
 definePageMeta({ layout: false })
 
@@ -30,6 +32,9 @@ interface Product {
 interface CartItem extends Product {
   quantity: number
   note?: string
+  isReturn?: boolean
+  maxReturnQty?: number
+  originalOrderId?: number
 }
 
 interface PosTab {
@@ -51,9 +56,13 @@ const searchQuery = ref('')
 const activeTabId = ref<number>(1)
 let tabIdCounter = 2
 
+// View Mode: 'sales' (Product Grid) | 'return' (Order List)
+const viewMode = ref<'sales' | 'return'>('sales')
+
 const tabs = ref<PosTab[]>([
   { id: 1, label: 'Đơn #1' }
 ])
+
 
 // --- Mock Data: Products ---
 const products = ref<Product[]>([
@@ -150,13 +159,14 @@ const showEmployeeMenu = ref(false)
 const orderHistory = ref<any[]>([])
 const showOrderHistoryModal = ref(false)
 
-// --- Return/Exchange State ---
-const showReturnModal = ref(false)
-const returnMode = ref<'return' | 'exchange'>('return') // 'return' = trả hàng thuần, 'exchange' = trả + mua thêm
-const selectedReturnOrder = ref<any>(null)
-const returnItems = ref<any[]>([]) // Items being returned
-const returnReason = ref('')
-const searchOrderQuery = ref('')
+// --- Return/Exchange State (Main Interface) ---
+// const showReturnModal = ref(false)
+// const returnMode = ref<'return' | 'exchange'>('return')
+// const selectedReturnOrder = ref<any>(null)
+// const returnItems = ref<any[]>([])
+// const returnReason = ref('')
+// const searchOrderQuery = ref('')
+const showExchangeModal = ref(false)
 
 
 // --- Branch State ---
@@ -206,48 +216,38 @@ const cart = ref<CartItem[]>([
 ])
 
 // --- Computed Totals ---
-const totalQuantity = computed(() => cart.value.reduce((sum, item) => sum + item.quantity, 0))
-const subTotal = computed(() => cart.value.reduce((sum, item) => sum + (item.price * item.quantity), 0))
+// Total Quantity (absolute count of items)
+const totalQuantity = computed(() => cart.value.reduce((sum, item) => sum + Math.abs(item.quantity), 0))
+
+// Subtotal: Sum of (Price * Quantity). Returns will be negative.
+const subTotal = computed(() => cart.value.reduce((sum, item) => {
+  // If return item, quantity is negative, so price * qty is negative. Correct.
+  return sum + (item.price * item.quantity)
+}, 0))
 
 // Discount calculation
 const discount = computed(() => {
+  // Discount applies only to positive subtotal parts usually, but for simplicity:
+  const positiveSubTotal = cart.value.filter(i => !i.isReturn).reduce((sum, i) => sum + (i.price * i.quantity), 0)
+
   if (discountType.value === 'percent') {
-    return Math.round(subTotal.value * discountValue.value / 100)
+    return Math.round(positiveSubTotal * discountValue.value / 100)
   } else {
     return discountValue.value
   }
 })
 
-const totalAmount = computed(() => Math.max(0, subTotal.value - discount.value))
+// Total Amount: Can be negative (refund)
+const totalAmount = computed(() => subTotal.value - discount.value)
 
 // Change calculation for payment
-const changeAmount = computed(() => Math.max(0, customerPaid.value - totalAmount.value))
-
-// Return calculations
-const returnTotal = computed(() => {
-  return returnItems.value.reduce((sum, item) => sum + (item.price * item.returnQty), 0)
+// If totalAmount is negative, customerPaid is usually 0, and changeAmount is the refund amount (positive)
+const changeAmount = computed(() => {
+  if (totalAmount.value < 0) return Math.abs(totalAmount.value) // Refund needed
+  return Math.max(0, customerPaid.value - totalAmount.value)
 })
 
-const finalReturnAmount = computed(() => {
-  if (returnMode.value === 'exchange') {
-    // Trả hàng kèm mua thêm: Tổng mua mới - Tổng trả hàng
-    return totalAmount.value - returnTotal.value
-  } else {
-    // Trả hàng thuần: Hoàn tiền
-    return returnTotal.value
-  }
-})
-
-// Filtered orders for search
-const filteredOrders = computed(() => {
-  if (!searchOrderQuery.value.trim()) return orderHistory.value.slice(0, 10)
-  const q = searchOrderQuery.value.toLowerCase()
-  return orderHistory.value.filter(order =>
-    order.orderNumber.toLowerCase().includes(q) ||
-    order.customer?.name.toLowerCase().includes(q) ||
-    order.customer?.phone.includes(q)
-  ).slice(0, 10)
-})
+// [Deleted] filteredOrders moved to OrderSelector component
 
 // --- Actions ---
 function setActiveTab(id: number) {
@@ -276,7 +276,15 @@ function closeTab(id: number) {
 }
 
 function addToCart(product: Product) {
-  const existingItem = cart.value.find(item => item.id === product.id)
+  // Find item with same ID AND same Note (empty) AND same Price (original)
+  // This allows creating separate lines for items with different notes/prices
+  const existingItem = cart.value.find(item =>
+    item.id === product.id &&
+    !item.isReturn &&
+    (item.note === '' || item.note === undefined || item.note === null) &&
+    item.price === product.price
+  )
+
   if (existingItem) {
     existingItem.quantity++
   } else {
@@ -284,12 +292,7 @@ function addToCart(product: Product) {
   }
 }
 
-function updateQuantity(item: CartItem, delta: number) {
-  const newQty = item.quantity + delta
-  if (newQty > 0) {
-    item.quantity = newQty
-  }
-}
+
 
 function removeFromCart(id: number) {
   cart.value = cart.value.filter(item => item.id !== id)
@@ -573,140 +576,93 @@ function printInvoice(order: any) {
   }, 250)
 }
 
-// --- Return/Exchange Functions ---
-function openReturnModal(mode: 'return' | 'exchange' = 'return') {
-  returnMode.value = mode
-  showReturnModal.value = true
-  searchOrderQuery.value = ''
-  selectedReturnOrder.value = null
-  returnItems.value = []
-  returnReason.value = ''
-}
-
-function selectOrderForReturn(order: any) {
-  selectedReturnOrder.value = order
-  // Initialize return items with all items from order, returnQty = 0
-  returnItems.value = order.items.map((item: any) => ({
-    ...item,
-    returnQty: 0,
-    maxQty: item.quantity
-  }))
-}
-
-function updateReturnQty(item: any, delta: number) {
-  const newQty = item.returnQty + delta
-  if (newQty >= 0 && newQty <= item.maxQty) {
-    item.returnQty = newQty
-  }
-}
-
-function processReturn() {
-  const returningItems = returnItems.value.filter(item => item.returnQty > 0)
-
-  if (returningItems.length === 0) {
-    alert('Vui lòng chọn sản phẩm cần trả!')
+// --- Unified Return/Exchange Logic ---
+function handleReturnMode() {
+  viewMode.value = 'return'
+  // Optionally clear cart or ask user
+  if (cart.value.length > 0 && !confirm('Giỏ hàng hiện tại sẽ bị xóa để chuyển sang chế độ trả hàng?')) {
     return
   }
+  cart.value = []
+}
 
-  if (returnMode.value === 'return') {
-    // Trả hàng thuần - Hoàn tiền
-    const refundAmount = returnTotal.value
+function handleOpenExchange() {
+  showExchangeModal.value = true
+}
 
-    const returnRecord = {
-      id: Date.now(),
-      type: 'return',
-      returnNumber: `RT${String(orderHistory.value.filter(o => o.type === 'return').length + 1).padStart(4, '0')}`,
-      date: new Date().toISOString(),
-      originalOrder: selectedReturnOrder.value.orderNumber,
-      items: returningItems.map(item => ({
-        ...item,
-        quantity: item.returnQty
-      })),
-      refundAmount: refundAmount,
-      reason: returnReason.value,
-      employee: selectedEmployee.value,
-      branch: selectedBranch.value,
-      status: 'completed'
-    }
+function addReturnItemToCart(item: any, order: any, delta: number) {
+  // Check if item already exists in cart
+  const existingItem = cart.value.find(i => i.id === item.id && i.isReturn && i.originalOrderId === order.id)
 
-    orderHistory.value.unshift(returnRecord)
-    localStorage.setItem('pos_order_history', JSON.stringify(orderHistory.value))
+  if (existingItem) {
+    // Delta comes from UI Return Stepper:
+    // +1 means "Return ONE MORE" => In cart (negative qty), this means subtract 1 (e.g. -1 -> -2)
+    // -1 means "Return ONE LESS" => In cart, this means add 1 (e.g. -2 -> -1)
 
-    alert(`Trả hàng thành công!\nMã phiếu: ${returnRecord.returnNumber}\nSố tiền hoàn: ${formatPrice(refundAmount)} ₫`)
-    showReturnModal.value = false
+    const newQty = existingItem.quantity - delta
 
-  } else {
-    // Trả hàng kèm mua thêm
-    if (cart.value.length === 0) {
-      alert('Vui lòng thêm sản phẩm mua mới vào giỏ hàng!')
-      return
-    }
-
-    const netAmount = finalReturnAmount.value
-
-    if (netAmount > 0) {
-      // Khách cần trả thêm
-      customerPaid.value = netAmount
-      showReturnModal.value = false
-      showPaymentModal.value = true
-    } else if (netAmount < 0) {
-      // Hoàn tiền cho khách
-      const exchangeRecord = {
-        id: Date.now(),
-        type: 'exchange',
-        orderNumber: `EX${String(orderHistory.value.filter(o => o.type === 'exchange').length + 1).padStart(4, '0')}`,
-        date: new Date().toISOString(),
-        originalOrder: selectedReturnOrder.value.orderNumber,
-        returnedItems: returningItems.map(item => ({
-          ...item,
-          quantity: item.returnQty
-        })),
-        newItems: [...cart.value],
-        returnTotal: returnTotal.value,
-        newTotal: totalAmount.value,
-        refundAmount: Math.abs(netAmount),
-        reason: returnReason.value,
-        employee: selectedEmployee.value,
-        branch: selectedBranch.value,
-        status: 'completed'
-      }
-
-      orderHistory.value.unshift(exchangeRecord)
-      localStorage.setItem('pos_order_history', JSON.stringify(orderHistory.value))
-
-      alert(`Đổi hàng thành công!\nMã phiếu: ${exchangeRecord.orderNumber}\nHoàn tiền: ${formatPrice(Math.abs(netAmount))} ₫`)
-
-      clearCurrentOrder()
-      showReturnModal.value = false
+    if (newQty === 0) {
+      // Remove item if quantity goes back to 0
+      cart.value = cart.value.filter(i => i !== existingItem)
     } else {
-      // Bằng nhau - không thu thêm, không hoàn
-      const exchangeRecord = {
-        id: Date.now(),
-        type: 'exchange',
-        orderNumber: `EX${String(orderHistory.value.filter(o => o.type === 'exchange').length + 1).padStart(4, '0')}`,
-        date: new Date().toISOString(),
-        originalOrder: selectedReturnOrder.value.orderNumber,
-        returnedItems: returningItems.map(item => ({
-          ...item,
-          quantity: item.returnQty
-        })),
-        newItems: [...cart.value],
-        returnTotal: returnTotal.value,
-        newTotal: totalAmount.value,
-        refundAmount: 0,
-        reason: returnReason.value,
-        employee: selectedEmployee.value,
-        branch: selectedBranch.value,
-        status: 'completed'
+      existingItem.quantity = newQty
+    }
+  } else {
+    // Item not in cart yet, can only occur if delta > 0 (returning first item)
+    if (delta > 0) {
+      // Try to find original product info to fill missing fields (img, sku...)
+      const originalProduct = products.value.find(p => p.id === item.id)
+
+      cart.value.push({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: -1,
+        sku: originalProduct?.sku || `RET-${item.id}`,
+        imageUrl: originalProduct?.imageUrl || '',
+        category: originalProduct?.category || 'Hàng trả',
+        note: `Trả từ đơn #${order.orderNumber}`,
+        isReturn: true,
+        maxReturnQty: item.quantity,
+        originalOrderId: order.id
+      })
+    }
+  }
+}
+
+// Override updateQuantity to handle negative values properly
+function updateQuantity(item: CartItem, delta: number) {
+  if (item.isReturn) {
+    // For return items: 
+    // delta = 1 means INCREASE quantity (towards 0, e.g. -2 -> -1) -> Returing FEWER items
+    // delta = -1 means DECREASE quantity (towards infinity, e.g. -1 -> -2) -> Returning MORE items
+
+    const currentReturnQty = Math.abs(item.quantity)
+    const maxQty = item.maxReturnQty || 0
+
+    if (delta === -1) {
+      // User wants to return MORE (quantity becomes more negative)
+      if (currentReturnQty < maxQty) {
+        item.quantity--
+      } else {
+        alert('Không thể trả quá số lượng đã mua!')
       }
-
-      orderHistory.value.unshift(exchangeRecord)
-      localStorage.setItem('pos_order_history', JSON.stringify(orderHistory.value))
-
-      alert(`Đổi hàng thành công!\nMã phiếu: ${exchangeRecord.orderNumber}`)
-
-      clearCurrentOrder()
-      showReturnModal.value = false
+    } else if (delta === 1) {
+      // User wants to return LESS
+      if (currentReturnQty > 1) {
+        item.quantity++
+      } else {
+        // Remove item if return qty goes to 0 (user clicks + on -1)
+        // Actually usually UI handles removal separately, but here let's allow it
+        // or keeps it at -1 and requires explicit delete
+        item.quantity = -1 // Keep at least 1 returned
+      }
+    }
+  } else {
+    // Normal items (Positive quantity)
+    const newQty = item.quantity + delta
+    if (newQty > 0) {
+      item.quantity = newQty
     }
   }
 }
@@ -749,80 +705,15 @@ function handlePaymentComplete(data: { method: string; paid: number; change: num
   showPaymentModal.value = false
 }
 
-function handleSaveProductNote(note: string) {
+function handleSaveProductNote(data: { note: string; price: number }) {
   if (editingProductNote.value) {
-    editingProductNote.value.note = note
+    editingProductNote.value.note = data.note
+    if (data.price >= 0) {
+      editingProductNote.value.price = data.price
+    }
   }
   showProductNoteModal.value = false
   editingProductNote.value = null
-}
-
-function handleProcessReturn(data: { reason: string }) {
-  const returningItems = returnItems.value.filter(item => item.returnQty > 0)
-
-  if (returnMode.value === 'return') {
-    const refundAmount = returnTotal.value
-
-    const returnRecord = {
-      id: Date.now(),
-      type: 'return',
-      returnNumber: `RT${String(orderHistory.value.filter(o => o.type === 'return').length + 1).padStart(4, '0')}`,
-      date: new Date().toISOString(),
-      originalOrder: selectedReturnOrder.value.orderNumber,
-      items: returningItems.map(item => ({
-        ...item,
-        quantity: item.returnQty
-      })),
-      refundAmount: refundAmount,
-      reason: data.reason,
-      employee: selectedEmployee.value,
-      branch: selectedBranch.value,
-      status: 'completed'
-    }
-
-    orderHistory.value.unshift(returnRecord)
-    localStorage.setItem('pos_order_history', JSON.stringify(orderHistory.value))
-
-    alert(`Trả hàng thành công!\nMã phiếu: ${returnRecord.returnNumber}\nSố tiền hoàn: ${formatPrice(refundAmount)} ₫`)
-    showReturnModal.value = false
-
-  } else {
-    const netAmount = finalReturnAmount.value
-
-    if (netAmount > 0) {
-      customerPaid.value = netAmount
-      showReturnModal.value = false
-      showPaymentModal.value = true
-    } else {
-      const exchangeRecord = {
-        id: Date.now(),
-        type: 'exchange',
-        orderNumber: `EX${String(orderHistory.value.filter(o => o.type === 'exchange').length + 1).padStart(4, '0')}`,
-        date: new Date().toISOString(),
-        originalOrder: selectedReturnOrder.value.orderNumber,
-        returnedItems: returningItems.map(item => ({
-          ...item,
-          quantity: item.returnQty
-        })),
-        newItems: [...cart.value],
-        returnTotal: returnTotal.value,
-        newTotal: totalAmount.value,
-        refundAmount: Math.abs(netAmount),
-        reason: data.reason,
-        employee: selectedEmployee.value,
-        branch: selectedBranch.value,
-        status: 'completed'
-      }
-
-      orderHistory.value.unshift(exchangeRecord)
-      localStorage.setItem('pos_order_history', JSON.stringify(orderHistory.value))
-
-      alert(`Đổi hàng thành công!\nMã phiếu: ${exchangeRecord.orderNumber}${netAmount < 0 ? `\nHoàn tiền: ${formatPrice(Math.abs(netAmount))} ₫` : ''}`)
-
-      clearCurrentOrder()
-      showReturnModal.value = false
-    }
-  }
 }
 
 // Load order history from localStorage on mount
@@ -998,74 +889,87 @@ onUnmounted(() => {
 
       <!-- Center Content (Product List / Grid) -->
       <main class="flex-1 flex flex-col bg-slate-50 relative min-w-0">
-        <!-- Filter Bar -->
-        <div
-          class="h-12 border-b border-slate-200 bg-white flex items-center gap-4 px-4 shrink-0 z-10 overflow-x-auto no-scrollbar">
-          <button v-for="cat in categories" :key="cat" @click="selectedCategory = cat"
-            class="px-4 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap border border-transparent"
-            :class="selectedCategory === cat ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'">
-            {{ cat }}
-          </button>
-        </div>
 
-        <!-- Product Grid Area -->
-        <div class="flex-1 overflow-y-auto p-4">
-          <div v-if="filteredProducts.length > 0"
-            class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            <div v-for="product in filteredProducts" :key="product.id" @click="addToCart(product)"
-              class="group bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md hover:border-blue-400 transition-all flex flex-col">
-              <!-- Image -->
-              <div class="aspect-square relative overflow-hidden transition-colors"
-                :class="imageErrors[product.id] ? getProductColor(product.id) : 'bg-slate-100'">
-                <!-- Real Image -->
-                <img v-if="!imageErrors[product.id] && product.imageUrl" :src="product.imageUrl" :alt="product.name"
-                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  loading="lazy" @error="handleImageError(product.id)">
+        <!-- View Mode: Sales (Product Grid) -->
+        <template v-if="viewMode === 'sales'">
+          <!-- Filter Bar -->
+          <div
+            class="h-12 border-b border-slate-200 bg-white flex items-center gap-4 px-4 shrink-0 z-10 overflow-x-auto no-scrollbar">
+            <button v-for="cat in categories" :key="cat" @click="selectedCategory = cat"
+              class="px-4 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap border border-transparent"
+              :class="selectedCategory === cat ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'">
+              {{ cat }}
+            </button>
+          </div>
 
-                <!-- Fallback Content (Color + Initial/Name) -->
-                <div v-else class="w-full h-full flex items-center justify-center p-4 text-center">
-                  <span class="font-bold text-lg leading-tight opacity-90 select-none">
-                    {{ product.name }}
-                  </span>
+          <!-- Product Grid Area -->
+          <div class="flex-1 overflow-y-auto p-4">
+            <div v-if="filteredProducts.length > 0"
+              class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              <div v-for="product in filteredProducts" :key="product.id" @click="addToCart(product)"
+                class="group bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md hover:border-blue-400 transition-all flex flex-col">
+                <!-- Image -->
+                <div class="aspect-square relative overflow-hidden transition-colors"
+                  :class="imageErrors[product.id] ? getProductColor(product.id) : 'bg-slate-100'">
+                  <!-- Real Image -->
+                  <img v-if="!imageErrors[product.id] && product.imageUrl" :src="product.imageUrl" :alt="product.name"
+                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy" @error="handleImageError(product.id)">
+
+                  <!-- Fallback Content (Color + Initial/Name) -->
+                  <div v-else class="w-full h-full flex items-center justify-center p-4 text-center">
+                    <span class="font-bold text-lg leading-tight opacity-90 select-none">
+                      {{ product.name }}
+                    </span>
+                  </div>
+
+                  <div v-if="!imageErrors[product.id]"
+                    class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors"></div>
+
+                  <!-- SKU Badge -->
+                  <div
+                    class="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
+                    {{ product.sku }}
+                  </div>
                 </div>
-
-                <div v-if="!imageErrors[product.id]"
-                  class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors"></div>
-
-                <!-- SKU Badge -->
-                <div
-                  class="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
-                  {{ product.sku }}
-                </div>
-              </div>
-              <!-- Info -->
-              <div class="p-3 flex flex-col flex-1">
-                <h3 class="font-medium text-slate-700 text-sm line-clamp-2 mb-1 group-hover:text-blue-700">{{
-                  product.name }}</h3>
-                <div class="mt-auto flex items-center justify-between">
-                  <span class="font-bold text-slate-900">{{ formatPrice(product.price) }}</span>
-                  <button
-                    class="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-colors">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                  </button>
+                <!-- Info -->
+                <div class="p-3 flex flex-col flex-1">
+                  <h3 class="font-medium text-slate-700 text-sm line-clamp-2 mb-1 group-hover:text-blue-700">{{
+                    product.name }}</h3>
+                  <div class="mt-auto flex items-center justify-between">
+                    <span class="font-bold text-slate-900">{{ formatPrice(product.price) }}</span>
+                    <button
+                      class="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-colors">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Empty result -->
-          <div v-else class="h-full flex flex-col items-center justify-center text-slate-400">
-            <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-              <svg class="w-10 h-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                  d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            <!-- Empty result -->
+            <div v-else class="h-full flex flex-col items-center justify-center text-slate-400">
+              <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                <svg class="w-10 h-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <p>Không tìm thấy sản phẩm nào</p>
             </div>
-            <p>Không tìm thấy sản phẩm nào</p>
           </div>
-        </div>
+        </template>
+
+        <!-- View Mode: Return (Order Selector) -->
+        <OrderSelector v-else-if="viewMode === 'return'" :orders="orderHistory" :cart="cart"
+          @select-return-item="addReturnItemToCart" @open-exchange-modal="handleOpenExchange"
+          @set-customer="selectCustomer" />
+
+        <ProductSelectorModal :show="showExchangeModal" :products="products" :categories="categories"
+          @close="showExchangeModal = false" @add-to-cart="addToCart" />
+
       </main>
 
       <!-- Right Sidebar (Checkout Cart) -->
@@ -1083,7 +987,8 @@ onUnmounted(() => {
               <div>
                 <div class="font-bold text-slate-800 text-sm">{{ selectedCustomer.name }}</div>
                 <div class="text-xs text-slate-500">{{ selectedCustomer.phone }} • <span
-                    class="text-amber-600 font-medium">{{ selectedCustomer.level }}</span></div>
+                    class="text-amber-600 font-medium">{{
+                      selectedCustomer.level }}</span></div>
               </div>
             </div>
             <button @click="removeCustomer"
@@ -1170,7 +1075,13 @@ onUnmounted(() => {
                       <span class="truncate">{{ item.note }}</span>
                     </div>
                   </div>
-                  <span class="text-sm font-bold text-slate-800">{{ formatPrice(item.price * item.quantity) }}</span>
+                  <div @click="openProductNoteModal(item)" class="text-right cursor-pointer group/price"
+                    title="Click để sửa giá">
+                    <span
+                      class="text-sm font-bold text-slate-800 group-hover/price:text-blue-600 group-hover/price:underline decoration-dashed decoration-slate-300 underline-offset-4 transition-all">
+                      {{ formatPrice(item.price * item.quantity) }}
+                    </span>
+                  </div>
                 </div>
 
                 <div class="flex items-center justify-between mt-1">
@@ -1298,22 +1209,13 @@ onUnmounted(() => {
           Sản phẩm tùy chỉnh (F2)
         </button>
 
-        <button @click="openReturnModal('return')"
+        <button @click="handleReturnMode"
           class="px-4 py-2 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium transition-colors flex items-center gap-2">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
           </svg>
-          Trả hàng
-        </button>
-
-        <button @click="openReturnModal('exchange')"
-          class="px-4 py-2 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 font-medium transition-colors flex items-center gap-2">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-          </svg>
-          Đổi hàng
+          Trả hàng / Đổi hàng
         </button>
       </div>
     </div>
@@ -1334,10 +1236,6 @@ onUnmounted(() => {
       @apply="applyDiscount" @clear="clearDiscount" />
 
     <ProductNoteModal v-model:show="showProductNoteModal" :item="editingProductNote" @save="handleSaveProductNote" />
-
-    <ReturnExchangeModal v-model:show="showReturnModal" :mode="returnMode" :orders="filteredOrders" :cart="cart"
-      :return-total="returnTotal" :total-amount="totalAmount" :final-return-amount="finalReturnAmount"
-      @select-order="selectOrderForReturn" @update-return-qty="updateReturnQty" @process="handleProcessReturn" />
   </div>
 </template>
 
