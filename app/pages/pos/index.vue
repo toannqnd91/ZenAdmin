@@ -1,7 +1,21 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+
+// Import main components
+import PosHeader from '~/components/pos/PosHeader.vue'
+import PosFooter from '~/components/pos/PosFooter.vue'
+
+// Import modal components
+import PaymentModal from '~/components/pos/modals/PaymentModal.vue'
+import DiscountModal from '~/components/pos/modals/DiscountModal.vue'
+import ProductNoteModal from '~/components/pos/modals/ProductNoteModal.vue'
+import OrderNoteModal from '~/components/pos/modals/OrderNoteModal.vue'
+import AddCustomerModal from '~/components/pos/modals/AddCustomerModal.vue'
+import CustomProductModal from '~/components/pos/modals/CustomProductModal.vue'
+import ReturnExchangeModal from '~/components/pos/modals/ReturnExchangeModal.vue'
 
 definePageMeta({ layout: false })
+
 
 // --- Types ---
 interface Product {
@@ -136,6 +150,14 @@ const showEmployeeMenu = ref(false)
 const orderHistory = ref<any[]>([])
 const showOrderHistoryModal = ref(false)
 
+// --- Return/Exchange State ---
+const showReturnModal = ref(false)
+const returnMode = ref<'return' | 'exchange'>('return') // 'return' = trả hàng thuần, 'exchange' = trả + mua thêm
+const selectedReturnOrder = ref<any>(null)
+const returnItems = ref<any[]>([]) // Items being returned
+const returnReason = ref('')
+const searchOrderQuery = ref('')
+
 
 // --- Branch State ---
 const branches = ref(['Chi nhánh chính', 'Chi nhánh 2 - HN', 'Chi nhánh 3 - HCM'])
@@ -200,6 +222,32 @@ const totalAmount = computed(() => Math.max(0, subTotal.value - discount.value))
 
 // Change calculation for payment
 const changeAmount = computed(() => Math.max(0, customerPaid.value - totalAmount.value))
+
+// Return calculations
+const returnTotal = computed(() => {
+  return returnItems.value.reduce((sum, item) => sum + (item.price * item.returnQty), 0)
+})
+
+const finalReturnAmount = computed(() => {
+  if (returnMode.value === 'exchange') {
+    // Trả hàng kèm mua thêm: Tổng mua mới - Tổng trả hàng
+    return totalAmount.value - returnTotal.value
+  } else {
+    // Trả hàng thuần: Hoàn tiền
+    return returnTotal.value
+  }
+})
+
+// Filtered orders for search
+const filteredOrders = computed(() => {
+  if (!searchOrderQuery.value.trim()) return orderHistory.value.slice(0, 10)
+  const q = searchOrderQuery.value.toLowerCase()
+  return orderHistory.value.filter(order =>
+    order.orderNumber.toLowerCase().includes(q) ||
+    order.customer?.name.toLowerCase().includes(q) ||
+    order.customer?.phone.includes(q)
+  ).slice(0, 10)
+})
 
 // --- Actions ---
 function setActiveTab(id: number) {
@@ -525,6 +573,258 @@ function printInvoice(order: any) {
   }, 250)
 }
 
+// --- Return/Exchange Functions ---
+function openReturnModal(mode: 'return' | 'exchange' = 'return') {
+  returnMode.value = mode
+  showReturnModal.value = true
+  searchOrderQuery.value = ''
+  selectedReturnOrder.value = null
+  returnItems.value = []
+  returnReason.value = ''
+}
+
+function selectOrderForReturn(order: any) {
+  selectedReturnOrder.value = order
+  // Initialize return items with all items from order, returnQty = 0
+  returnItems.value = order.items.map((item: any) => ({
+    ...item,
+    returnQty: 0,
+    maxQty: item.quantity
+  }))
+}
+
+function updateReturnQty(item: any, delta: number) {
+  const newQty = item.returnQty + delta
+  if (newQty >= 0 && newQty <= item.maxQty) {
+    item.returnQty = newQty
+  }
+}
+
+function processReturn() {
+  const returningItems = returnItems.value.filter(item => item.returnQty > 0)
+
+  if (returningItems.length === 0) {
+    alert('Vui lòng chọn sản phẩm cần trả!')
+    return
+  }
+
+  if (returnMode.value === 'return') {
+    // Trả hàng thuần - Hoàn tiền
+    const refundAmount = returnTotal.value
+
+    const returnRecord = {
+      id: Date.now(),
+      type: 'return',
+      returnNumber: `RT${String(orderHistory.value.filter(o => o.type === 'return').length + 1).padStart(4, '0')}`,
+      date: new Date().toISOString(),
+      originalOrder: selectedReturnOrder.value.orderNumber,
+      items: returningItems.map(item => ({
+        ...item,
+        quantity: item.returnQty
+      })),
+      refundAmount: refundAmount,
+      reason: returnReason.value,
+      employee: selectedEmployee.value,
+      branch: selectedBranch.value,
+      status: 'completed'
+    }
+
+    orderHistory.value.unshift(returnRecord)
+    localStorage.setItem('pos_order_history', JSON.stringify(orderHistory.value))
+
+    alert(`Trả hàng thành công!\nMã phiếu: ${returnRecord.returnNumber}\nSố tiền hoàn: ${formatPrice(refundAmount)} ₫`)
+    showReturnModal.value = false
+
+  } else {
+    // Trả hàng kèm mua thêm
+    if (cart.value.length === 0) {
+      alert('Vui lòng thêm sản phẩm mua mới vào giỏ hàng!')
+      return
+    }
+
+    const netAmount = finalReturnAmount.value
+
+    if (netAmount > 0) {
+      // Khách cần trả thêm
+      customerPaid.value = netAmount
+      showReturnModal.value = false
+      showPaymentModal.value = true
+    } else if (netAmount < 0) {
+      // Hoàn tiền cho khách
+      const exchangeRecord = {
+        id: Date.now(),
+        type: 'exchange',
+        orderNumber: `EX${String(orderHistory.value.filter(o => o.type === 'exchange').length + 1).padStart(4, '0')}`,
+        date: new Date().toISOString(),
+        originalOrder: selectedReturnOrder.value.orderNumber,
+        returnedItems: returningItems.map(item => ({
+          ...item,
+          quantity: item.returnQty
+        })),
+        newItems: [...cart.value],
+        returnTotal: returnTotal.value,
+        newTotal: totalAmount.value,
+        refundAmount: Math.abs(netAmount),
+        reason: returnReason.value,
+        employee: selectedEmployee.value,
+        branch: selectedBranch.value,
+        status: 'completed'
+      }
+
+      orderHistory.value.unshift(exchangeRecord)
+      localStorage.setItem('pos_order_history', JSON.stringify(orderHistory.value))
+
+      alert(`Đổi hàng thành công!\nMã phiếu: ${exchangeRecord.orderNumber}\nHoàn tiền: ${formatPrice(Math.abs(netAmount))} ₫`)
+
+      clearCurrentOrder()
+      showReturnModal.value = false
+    } else {
+      // Bằng nhau - không thu thêm, không hoàn
+      const exchangeRecord = {
+        id: Date.now(),
+        type: 'exchange',
+        orderNumber: `EX${String(orderHistory.value.filter(o => o.type === 'exchange').length + 1).padStart(4, '0')}`,
+        date: new Date().toISOString(),
+        originalOrder: selectedReturnOrder.value.orderNumber,
+        returnedItems: returningItems.map(item => ({
+          ...item,
+          quantity: item.returnQty
+        })),
+        newItems: [...cart.value],
+        returnTotal: returnTotal.value,
+        newTotal: totalAmount.value,
+        refundAmount: 0,
+        reason: returnReason.value,
+        employee: selectedEmployee.value,
+        branch: selectedBranch.value,
+        status: 'completed'
+      }
+
+      orderHistory.value.unshift(exchangeRecord)
+      localStorage.setItem('pos_order_history', JSON.stringify(orderHistory.value))
+
+      alert(`Đổi hàng thành công!\nMã phiếu: ${exchangeRecord.orderNumber}`)
+
+      clearCurrentOrder()
+      showReturnModal.value = false
+    }
+  }
+}
+
+// --- Handler Functions for Modal Components ---
+function handlePaymentComplete(data: { method: string; paid: number; change: number }) {
+  const order = {
+    id: Date.now(),
+    orderNumber: `HD${String(orderHistory.value.length + 1).padStart(4, '0')}`,
+    date: new Date().toISOString(),
+    items: [...cart.value],
+    customer: selectedCustomer.value,
+    employee: selectedEmployee.value,
+    branch: selectedBranch.value,
+    subTotal: subTotal.value,
+    discount: discount.value,
+    total: totalAmount.value,
+    paid: data.paid,
+    change: data.change,
+    paymentMethod: data.method,
+    note: orderNote.value,
+    status: 'completed'
+  }
+
+  orderHistory.value.unshift(order)
+
+  try {
+    localStorage.setItem('pos_order_history', JSON.stringify(orderHistory.value))
+  } catch (e) {
+    console.error('Failed to save order history:', e)
+  }
+
+  if (autoPrint.value) {
+    printInvoice(order)
+  }
+
+  alert(`Thanh toán thành công!\nMã đơn: ${order.orderNumber}\nTiền thừa: ${formatPrice(data.change)} ₫`)
+
+  clearCurrentOrder()
+  showPaymentModal.value = false
+}
+
+function handleSaveProductNote(note: string) {
+  if (editingProductNote.value) {
+    editingProductNote.value.note = note
+  }
+  showProductNoteModal.value = false
+  editingProductNote.value = null
+}
+
+function handleProcessReturn(data: { reason: string }) {
+  const returningItems = returnItems.value.filter(item => item.returnQty > 0)
+
+  if (returnMode.value === 'return') {
+    const refundAmount = returnTotal.value
+
+    const returnRecord = {
+      id: Date.now(),
+      type: 'return',
+      returnNumber: `RT${String(orderHistory.value.filter(o => o.type === 'return').length + 1).padStart(4, '0')}`,
+      date: new Date().toISOString(),
+      originalOrder: selectedReturnOrder.value.orderNumber,
+      items: returningItems.map(item => ({
+        ...item,
+        quantity: item.returnQty
+      })),
+      refundAmount: refundAmount,
+      reason: data.reason,
+      employee: selectedEmployee.value,
+      branch: selectedBranch.value,
+      status: 'completed'
+    }
+
+    orderHistory.value.unshift(returnRecord)
+    localStorage.setItem('pos_order_history', JSON.stringify(orderHistory.value))
+
+    alert(`Trả hàng thành công!\nMã phiếu: ${returnRecord.returnNumber}\nSố tiền hoàn: ${formatPrice(refundAmount)} ₫`)
+    showReturnModal.value = false
+
+  } else {
+    const netAmount = finalReturnAmount.value
+
+    if (netAmount > 0) {
+      customerPaid.value = netAmount
+      showReturnModal.value = false
+      showPaymentModal.value = true
+    } else {
+      const exchangeRecord = {
+        id: Date.now(),
+        type: 'exchange',
+        orderNumber: `EX${String(orderHistory.value.filter(o => o.type === 'exchange').length + 1).padStart(4, '0')}`,
+        date: new Date().toISOString(),
+        originalOrder: selectedReturnOrder.value.orderNumber,
+        returnedItems: returningItems.map(item => ({
+          ...item,
+          quantity: item.returnQty
+        })),
+        newItems: [...cart.value],
+        returnTotal: returnTotal.value,
+        newTotal: totalAmount.value,
+        refundAmount: Math.abs(netAmount),
+        reason: data.reason,
+        employee: selectedEmployee.value,
+        branch: selectedBranch.value,
+        status: 'completed'
+      }
+
+      orderHistory.value.unshift(exchangeRecord)
+      localStorage.setItem('pos_order_history', JSON.stringify(orderHistory.value))
+
+      alert(`Đổi hàng thành công!\nMã phiếu: ${exchangeRecord.orderNumber}${netAmount < 0 ? `\nHoàn tiền: ${formatPrice(Math.abs(netAmount))} ₫` : ''}`)
+
+      clearCurrentOrder()
+      showReturnModal.value = false
+    }
+  }
+}
+
 // Load order history from localStorage on mount
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
@@ -633,8 +933,12 @@ function handleKeydown(e: KeyboardEvent) {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
 
-  if (tabsContainer.value) {
-    tabsContainer.value.removeEventListener('scroll', updateScrollButtons)
+  const header = document.querySelector('header')
+  if (header) {
+    const container = header.querySelector('[ref="tabsContainer"]') as HTMLElement
+    if (container) {
+      container.removeEventListener('scroll', updateScrollButtons)
+    }
   }
 })
 </script>
@@ -642,133 +946,10 @@ onUnmounted(() => {
 <template>
   <div class="h-screen w-full bg-slate-50 flex flex-col overflow-hidden font-sans text-slate-800">
     <!-- 1. Top Header -->
-    <header class="h-14 bg-slate-900 text-white flex items-center px-4 gap-4 shadow-md z-20 shrink-0">
-      <!-- Logo Area -->
-      <div class="flex items-center gap-3 cursor-pointer" @click="navigateTo('/')">
-        <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-lg shadow-inner">
-          Z
-        </div>
-        <span class="font-semibold text-lg tracking-tight hidden md:inline-block opacity-90">ZenPOS</span>
-      </div>
-
-      <!-- Search Bar -->
-      <div class="flex-1 max-w-md mx-auto relative group">
-        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <svg class="h-5 w-5 text-slate-400 group-focus-within:text-blue-400 transition-colors" fill="none"
-            viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
-        <input v-model="searchQuery" type="text" placeholder="Tìm kiếm sản phẩm (F3)"
-          class="block w-full h-10 pl-10 pr-4 rounded-md border-0 bg-slate-800 text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:bg-slate-700 transition-all text-sm" />
-        <div class="absolute inset-y-0 right-2 flex items-center">
-          <kbd
-            class="hidden sm:inline-block px-1.5 py-0.5 rounded border border-slate-600 bg-slate-700 text-xs text-slate-400 font-mono">F3</kbd>
-        </div>
-      </div>
-
-      <!-- Tab Navigation -->
-      <!-- Tab Navigation -->
-      <div class="flex-1 max-w-md flex items-center gap-1 relative overflow-hidden pr-9 justify-end">
-        <!-- Left Arrow (Overlay) -->
-        <button v-show="canScrollLeft" type="button" @click.stop="scrollTabs('left')"
-          class="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-6 flex items-center justify-center rounded-r bg-slate-900/90 shadow-md text-slate-200 hover:text-white transition-all z-20 backdrop-blur-sm"
-          title="Cuộn trái">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-            stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-
-        <!-- Tabs Container -->
-        <div ref="tabsContainer"
-          class="flex items-center gap-1 overflow-x-auto no-scrollbar w-auto max-w-full scroll-smooth px-1 h-full">
-          <div v-for="tab in tabs" :key="tab.id" @click="setActiveTab(tab.id)"
-            class="relative group flex items-center h-8 px-2.5 min-w-[85px] max-w-[120px] justify-between rounded-t-lg cursor-pointer transition-all select-none shrink-0"
-            :class="activeTabId === tab.id ? 'bg-slate-100 text-slate-900 border-t-2 border-blue-600' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'">
-            <span class="text-xs font-medium truncate flex-1">{{ tab.label }}</span>
-            <button v-if="tabs.length > 1" @click.stop="closeTab(tab.id)"
-              class="ml-1.5 p-0.5 rounded-full hover:bg-slate-300/20 text-slate-400 hover:text-red-400 opacity-60 group-hover:opacity-100 transition-opacity">
-              <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Right Arrow (Overlay) -->
-        <button v-show="canScrollRight" type="button" @click.stop="scrollTabs('right')"
-          class="absolute right-9 top-1/2 -translate-y-1/2 h-8 w-6 flex items-center justify-center rounded-l bg-slate-900/90 shadow-md text-slate-200 hover:text-white transition-all z-20 backdrop-blur-sm"
-          title="Cuộn phải">
-          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-
-        <!-- Add Tab Button (Absolute Fixed Right) -->
-        <button @click="addTab"
-          class="absolute right-0 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors shrink-0 z-10"
-          title="Thêm đơn hàng mới">
-          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
-      </div>
-
-      <!-- Online/Offline Toggle -->
-      <!-- Online/Offline Toggle -->
-      <button @click="isOnline = !isOnline"
-        class="hidden lg:flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-800 transition-all relative group"
-        :class="isOnline ? 'text-emerald-400' : 'text-slate-500'"
-        :title="isOnline ? 'Hệ thống đang Online' : 'Hệ thống đang Offline'">
-        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-            d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
-        </svg>
-        <span v-if="isOnline"
-          class="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse"></span>
-      </button>
-
-      <!-- User Info & Branch Selector -->
-      <div class="flex items-center gap-3 border-l border-slate-700 pl-4 ml-2 relative">
-        <div class="flex flex-col items-end text-xs cursor-pointer select-none"
-          @click="showBranchMenu = !showBranchMenu">
-          <div class="flex items-center gap-1 text-slate-200 hover:text-white transition-colors">
-            <span class="font-medium">{{ selectedBranch }}</span>
-            <svg class="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-          <span class="text-slate-400">Quản trị viên</span>
-        </div>
-
-        <!-- Branch Dropdown -->
-        <div v-if="showBranchMenu"
-          class="absolute top-full right-0 mt-3 w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-50 text-slate-800 animate-fade-in-up">
-          <div class="py-1">
-            <button v-for="branch in branches" :key="branch" @click="selectedBranch = branch; showBranchMenu = false"
-              class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 transition-colors flex items-center justify-between"
-              :class="selectedBranch === branch ? 'text-blue-600 font-medium bg-blue-50' : 'text-slate-700'">
-              {{ branch }}
-              <svg v-if="selectedBranch === branch" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Close Dropdown Overlay -->
-        <div v-if="showBranchMenu" @click="showBranchMenu = false"
-          class="fixed inset-0 z-40 bg-transparent cursor-default">
-        </div>
-        <div
-          class="h-9 w-9 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg ring-2 ring-slate-800">
-          <span class="text-white font-bold text-xs">AD</span>
-        </div>
-      </div>
-    </header>
+    <PosHeader v-model:search-query="searchQuery" v-model:is-online="isOnline" v-model:selected-branch="selectedBranch"
+      :tabs="tabs" :active-tab-id="activeTabId" :can-scroll-left="canScrollLeft" :can-scroll-right="canScrollRight"
+      :branches="branches" @set-active-tab="setActiveTab" @add-tab="addTab" @close-tab="closeTab"
+      @scroll-tabs="scrollTabs" />
 
     <!-- 2. Main Layout -->
     <div class="flex flex-1 overflow-hidden">
@@ -1046,45 +1227,9 @@ onUnmounted(() => {
         </div>
 
         <!-- Totals & Payment -->
-        <div class="p-4 bg-white border-t border-slate-200 space-y-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-          <div class="flex justify-between text-sm">
-            <span class="text-slate-500">Tổng tiền hàng ({{ totalQuantity }})</span>
-            <span class="font-medium">{{ formatPrice(subTotal) }} ₫</span>
-          </div>
-
-          <div class="flex justify-between text-sm items-center">
-            <button @click="openDiscountModal"
-              class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 group">
-              <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24"
-                stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-              </svg>
-              Giảm giá (F6)
-            </button>
-            <span class="text-slate-500">{{ discount > 0 ? '-' + formatPrice(discount) : '0' }} ₫</span>
-          </div>
-
-          <div class="pt-3 border-t border-dashed border-slate-200 flex justify-between items-end">
-            <span class="text-slate-900 font-bold text-lg">Khách phải trả</span>
-            <span class="text-blue-600 font-bold text-2xl">{{ formatPrice(totalAmount) }} ₫</span>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="pt-2 grid grid-cols-2 gap-3">
-            <div class="col-span-2 flex items-center gap-2 mb-1">
-              <input v-model="autoPrint" type="checkbox" id="autoprint"
-                class="rounded text-blue-600 focus:ring-blue-500 border-slate-300 w-4 h-4">
-              <label for="autoprint" class="text-sm text-slate-600 select-none">In hóa đơn tự động (F10)</label>
-            </div>
-
-            <button @click="openPaymentModal"
-              class="col-span-2 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-[0.98]">
-              <span>THANH TOÁN</span>
-              <span class="bg-white/20 text-white text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">F9</span>
-            </button>
-          </div>
-        </div>
+        <PosFooter v-model:auto-print="autoPrint" :total-quantity="totalQuantity" :sub-total="subTotal"
+          :discount="discount" :total-amount="totalAmount" @open-discount="openDiscountModal"
+          @open-payment="openPaymentModal" />
       </aside>
     </div>
 
@@ -1152,375 +1297,47 @@ onUnmounted(() => {
           </svg>
           Sản phẩm tùy chỉnh (F2)
         </button>
-      </div>
-    </div>
 
-    <!-- Add Customer Modal -->
-    <div v-if="showAddCustomerModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <!-- Backdrop -->
-      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showAddCustomerModal = false"></div>
-
-      <!-- Modal Content -->
-      <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up">
-        <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 class="text-lg font-bold text-slate-800">Thêm khách hàng mới</h3>
-          <button @click="showAddCustomerModal = false" class="text-slate-400 hover:text-red-500 transition-colors">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div class="p-6 space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Tên khách hàng <span
-                class="text-red-500">*</span></label>
-            <input v-model="newCustomerForm.name" type="text"
-              class="w-full h-11 px-4 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-0 transition-all font-medium"
-              placeholder="Ví dụ: Nguyễn Văn A">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Số điện thoại <span
-                class="text-red-500">*</span></label>
-            <input v-model="newCustomerForm.phone" type="tel"
-              class="w-full h-11 px-4 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-0 transition-all font-medium"
-              placeholder="Ví dụ: 0901234567">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Địa chỉ</label>
-            <input v-model="newCustomerForm.address" type="text"
-              class="w-full h-11 px-4 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-0 transition-all font-medium"
-              placeholder="Ví dụ: 123 Đường ABC...">
-          </div>
-        </div>
-
-        <div class="bg-slate-50 px-6 py-4 flex gap-3 justify-end">
-          <button @click="showAddCustomerModal = false"
-            class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-medium hover:bg-slate-100 transition-colors">
-            Hủy bỏ
-          </button>
-          <button @click="saveNewCustomer"
-            class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95">
-            Lưu khách hàng
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Note Modal -->
-  <div v-if="showNoteModal"
-    class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in-up">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-      <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-        <h3 class="font-bold text-lg text-slate-800">Ghi chú đơn hàng</h3>
-        <button @click="showNoteModal = false"
-          class="p-2 -mr-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition-colors">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        <button @click="openReturnModal('return')"
+          class="px-4 py-2 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium transition-colors flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
           </svg>
+          Trả hàng
         </button>
-      </div>
-      <div class="p-6">
-        <textarea v-model="orderNote" rows="4"
-          class="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-0 transition-all font-medium resize-none"
-          placeholder="Nhập ghi chú cho đơn hàng này..."></textarea>
 
-        <div class="mt-6 flex gap-3 justify-end">
-          <button @click="showNoteModal = false"
-            class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-medium hover:bg-slate-100 transition-colors">
-            Hủy bỏ
-          </button>
-          <button @click="saveNote"
-            class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95">
-            Lưu ghi chú
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Custom Product Modal -->
-  <div v-if="showCustomProductModal"
-    class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in-up">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-      <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-        <h3 class="font-bold text-lg text-slate-800">Thêm sản phẩm tùy chỉnh</h3>
-        <button @click="showCustomProductModal = false"
-          class="p-2 -mr-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition-colors">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        <button @click="openReturnModal('exchange')"
+          class="px-4 py-2 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 font-medium transition-colors flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
           </svg>
-        </button>
-      </div>
-      <div class="p-6 space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Tên sản phẩm <span
-              class="text-red-500">*</span></label>
-          <input v-model="customProductForm.name" type="text"
-            class="w-full h-11 px-4 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-0 transition-all font-medium"
-            placeholder="Nhập tên sản phẩm..." @keyup.enter="addCustomProduct">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Giá bán <span
-              class="text-red-500">*</span></label>
-          <input v-model.number="customProductForm.price" type="number"
-            class="w-full h-11 px-4 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-0 transition-all font-medium"
-            placeholder="0" @keyup.enter="addCustomProduct">
-        </div>
-
-        <div class="mt-6 flex gap-3 justify-end">
-          <button @click="showCustomProductModal = false"
-            class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-medium hover:bg-slate-100 transition-colors">
-            Hủy bỏ
-          </button>
-          <button @click="addCustomProduct"
-            class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95">
-            Thêm vào đơn
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Payment Modal -->
-  <div v-if="showPaymentModal"
-    class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in-up">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
-      <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-white flex items-center justify-between">
-        <h3 class="font-bold text-xl">Thanh toán đơn hàng</h3>
-        <button @click="showPaymentModal = false" class="p-2 -mr-2 hover:bg-white/20 rounded-full transition-colors">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
-      <div class="p-6 space-y-4">
-        <!-- Order Summary -->
-        <div class="bg-slate-50 rounded-lg p-4 space-y-2">
-          <div class="flex justify-between text-sm">
-            <span class="text-slate-600">Tạm tính:</span>
-            <span class="font-semibold">{{ formatPrice(subTotal) }} ₫</span>
-          </div>
-          <div v-if="discount > 0" class="flex justify-between text-sm text-amber-600">
-            <span>Giảm giá:</span>
-            <span class="font-semibold">-{{ formatPrice(discount) }} ₫</span>
-          </div>
-          <div class="pt-2 border-t border-slate-200 flex justify-between">
-            <span class="font-bold text-lg">Tổng cộng:</span>
-            <span class="font-bold text-2xl text-blue-600">{{ formatPrice(totalAmount) }} ₫</span>
-          </div>
-        </div>
-
-        <!-- Payment Method -->
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-2">Phương thức thanh toán</label>
-          <div class="grid grid-cols-3 gap-2">
-            <button @click="paymentMethod = 'cash'" type="button"
-              class="p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-1"
-              :class="paymentMethod === 'cash' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 hover:border-slate-300'">
-              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              <span class="text-xs font-medium">Tiền mặt</span>
-            </button>
-            <button @click="paymentMethod = 'transfer'" type="button"
-              class="p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-1"
-              :class="paymentMethod === 'transfer' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 hover:border-slate-300'">
-              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
-              <span class="text-xs font-medium">Chuyển khoản</span>
-            </button>
-            <button @click="paymentMethod = 'card'" type="button"
-              class="p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-1"
-              :class="paymentMethod === 'card' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 hover:border-slate-300'">
-              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-              </svg>
-              <span class="text-xs font-medium">Thẻ</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Customer Paid Amount -->
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Tiền khách đưa</label>
-          <input v-model.number="customerPaid" type="number" step="1000"
-            class="w-full h-12 px-4 rounded-lg bg-slate-50 border-2 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-0 transition-all font-bold text-lg"
-            placeholder="0">
-          <!-- Quick amount buttons -->
-          <div class="mt-2 flex gap-2">
-            <button v-for="amount in [50000, 100000, 200000, 500000]" :key="amount" type="button"
-              @click="customerPaid = totalAmount + amount"
-              class="flex-1 px-3 py-1.5 text-xs rounded-lg bg-slate-100 hover:bg-slate-200 font-medium transition-colors">
-              +{{ formatPrice(amount) }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Change Amount -->
-        <div v-if="customerPaid >= totalAmount" class="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div class="flex justify-between items-center">
-            <span class="text-green-700 font-medium">Tiền thừa trả khách:</span>
-            <span class="text-green-700 font-bold text-xl">{{ formatPrice(changeAmount) }} ₫</span>
-          </div>
-        </div>
-        <div v-else-if="customerPaid > 0" class="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div class="flex justify-between items-center">
-            <span class="text-red-700 font-medium">Còn thiếu:</span>
-            <span class="text-red-700 font-bold text-xl">{{ formatPrice(totalAmount - customerPaid) }} ₫</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-slate-50 px-6 py-4 flex gap-3 justify-end">
-        <button @click="showPaymentModal = false"
-          class="px-6 py-3 rounded-xl border border-slate-300 text-slate-600 font-medium hover:bg-slate-100 transition-colors">
-          Hủy bỏ
-        </button>
-        <button @click="completePayment"
-          class="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-200 transition-all active:scale-95">
-          Xác nhận thanh toán
+          Đổi hàng
         </button>
       </div>
     </div>
-  </div>
 
-  <!-- Discount Modal -->
-  <div v-if="showDiscountModal"
-    class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in-up">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-      <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-        <h3 class="font-bold text-lg text-slate-800">Giảm giá đơn hàng</h3>
-        <button @click="showDiscountModal = false"
-          class="p-2 -mr-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition-colors">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
+    <!-- Modal Components -->
+    <AddCustomerModal v-model:show="showAddCustomerModal" v-model:form="newCustomerForm" @save="saveNewCustomer" />
 
-      <div class="p-6 space-y-4">
-        <!-- Discount Type -->
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-2">Loại giảm giá</label>
-          <div class="grid grid-cols-2 gap-2">
-            <button @click="discountType = 'percent'" type="button" class="p-3 rounded-lg border-2 transition-all"
-              :class="discountType === 'percent' ? 'border-blue-600 bg-blue-50 text-blue-700 font-semibold' : 'border-slate-200 hover:border-slate-300'">
-              Phần trăm (%)
-            </button>
-            <button @click="discountType = 'amount'" type="button" class="p-3 rounded-lg border-2 transition-all"
-              :class="discountType === 'amount' ? 'border-blue-600 bg-blue-50 text-blue-700 font-semibold' : 'border-slate-200 hover:border-slate-300'">
-              Số tiền (₫)
-            </button>
-          </div>
-        </div>
+    <OrderNoteModal v-model:show="showNoteModal" v-model:note="orderNote" @save="saveNote" />
 
-        <!-- Discount Value -->
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">
-            {{ discountType === 'percent' ? 'Phần trăm giảm' : 'Số tiền giảm' }}
-          </label>
-          <div class="relative">
-            <input v-model.number="discountValue" type="number" :step="discountType === 'percent' ? 1 : 1000"
-              :max="discountType === 'percent' ? 100 : subTotal"
-              class="w-full h-12 px-4 pr-12 rounded-lg bg-slate-50 border-2 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-0 transition-all font-bold text-lg"
-              placeholder="0">
-            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">
-              {{ discountType === 'percent' ? '%' : '₫' }}
-            </span>
-          </div>
-          <!-- Quick discount buttons -->
-          <div v-if="discountType === 'percent'" class="mt-2 grid grid-cols-4 gap-2">
-            <button v-for="pct in [5, 10, 15, 20]" :key="pct" type="button" @click="discountValue = pct"
-              class="px-3 py-1.5 text-sm rounded-lg bg-slate-100 hover:bg-slate-200 font-medium transition-colors">
-              {{ pct }}%
-            </button>
-          </div>
-        </div>
+    <CustomProductModal v-model:show="showCustomProductModal" v-model:form="customProductForm"
+      @add="addCustomProduct" />
 
-        <!-- Preview -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div class="space-y-1 text-sm">
-            <div class="flex justify-between">
-              <span class="text-slate-600">Tạm tính:</span>
-              <span class="font-semibold">{{ formatPrice(subTotal) }} ₫</span>
-            </div>
-            <div class="flex justify-between text-amber-600">
-              <span>Giảm giá:</span>
-              <span class="font-semibold">-{{ formatPrice(discount) }} ₫</span>
-            </div>
-            <div class="pt-2 border-t border-blue-200 flex justify-between">
-              <span class="font-bold">Thành tiền:</span>
-              <span class="font-bold text-lg text-blue-600">{{ formatPrice(totalAmount) }} ₫</span>
-            </div>
-          </div>
-        </div>
-      </div>
+    <PaymentModal v-model:show="showPaymentModal" v-model:auto-print="autoPrint" :sub-total="subTotal"
+      :discount="discount" :total-amount="totalAmount" @complete="handlePaymentComplete" />
 
-      <div class="bg-slate-50 px-6 py-4 flex gap-3 justify-end">
-        <button @click="clearDiscount"
-          class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-medium hover:bg-slate-100 transition-colors">
-          Xóa giảm giá
-        </button>
-        <button @click="applyDiscount"
-          class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95">
-          Áp dụng
-        </button>
-      </div>
-    </div>
-  </div>
+    <DiscountModal v-model:show="showDiscountModal" v-model:discount-type="discountType"
+      v-model:discount-value="discountValue" :sub-total="subTotal" :discount="discount" :total-amount="totalAmount"
+      @apply="applyDiscount" @clear="clearDiscount" />
 
-  <!-- Product Note Modal -->
-  <div v-if="showProductNoteModal"
-    class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in-up">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-      <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-        <h3 class="font-bold text-lg text-slate-800">Ghi chú sản phẩm</h3>
-        <button @click="showProductNoteModal = false"
-          class="p-2 -mr-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition-colors">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      <div class="p-6">
-        <div v-if="editingProductNote" class="mb-4 p-3 bg-blue-50 rounded-lg">
-          <div class="font-medium text-slate-800">{{ editingProductNote.name }}</div>
-          <div class="text-sm text-slate-500">{{ formatPrice(editingProductNote.price) }} ₫ × {{
-            editingProductNote.quantity }}</div>
-        </div>
+    <ProductNoteModal v-model:show="showProductNoteModal" :item="editingProductNote" @save="handleSaveProductNote" />
 
-        <textarea v-model="tempProductNote" rows="4"
-          class="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-0 transition-all font-medium resize-none"
-          placeholder="Ví dụ: Ít đường, nhiều đá, không hành..."></textarea>
-
-        <!-- Quick note suggestions -->
-        <div class="mt-3 flex flex-wrap gap-2">
-          <button v-for="note in ['Ít đường', 'Nhiều đá', 'Không đá', 'Nóng', 'Ít ngọt']" :key="note" type="button"
-            @click="tempProductNote = tempProductNote ? tempProductNote + ', ' + note : note"
-            class="px-3 py-1 text-xs rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
-            {{ note }}
-          </button>
-        </div>
-
-        <div class="mt-6 flex gap-3 justify-end">
-          <button @click="showProductNoteModal = false"
-            class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-medium hover:bg-slate-100 transition-colors">
-            Hủy bỏ
-          </button>
-          <button @click="saveProductNote"
-            class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95">
-            Lưu ghi chú
-          </button>
-        </div>
-      </div>
-    </div>
+    <ReturnExchangeModal v-model:show="showReturnModal" :mode="returnMode" :orders="filteredOrders" :cart="cart"
+      :return-total="returnTotal" :total-amount="totalAmount" :final-return-amount="finalReturnAmount"
+      @select-order="selectOrderForReturn" @update-return-qty="updateReturnQty" @process="handleProcessReturn" />
   </div>
 </template>
 
