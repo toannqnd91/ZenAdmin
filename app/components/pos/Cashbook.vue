@@ -197,7 +197,7 @@
                             </div>
                             <div class="font-medium text-slate-800 text-base">{{ selectedTransaction.paymentMethod ||
                                 'Tiền mặt'
-                                }}</div>
+                            }}</div>
                         </div>
                     </div>
                 </div>

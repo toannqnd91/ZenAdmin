@@ -161,36 +161,49 @@ const totalReceivablesLabel = computed(() => {
     </template>
 
     <template #body>
-      <!-- Summary Card -->
-      <UPageCard variant="soft" class="rounded-md bg-primary-600 text-white">
-        <div class="flex flex-wrap items-center gap-4 sm:gap-6 lg:gap-10 text-[13px] sm:text-[14px] leading-tight">
-          <!-- Total Receivables -->
-          <div class="flex flex-col justify-center min-w-[120px] shrink-0">
-            <div class="text-[14px] font-medium flex items-center gap-1 text-white/90">
-              <span>{{ totalReceivablesLabel }}</span>
+      <!-- Summary Card - Professional & Compact -->
+      <div class="bg-white rounded-xl p-5">
+        <div class="flex items-center gap-8">
+          <!-- Main Balance Card -->
+          <div class="flex items-center gap-4">
+            <div
+              class="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center flex-shrink-0">
+              <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
             </div>
-            <div class="font-semibold text-[16px] mt-1 text-white">
-              {{ formatNumber(totalReceivablesDisplay) }}
+            <div>
+              <div class="text-xs font-medium text-gray-500 mb-0.5">{{ totalReceivablesLabel }}</div>
+              <div class="text-2xl font-bold text-gray-900">{{ formatNumber(totalReceivablesDisplay) }}</div>
             </div>
           </div>
-          <!-- Separator -->
-          <div class="inline-flex shrink-0 self-center items-center text-sm font-medium text-white/60 px-1 sm:px-2">
-            |
-          </div>
+
+          <!-- Divider -->
+          <div class="h-16 w-px bg-gray-200"></div>
+
           <!-- Total Payables -->
-          <div class="flex flex-col justify-center min-w-[120px] shrink-0">
-            <div class="text-[14px] font-medium flex items-center gap-1 text-white/90">
-              <span>Tổng nợ nhà cung cấp</span>
-            </div>
-            <div class="font-semibold text-[16px] mt-1">
-              {{ formatNumber(summary.totalPayables) }}
-            </div>
+          <div>
+            <div class="text-xs font-medium text-gray-500 mb-0.5">Tổng nợ nhà cung cấp</div>
+            <div class="text-2xl font-bold text-rose-600">{{ formatNumber(summary.totalPayables) }}</div>
           </div>
+
+          <!-- Period Change (if exists) -->
+          <template v-if="summary.totalPeriodChange !== 0">
+            <div class="h-16 w-px bg-gray-200"></div>
+            <div>
+              <div class="text-xs font-medium text-gray-500 mb-0.5">Thay đổi trong kỳ</div>
+              <div class="text-2xl font-bold"
+                :class="summary.totalPeriodChange > 0 ? 'text-emerald-600' : 'text-rose-600'">
+                {{ formatNumber(Math.abs(summary.totalPeriodChange)) }}
+              </div>
+            </div>
+          </template>
         </div>
-      </UPageCard>
+      </div>
 
       <!-- Filters -->
-      <div class="mt-4 flex flex-wrap gap-3 items-center">
+      <div class="flex flex-wrap gap-3 items-center">
         <UPopover :popper="{ placement: 'bottom-start' }">
           <UButton color="neutral" variant="outline" trailing-icon="i-lucide-chevron-down"
             class="min-w-[320px] justify-between px-4 py-2.5 text-sm font-normal">
@@ -232,10 +245,8 @@ const totalReceivablesLabel = computed(() => {
       </div>
 
       <!-- AR Table -->
-      <div class="mt-4">
-        <ARTable v-model:q="q" v-model:row-selection="rowSelection" v-model:pagination="pagination" :data="data"
-          :loading="loading" :total-pages="totalPages" :total-records="totalCount" />
-      </div>
+      <ARTable v-model:q="q" v-model:row-selection="rowSelection" v-model:pagination="pagination" :data="data"
+        :loading="loading" :total-pages="totalPages" :total-records="totalCount" />
     </template>
   </UDashboardPanel>
 </template>
