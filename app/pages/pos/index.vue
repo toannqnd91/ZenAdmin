@@ -79,6 +79,14 @@ let tabIdCounter = 2
 const viewMode = ref<'sales' | 'return' | 'orders' | 'inventory' | 'cashbook' | 'shift' | 'reports' | 'settings'>('sales')
 const activeNav = ref('sales') // 'sales', 'orders', 'inventory', 'return', 'cashbook', 'shift', 'reports', 'settings'
 const isReturnOrderSelected = ref(false)
+const returnReason = ref<any>(null)
+const returnReasons = [
+  { id: 'defective', label: 'Sản phẩm lỗi/hư hỏng' },
+  { id: 'expired', label: 'Hết hạn sử dụng' },
+  { id: 'wrong_item', label: 'Giao sai hàng' },
+  { id: 'changed_mind', label: 'Khách đổi ý' },
+  { id: 'other', label: 'Khác' }
+]
 
 const navItems = [
   { id: 'sales', label: 'Bán hàng', icon: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z' },
@@ -190,7 +198,37 @@ const customProductForm = ref({
 const showPaymentModal = ref(false)
 const paymentMethod = ref<'cash' | 'transfer' | 'card'>('cash')
 const customerPaid = ref(0)
-const autoPrint = ref(false)
+// --- POS Settings (Persisted) ---
+const posSettings = ref({
+  storeName: 'Zen Cafe & Bakery',
+  storePhone: '0901234567',
+  storeEmail: 'contact@zencafe.com',
+  storeAddress: '123 Nguyễn Văn Linh, Quận 7, TP.HCM',
+  autoPrint: false,
+  printDuplicate: false,
+  defaultPrinter: 'xp80',
+  productsPerPage: 24,
+  showProductImages: true,
+  allowDebt: true,
+  requireCustomer: false,
+})
+
+// Load/Save Settings
+onMounted(() => {
+  try {
+    const saved = localStorage.getItem('pos_settings')
+    if (saved) {
+      // Merge saved with default to handle new fields
+      posSettings.value = { ...posSettings.value, ...JSON.parse(saved) }
+    }
+  } catch (e) {
+    console.error('Failed to load settings:', e)
+  }
+})
+
+watch(posSettings, (newVal) => {
+  localStorage.setItem('pos_settings', JSON.stringify(newVal))
+}, { deep: true })
 
 // --- Discount Modal State ---
 const showDiscountModal = ref(false)
@@ -215,7 +253,7 @@ const showOrderHistoryModal = ref(false)
 // const returnMode = ref<'return' | 'exchange'>('return')
 // const selectedReturnOrder = ref<any>(null)
 // const returnItems = ref<any[]>([])
-// const returnReason = ref('')
+// const returnReason = ref<any>(null)
 // const searchOrderQuery = ref('')
 const showExchangeModal = ref(false)
 
@@ -513,6 +551,15 @@ function openPaymentModal() {
     return
   }
 
+  // Check require customer setting
+  if (posSettings.value.requireCustomer && !selectedCustomer.value) {
+    alert('Vui lòng chọn khách hàng để thanh toán!')
+    // Highlight customer search?
+    const customerInput = document.querySelector('input[placeholder*="Tìm khách hàng"]') as HTMLInputElement
+    customerInput?.focus()
+    return
+  }
+
   // Auto-fill customer paid with total amount
   customerPaid.value = totalAmount.value
   showPaymentModal.value = true
@@ -554,8 +601,12 @@ function completePayment() {
   }
 
   // Print if auto-print is enabled
-  if (autoPrint.value) {
+  if (posSettings.value.autoPrint) {
     printInvoice(order)
+    if (posSettings.value.printDuplicate) {
+      // Simple duplicate print simulation (could pass flag to printInvoice)
+      setTimeout(() => printInvoice(order), 500)
+    }
   }
 
   // Show success message
@@ -572,6 +623,7 @@ function clearCurrentOrder() {
   orderNote.value = ''
   discountValue.value = 0
   customerPaid.value = 0
+  returnReason.value = ''
 }
 
 function printInvoice(order: any) {
@@ -643,6 +695,7 @@ function handleReturnMode() {
     return
   }
   cart.value = []
+  returnReason.value = ''
 }
 
 function handleOpenExchange() {
@@ -742,7 +795,7 @@ function handlePaymentComplete(data: { method: string; paid: number; change: num
     paid: data.paid,
     change: data.change,
     paymentMethod: data.method,
-    note: orderNote.value,
+    note: [orderNote.value, returnReason.value ? `Lý do hoàn trả: ${returnReason.value.label}` : ''].filter(Boolean).join(' - '),
     status: 'completed'
   }
 
@@ -754,7 +807,7 @@ function handlePaymentComplete(data: { method: string; paid: number; change: num
     console.error('Failed to save order history:', e)
   }
 
-  if (autoPrint.value) {
+  if (posSettings.value.autoPrint) {
     printInvoice(order)
   }
 
@@ -875,7 +928,7 @@ function handleKeydown(e: KeyboardEvent) {
   }
   if (e.key === 'F10') {
     e.preventDefault()
-    autoPrint.value = !autoPrint.value
+    posSettings.value.autoPrint = !posSettings.value.autoPrint
   }
 }
 
@@ -883,6 +936,7 @@ function onSelectReturnOrder(order: any) {
   isReturnOrderSelected.value = true
   // Reset cart to ensure clean slate for return/exchange session
   cart.value = []
+  returnReason.value = ''
   if (order.customer) {
     selectCustomer(order.customer)
   }
@@ -933,7 +987,7 @@ onUnmounted(() => {
 
         <!-- Bottom Actions (Settings) -->
         <div class="mt-auto w-full px-1.5 pb-1">
-          <button @click="activeNav = 'settings'"
+          <button @click="handleNavClick('settings')"
             class="w-full aspect-square rounded-lg flex items-center justify-center transition-all duration-150 group"
             :class="activeNav === 'settings' ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'"
             title="Cài đặt">
@@ -963,7 +1017,9 @@ onUnmounted(() => {
           </div>
 
           <!-- Product Grid Area -->
-          <ProductGrid :products="filteredProducts" :get-price="getProductPrice" @add-to-cart="addToCart" />
+          <!-- Product Grid Area -->
+          <ProductGrid :products="filteredProducts" :get-price="getProductPrice"
+            :show-images="posSettings.showProductImages" @add-to-cart="addToCart" />
         </template>
 
         <!-- View Mode: Return (Order Selector) -->
@@ -987,7 +1043,8 @@ onUnmounted(() => {
         <Reports v-else-if="viewMode === 'reports'" />
 
         <!-- View Mode: Settings -->
-        <PosSettings v-else-if="viewMode === 'settings'" />
+        <!-- View Mode: Settings -->
+        <PosSettings v-else-if="viewMode === 'settings'" v-model="posSettings" @save="activeNav = 'sales'" />
 
         <ProductSelectorModal :show="showExchangeModal" :products="products" :categories="categories"
           @close="showExchangeModal = false" @add-to-cart="addToCart" />
@@ -1163,45 +1220,75 @@ onUnmounted(() => {
 
 
         <!-- Price List Selector (Above Footer) -->
-        <div
-          class="px-4 py-3 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between text-sm shrink-0 z-20">
-          <!-- Left Logic: Icon + Text -->
-          <div class="flex items-center gap-2 text-slate-500 font-bold">
-            <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-            </svg>
-            <span>Bảng giá</span>
+        <!-- Price List Selector & Return Reason (Above Footer) -->
+        <div class="border-t border-slate-100 bg-slate-50/80 shrink-0 z-20 flex flex-col">
+          <!-- Return Reason (Only in Return Mode) -->
+          <div v-if="viewMode === 'return'"
+            class="px-4 py-3 border-b border-slate-100 flex items-center justify-between text-sm">
+            <div class="flex items-center gap-2 text-slate-500 font-bold">
+              <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Lý do hoàn trả</span>
+            </div>
+            <PosDropdown :options="returnReasons" :model-value="returnReason"
+              @update:model-value="returnReason = $event" width="w-48" placement="top-right">
+              <template #trigger="{ isOpen, value }">
+                <button
+                  class="flex items-center gap-1 text-slate-800 hover:text-blue-600 transition-colors font-bold group">
+                  <span :class="!value ? 'text-slate-400 font-normal italic' : ''">{{ value ? value.label : 'Chọn lý do'
+                  }}</span>
+                  <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-500 pt-0.5"
+                    :class="isOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </template>
+              <template #option="{ option }">
+                <span>{{ option.label }}</span>
+              </template>
+            </PosDropdown>
           </div>
 
-          <!-- Right Logic: Trigger via Component -->
-          <PosDropdown :options="priceLists" :model-value="selectedPriceList"
-            @update:model-value="selectedPriceList = $event" width="w-64" placement="top-right">
+          <!-- Price List Selector (Always Visible) -->
+          <div class="px-4 py-3 flex items-center justify-between text-sm">
+            <div class="flex items-center gap-2 text-slate-500 font-bold">
+              <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+              <span>Bảng giá</span>
+            </div>
 
-            <template #trigger="{ isOpen }">
-              <button
-                class="flex items-center gap-1 text-slate-800 hover:text-blue-600 transition-colors font-bold group">
-                <span>{{ selectedPriceList.name }}</span>
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-500 pt-0.5" :class="isOpen ? 'rotate-180' : ''"
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-            </template>
+            <PosDropdown :options="priceLists" :model-value="selectedPriceList"
+              @update:model-value="selectedPriceList = $event" width="w-64" placement="top-right">
 
-            <template #option="{ option }">
-              <span>{{ option.name }}</span>
-              <span v-if="option.type === 'percent' && option.value !== 0"
-                class="text-[10px] px-2 py-0.5 rounded-full font-bold ml-2"
-                :class="option.value < 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
-                {{ option.value > 0 ? '+' : '' }}{{ option.value }}%
-              </span>
-            </template>
-          </PosDropdown>
+              <template #trigger="{ isOpen }">
+                <button
+                  class="flex items-center gap-1 text-slate-800 hover:text-blue-600 transition-colors font-bold group">
+                  <span>{{ selectedPriceList.name }}</span>
+                  <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-500 pt-0.5"
+                    :class="isOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </template>
+
+              <template #option="{ option }">
+                <span>{{ option.name }}</span>
+                <span v-if="option.type === 'percent' && option.value !== 0"
+                  class="text-[10px] px-2 py-0.5 rounded-full font-bold ml-2"
+                  :class="option.value < 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+                  {{ option.value > 0 ? '+' : '' }}{{ option.value }}%
+                </span>
+              </template>
+            </PosDropdown>
+          </div>
         </div>
 
         <!-- Totals & Payment -->
-        <PosFooter v-model:auto-print="autoPrint" :total-quantity="totalQuantity" :sub-total="subTotal"
+        <PosFooter v-model:auto-print="posSettings.autoPrint" :total-quantity="totalQuantity" :sub-total="subTotal"
           :discount="discount" :total-amount="totalAmount" @open-discount="openDiscountModal"
           @open-payment="openPaymentModal" />
       </aside>
@@ -1271,7 +1358,7 @@ onUnmounted(() => {
     <CustomProductModal v-model:show="showCustomProductModal" v-model:form="customProductForm"
       @add="addCustomProduct" />
 
-    <PaymentModal v-model:show="showPaymentModal" v-model:auto-print="autoPrint" :sub-total="subTotal"
+    <PaymentModal v-model:show="showPaymentModal" v-model:auto-print="posSettings.autoPrint" :sub-total="subTotal"
       :discount="discount" :total-amount="totalAmount" @complete="handlePaymentComplete" />
 
     <DiscountModal v-model:show="showDiscountModal" v-model:discount-type="discountType"

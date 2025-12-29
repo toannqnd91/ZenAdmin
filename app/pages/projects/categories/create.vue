@@ -4,6 +4,7 @@ import { projectService } from '@/services/project.service'
 import type { FormSubmitEvent } from '#ui/types'
 
 const router = useRouter()
+const toast = useToast()
 const isLoading = ref(false)
 
 const state = reactive({
@@ -27,14 +28,29 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     isLoading.value = true
     try {
         const res = await projectService.createCategory(state)
+
         if (res.success) {
-            useToast().add({ title: 'Thành công', description: 'Tạo danh mục thành công' })
+            toast.add({
+                title: 'Thành công',
+                description: 'Tạo danh mục dự án thành công',
+                color: 'green'
+            })
             router.push('/projects/categories')
         } else {
-            useToast().add({ title: 'Lỗi', description: res.message || 'Có lỗi xảy ra', color: 'error' })
+            toast.add({
+                title: 'Lỗi',
+                description: res.message || 'Có lỗi xảy ra khi tạo danh mục',
+                color: 'red'
+            })
         }
-    } catch (e) {
-        useToast().add({ title: 'Lỗi', description: 'Có lỗi xảy ra', color: 'error' })
+    } catch (e: any) {
+        const errorMessage = e?.message || 'Có lỗi xảy ra khi tạo danh mục'
+        toast.add({
+            title: 'Lỗi',
+            description: errorMessage,
+            color: 'red'
+        })
+        console.error('Create category error:', e)
     } finally {
         isLoading.value = false
     }
@@ -77,8 +93,7 @@ const goBack = () => router.push('/projects/categories')
                     </ol>
                 </nav>
 
-                <UForm ref="form" :schema="schema" :state="state" class="flex flex-col lg:flex-row gap-6"
-                    @submit="onSubmit">
+                <UForm :schema="schema" :state="state" class="flex flex-col lg:flex-row gap-6" @submit="onSubmit">
                     <!-- Left Column: Info -->
                     <div class="flex-1 space-y-6">
                         <UPageCard title="Thông tin chung" variant="soft" class="bg-white rounded-lg">
@@ -112,7 +127,7 @@ const goBack = () => router.push('/projects/categories')
 
                         <div class="flex items-center justify-end gap-3 mt-6">
                             <UButton label="Hủy" variant="ghost" color="neutral" @click="goBack" />
-                            <UButton label="Lưu" :loading="isLoading" @click="$refs.form.submit()" />
+                            <UButton type="submit" label="Lưu" :loading="isLoading" />
                         </div>
                     </div>
 

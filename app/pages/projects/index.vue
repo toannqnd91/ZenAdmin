@@ -23,20 +23,9 @@ function truncateText(text: string | null | undefined, wordLimit: number = 20): 
 function getRowItems(row: { original: { id: number } }) {
     return [
         {
-            type: 'label',
-            label: 'Actions'
-        },
-        {
-            label: 'View',
-            icon: 'i-lucide-eye'
-        },
-        {
-            label: 'Edit',
-            icon: 'i-lucide-edit',
-            onSelect: () => navigateTo(`/projects/${row.original.id}/edit`)
-        },
-        {
-            type: 'separator'
+            label: 'Translation',
+            icon: 'i-lucide-languages',
+            onSelect: () => navigateTo(`/projects/${row.original.id}/translation`)
         },
         {
             label: 'Delete',

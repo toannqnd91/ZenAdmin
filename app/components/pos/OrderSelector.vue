@@ -121,25 +121,23 @@ onMounted(() => {
 
         <div class="flex-1 overflow-hidden flex">
             <!-- Left: Order List -->
-            <div class="w-80 border-r border-slate-200 flex flex-col bg-white">
-                <SearchInput v-model="searchQuery" placeholder="Tìm đơn hàng (Mã, Tên, SĐT)..."
-                    class="border-b border-slate-100" />
+            <PosSidebar class="w-80">
+                <template #header>
+                    <SearchInput v-model="searchQuery" placeholder="Tìm đơn hàng (Mã, Tên, SĐT)..." />
+                </template>
 
-                <div class="flex-1 overflow-y-auto">
-                    <div v-for="order in filteredOrders" :key="order.id" @click="selectOrder(order)"
-                        class="p-4 border-b border-slate-50 cursor-pointer hover:bg-slate-50 transition-colors"
-                        :class="selectedOrder?.id === order.id ? 'bg-amber-50 border-l-4 border-l-amber-500' : 'border-l-4 border-l-transparent'">
-                        <div class="flex justify-between items-start mb-1">
-                            <span class="font-bold text-slate-800">#{{ order.orderNumber }}</span>
-                            <span class="font-medium text-slate-600">{{ formatPrice(order.total) }}</span>
-                        </div>
-                        <div class="text-xs text-slate-500 flex justify-between">
-                            <span>{{ new Date(order.date).toLocaleDateString('vi-VN') }}</span>
-                            <span>{{ order.customer?.name || 'Khách lẻ' }}</span>
-                        </div>
+                <PosListItem v-for="order in filteredOrders" :key="order.id" :active="selectedOrder?.id === order.id"
+                    @click="selectOrder(order)">
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="font-bold text-slate-800">#{{ order.orderNumber }}</span>
+                        <span class="font-medium text-slate-600">{{ formatPrice(order.total) }}</span>
                     </div>
-                </div>
-            </div>
+                    <div class="text-xs text-slate-500 flex justify-between">
+                        <span>{{ new Date(order.date).toLocaleDateString('vi-VN') }}</span>
+                        <span>{{ order.customer?.name || 'Khách lẻ' }}</span>
+                    </div>
+                </PosListItem>
+            </PosSidebar>
 
             <!-- Right: Order Details -->
             <div class="flex-1 flex flex-col bg-slate-50/50">
@@ -163,16 +161,18 @@ onMounted(() => {
                         </div>
                     </div>
 
-                    <div class="flex-1 overflow-y-auto p-4 space-y-3">
+                    <div class="flex-1 overflow-y-auto bg-white">
                         <div
-                            class="text-sm font-medium text-slate-500 uppercase tracking-wider mb-2 flex justify-between">
-                            <span>Danh sách sản phẩm</span>
-                            <span>Đã mua / Trả lại</span>
+                            class="px-6 py-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center sticky top-0 z-10">
+                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Danh sách sản
+                                phẩm</span>
+                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Đã mua / Trả
+                                lại</span>
                         </div>
 
                         <div v-for="item in selectedOrder.items" :key="item.id"
-                            class="bg-white p-3 rounded-xl border transition-all group flex justify-between items-center"
-                            :class="getReturningQty(item.id, selectedOrder.id) > 0 ? 'border-amber-500 ring-1 ring-amber-500/20 bg-amber-50/30' : 'border-slate-200 hover:border-amber-300 shadow-sm'">
+                            class="px-6 py-4 border-b border-slate-100 last:border-0 group flex justify-between items-center transition-colors"
+                            :class="getReturningQty(item.id, selectedOrder.id) > 0 ? 'bg-amber-50' : 'hover:bg-slate-50'">
 
                             <div class="flex items-center gap-4">
                                 <div
@@ -195,27 +195,26 @@ onMounted(() => {
                                         :class="{ 'text-amber-800': getReturningQty(item.id, selectedOrder.id) > 0 }">{{
                                             item.name }}</div>
                                     <div class="text-sm text-slate-500 flex items-center gap-2">
-                                        <span>Giá mua: {{ formatPrice(item.price) }} ₫</span>
+                                        <span>{{ formatPrice(item.price) }} ₫</span>
                                         <span v-if="item.note"
-                                            class="text-xs text-amber-600 bg-amber-100 px-1.5 rounded">{{ item.note
+                                            class="text-xs text-amber-600 bg-amber-100 px-1.5 rounded">{{
+                                                item.note
                                             }}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="flex items-center gap-6">
+                            <div class="flex items-center gap-8">
                                 <div class="text-right">
-                                    <div class="text-xs text-slate-400 font-medium uppercase">Đã mua</div>
-                                    <div class="font-bold text-slate-700 text-lg tabular-nums">x{{ item.quantity }}
-                                    </div>
+                                    <div class="font-bold text-slate-700 tabular-nums">x{{ item.quantity }}</div>
                                 </div>
 
-                                <!-- Smart Stepper (Cart Style: White Buttons on Gray Container) -->
+                                <!-- Smart Stepper (Cleaner Look) -->
                                 <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
                                     <!-- Minus Button -->
                                     <button @click.stop="updateReturnQty(item, -1)"
                                         :disabled="getReturningQty(item.id, selectedOrder.id) <= 0"
-                                        class="w-8 h-8 flex items-center justify-center rounded-md bg-white text-slate-600 shadow-sm hover:text-red-600 hover:shadow disabled:opacity-50 disabled:shadow-none transition-all">
+                                        class="w-8 h-8 flex items-center justify-center rounded-md bg-white text-slate-600 shadow-sm hover:text-red-600 disabled:opacity-50 disabled:shadow-none transition-all">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M20 12H4" />
@@ -223,7 +222,7 @@ onMounted(() => {
                                     </button>
 
                                     <!-- Value -->
-                                    <div class="w-10 text-center font-bold text-lg tabular-nums"
+                                    <div class="w-10 text-center font-bold tabular-nums"
                                         :class="getReturningQty(item.id, selectedOrder.id) > 0 ? 'text-amber-600' : 'text-slate-400'">
                                         {{ getReturningQty(item.id, selectedOrder.id) }}
                                     </div>
@@ -231,7 +230,7 @@ onMounted(() => {
                                     <!-- Plus Button -->
                                     <button @click.stop="updateReturnQty(item, 1)"
                                         :disabled="getReturningQty(item.id, selectedOrder.id) >= item.quantity"
-                                        class="w-8 h-8 flex items-center justify-center rounded-md bg-white text-slate-600 shadow-sm hover:text-green-600 hover:shadow disabled:opacity-50 disabled:shadow-none transition-all">
+                                        class="w-8 h-8 flex items-center justify-center rounded-md bg-white text-slate-600 shadow-sm hover:text-green-600 disabled:opacity-50 disabled:shadow-none transition-all">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M12 4v16m8-8H4" />
@@ -243,13 +242,8 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <div v-else class="h-full flex flex-col items-center justify-center text-slate-400">
-                    <svg class="w-20 h-20 mb-4 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <p>Chọn một đơn hàng để xem chi tiết</p>
-                </div>
+                <PosEmptyState v-else message="Chọn một đơn hàng để xem chi tiết"
+                    sub-message="Thông tin đơn hàng sẽ hiển thị ở đây" />
             </div>
         </div>
     </div>

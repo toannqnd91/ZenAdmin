@@ -8,11 +8,11 @@ interface Props {
     data: Project[]
     loading?: boolean
     q: string
-    // rowSelection: Record<string, boolean> // Keeping interface simple for now unless multi-select is requested but base table might expect it
     pagination: { pageIndex: number, pageSize: number }
     totalPages?: number
     totalRecords?: number
     truncateText: (text: string | null, wordLimit?: number) => string
+    getRowItems?: (row: { original: Project }) => any[]
     onRowClick?: (item: Project) => void
 }
 
@@ -91,13 +91,19 @@ const handleRowClick = (item: Project) => {
 
         <!-- Row actions -->
         <template #row-actions="{ item }">
-            <slot name="row-actions" :item="item">
-                <!-- Default actions passed via @edit and @delete events from BaseTable are handled there usually via slot or prop logic in BaseTable
-             If BaseTable expects us to render actions here, we should see NewsTable. 
-             NewsTable uses: <template #row-actions="{ item }"> <slot ...> </template>
-and passes getRowItems to BaseTable.
--->
-            </slot>
+            <div class="flex items-center space-x-6 justify-end">
+                <template v-for="action in props.getRowItems?.({ original: item as unknown as Project }) as any[]"
+                    :key="action.label">
+                    <button v-if="action && action.type !== 'label' && action.type !== 'separator'" :class="[
+                        'transition-colors',
+                        action.label === 'Delete'
+                            ? 'text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400'
+                            : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'
+                    ]" :title="action.label" @click="action.onSelect">
+                        <UIcon :name="action.icon" class="w-4 h-4" />
+                    </button>
+                </template>
+            </div>
         </template>
     </BaseTable>
 </template>

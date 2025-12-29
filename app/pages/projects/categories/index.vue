@@ -70,7 +70,7 @@ onMounted(fetchCategories)
                 <BaseTable v-model:q="q" v-model:row-selection="rowSelection" v-model:pagination="pagination"
                     :data="filteredCategories" :loading="loading" :columns="columns" title="Danh sách danh mục"
                     :add-button="{ label: 'Thêm danh mục', href: '/projects/categories/create' }"
-                    search-placeholder="Tìm kiếm danh mục..." :show-row-actions="true" class="flex-1">
+                    search-placeholder="Tìm kiếm danh mục..." :show-row-actions="true">
                     <!-- Custom isActive column -->
                     <template #column-isActive="{ item }">
                         <UBadge :color="item.isActive ? 'success' : 'neutral'" variant="soft">
@@ -80,11 +80,19 @@ onMounted(fetchCategories)
 
                     <!-- Row actions -->
                     <template #row-actions="{ item }">
-                        <div class="flex gap-2 justify-end">
-                            <UButton icon="i-lucide-edit" variant="ghost" color="primary"
-                                :to="`/projects/categories/${item.id}/edit`" />
-                            <UButton icon="i-lucide-trash" variant="ghost" color="error"
-                                @click="handleDelete(item.id as number)" />
+                        <div class="flex items-center space-x-6 justify-end">
+                            <button
+                                class="transition-colors text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                                title="Translation"
+                                @click="$router.push(`/projects/categories/${item.id}/translation`)">
+                                <UIcon name="i-lucide-languages" class="w-4 h-4" />
+                            </button>
+
+                            <button
+                                class="transition-colors text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400"
+                                title="Delete" @click="handleDelete(item.id as number)">
+                                <UIcon name="i-lucide-trash" class="w-4 h-4" />
+                            </button>
                         </div>
                     </template>
                 </BaseTable>

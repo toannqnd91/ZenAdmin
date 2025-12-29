@@ -5,6 +5,7 @@ import type { FormSubmitEvent } from '#ui/types'
 
 const route = useRoute()
 const router = useRouter()
+const toast = useToast()
 const isLoading = ref(false)
 const isFetching = ref(true)
 
@@ -38,11 +39,19 @@ async function fetchData() {
             state.displayOrder = res.data.displayOrder
             state.isActive = res.data.isActive
         } else {
-            useToast().add({ title: 'Lỗi', description: 'Không tìm thấy danh mục', color: 'error' })
+            toast.add({
+                title: 'Lỗi',
+                description: 'Không tìm thấy danh mục',
+                color: 'error'
+            })
             router.push('/projects/categories')
         }
-    } catch (e) {
-        useToast().add({ title: 'Lỗi', description: 'Lỗi tải dữ liệu', color: 'error' })
+    } catch (e: any) {
+        toast.add({
+            title: 'Lỗi',
+            description: e?.message || 'Lỗi tải dữ liệu',
+            color: 'error'
+        })
         router.push('/projects/categories')
     } finally {
         isFetching.value = false
@@ -52,15 +61,34 @@ async function fetchData() {
 async function onSubmit(event: FormSubmitEvent<Schema>) {
     isLoading.value = true
     try {
-        const res = await projectService.updateCategory(categoryId, state)
+        const payload = {
+            id: categoryId,
+            ...state
+        }
+        const res = await projectService.updateCategory(categoryId, payload)
+
         if (res.success) {
-            useToast().add({ title: 'Thành công', description: 'Cập nhật danh mục thành công' })
+            toast.add({
+                title: 'Thành công',
+                description: 'Cập nhật danh mục dự án thành công',
+                color: 'success'
+            })
             router.push('/projects/categories')
         } else {
-            useToast().add({ title: 'Lỗi', description: res.message || 'Có lỗi xảy ra', color: 'error' })
+            toast.add({
+                title: 'Lỗi',
+                description: res.message || 'Có lỗi xảy ra khi cập nhật danh mục',
+                color: 'error'
+            })
         }
-    } catch (e) {
-        useToast().add({ title: 'Lỗi', description: 'Có lỗi xảy ra', color: 'error' })
+    } catch (e: any) {
+        const errorMessage = e?.message || 'Có lỗi xảy ra khi cập nhật danh mục'
+        toast.add({
+            title: 'Lỗi',
+            description: errorMessage,
+            color: 'error'
+        })
+        console.error('Update category error:', e)
     } finally {
         isLoading.value = false
     }
@@ -113,8 +141,7 @@ onMounted(() => {
                     </ol>
                 </nav>
 
-                <UForm ref="form" :schema="schema" :state="state" class="flex flex-col lg:flex-row gap-6"
-                    @submit="onSubmit">
+                <UForm :schema="schema" :state="state" class="flex flex-col lg:flex-row gap-6" @submit="onSubmit">
                     <!-- Left Column: Info -->
                     <div class="flex-1 space-y-6">
                         <UPageCard title="Thông tin chung" variant="soft" class="bg-white rounded-lg">
@@ -148,7 +175,7 @@ onMounted(() => {
 
                         <div class="flex items-center justify-end gap-3 mt-6">
                             <UButton label="Hủy" variant="ghost" color="neutral" @click="goBack" />
-                            <UButton label="Cập nhật" :loading="isLoading" @click="$refs.form.submit()" />
+                            <UButton type="submit" label="Cập nhật" :loading="isLoading" />
                         </div>
                     </div>
 

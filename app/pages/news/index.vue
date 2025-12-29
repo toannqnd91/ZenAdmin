@@ -121,6 +121,9 @@ async function onRowMultiDelete(ids: (string | number)[]) {
           <UDashboardSidebarCollapse />
         </template>
         <template #right>
+          <UButton label="Quản lý danh mục" icon="i-lucide-folder-cog" variant="ghost" color="neutral"
+            to="/news-categories" />
+
           <!-- Divider before global controls -->
           <div class="h-5 w-px bg-gray-200 mx-2" />
 

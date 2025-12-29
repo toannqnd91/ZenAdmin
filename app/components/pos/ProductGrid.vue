@@ -13,11 +13,13 @@ interface Product {
 interface Props {
     products: Product[]
     getPrice?: (product: Product) => number
+    showImages?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
     products: () => [],
-    getPrice: (p: Product) => p.price
+    getPrice: (p: Product) => p.price,
+    showImages: true
 })
 
 const emit = defineEmits<{
@@ -47,7 +49,7 @@ function formatPrice(price: number) {
             <div v-for="product in products" :key="product.id" @click="$emit('add-to-cart', product)"
                 class="group bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md hover:border-blue-400 transition-all flex flex-col h-full active:scale-[0.98]">
                 <!-- Image -->
-                <div class="aspect-square relative overflow-hidden transition-colors"
+                <div v-if="showImages" class="aspect-square relative overflow-hidden transition-colors"
                     :class="imageErrors[product.id] ? getProductColor(product.id) : 'bg-slate-100'">
                     <!-- Real Image -->
                     <img v-if="!imageErrors[product.id] && product.imageUrl" :src="product.imageUrl" :alt="product.name"
