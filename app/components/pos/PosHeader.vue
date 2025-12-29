@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import PosDropdown from './PosDropdown.vue'
 
 interface Tab {
     id: number
@@ -209,7 +208,7 @@ defineExpose({
 
                                 <span class="font-medium inline-block max-w-[100px] truncate leading-none">{{
                                     selectedBranch
-                                }}</span>
+                                    }}</span>
                                 <svg class="w-3 h-3 text-slate-400 transition-transform duration-200"
                                     :class="{ 'rotate-180': isOpen }" fill="none" viewBox="0 0 24 24"
                                     stroke="currentColor">

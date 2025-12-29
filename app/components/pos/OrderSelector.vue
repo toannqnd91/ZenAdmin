@@ -1,6 +1,7 @@
+```
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
-import SearchInput from '~/components/pos/SearchInput.vue'
+import PosInput from '~/components/pos/PosInput.vue'
 
 interface CartItem {
     id: number
@@ -123,7 +124,8 @@ onMounted(() => {
             <!-- Left: Order List -->
             <PosSidebar class="w-80">
                 <template #header>
-                    <SearchInput v-model="searchQuery" placeholder="Tìm đơn hàng (Mã, Tên, SĐT)..." />
+                    <PosInput v-model="searchQuery" placeholder="Tìm đơn hàng (Mã, Tên, SĐT)..." icon="search"
+                        size="sm" />
                 </template>
 
                 <PosListItem v-for="order in filteredOrders" :key="order.id" :active="selectedOrder?.id === order.id"

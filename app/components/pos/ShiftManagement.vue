@@ -41,8 +41,9 @@
 
                     <!-- Search -->
                     <div class="p-3 bg-white border-b border-slate-200">
-                        <SearchInput v-model="searchQuery" :show-date-range="true" v-model:start-date="startDate"
-                            v-model:end-date="endDate" @clear-dates="clearDates" placeholder="Tìm ca làm việc..." />
+                        <PosInput v-model="searchQuery" :show-date-range="true" v-model:start-date="startDate"
+                            v-model:end-date="endDate" @clear-dates="clearDates" placeholder="Tìm ca làm việc..."
+                            icon="search" size="sm" />
                     </div>
                 </div>
             </template>
@@ -59,7 +60,7 @@
                     <div class="flex items-start justify-between">
                         <div class="font-bold text-slate-800 text-[15px] group-hover:text-blue-700 transition-colors">{{
                             shift.name
-                        }}</div>
+                            }}</div>
                         <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border shadow-sm"
                             :class="shift.status === 'Đã đóng' ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-green-100 text-green-700 border-green-200'">
                             {{ shift.status }}
@@ -249,7 +250,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import SearchInput from '~/components/pos/SearchInput.vue'
+import PosInput from '~/components/pos/PosInput.vue'
 import PosEmptyState from '~/components/pos/PosEmptyState.vue'
 
 const searchQuery = ref('')

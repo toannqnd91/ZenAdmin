@@ -4,8 +4,8 @@
         <PosSidebar class="w-80">
             <template #header>
                 <!-- Search & Filter -->
-                <SearchInput v-model="searchQuery" :show-date-range="true" v-model:start-date="startDate"
-                    v-model:end-date="endDate" placeholder="Tìm đơn hàng..." />
+                <PosInput v-model="searchQuery" :show-date-range="true" v-model:start-date="startDate"
+                    v-model:end-date="endDate" placeholder="Tìm đơn hàng..." icon="search" size="sm" />
 
                 <!-- Status Filters -->
                 <div class="px-3 pb-3 flex gap-1.5 border-b border-slate-200">
@@ -233,7 +233,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import SearchInput from '~/components/pos/SearchInput.vue'
+import PosInput from '~/components/pos/PosInput.vue'
 
 const searchQuery = ref('')
 const selectedStatus = ref('all')

@@ -17,7 +17,7 @@
         </div>
 
         <!-- Footer Section -->
-        <div v-if="$slots.footer" class="border-t border-slate-200 bg-white">
+        <div v-if="$slots.footer" class="border-t border-slate-200 bg-white relative z-30">
             <slot name="footer"></slot>
         </div>
     </div>

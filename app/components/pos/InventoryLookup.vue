@@ -4,8 +4,8 @@
         <PosSidebar class="w-80">
             <template #header>
                 <!-- Search -->
-                <SearchInput v-model="searchQuery" :show-date-range="false" class="border-b border-slate-200"
-                    placeholder="Tìm sản phẩm theo tên, mã SKU, barcode..." />
+                <PosInput v-model="searchQuery" :show-date-range="false" class="border-b border-slate-200"
+                    placeholder="Tìm sản phẩm theo tên, mã SKU, barcode..." icon="search" size="sm" />
             </template>
 
             <!-- Inventory List -->
@@ -146,7 +146,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import SearchInput from '~/components/pos/SearchInput.vue'
+import PosInput from '~/components/pos/PosInput.vue'
 
 const searchQuery = ref('')
 const selectedItem = ref<any>(null)
