@@ -12,9 +12,15 @@
             <PosListItem v-for="item in filteredInventory" :key="item.id" :active="selectedItem?.id === item.id"
                 @click="selectItem(item)">
                 <div class="flex gap-3">
-                    <div class="w-12 h-12 rounded-lg bg-slate-100 flex-shrink-0 overflow-hidden">
+                    <div
+                        class="w-12 h-12 rounded-lg bg-slate-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
                         <img v-if="item.imageUrl" :src="item.imageUrl" :alt="item.name"
                             class="w-full h-full object-cover" />
+                        <svg v-else class="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="font-medium text-slate-800 truncate">{{ item.name }}</div>
@@ -42,96 +48,145 @@
 
         <!-- Right Column: Product Detail -->
         <div class="flex-1 flex flex-col bg-slate-50 min-w-0">
-            <div v-if="selectedItem" class="flex-1 overflow-y-auto">
+            <div v-if="selectedItem" class="flex-1 overflow-y-auto flex flex-col">
                 <!-- Product Header -->
-                <div class="bg-white px-8 py-8 border-b border-slate-200">
-                    <div class="flex gap-8">
-                        <!-- Large Image -->
-                        <div
-                            class="w-40 h-40 rounded-2xl bg-slate-50 flex-shrink-0 overflow-hidden border border-slate-100 shadow-sm relative group">
-                            <img v-if="selectedItem.imageUrl" :src="selectedItem.imageUrl" :alt="selectedItem.name"
-                                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                            <div v-else class="w-full h-full flex items-center justify-center text-slate-300">
-                                <svg class="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                            </div>
-                        </div>
-
-                        <!-- Info -->
-                        <div class="flex-1 min-w-0 pt-2">
-                            <div class="flex items-start justify-between mb-2">
-                                <h2 class="text-3xl font-bold text-slate-900 leading-tight tracking-tight">{{
-                                    selectedItem.name }}</h2>
-                                <div class="px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide border shadow-sm"
+                <div class="bg-white px-8 py-6 border-b border-slate-200">
+                    <div class="flex items-start justify-between mb-8">
+                        <div>
+                            <div class="flex items-center gap-3 mb-2">
+                                <h2 class="text-3xl font-bold text-slate-800 tracking-tight">{{ selectedItem.name }}
+                                </h2>
+                                <span
+                                    class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border shadow-sm"
                                     :class="getStockBadgeClass(selectedItem.stock)">
                                     {{ getStockStatus(selectedItem.stock) }}
-                                </div>
-                            </div>
-
-                            <div class="flex items-center gap-3 mb-6">
-                                <span
-                                    class="px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 font-mono text-sm font-semibold border border-slate-200">
-                                    SKU: {{ selectedItem.sku }}
                                 </span>
                             </div>
+                            <p class="text-slate-500 font-medium">SKU: {{ selectedItem.sku }}</p>
+                        </div>
+                    </div>
 
-                            <div class="flex items-baseline gap-2">
-                                <span class="text-3xl font-bold text-blue-600 tracking-tight">{{
-                                    formatPrice(selectedItem.price) }}</span>
-                                <span class="text-slate-400 font-medium">/ sản phẩm</span>
+                    <div class="grid grid-cols-2 gap-x-12 gap-y-6 text-sm">
+                        <div>
+                            <div
+                                class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Giá bán
                             </div>
+                            <div class="font-semibold text-slate-800 text-base">{{ formatPrice(selectedItem.price) }}
+                            </div>
+                        </div>
+                        <div>
+                            <div
+                                class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                                Tồn kho
+                            </div>
+                            <div class="font-semibold text-base" :class="getStockClass(selectedItem.stock)">{{
+                                selectedItem.stock }} sản phẩm</div>
+                        </div>
+                        <div>
+                            <div
+                                class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                </svg>
+                                Danh mục
+                            </div>
+                            <div class="font-medium text-slate-800 text-base">{{ selectedItem.category || '-' }}</div>
+                        </div>
+                        <div>
+                            <div
+                                class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Barcode
+                            </div>
+                            <div class="font-medium text-slate-800 text-base font-mono">{{ selectedItem.barcode || '-'
+                            }}</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Stock & Stats -->
-                <div class="p-8">
-                    <h3 class="font-bold text-slate-800 mb-5 text-sm uppercase tracking-wider flex items-center gap-2">
-                        <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                        </svg>
-                        Thông tin kho hàng
-                    </h3>
-
-                    <div class="grid grid-cols-3 gap-6">
-                        <!-- Current Stock -->
-                        <div
-                            class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
-                            <div class="absolute right-0 top-0 p-4 opacity-5">
-                                <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                            </div>
-                            <div class="relative">
-                                <div class="text-sm font-medium text-slate-500 mb-1">Tồn kho khả dụng</div>
-                                <div class="text-3xl font-bold tracking-tight"
-                                    :class="getStockClass(selectedItem.stock)">{{
-                                        selectedItem.stock }}</div>
-                                <div class="mt-2 text-xs text-slate-400">Đơn vị: Sản phẩm</div>
-                            </div>
-                        </div>
-
-                        <!-- Placeholder Stats (Mockup for professional feel) -->
-                        <div
-                            class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-blue-300 transition-colors group">
-                            <div class="text-sm font-medium text-slate-500 mb-1">Đang giao dịch</div>
+                <!-- Stock Stats Section -->
+                <div class="bg-white pb-6 flex-1">
+                    <div
+                        class="px-8 py-4 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between sticky top-0 z-10 backdrop-blur-sm">
+                        <h3 class="font-bold text-slate-700 text-sm uppercase tracking-wider">Thông tin kho hàng</h3>
+                    </div>
+                    <div class="px-8 py-6">
+                        <div class="grid grid-cols-3 gap-4">
+                            <!-- Current Stock -->
                             <div
-                                class="text-3xl font-bold text-slate-800 tracking-tight group-hover:text-blue-600 transition-colors">
-                                0</div>
-                            <div class="mt-2 text-xs text-slate-400">Tạm giữ trong đơn hàng</div>
-                        </div>
+                                class="bg-white p-5 rounded-xl border-2 border-blue-200 hover:border-blue-300 hover:shadow-lg transition-all group">
+                                <div class="flex items-start justify-between mb-3">
+                                    <div class="text-xs font-bold text-blue-700 uppercase tracking-wide">Tồn kho khả
+                                        dụng</div>
+                                    <div
+                                        class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                                        <svg class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="text-5xl font-bold tracking-tight mb-2"
+                                    :class="getStockClass(selectedItem.stock)">
+                                    {{ selectedItem.stock }}</div>
+                                <div class="text-xs text-slate-500 font-medium">Đơn vị: Sản phẩm</div>
+                            </div>
 
-                        <div
-                            class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-blue-300 transition-colors group">
-                            <div class="text-sm font-medium text-slate-500 mb-1">Đang về hàng</div>
+                            <!-- In Transaction -->
                             <div
-                                class="text-3xl font-bold text-slate-800 tracking-tight group-hover:text-blue-600 transition-colors">
-                                0</div>
-                            <div class="mt-2 text-xs text-slate-400">Từ nhà cung cấp</div>
+                                class="bg-white p-5 rounded-xl border-2 border-gray-200 hover:border-amber-300 hover:shadow-lg transition-all group">
+                                <div class="flex items-start justify-between mb-3">
+                                    <div class="text-xs font-bold text-gray-700 uppercase tracking-wide">Đang giao dịch
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center group-hover:bg-amber-200 transition-colors">
+                                        <svg class="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div
+                                    class="text-5xl font-bold text-gray-800 tracking-tight group-hover:text-amber-600 transition-colors mb-2">
+                                    0</div>
+                                <div class="text-xs text-slate-500 font-medium">Tạm giữ trong đơn hàng</div>
+                            </div>
+
+                            <!-- Incoming Stock -->
+                            <div
+                                class="bg-white p-5 rounded-xl border-2 border-gray-200 hover:border-emerald-300 hover:shadow-lg transition-all group">
+                                <div class="flex items-start justify-between mb-3">
+                                    <div class="text-xs font-bold text-gray-700 uppercase tracking-wide">Đang về hàng
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
+                                        <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div
+                                    class="text-5xl font-bold text-gray-800 tracking-tight group-hover:text-emerald-600 transition-colors mb-2">
+                                    0</div>
+                                <div class="text-xs text-slate-500 font-medium">Từ nhà cung cấp</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -151,12 +206,11 @@ import PosInput from '~/components/pos/PosInput.vue'
 const searchQuery = ref('')
 const selectedItem = ref<any>(null)
 
-// Mock inventory data
+// Mock data
 const inventory = ref([
-    { id: 1, sku: 'CF001', name: 'Cà phê đen đá', stock: 45, price: 25000, imageUrl: 'https://images.unsplash.com/photo-1559496417-e7f25cb247f3?w=400&q=80' },
-    { id: 2, sku: 'CF002', name: 'Cà phê sữa đá', stock: 12, price: 29000, imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400&q=80' },
-    { id: 3, sku: 'CF003', name: 'Bạc xỉu', stock: 3, price: 32000, imageUrl: 'https://images.unsplash.com/photo-1585849834997-6a1b2d77d13e?w=400&q=80' },
-    { id: 4, sku: 'TS001', name: 'Trà sữa trân châu', stock: 0, price: 35000, imageUrl: null },
+    { id: 1, name: 'Sản phẩm A', sku: 'SKU001', barcode: '1234567890', stock: 45, price: 150000, category: 'Điện tử', imageUrl: '' },
+    { id: 2, name: 'Sản phẩm B', sku: 'SKU002', barcode: '0987654321', stock: 12, price: 250000, category: 'Thời trang', imageUrl: '' },
+    { id: 3, name: 'Sản phẩm C', sku: 'SKU003', barcode: '1122334455', stock: 0, price: 350000, category: 'Gia dụng', imageUrl: '' },
 ])
 
 const filteredInventory = computed(() => {
@@ -164,33 +218,34 @@ const filteredInventory = computed(() => {
     const query = searchQuery.value.toLowerCase()
     return inventory.value.filter(item =>
         item.name.toLowerCase().includes(query) ||
-        item.sku.toLowerCase().includes(query)
+        item.sku.toLowerCase().includes(query) ||
+        item.barcode.includes(query)
     )
 })
 
-function selectItem(item: any) {
+const selectItem = (item: any) => {
     selectedItem.value = item
 }
 
-function getStockClass(stock: number) {
-    if (stock === 0) return 'text-red-600'
-    if (stock < 10) return 'text-yellow-600'
-    return 'text-green-600'
-}
-
-function getStockBadgeClass(stock: number) {
-    if (stock === 0) return 'bg-red-100 text-red-700'
-    if (stock < 10) return 'bg-yellow-100 text-yellow-700'
-    return 'bg-green-100 text-green-700'
-}
-
-function getStockStatus(stock: number) {
-    if (stock === 0) return 'Hết hàng'
-    if (stock < 10) return 'Sắp hết'
-    return 'Còn hàng'
-}
-
-function formatPrice(price: number) {
+const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price)
+}
+
+const getStockClass = (stock: number) => {
+    if (stock === 0) return 'text-red-600'
+    if (stock < 20) return 'text-orange-600'
+    return 'text-emerald-600'
+}
+
+const getStockBadgeClass = (stock: number) => {
+    if (stock === 0) return 'bg-red-100 text-red-700 border-red-200'
+    if (stock < 20) return 'bg-orange-100 text-orange-700 border-orange-200'
+    return 'bg-emerald-100 text-emerald-700 border-emerald-200'
+}
+
+const getStockStatus = (stock: number) => {
+    if (stock === 0) return 'Hết hàng'
+    if (stock < 20) return 'Sắp hết'
+    return 'Còn hàng'
 }
 </script>
