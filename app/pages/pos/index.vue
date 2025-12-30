@@ -24,6 +24,11 @@ import OrderNoteModal from '~/components/pos/modals/OrderNoteModal.vue'
 import AddCustomerModal from '~/components/pos/modals/AddCustomerModal.vue'
 import CustomProductModal from '~/components/pos/modals/CustomProductModal.vue'
 import ProductSelectorModal from '~/components/pos/modals/ProductSelectorModal.vue'
+import VoucherModal from '~/components/pos/modals/VoucherModal.vue'
+
+// Import promotion components
+import PromotionDisplay from '~/components/pos/PromotionDisplay.vue'
+import { PromotionEngine, mockPromotions, type AppliedPromotion, type Promotion } from '~/utils/promotionEngine'
 
 
 
@@ -53,6 +58,8 @@ interface CartItem extends Product {
   isReturn?: boolean
   maxReturnQty?: number
   originalOrderId?: number
+  isGift?: boolean // For promotional gift items
+  promotionId?: string // Which promotion gave this gift
 }
 
 interface PosTab {
@@ -235,6 +242,15 @@ const showDiscountModal = ref(false)
 const discountType = ref<'percent' | 'amount'>('percent')
 const discountValue = ref(0)
 
+// --- Voucher Modal State ---
+const showVoucherModal = ref(false)
+const appliedVoucher = ref<any>(null)
+
+// --- Promotion State ---
+const appliedPromotions = ref<AppliedPromotion[]>([])
+const promotionEngine = new PromotionEngine(mockPromotions)
+const availablePromotions = ref<Promotion[]>(mockPromotions.filter(p => p.active))
+
 // --- Product Note Modal State ---
 const showProductNoteModal = ref(false)
 const editingProductNote = ref<CartItem | null>(null)
@@ -345,14 +361,31 @@ const subTotal = computed(() => cart.value.reduce((sum, item) => {
 
 // Discount calculation
 const discount = computed(() => {
-  // Discount applies only to positive subtotal parts usually, but for simplicity:
-  const positiveSubTotal = cart.value.filter(i => !i.isReturn).reduce((sum, i) => sum + (i.price * i.quantity), 0)
+  let totalDiscount = 0
 
-  if (discountType.value === 'percent') {
-    return Math.round(positiveSubTotal * discountValue.value / 100)
-  } else {
-    return discountValue.value
+  // 1. Manual discount (from discount modal)
+  const positiveSubTotal = cart.value.filter(i => !i.isReturn && !i.isGift).reduce((sum, i) => sum + (i.price * i.quantity), 0)
+
+  if (discountValue.value > 0) {
+    if (discountType.value === 'percent') {
+      totalDiscount += Math.round(positiveSubTotal * discountValue.value / 100)
+    } else {
+      totalDiscount += discountValue.value
+    }
   }
+
+  // 2. Promotion discounts
+  const promotionDiscount = appliedPromotions.value.reduce((sum, promo) => {
+    return sum + (promo.discountAmount || 0)
+  }, 0)
+  totalDiscount += promotionDiscount
+
+  // 3. Voucher discount
+  if (appliedVoucher.value) {
+    totalDiscount += appliedVoucher.value.amount || 0
+  }
+
+  return totalDiscount
 })
 
 // Total Amount: Can be negative (refund)
@@ -527,6 +560,65 @@ function clearDiscount() {
   discountType.value = 'percent'
   showDiscountModal.value = false
 }
+
+// --- Voucher Functions ---
+function openVoucherModal() {
+  showVoucherModal.value = true
+}
+
+function applyVoucherCode(voucherData: any) {
+  appliedVoucher.value = voucherData
+  showVoucherModal.value = false
+  // Recalculate promotions when voucher is applied
+  calculatePromotions()
+}
+
+function removeVoucher() {
+  appliedVoucher.value = null
+  calculatePromotions()
+}
+
+// --- Promotion Functions ---
+function calculatePromotions() {
+  // Remove old gift items from cart
+  cart.value = cart.value.filter(item => !item.isGift)
+
+  // Calculate new promotions
+  const newPromotions = promotionEngine.calculatePromotions(cart.value, products.value)
+  appliedPromotions.value = newPromotions
+
+  // Add gift items to cart
+  newPromotions.forEach(promo => {
+    if (promo.giftItems && promo.giftItems.length > 0) {
+      promo.giftItems.forEach(gift => {
+        const giftProduct = products.value.find(p => p.id === gift.productId)
+        if (giftProduct) {
+          cart.value.push({
+            ...giftProduct,
+            quantity: gift.quantity,
+            price: 0, // Gift items are free
+            isGift: true,
+            promotionId: promo.promotionId,
+            note: `🎁 ${promo.promotionName}`
+          })
+        }
+      })
+    }
+  })
+}
+
+function removePromotion(promotionId: string) {
+  // Remove gift items from this promotion
+  cart.value = cart.value.filter(item => !(item.isGift && item.promotionId === promotionId))
+
+  // Remove promotion from applied list
+  appliedPromotions.value = appliedPromotions.value.filter(p => p.promotionId !== promotionId)
+}
+
+// Watch cart changes to recalculate promotions
+watch(cart, () => {
+  calculatePromotions()
+}, { deep: true })
 
 // --- Product Note Functions ---
 function openProductNoteModal(item: CartItem) {
@@ -1131,13 +1223,69 @@ onUnmounted(() => {
           </div>
         </div>
 
+        <!-- Promotions & Voucher Section -->
+        <div v-if="cart.length > 0" class="px-4 py-3 border-b border-slate-100 bg-white">
+          <!-- Voucher Button -->
+          <button @click="openVoucherModal"
+            class="w-full h-10 rounded-lg border-2 border-dashed border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-600 font-semibold text-sm transition-all flex items-center justify-center gap-2 group mb-3">
+            <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+            </svg>
+            {{ appliedVoucher ? 'Đổi mã giảm giá' : 'Nhập mã giảm giá' }}
+          </button>
+
+          <!-- Applied Voucher Display -->
+          <div v-if="appliedVoucher"
+            class="mb-3 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-lg p-3 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-16 h-16 bg-purple-500 opacity-10 rounded-bl-full"></div>
+            <div class="relative flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div
+                  class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="font-mono font-bold text-sm text-purple-600">{{ appliedVoucher.code }}</p>
+                  <p class="text-xs text-slate-600">Giảm {{ formatPrice(appliedVoucher.amount) }}₫</p>
+                </div>
+              </div>
+              <button @click="removeVoucher"
+                class="text-slate-400 hover:text-red-500 p-1 rounded-full hover:bg-white/50 transition-colors">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Promotion Display -->
+          <PromotionDisplay :applied-promotions="appliedPromotions" :available-promotions="availablePromotions"
+            :cart-total="subTotal" @remove-promotion="removePromotion" />
+        </div>
+
         <!-- Cart Items List -->
         <div class="flex-1 overflow-y-auto bg-slate-50/30">
           <div v-if="cart.length > 0">
             <div v-for="item in cart" :key="item.id"
-              class="p-3 bg-white border-b border-slate-100 flex gap-3 group relative hover:bg-slate-50">
+              class="p-3 bg-white border-b border-slate-100 flex gap-3 group relative hover:bg-slate-50"
+              :class="{ 'bg-gradient-to-r from-pink-50 to-purple-50 border-pink-200': item.isGift }">
+              <!-- Gift Badge -->
+              <div v-if="item.isGift"
+                class="absolute top-0 right-0 bg-gradient-to-r from-pink-500 to-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg rounded-tr-lg flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                </svg>
+                TẶNG KÈM
+              </div>
+
               <!-- Item Img -->
-              <div class="w-12 h-12 rounded bg-slate-100 overflow-hidden shrink-0">
+              <div class="w-12 h-12 rounded bg-slate-100 overflow-hidden shrink-0"
+                :class="{ 'ring-2 ring-pink-300': item.isGift }">
                 <img :src="item.imageUrl" class="w-full h-full object-cover">
               </div>
 
@@ -1165,7 +1313,8 @@ onUnmounted(() => {
                 </div>
 
                 <div class="flex items-center justify-between mt-1">
-                  <div class="flex items-center gap-1">
+                  <!-- Quantity Controls (Disabled for Gift Items) -->
+                  <div v-if="!item.isGift" class="flex items-center gap-1">
                     <div class="flex items-center gap-1 bg-slate-100 rounded p-0.5">
                       <button @click="updateQuantity(item, -1)"
                         class="w-6 h-6 flex items-center justify-center rounded bg-white text-slate-600 shadow-sm hover:text-blue-600 disabled:opacity-50"
@@ -1194,7 +1343,16 @@ onUnmounted(() => {
                     </button>
                   </div>
 
-                  <button @click="removeFromCart(item.id)"
+                  <!-- Gift Item Indicator -->
+                  <div v-else class="flex items-center gap-2 text-xs text-pink-600 font-semibold">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                    </svg>
+                    <span>x{{ item.quantity }} (Tự động)</span>
+                  </div>
+
+                  <button v-if="!item.isGift" @click="removeFromCart(item.id)"
                     class="p-1.5 text-slate-400 hover:text-red-500 rounded hover:bg-red-50 transition-colors"
                     title="Xóa">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1364,6 +1522,9 @@ onUnmounted(() => {
     <DiscountModal v-model:show="showDiscountModal" v-model:discount-type="discountType"
       v-model:discount-value="discountValue" :sub-total="subTotal" :discount="discount" :total-amount="totalAmount"
       @apply="applyDiscount" @clear="clearDiscount" />
+
+    <VoucherModal :show="showVoucherModal" :current-total="subTotal" @close="showVoucherModal = false"
+      @apply="applyVoucherCode" />
 
     <ProductNoteModal v-model:show="showProductNoteModal" :item="editingProductNote" @save="handleSaveProductNote" />
   </div>
