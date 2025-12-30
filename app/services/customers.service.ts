@@ -236,6 +236,11 @@ export class CustomersService extends BaseService {
     return this.get<ExternalCustomerByIdResponse['data']>(API_ENDPOINTS.CUSTOMER_BY_ID_EXTERNAL(id))
   }
 
+  /** Update customer via external API */
+  async updateCustomer(id: string, data: Partial<UpdateCustomerRequest>) {
+    return this.put(API_ENDPOINTS.CUSTOMER_BY_ID_EXTERNAL(id), data)
+  }
+
   /** Get customer groups via external API */
   async getCustomerGroupsExternal() {
     return this.get<CustomerGroupItem[]>(API_ENDPOINTS.CUSTOMER_GROUPS_EXTERNAL)
@@ -373,6 +378,27 @@ export class CustomersService extends BaseService {
     this._cache[key] = { data: fresh.data, checksum: this.checksum(fresh.data), ts: Date.now() }
     return { data: fresh.data, fromCache: false }
   }
+
+  /**
+   * Add new address for customer
+   */
+  async addCustomerAddress(customerId: string | number, addressData: CustomerAddressRequest) {
+    return this.post<CustomerAddressResponse>(API_ENDPOINTS.CUSTOMER_ADD_ADDRESS(customerId), addressData)
+  }
+
+  /**
+   * Update existing customer address
+   */
+  async updateCustomerAddress(
+    customerId: string | number,
+    addressId: string | number,
+    addressData: CustomerAddressRequest
+  ) {
+    return this.put<CustomerAddressResponse>(
+      API_ENDPOINTS.CUSTOMER_UPDATE_ADDRESS(customerId, addressId),
+      addressData
+    )
+  }
 }
 
 export const customersService = new CustomersService()
@@ -391,6 +417,18 @@ export interface CreateCustomerRequest {
   extensionData?: string | null
 }
 
+export interface UpdateCustomerRequest {
+  firstName?: string
+  lastName?: string
+  email?: string | null
+  phoneNumber?: string | null
+  birthDate?: string | null // ISO 8601
+  gender?: number | null // 0=Nam, 1=Nữ, 2=Khác
+  acceptsMarketing?: boolean
+  note?: string | null
+  avatarUrl?: string | null
+}
+
 export interface CreateCustomerResponse {
   code: string
   success: boolean
@@ -398,5 +436,48 @@ export interface CreateCustomerResponse {
   data: {
     customerId: string
     customerCode: string
+  } | null
+}
+
+// Customer Address types
+export interface CustomerAddressRequest {
+  contactName: string
+  phoneNumber?: string | null
+  addressLine1: string
+  addressLine2?: string | null
+  city?: string | null
+  zipCode?: string | null
+  wardId?: number | null
+  districtId?: number | null
+  stateOrProvinceId?: number | null
+  countryId?: string | null
+  addressType?: number | null
+  positionType?: number | null
+  isDefault?: boolean
+}
+
+export interface CustomerAddressResponse {
+  code: string
+  success: boolean
+  message: string
+  data: {
+    id: number
+    contactName: string
+    phoneNumber: string | null
+    addressLine1: string
+    addressLine2: string | null
+    city: string | null
+    zipCode: string | null
+    wardId: number | null
+    wardName: string | null
+    districtId: number | null
+    districtName: string | null
+    stateOrProvinceId: number | null
+    stateOrProvinceName: string | null
+    countryId: string | null
+    countryName: string | null
+    addressType: number | null
+    positionType: number | null
+    isDefault: boolean
   } | null
 }

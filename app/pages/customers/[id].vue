@@ -7,6 +7,9 @@ import { customersService } from '@/services/customers.service'
 import { arService, type CustomerPayment } from '@/services/ar.service'
 import ReceivePaymentModal from '@/components/orders/ReceivePaymentModal.vue'
 import AdjustDebtModal from '@/components/customers/AdjustDebtModal.vue'
+import AddressPopover from '@/components/customers/AddressPopover.vue'
+import AddressModal from '@/components/customers/AddressModal.vue'
+import CustomerModal from '@/components/customers/CustomerModal.vue'
 import BaseTable, { type TableColumn } from '@/components/base/BaseTable.vue'
 
 const route = useRoute()
@@ -102,6 +105,105 @@ const customer = ref({
     currentReceivables: 0
   }
 })
+
+// Address management
+interface CustomerAddress {
+  id?: number
+  addressLine1?: string | null
+  addressLine2?: string | null
+  city?: string | null
+  wardName?: string | null
+  districtName?: string | null
+  stateOrProvinceName?: string | null
+  countryName?: string | null
+  zipCode?: string | null
+  phoneNumber?: string | null
+  contactName?: string | null
+  isDefault?: boolean
+}
+
+const customerAddresses = ref<CustomerAddress[]>([])
+const isAddressModalOpen = ref(false)
+const editingAddress = ref<CustomerAddress | null>(null)
+
+function handleSelectAddress(addr: CustomerAddress) {
+  const parts = [
+    addr.addressLine1,
+    addr.wardName,
+    addr.districtName,
+    addr.stateOrProvinceName
+  ].filter(Boolean)
+  customer.value.address = parts.join(', ')
+}
+
+function handleEditAddress(addr: CustomerAddress) {
+  editingAddress.value = addr
+  isAddressModalOpen.value = true
+}
+
+function handleAddNewAddress() {
+  editingAddress.value = null
+  isAddressModalOpen.value = true
+}
+
+async function handleAddressSaved(addressData: any) {
+  try {
+    const customerId = route.params.id as string
+
+    // Map form data to API request format
+    const payload = {
+      contactName: `${addressData.lastName} ${addressData.firstName}`.trim(),
+      phoneNumber: addressData.phone || null,
+      addressLine1: addressData.address,
+      addressLine2: null,
+      city: null,
+      zipCode: addressData.zipcode || null,
+      wardId: addressData.wardId || null,
+      districtId: null,
+      stateOrProvinceId: addressData.provinceId || null,
+      countryId: 'VN',
+      addressType: 0,
+      positionType: 0,
+      isDefault: addressData.isDefault || false
+    }
+
+    if (addressData.addressId) {
+      // Update existing address
+      await customersService.updateCustomerAddress(customerId, addressData.addressId, payload)
+      console.log('Address updated successfully')
+    } else {
+      // Add new address
+      await customersService.addCustomerAddress(customerId, payload)
+      console.log('Address added successfully')
+    }
+
+    // Refresh customer data to get updated addresses
+    await reloadCustomerDetails()
+  } catch (error) {
+    console.error('Failed to save address:', error)
+    // TODO: Show error notification
+  }
+}
+
+const isCustomerModalOpen = ref(false)
+
+function handleEditCustomer() {
+  isCustomerModalOpen.value = true
+}
+
+async function handleCustomerSaved(data: any) {
+  try {
+    const res = await customersService.updateCustomer(customerId.value, data)
+    if (res.success) {
+      await reloadCustomerDetails()
+    } else {
+      alert(res.message || 'Cập nhật thất bại')
+    }
+  } catch (e) {
+    console.error(e)
+    alert('Có lỗi xảy ra')
+  }
+}
 
 // Groups state
 type GroupOption = { id: number, name: string }
@@ -446,54 +548,7 @@ onMounted(async () => {
     groups.value = Array.isArray(groupsRes?.data) ? groupsRes.data.map(g => ({ id: g.id, name: g.name })) : []
 
     if (customerRes?.success && customerRes.data) {
-      const d = customerRes.data
-      customer.value.id = String(d.id ?? customerId.value)
-      customer.value.fullName = d.fullName || d.name || ''
-      customer.value.email = d.email || null
-      customer.value.phone = d.phoneNumber || null
-      // gender mapping: backend returns number|null; leave string for now
-      customer.value.gender = d.gender == null ? null : String(d.gender)
-      // birthDate ISO -> locale date (dd/MM/yyyy)
-      customer.value.birthDate = d.birthDate ? new Date(d.birthDate).toLocaleDateString('vi-VN') : null
-
-      // address
-      const addr = Array.isArray(d.address)
-        ? d.address.find((a: { isDefault: boolean }) => a.isDefault) || d.address[0]
-        : null
-      if (addr) {
-        const parts = [
-          addr.addressLine1,
-          addr.wardName,
-          addr.districtName,
-          addr.stateOrProvinceName,
-          addr.countryName
-        ].filter(Boolean)
-        customer.value.address = parts.join(', ')
-      } else {
-        customer.value.address = null
-      }
-
-      // groups
-      const ids = Array.isArray(d.groups) ? d.groups.map(g => g.groupId) : []
-      selectedGroups.value = ids
-        .map(id => groups.value.find(g => g.id === id) || null)
-        .filter(Boolean) as GroupOption[]
-      customer.value.group = selectedGroups.value[0]?.name || null
-
-      // stats
-      customer.value.orderStats.orderCount = d.totalOrders || 0
-      customer.value.orderStats.totalSpend = d.totalAmount || d.totalNetSales || d.totalSales || 0
-      customer.value.orderStats.avgSpend = d.totalOrders
-        ? Math.round((d.totalAmount || 0) / d.totalOrders)
-        : 0
-      customer.value.financials = {
-        currentReceivables: d.currentReceivables || d.receivable || 0
-      }
-      // note
-      if (typeof d.note === 'string') {
-        note.value = d.note
-      }
-      // latestOrderNo unknown from customer payload → will try to derive from orders response below
+      processCustomerData(customerRes.data)
     }
     // Orders mapping
     // Orders mapping handled in loadOrders
@@ -525,6 +580,65 @@ onMounted(async () => {
     // Silent for now; could add a toast later
   }
 })
+
+function processCustomerData(d: any) {
+  customer.value.id = String(d.id ?? customerId.value)
+  customer.value.fullName = d.fullName || d.name || ''
+  customer.value.email = d.email || null
+  customer.value.phone = d.phoneNumber || null
+  // gender mapping: backend returns number|null; leave string for now
+  customer.value.gender = d.gender == null ? null : String(d.gender)
+  // birthDate ISO -> locale date (dd/MM/yyyy)
+  customer.value.birthDate = d.birthDate ? new Date(d.birthDate).toLocaleDateString('vi-VN') : null
+
+  // address
+  if (Array.isArray(d.address)) {
+    customerAddresses.value = d.address
+    const defaultAddr = d.address.find((a: { isDefault: boolean }) => a.isDefault) || d.address[0]
+    if (defaultAddr) {
+      const parts = [
+        defaultAddr.addressLine1,
+        defaultAddr.wardName,
+        defaultAddr.districtName,
+        defaultAddr.stateOrProvinceName,
+        defaultAddr.countryName
+      ].filter(Boolean)
+      customer.value.address = parts.join(', ')
+    }
+  } else {
+    customerAddresses.value = []
+    customer.value.address = null
+  }
+
+  // groups
+  const ids = Array.isArray(d.groups) ? d.groups.map((g: any) => g.groupId) : []
+  selectedGroups.value = ids
+    .map((id: any) => groups.value.find(g => g.id === id) || null)
+    .filter(Boolean) as GroupOption[]
+  customer.value.group = selectedGroups.value[0]?.name || null
+
+  // stats
+  customer.value.orderStats.orderCount = d.totalOrders || 0
+  customer.value.orderStats.totalSpend = d.totalAmount || d.totalNetSales || d.totalSales || 0
+  customer.value.orderStats.avgSpend = d.totalOrders
+    ? Math.round((d.totalAmount || 0) / d.totalOrders)
+    : 0
+  customer.value.financials = {
+    currentReceivables: d.currentReceivables || d.receivable || 0
+  }
+  // note
+  if (typeof d.note === 'string') {
+    note.value = d.note
+  }
+}
+
+async function reloadCustomerDetails() {
+  if (!customerId.value) return
+  const res = await customersService.getCustomerByIdExternal(customerId.value)
+  if (res?.success && res.data) {
+    processCustomerData(res.data)
+  }
+}
 </script>
 
 <template>
@@ -822,7 +936,7 @@ onMounted(async () => {
               <BaseCardHeader>
                 Liên hệ
                 <template #actions>
-                  <button class="text-gray-400 hover:text-gray-600" title="Chỉnh sửa">
+                  <button class="text-gray-400 hover:text-gray-600" title="Chỉnh sửa" @click="handleEditCustomer">
                     <UIcon name="i-heroicons-pencil-square-20-solid" class="w-5 h-5" aria-hidden="true" />
                   </button>
                 </template>
@@ -851,9 +965,8 @@ onMounted(async () => {
               <BaseCardHeader>
                 Số địa chỉ
                 <template #actions>
-                  <button class="text-gray-400 hover:text-gray-600" title="Chỉnh sửa">
-                    <UIcon name="i-heroicons-pencil-square-20-solid" class="w-5 h-5" aria-hidden="true" />
-                  </button>
+                  <AddressPopover :addresses="customerAddresses" @select="handleSelectAddress" @edit="handleEditAddress"
+                    @add-new="handleAddNewAddress" />
                 </template>
               </BaseCardHeader>
               <div class="-mx-6 px-6 pt-4 border-t border-gray-100 space-y-2 text-sm text-gray-700">
@@ -954,4 +1067,10 @@ onMounted(async () => {
 
   <AdjustDebtModal v-model="isAdjustDebtModalOpen" :current-debt="customer.financials.currentReceivables"
     @submit="handleAdjustDebtSubmit" />
+
+  <!-- Address Modal -->
+  <AddressModal v-model="isAddressModalOpen" :address="editingAddress" @saved="handleAddressSaved" />
+
+  <!-- Customer Edit Modal -->
+  <CustomerModal v-model="isCustomerModalOpen" :customer="customer" @saved="handleCustomerSaved" />
 </template>

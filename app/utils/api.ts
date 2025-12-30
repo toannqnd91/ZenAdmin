@@ -124,15 +124,17 @@ export const API_ENDPOINTS = {
   SUPPLIER_CREATE: '/Supplier',
   SUPPLIER_IMPORT_EXCEL: '/Supplier/import-excel',
   // Customer endpoints
-  CUSTOMERS_GRID: '/customers/grid-v2',
+  CUSTOMERS_GRID: '/customers/grid',
   // External customer endpoints
-  CUSTOMER_CREATE_EXTERNAL: '/customer-v2',
+  CUSTOMER_CREATE_EXTERNAL: '/customer',
   CUSTOMER_BY_ID_EXTERNAL: (id: string) => `/customer/${id}`,
   CUSTOMER_GROUPS_EXTERNAL: '/customergroups',
   CUSTOMER_ORDERS_EXTERNAL: (id: string) => `/customer/${id}/orders`,
   CUSTOMER_RECEIVABLES: (id: string | number) => `/ar/customers/${id}/receivables`,
   CUSTOMER_PAYMENTS: (id: string | number) => `/ar/customers/${id}/payments`,
   CUSTOMER_ADJUST_DEBT: (id: string | number) => `/ar/customers/${id}/adjust-debt`,
+  CUSTOMER_ADD_ADDRESS: (customerId: string | number) => `/customers/${customerId}/addresses`,
+  CUSTOMER_UPDATE_ADDRESS: (customerId: string | number, addressId: string | number) => `/customers/${customerId}/addresses/${addressId}`,
   ORDER_COUNT_BY_STATUS_EXTERNAL: '/Orders/count-by-status',
   // Employees
   EMPLOYEES: '/employees',
@@ -177,7 +179,9 @@ export const API_ENDPOINTS = {
 
   // Location endpoints
   LOCATIONS_PROVINCES: '/locations/provinces',
+  LOCATIONS_DISTRICTS_BY_PROVINCE: (provinceCode: number | string) => `/locations/provinces/${provinceCode}/districts`,
   LOCATIONS_WARDS_BY_PROVINCE: (provinceCode: number | string) => `/locations/provinces/${provinceCode}/wards`,
+  LOCATIONS_WARDS_BY_DISTRICT: (districtCode: number | string) => `/locations/districts/${districtCode}/wards`,
 
   // Pricing / Pricebooks endpoints
   PRICING_PRICEBOOKS: '/pricing/pricebooks',

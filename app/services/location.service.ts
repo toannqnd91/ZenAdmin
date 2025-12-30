@@ -17,10 +17,24 @@ export class LocationService extends BaseService {
   }
 
   /**
-   * Lấy danh sách Xã/Phường theo Tỉnh/Thành phố
+   * Lấy danh sách Quận/Huyện theo Tỉnh/Thành phố
+   */
+  async getDistrictsByProvinceCode(provinceCode: number | string) {
+    return this.get<LocationItem[]>(API_ENDPOINTS.LOCATIONS_DISTRICTS_BY_PROVINCE(provinceCode))
+  }
+
+  /**
+   * Lấy danh sách Xã/Phường theo Tỉnh/Thành phố (legacy - trực tiếp)
    */
   async getWardsByProvinceCode(provinceCode: number | string) {
     return this.get<LocationItem[]>(API_ENDPOINTS.LOCATIONS_WARDS_BY_PROVINCE(provinceCode))
+  }
+
+  /**
+   * Lấy danh sách Xã/Phường theo Quận/Huyện
+   */
+  async getWardsByDistrictCode(districtCode: number | string) {
+    return this.get<LocationItem[]>(API_ENDPOINTS.LOCATIONS_WARDS_BY_DISTRICT(districtCode))
   }
 
   // Backward-compatible alias (treat input as code per API contract)
