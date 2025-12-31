@@ -105,6 +105,9 @@ interface Props {
 
   // Custom width for search input container (e.g. 'max-w-md')
   searchWidth?: string
+
+  // Disable built-in client-side filtering (useful when server handles search)
+  disableClientFilter?: boolean
 }
 
 interface TableTab {
@@ -253,15 +256,19 @@ watch(() => props.pagination?.pageIndex, (idx) => {
 })
 
 /* filter + paging */
-const filtered = computed(() =>
-  (props.data || []).filter((item) => {
+
+const filtered = computed(() => {
+  if (props.disableClientFilter) {
+    return props.data || []
+  }
+  return (props.data || []).filter((item) => {
     const searchTerms = (props.q || '').toLowerCase()
     return props.columns.some((col) => {
       const value = item[col.key]
       return String(value || '').toLowerCase().includes(searchTerms)
     })
   })
-)
+})
 
 // Server-side paging: data already corresponds to current page; still allow client filtering within current page
 const pageItems = filtered

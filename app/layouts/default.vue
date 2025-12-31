@@ -9,7 +9,7 @@ const userRoles = computed(() => {
 
 // Print out the user's roles
 watch(userRoles, (val) => {
-  }, { immediate: true })
+}, { immediate: true })
 
 const route = useRoute()
 const toast = useToast()
@@ -36,6 +36,26 @@ const staticLinks: NavigationMenuItem[] = [{
   icon: 'i-lucide-info',
   to: 'https://github.com/nuxt/ui-pro',
   target: '_blank'
+}]
+
+const salesLinks: NavigationMenuItem[] = [{
+  label: 'Website',
+  icon: 'i-lucide-globe',
+  to: '/sales/website'
+}, {
+  label: 'POS',
+  icon: 'i-lucide-store',
+  to: '/pos'
+}]
+
+const appLinks: NavigationMenuItem[] = [{
+  label: 'ChatAI',
+  icon: 'i-lucide-bot',
+  to: '/apps/chat-ai'
+}, {
+  label: 'Trợ lý AI',
+  icon: 'i-lucide-sparkles',
+  to: '/apps/ai-assistant'
 }]
 
 const links = computed<NavigationMenuItem[][]>(() => {
@@ -91,26 +111,23 @@ provide('sidebarCollapsed', sidebarCollapsed)
 
 <template>
   <!-- Offline Banner -->
-  <div v-if="isOffline" class="bg-orange-500 text-white px-4 py-2 text-center text-sm font-medium fixed top-0 left-0 right-0 z-50">
+  <div v-if="isOffline"
+    class="bg-orange-500 text-white px-4 py-2 text-center text-sm font-medium fixed top-0 left-0 right-0 z-50">
     ⚠️ Chế độ offline - Một số tính năng có thể bị hạn chế
     <span v-if="connectionQuality !== 'unknown'" class="ml-2 opacity-75">
-      ({{ connectionQuality === 'poor' ? 'Kết nối yếu' : connectionQuality === 'slow' ? 'Kết nối chậm' : 'Kết nối tốt' }})
+      ({{ connectionQuality === 'poor' ? 'Kết nối yếu' : connectionQuality === 'slow' ? 'Kết nối chậm' : 'Kết nối tốt'
+      }})
     </span>
   </div>
-  
+
   <!-- Connection Status Info -->
   <!-- <div v-if="isOnline && connectionQuality !== 'unknown'" class="bg-blue-500 text-white px-4 py-1 text-center text-xs fixed top-0 right-4 z-40 rounded-b-md">
     📶 {{ connectionQuality === 'excellent' ? '4G' : connectionQuality === 'good' ? '3G' : connectionQuality === 'poor' ? '2G' : 'Chậm' }}
   </div> -->
 
   <UDashboardGroup unit="rem">
-    <UDashboardSidebar
-      id="default"
-      v-model:open="open"
-      collapsible
-      resizable
-      :ui="{ footer: 'lg:border-t lg:border-default' }"
-    >
+    <UDashboardSidebar id="default" v-model:open="open" collapsible resizable
+      :ui="{ footer: 'lg:border-t lg:border-default' }">
       <template #header="{ collapsed }">
         <TeamsMenu :collapsed="collapsed" />
       </template>
@@ -118,18 +135,34 @@ provide('sidebarCollapsed', sidebarCollapsed)
       <template #default="{ collapsed }">
         <UDashboardSearchButton :collapsed="collapsed" class="bg-transparent ring-default" />
 
-        <CustomNavigationMenu
-          :items="links[0] || []"
-          :collapsed="collapsed"
-        />
+        <CustomNavigationMenu :items="links[0] || []" :collapsed="collapsed" />
 
-        <UNavigationMenu
-          :collapsed="collapsed"
-          :items="links[1] || []"
-          orientation="vertical"
-          tooltip
-          class="mt-auto"
-        />
+        <!-- KÊNH BÁN HÀNG -->
+        <template v-if="!collapsed">
+          <div class="px-3 mt-0 mb-0 flex items-center justify-between">
+            <span class="text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Kênh bán hàng</span>
+            <UIcon name="i-lucide-plus-circle"
+              class="w-4 h-4 text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200" />
+          </div>
+        </template>
+        <div v-else class="my-0 h-px bg-gray-200 dark:bg-gray-800 mx-4" />
+
+        <CustomNavigationMenu :items="salesLinks" :collapsed="collapsed" />
+
+        <!-- ỨNG DỤNG -->
+        <template v-if="!collapsed">
+          <div class="px-3 mt-0 mb-0 flex items-center justify-between">
+            <span class="text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">Ứng dụng</span>
+            <UIcon name="i-lucide-plus-circle"
+              class="w-4 h-4 text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200" />
+          </div>
+        </template>
+        <div v-else class="my-0 h-px bg-gray-200 dark:bg-gray-800 mx-4" />
+
+        <CustomNavigationMenu :items="appLinks" :collapsed="collapsed" />
+
+        <UNavigationMenu :collapsed="collapsed" :items="links[1] || []" orientation="vertical" tooltip
+          class="mt-auto" />
       </template>
 
       <template #footer="{ collapsed }">

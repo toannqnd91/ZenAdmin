@@ -169,8 +169,8 @@ const currencySuffix = 'đ'
   <BaseTable :q="q" :row-selection="rowSelection" :pagination="pagination" :query-sync="true" :data="data"
     :loading="loading" title="Danh sách sản phẩm" :columns="columns" :add-button="addButton"
     :row-click-handler="handleRowClick" :total-pages="props.totalPages" :total-records="props.totalRecords" :tabs="tabs"
-    search-placeholder="Tìm kiếm sản phẩm" tabs-style="underline" @row-copy-id="onRowCopyId" @row-edit="onRowEdit"
-    @row-delete="onRowDelete" @update:q="emit('update:q', $event)"
+    search-placeholder="Tìm kiếm sản phẩm" tabs-style="underline" :disable-client-filter="true"
+    @row-copy-id="onRowCopyId" @row-edit="onRowEdit" @row-delete="onRowDelete" @update:q="emit('update:q', $event)"
     @update:row-selection="emit('update:rowSelection', $event)" @update:pagination="emit('update:pagination', $event)"
     @update:tab="onTabChange" @delete="emit('delete-multi', $event)">
     <!-- Custom name column with image -->

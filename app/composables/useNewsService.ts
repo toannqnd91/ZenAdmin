@@ -311,20 +311,36 @@ export const useNewsService = () => {
     return content.substring(0, maxLength) + '...'
   }
 
-  // Watch search, category, pagination
-  watch([q, selectedCategoryId, pagination], () => {
-    const searchValue = unref(q)
-    const categoryValue = unref(selectedCategoryId)
+  const doFetch = () => {
     fetchNews({
-      search: searchValue || undefined,
-      categoryId: categoryValue || undefined,
+      search: q.value || undefined,
+      categoryId: selectedCategoryId.value || undefined,
       pagination: {
         start: pagination.value.pageIndex * pagination.value.pageSize,
         number: pagination.value.pageSize
       },
       sort: { field: 'Id', reverse: true }
     })
-  }, { deep: true })
+  }
+
+  const debouncedFetch = useDebounceFn(doFetch, 500)
+
+  // Watch search query with debounce
+  watch(q, () => {
+    if (pagination.value.pageIndex !== 0) {
+      pagination.value.pageIndex = 0
+    }
+    debouncedFetch()
+  })
+
+  // Watch pagination and category immediately
+  watch(
+    [selectedCategoryId, pagination],
+    () => {
+      doFetch()
+    },
+    { deep: true }
+  )
 
   // Initial fetch
   onMounted(() => {

@@ -46,9 +46,26 @@ const fetchCustomers = async () => {
   }
 }
 
-watch([q, () => pagination.value.pageIndex, () => pagination.value.pageSize], () => {
+const doFetch = () => {
   fetchCustomers()
-}, { immediate: true })
+}
+
+const debouncedFetch = useDebounceFn(doFetch, 500)
+
+watch(q, () => {
+  if (pagination.value.pageIndex !== 0) {
+    pagination.value.pageIndex = 0
+  }
+  debouncedFetch()
+})
+
+watch([() => pagination.value.pageIndex, () => pagination.value.pageSize], () => {
+  doFetch()
+})
+
+onMounted(() => {
+  doFetch()
+})
 
 const mappedRows = computed(() => data.value.map(c => ({
   id: c.id,
@@ -97,12 +114,7 @@ function applyGridPayload(grid: CustomersGridResponse | { data?: CustomerItem[] 
           <div class="h-5 w-px bg-gray-200 mx-2" />
           <UColorModeButton />
           <UTooltip text="Notifications" :shortcuts="['N']">
-            <UButton
-              color="neutral"
-              variant="ghost"
-              square
-              @click="isNotificationsSlideoverOpen = true"
-            >
+            <UButton color="neutral" variant="ghost" square @click="isNotificationsSlideoverOpen = true">
               <UChip color="error" inset>
                 <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
               </UChip>
@@ -113,15 +125,8 @@ function applyGridPayload(grid: CustomersGridResponse | { data?: CustomerItem[] 
     </template>
 
     <template #body>
-      <CustomersTable
-        v-model:q="q"
-        v-model:row-selection="rowSelection"
-        v-model:pagination="pagination"
-        :data="tableData"
-        :loading="loading"
-        :total-records="totalRecords"
-        :total-pages="totalPages"
-      />
+      <CustomersTable v-model:q="q" v-model:row-selection="rowSelection" v-model:pagination="pagination"
+        :data="tableData" :loading="loading" :total-records="totalRecords" :total-pages="totalPages" />
     </template>
   </UDashboardPanel>
 </template>

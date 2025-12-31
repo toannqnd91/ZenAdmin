@@ -321,18 +321,32 @@ export const useProductsService = () => {
   }
 
   // Watch search query and pagination and refetch
+  const doFetch = () => {
+    fetchProducts({
+      search: q.value,
+      warehouseId: warehouseId.value,
+      pagination: {
+        start: pagination.value.pageIndex * pagination.value.pageSize,
+        number: pagination.value.pageSize
+      }
+    })
+  }
+
+  const debouncedFetch = useDebounceFn(doFetch, 500)
+
+  // Watch search query with debounce
+  watch(q, () => {
+    if (pagination.value.pageIndex !== 0) {
+      pagination.value.pageIndex = 0
+    }
+    debouncedFetch()
+  })
+
+  // Watch pagination and warehouseId immediately
   watch(
-    [q, pagination, warehouseId],
+    [pagination, warehouseId],
     () => {
-      const searchValue = unref(q)
-      fetchProducts({
-        search: searchValue,
-        warehouseId: unref(warehouseId),
-        pagination: {
-          start: pagination.value.pageIndex * pagination.value.pageSize,
-          number: pagination.value.pageSize
-        }
-      })
+      doFetch()
     },
     { deep: true }
   )
