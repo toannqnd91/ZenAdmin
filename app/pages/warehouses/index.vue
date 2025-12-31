@@ -12,14 +12,13 @@ const warehouses = ref<WarehouseItem[]>([])
 const q = ref('')
 const rowSelection = ref<Record<string, boolean>>({})
 
-// Global dashboard state (notifications slideover, theme button)
 const { isNotificationsSlideoverOpen } = useDashboard()
 
 const columns = [
-  { key: 'name', label: 'Tên kho' },
-  { key: 'createdOn', label: 'Ngày tạo' },
-  { key: 'productCount', label: 'Số lượng sản phẩm' },
-  { key: 'totalStock', label: 'Số lượng tồn kho' }
+    { key: 'name', label: 'Tên kho' },
+    { key: 'createdOn', label: 'Ngày tạo' },
+    { key: 'productCount', label: 'Số lượng sản phẩm' },
+    { key: 'totalStock', label: 'Số lượng tồn kho' }
 ]
 
 // Cấu hình chiều rộng các cột theo thứ tự columns (chuỗi rỗng cho cột linh hoạt)
@@ -54,17 +53,38 @@ onMounted(fetchWarehouses)
 
 // Modal state
 const showAddWarehouseModal = ref(false)
+const selectedWarehouseId = ref<number | string | null>(null)
 
 // Handler: open modal
 function onAddWarehouse() {
-  showAddWarehouseModal.value = true
+    selectedWarehouseId.value = null
+    showAddWarehouseModal.value = true
 }
 
+function handleRowClick(item: any) {
+    if (item && item.id) {
+        selectedWarehouseId.value = item.id
+        showAddWarehouseModal.value = true
+    }
+}
+
+const toast = useToast()
+
+function handleEdit(id: string | number) {
+    selectedWarehouseId.value = id
+    showAddWarehouseModal.value = true
+}
+
+function handleDelete() {
+    toast.add({ title: 'Hệ thống không cho phép xoá kho này', color: 'error' })
+}
+
+// function handleCopy removed
+
 function onWarehouseSaved(w: { id: string | number, name: string }) {
-  // Prepend new warehouse then refetch for full data (createdOn, counts)
-  warehouses.value = [{ id: Number(w.id), name: w.name } as WarehouseItem, ...warehouses.value]
-  // Fire and forget refresh
-  fetchWarehouses()
+    // Prepend new warehouse then refetch for full data (createdOn, counts)
+    warehouses.value = [{ id: Number(w.id), name: w.name } as WarehouseItem, ...warehouses.value]
+    fetchWarehouses()
 }
 </script>
 
@@ -82,12 +102,7 @@ function onWarehouseSaved(w: { id: string | number, name: string }) {
                     <!-- Always keep these two at the far right: color mode + notifications -->
                     <UColorModeButton />
                     <UTooltip text="Notifications" :shortcuts="['N']">
-                        <UButton
-                            color="neutral"
-                            variant="ghost"
-                            square
-                            @click="isNotificationsSlideoverOpen = true"
-                        >
+                        <UButton color="neutral" variant="ghost" square @click="isNotificationsSlideoverOpen = true">
                             <UChip color="error" inset>
                                 <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
                             </UChip>
@@ -99,36 +114,36 @@ function onWarehouseSaved(w: { id: string | number, name: string }) {
         <template #body>
             <div class="w-full flex flex-col h-full">
                 <div class="flex-1 min-h-0">
-                    <BaseTable
-                        v-model:row-selection="rowSelection"
-                        v-model:q="q"
-                        :data="warehouses"
-                        :loading="loading"
-                        :columns="columns"
-                        :col-widths="colWidths"
-                        title="Danh sách chi nhánh"
+                    <BaseTable v-model:row-selection="rowSelection" v-model:q="q" :data="warehouses" :loading="loading"
+                        :columns="columns" :col-widths="colWidths" title="Danh sách chi nhánh"
                         :add-button="{ label: 'Thêm chi nhánh', handler: onAddWarehouse }"
-                    >
+                        :row-click-handler="handleRowClick">
                         <template #column-name="{ item }">
                             <div class="flex items-center gap-2">
                                 <span>{{ item.name }}</span>
-                                <UBadge
-                                    v-if="item && item.isDefault"
-                                    color="primary"
-                                    variant="soft"
-                                    size="sm"
-                                >
+                                <UBadge v-if="item && item.isDefault" color="primary" variant="soft" size="sm">
                                     Mặc định
                                 </UBadge>
                             </div>
                         </template>
                         <template #column-createdOn="{ item }">
-                            <span>{{ item.createdOn ? new Date(String(item.createdOn)).toLocaleDateString('vi-VN') : '' }}</span>
+                            <span>{{ item.createdOn ? new Date(String(item.createdOn)).toLocaleDateString('vi-VN') : ''
+                                }}</span>
+                        </template>
+
+                        <template #row-actions="{ item }">
+                            <div class="flex items-center justify-end gap-2">
+                                <button
+                                    class="transition-colors text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400"
+                                    title="Delete" @click.stop="handleDelete()">
+                                    <UIcon name="i-lucide-trash" class="w-4 h-4" />
+                                </button>
+                            </div>
                         </template>
                     </BaseTable>
                 </div>
             </div>
         </template>
     </UDashboardPanel>
-    <AddWarehouseModal v-model="showAddWarehouseModal" @saved="onWarehouseSaved" />
+    <AddWarehouseModal v-model="showAddWarehouseModal" :warehouse-id="selectedWarehouseId" @saved="onWarehouseSaved" />
 </template>

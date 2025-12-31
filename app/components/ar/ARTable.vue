@@ -53,11 +53,11 @@ const columns: TableColumn[] = [
 ]
 
 const colWidths = [
-  '290px', // tên đối tượng (was mã + avatar)
+  '', // tên đối tượng (was mã + avatar)
   '160px', // SĐT
-  '140px', // Nợ đầu kỳ
-  '150px', // Nợ thay đổi
-  '150px'  // Phải thu/trả cuối kỳ
+  '160px', // Nợ đầu kỳ
+  '160px', // Nợ thay đổi
+  '160px'  // Phải thu/trả cuối kỳ
 ]
 
 const rows = computed<Record<string, unknown>[]>(() => props.data as unknown as Record<string, unknown>[])

@@ -36,7 +36,11 @@ export const useAuthService = () => {
           try {
             const parts = tokenData.accessToken.split('.')
             if (parts[1]) {
-              const payload = JSON.parse(atob(parts[1]))
+              const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+              const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                  return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+              }).join(''))
+              const payload = JSON.parse(jsonPayload)
               user.value = payload
               }
           } catch (error) {
@@ -204,7 +208,11 @@ export const useAuthService = () => {
           const parts = token.split('.')
           if (parts.length === 3 && parts[1]) {
             try {
-              const payload = JSON.parse(atob(parts[1]))
+              const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+              const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                  return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+              }).join(''))
+              const payload = JSON.parse(jsonPayload)
               user.value = payload
               } catch (jwtError) {
               console.error('Failed to decode JWT payload:', jwtError)

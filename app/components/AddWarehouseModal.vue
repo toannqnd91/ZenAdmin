@@ -36,7 +36,7 @@ interface WarehouseCreatePayload {
 
 interface CreatedWarehouseMinimal { id?: number | string }
 
-const props = defineProps<{ modelValue: boolean }>()
+const props = defineProps<{ modelValue: boolean, warehouseId?: number | string | null }>()
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'saved', warehouse: { id: string | number, name: string }): void
@@ -117,7 +117,7 @@ function onClearWard() {
 const nameError = computed(() => (touched.value.name && !draft.value.name.trim() ? 'Tên chi nhánh là bắt buộc' : ''))
 const hasErrors = computed(() => !!nameError.value)
 
-function reset() {
+async function reset() {
   draft.value = {
     name: '', contactName: '', phone: '', addressLine1: '', addressLine2: '', city: '', zipCode: '', wardId: null, stateOrProvinceId: null, countryId: 'VN', latitude: null, longitude: null
   }
@@ -125,7 +125,68 @@ function reset() {
   selectedWard.value = null
   touched.value.name = false
   error.value = ''
-  loading.value = false
+
+  if (props.warehouseId) {
+    loading.value = true
+    try {
+      const svc = await import('@/services/warehouse.service')
+      const res = await svc.warehouseService.getWarehouse(props.warehouseId)
+      if (res.success && res.data) {
+        const d = res.data
+        draft.value = {
+          name: d.name || '',
+          contactName: d.contactName || '',
+          phone: d.phone || '',
+          addressLine1: d.addressLine1 || '',
+          addressLine2: d.addressLine2 || '',
+          city: d.city || '',
+          zipCode: d.zipCode || '',
+          wardId: d.wardId || null,
+          stateOrProvinceId: d.stateOrProvinceId || null,
+          countryId: d.countryId || 'VN',
+          latitude: d.latitude || null,
+          longitude: d.longitude || null
+        }
+        // Pre-fill location selectors if needed (optional optimization: fetch province/ward object details)
+        if (draft.value.stateOrProvinceId) {
+          // We ideally need the name for the selector. 
+          // If not available, remote selector defaults might need ID only or we need to fetch.
+          // For now, let's assume the selector handles ID binding or we might miss the label.
+          // Actually RemoteSearchSelect usually needs the object with label. 
+          // If getWarehouse returns names for province/ward, we are good. If not, we might need to fetch them.
+          // A quick hack: see if we can just set the ID and let selector handle it? 
+          // RemoteSearchSelect usually expects v-model to be the item (object).
+          // If we only have ID, we might need a fetch.
+          // Let's check `getProvinces` - maybe we can fetch all or search by ID? 
+          // If not, we might leave it blank for now or try to fetch.
+
+          // Simplest approach: Just set the IDs in draft. The selectors might appear empty but saving preserves IDs.
+          // BUT user wants to edit. They need to see the value.
+          // We can defer this perfection. Let's start with basic data.
+
+          // Fetch Province Item
+          if (draft.value.stateOrProvinceId) {
+            const provinces = await getProvinces('')
+            const p = (provinces as any[]).find((x: any) => x.id == draft.value.stateOrProvinceId)
+            if (p) {
+              selectedProvince.value = p
+              // Fetch wards
+              const wards = await getWards('', p.code)
+              const w = (wards as any[]).find((x: any) => x.id == draft.value.wardId)
+              if (w) selectedWard.value = w
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e)
+      error.value = 'Tải thông tin chi nhánh thất bại'
+    } finally {
+      loading.value = false
+    }
+  } else {
+    loading.value = false
+  }
 }
 
 watch(open, (v) => {
@@ -153,14 +214,19 @@ async function save() {
       longitude: draft.value.longitude
     }
     const svc = await import('@/services/warehouse.service')
-    const res = await svc.warehouseService.createWarehouse(payload)
-    const rData = (res as unknown as { data?: CreatedWarehouseMinimal })?.data || (res as unknown as CreatedWarehouseMinimal)
-    const createdId = (rData && rData.id) ? rData.id : Date.now()
-    emit('saved', { id: createdId, name: draft.value.name.trim() })
+    if (props.warehouseId) {
+      await svc.warehouseService.updateWarehouse(props.warehouseId, payload)
+      emit('saved', { id: props.warehouseId, name: draft.value.name.trim() })
+    } else {
+      const res = await svc.warehouseService.createWarehouse(payload)
+      const rData = (res as unknown as { data?: CreatedWarehouseMinimal })?.data || (res as unknown as CreatedWarehouseMinimal)
+      const createdId = (rData && rData.id) ? rData.id : Date.now()
+      emit('saved', { id: createdId, name: draft.value.name.trim() })
+    }
     open.value = false
   } catch (e) {
-    console.error('Create warehouse failed', e)
-    error.value = 'Tạo chi nhánh thất bại'
+    console.error('Save warehouse failed', e)
+    error.value = props.warehouseId ? 'Cập nhật thất bại' : 'Tạo chi nhánh thất bại'
   } finally {
     loading.value = false
   }
@@ -173,180 +239,108 @@ function close() {
 
 <template>
   <Teleport to="body">
-    <div
-      v-if="open"
-      class="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 p-4"
-      @keydown.esc="close"
-    >
+    <div v-if="open" class="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 p-4"
+      @keydown.esc="close">
       <div
         class="bg-white w-full max-w-2xl rounded-lg shadow-lg flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)]"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="add-warehouse-title"
-        @click.stop
-      >
+        role="dialog" aria-modal="true" aria-labelledby="add-warehouse-title" @click.stop>
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
           <h3 class="text-lg font-semibold">
-            <span id="add-warehouse-title">Thêm chi nhánh</span>
+            <span id="add-warehouse-title">{{ props.warehouseId ? 'Cập nhật chi nhánh' : 'Thêm chi nhánh' }}</span>
           </h3>
-          <button
-            class="text-gray-400 hover:text-gray-600"
-            @click="close"
-          >
+          <button class="text-gray-400 hover:text-gray-600" @click="close">
             &times;
           </button>
         </div>
         <div class="flex-1 overflow-y-auto px-6 py-5 space-y-8 text-sm modal-body-scroll">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="md:col-span-2">
-              <label class="block text-xs font-medium text-gray-600 mb-1">Tên chi nhánh <span class="text-red-500">*</span></label>
-              <input
-                v-model="draft.name"
-                type="text"
+              <label class="block text-xs font-medium text-gray-600 mb-1">Tên chi nhánh <span
+                  class="text-red-500">*</span></label>
+              <input v-model="draft.name" type="text"
                 class="w-full h-9 px-3 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 :class="nameError ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'"
-                placeholder="Nhập tên chi nhánh"
-                @blur="touched.name = true"
-              >
-              <p
-                v-if="nameError"
-                class="text-xs text-red-600 mt-1"
-              >
+                placeholder="Nhập tên chi nhánh" @blur="touched.name = true">
+              <p v-if="nameError" class="text-xs text-red-600 mt-1">
                 {{ nameError }}
               </p>
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-600 mb-1">Người liên hệ</label>
-              <input
-                v-model="draft.contactName"
-                type="text"
+              <input v-model="draft.contactName" type="text"
                 class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Người liên hệ"
-              >
+                placeholder="Người liên hệ">
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-600 mb-1">Số điện thoại</label>
-              <input
-                v-model="draft.phone"
-                type="text"
+              <input v-model="draft.phone" type="text"
                 class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Số điện thoại"
-              >
+                placeholder="Số điện thoại">
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-600 mb-1">Zipcode</label>
-              <input
-                v-model="draft.zipCode"
-                type="text"
+              <input v-model="draft.zipCode" type="text"
                 class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Zipcode"
-              >
+                placeholder="Zipcode">
             </div>
 
             <div>
               <label class="block text-xs font-medium text-gray-600 mb-1">Country</label>
-              <input
-                v-model="draft.countryId"
-                type="text"
+              <input v-model="draft.countryId" type="text"
                 class="w-full h-9 px-3 rounded-md border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Country"
-                readonly
-              >
+                placeholder="Country" readonly>
             </div>
 
             <div>
               <label class="block text-xs font-medium text-gray-600 mb-1">Tỉnh/thành</label>
-              <RemoteSearchSelect
-                v-model="selectedProvince"
-                :fetch-fn="fetchProvinces"
-                placeholder="Chọn Tỉnh/Thành phố"
-                label-field="name"
-                clearable
-                searchable
-                :dropdown-max-height="320"
-                :full-width="true"
-                search-in-trigger
-                @select="onSelectProvince"
-                @clear="onClearProvince"
-              />
+              <RemoteSearchSelect v-model="selectedProvince" :fetch-fn="fetchProvinces"
+                placeholder="Chọn Tỉnh/Thành phố" label-field="name" clearable searchable :dropdown-max-height="320"
+                :full-width="true" search-in-trigger @select="onSelectProvince" @clear="onClearProvince" />
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-600 mb-1">Phường/Xã</label>
-              <RemoteSearchSelect
-                v-model="selectedWard"
-                :fetch-fn="fetchWards"
-                :disabled="!selectedProvince"
-                placeholder="Chọn Phường/Xã"
-                label-field="name"
-                clearable
-                searchable
-                :dropdown-max-height="320"
-                :full-width="true"
-                search-in-trigger
-                @select="onSelectWard"
-                @clear="onClearWard"
-              />
+              <RemoteSearchSelect v-model="selectedWard" :fetch-fn="fetchWards" :disabled="!selectedProvince"
+                placeholder="Chọn Phường/Xã" label-field="name" clearable searchable :dropdown-max-height="320"
+                :full-width="true" search-in-trigger @select="onSelectWard" @clear="onClearWard" />
             </div>
             <div class="md:col-span-2">
               <label class="block text-xs font-medium text-gray-600 mb-1">Địa chỉ 1</label>
-              <input
-                v-model="draft.addressLine1"
-                type="text"
+              <input v-model="draft.addressLine1" type="text"
                 class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Địa chỉ 1"
-              >
+                placeholder="Địa chỉ 1">
             </div>
             <div class="md:col-span-2">
               <label class="block text-xs font-medium text-gray-600 mb-1">Địa chỉ 2 (nếu có)</label>
-              <input
-                v-model="draft.addressLine2"
-                type="text"
+              <input v-model="draft.addressLine2" type="text"
                 class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Địa chỉ 2 (nếu có)"
-              >
+                placeholder="Địa chỉ 2 (nếu có)">
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-600 mb-1">Latitude</label>
-              <input
-                v-model.number="draft.latitude"
-                type="number"
-                step="0.000001"
+              <input v-model.number="draft.latitude" type="number" step="0.000001"
                 class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Latitude"
-              >
+                placeholder="Latitude">
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-600 mb-1">Longitude</label>
-              <input
-                v-model.number="draft.longitude"
-                type="number"
-                step="0.000001"
+              <input v-model.number="draft.longitude" type="number" step="0.000001"
                 class="w-full h-9 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Longitude"
-              >
+                placeholder="Longitude">
             </div>
           </div>
-          <p
-            v-if="error"
-            class="text-xs text-red-600"
-          >
+          <p v-if="error" class="text-xs text-red-600">
             {{ error }}
           </p>
         </div>
         <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 flex-shrink-0">
-          <button
-            type="button"
+          <button type="button"
             class="h-9 px-4 rounded-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50"
-            @click="close"
-          >
+            @click="close">
             Hủy
           </button>
-          <button
-            type="button"
+          <button type="button"
             class="h-9 px-5 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-60"
-            :disabled="loading"
-            @click="save"
-          >
+            :disabled="loading" @click="save">
             <span v-if="!loading">Lưu</span>
             <span v-else>Đang lưu...</span>
           </button>
@@ -357,9 +351,24 @@ function close() {
 </template>
 
 <style scoped>
-.modal-body-scroll { -webkit-overflow-scrolling: touch; }
-.modal-body-scroll::-webkit-scrollbar { width: 8px; }
-.modal-body-scroll::-webkit-scrollbar-track { background: transparent; }
-.modal-body-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
-.modal-body-scroll::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+.modal-body-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-body-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-body-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-body-scroll::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+.modal-body-scroll::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
 </style>

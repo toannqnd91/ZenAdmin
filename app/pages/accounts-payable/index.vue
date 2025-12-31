@@ -10,7 +10,7 @@ const { selectedWarehouse } = useGlobalWarehouse()
 
 const q = ref('')
 const objectType = ref<'Customer' | 'Supplier'>('Customer')
-const pagination = ref({ pageIndex: 1, pageSize: 20 })
+const pagination = ref({ pageIndex: 0, pageSize: 20 })
 const rowSelection = ref<Record<string, boolean>>({})
 const loading = ref(false)
 
@@ -71,7 +71,7 @@ const fetchData = async () => {
   try {
     const params: any = {
       objectType: selectedObjectType.value.value,
-      page: pagination.value.pageIndex,
+      page: pagination.value.pageIndex + 1,
       pageSize: pagination.value.pageSize
     }
 

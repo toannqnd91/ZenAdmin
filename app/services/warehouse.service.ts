@@ -74,6 +74,14 @@ export class WarehouseService extends BaseService {
   }) {
     return this.post(API_ENDPOINTS.WAREHOUSE_CREATE, payload)
   }
+
+  async getWarehouse(id: number | string) {
+    return this.get<any>(API_ENDPOINTS.WAREHOUSE_BY_ID(id))
+  }
+
+  async updateWarehouse(id: number | string, payload: any) {
+    return this.put(API_ENDPOINTS.WAREHOUSE_UPDATE(id), payload)
+  }
 }
 
 export const warehouseService = new WarehouseService()

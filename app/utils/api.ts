@@ -6,6 +6,8 @@ export const API_ENDPOINTS = {
   WAREHOUSES: '/Warehouse',
   WAREHOUSE_DEFAULT: '/Warehouse/default',
   WAREHOUSE_CREATE: '/Warehouse',
+  WAREHOUSE_BY_ID: (id: number | string) => `/Warehouse/${id}`,
+  WAREHOUSE_UPDATE: (id: number | string) => `/Warehouse/${id}`,
   // File endpoints
   UPLOAD_FILE: '/FileUpload/upload',
   UPLOAD_MULTIPLE_FILES: '/FileUpload/upload-multiple',

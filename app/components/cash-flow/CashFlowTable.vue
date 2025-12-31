@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import BaseTable from '@/components/base/BaseTable.vue'
+import type { TableColumn } from '@/components/base/BaseTable.vue'
 
 interface CashFlowRow {
   id: string | number
@@ -45,13 +46,12 @@ const emit = defineEmits<{
 }>()
 
 // Table columns definition
-const columns = [
+const columns: TableColumn[] = [
   { key: 'code', label: 'Mã phiếu', sortable: true },
-  { key: 'date', label: 'Ngày ghi nhận', sortable: true },
-  { key: 'partnerName', label: 'Tên đối tượng', sortable: true },
-  { key: 'reason', label: 'Lý do thu chi', sortable: true },
-  { key: 'originalDoc', label: 'Mã chứng từ gốc', sortable: true },
-  { key: 'amount', label: 'Số tiền', sortable: true }
+  { key: 'date', label: 'Ngày ghi nhận', sortable: true, align: 'right' },
+  { key: 'partnerName', label: 'Tên đối tượng', sortable: true, align: 'right' },
+  { key: 'originalDoc', label: 'Mã chứng từ gốc', sortable: true, align: 'right' },
+  { key: 'amount', label: 'Số tiền', sortable: true, align: 'right' }
 ]
 
 // Emit handlers (wrapper to avoid TS template inference complaints)
@@ -70,45 +70,23 @@ function onUpdateTab(val: string) {
 
 // Similar explicit widths style as Orders table for consistent layout
 const colWidths = [
-  '140px', // code
-  '150px', // date
-  '200px', // partner
-  '240px', // reason
+  '250px', // code
+  '160px', // date
+  '160px', // partner
   '160px', // original doc
-  '140px' // amount
+  '160px' // amount
 ]
 </script>
 
 <template>
-  <BaseTable
-    :data="(props.data as unknown as Record<string, unknown>[])"
-    :loading="props.loading"
-    :q="props.q"
-    :row-selection="props.rowSelection"
-    :pagination="props.pagination"
-    :columns="columns"
-    :col-widths="colWidths"
-    title="Sổ quỹ"
-    hide-title
-    :tabs="props.tabs"
-    tabs-style="underline"
-    tabs-separate-line
-    :total-pages="props.totalPages"
-    :total-records="props.totalRecords"
-    :show-row-actions="false"
-    :selectable="true"
-    :show-filter="false"
-    body-padding="px-6"
-    header-padding-x="px-6"
-    footer-padding="px-6 pb-4"
-    :add-button="props.addButton"
-    search-placeholder="Tìm mã phiếu, tham chiếu, chứng từ gốc"
-    hide-search
-    @update:q="onUpdateQ"
-    @update:row-selection="onUpdateRowSelection"
-    @update:pagination="onUpdatePagination"
-    @update:tab="onUpdateTab"
-  >
+  <BaseTable :data="(props.data as unknown as Record<string, unknown>[])" :loading="props.loading" :q="props.q"
+    :row-selection="props.rowSelection" :pagination="props.pagination" :columns="columns" :col-widths="colWidths"
+    title="Sổ quỹ" hide-title :tabs="props.tabs" tabs-style="underline" tabs-separate-line
+    :total-pages="props.totalPages" :total-records="props.totalRecords" :show-row-actions="false" :selectable="true"
+    :show-filter="false" body-padding="px-6" header-padding-x="px-6" footer-padding="px-6 pb-4"
+    :add-button="props.addButton" search-placeholder="Tìm mã phiếu, tham chiếu, chứng từ gốc" hide-search
+    @update:q="onUpdateQ" @update:row-selection="onUpdateRowSelection" @update:pagination="onUpdatePagination"
+    @update:tab="onUpdateTab">
     <template #search-actions>
       <slot name="search-actions" />
     </template>
@@ -119,24 +97,20 @@ const colWidths = [
       <slot name="tabs-line-actions" />
     </template>
     <template #column-code="{ value, item }">
-      <button
-        class="text-primary-600 font-medium hover:underline"
-        type="button"
-        @click="emit('navigate-code', (item as any).code)"
-      >
-        {{ value }}
-      </button>
-    </template>
-    <template #column-reason="{ value }">
-      <span class="block truncate max-w-[240px]" :title="value as string">{{ value }}</span>
+      <div class="flex flex-col">
+        <button class="text-primary-600 font-medium hover:underline text-left" type="button"
+          @click="emit('navigate-code', (item as any).code)">
+          {{ value }}
+        </button>
+        <span class="text-xs text-gray-500" :title="(item as any).reason">
+          {{ (item as any).reason }}
+        </span>
+      </div>
     </template>
     <template #column-amount="{ value }">
-      <span
-        class="font-semibold tabular-nums"
-        :class="(value as number) < 0 ? 'text-red-600' : 'text-emerald-600'"
-      >
+      <span class="font-semibold tabular-nums" :class="(value as number) < 0 ? 'text-red-600' : 'text-emerald-600'">
         {{ (value as number) < 0 ? '-' + formatMoney(Math.abs(value as number)) : formatMoney(value as number) }}
-      </span>
+          </span>
     </template>
   </BaseTable>
 </template>
