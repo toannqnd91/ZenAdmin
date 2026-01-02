@@ -19,6 +19,8 @@ export const API_ENDPOINTS = {
   HTML_WIDGET_BY_ID: (id: number) => `/HtmlWidget/${id}`,
   NEWS_WIDGET: '/NewsWidget',
   NEWS_WIDGET_BY_ID: (id: number) => `/NewsWidget/${id}`,
+  PRODUCT_WIDGET: '/ProductWidget',
+  PRODUCT_WIDGET_BY_ID: (id: number) => `/ProductWidget/${id}`,
   WIDGET_INSTANCES: '/widget-instances',
   WIDGET_INSTANCES_REORDER: '/widget-instances/reorder',
   WIDGET_ZONES: '/widget-zones',
@@ -26,6 +28,8 @@ export const API_ENDPOINTS = {
   CUSTOM_DATA_WIDGET_BY_ID: (id: number) => `/custom-data-widgets/${id}`,
   SIMPLE_NEWS_WIDGETS: '/simple-news-widgets',
   SIMPLE_NEWS_WIDGET_BY_ID: (id: number) => `/simple-news-widgets/${id}`,
+  SIMPLE_PRODUCT_WIDGETS: '/simple-product-widgets',
+  SIMPLE_PRODUCT_WIDGET_BY_ID: (id: number) => `/simple-product-widgets/${id}`,
   // Auth endpoints
   LOGIN: '/Identity/login',
   LOGOUT: '/Identity/logout',

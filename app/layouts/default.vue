@@ -147,7 +147,7 @@ const salesLinks: NavigationMenuItem[] = [{
 }]
 
 const appLinks: NavigationMenuItem[] = [{
-  label: 'ChatAI',
+  label: 'Chat đa kênh',
   icon: 'i-lucide-bot',
   to: '/apps/chat-ai'
 }, {
@@ -274,8 +274,8 @@ provide('sidebarCollapsed', sidebarCollapsed)
 
     <NotificationsSlideover />
 
-    <!-- Dev Menu Bubble -->
-    <div v-if="isDev" ref="devBubbleRef" :style="bubbleStyle" class="fixed z-50 w-12 h-12 pointer-events-none">
+    <!-- AI Assistant Bubble -->
+    <div ref="devBubbleRef" :style="bubbleStyle" class="fixed z-50 w-12 h-12 pointer-events-none">
       <div v-if="isDevMenuOpen"
         class="absolute bottom-14 right-0 mb-2 bg-white rounded-lg shadow-xl border border-gray-200 w-80 h-96 pointer-events-auto origin-bottom-right transition-all flex flex-col overflow-hidden">
         <!-- Chat Header -->
@@ -329,8 +329,8 @@ provide('sidebarCollapsed', sidebarCollapsed)
 
       <button ref="devButtonRef"
         class="h-12 w-12 rounded-full bg-primary-600 text-white shadow-lg flex items-center justify-center hover:bg-primary-700 transition-colors pointer-events-auto cursor-move"
-        @click="onToggleDevMenu" title="Dev Tools (Drag to move)">
-        <UIcon v-if="!isDevMenuOpen" name="i-lucide-terminal" class="w-6 h-6" />
+        @click="onToggleDevMenu" title="AI Assistant (Drag to move)">
+        <UIcon v-if="!isDevMenuOpen" name="i-lucide-sparkles" class="w-6 h-6" />
         <UIcon v-else name="i-lucide-x" class="w-6 h-6" />
       </button>
     </div>

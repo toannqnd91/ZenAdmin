@@ -22,7 +22,7 @@ const widgetZoneItems = ref<string[]>([])
 const isMounted = ref(false)
 
 const items = ref([
-  { caption: '', subCaption: '', linkText: '', targetUrl: '', sortOrder: 0, image: null as File | null, imageUrl: '', uploading: false }
+  { caption: '', subCaption: '', linkText: '', description: '', targetUrl: '', sortOrder: 0, image: null as File | null, imageUrl: '', uploading: false }
 ])
 
 // Helper function to convert ISO string to dd/MM/yyyy HH:mm format
@@ -88,6 +88,7 @@ onMounted(async () => {
           caption: item.caption,
           subCaption: item.subCaption,
           linkText: item.linkText,
+          description: item.description || '',
           targetUrl: item.targetUrl,
           sortOrder: item.sortOrder,
           image: null,
@@ -115,6 +116,7 @@ onMounted(async () => {
         caption: 'Feature 1',
         subCaption: 'Description of feature 1',
         linkText: 'Learn More',
+        description: 'Detailed description for feature 1',
         targetUrl: '/feature-1',
         sortOrder: 0,
         image: null,
@@ -125,6 +127,7 @@ onMounted(async () => {
         caption: 'Feature 2',
         subCaption: 'Description of feature 2',
         linkText: 'View Details',
+        description: 'Detailed description for feature 2',
         targetUrl: '/feature-2',
         sortOrder: 1,
         image: null,
@@ -138,7 +141,7 @@ onMounted(async () => {
 })
 
 function addItem() {
-  items.value.push({ caption: '', subCaption: '', linkText: '', targetUrl: '', sortOrder: items.value.length, image: null as File | null, imageUrl: '', uploading: false })
+  items.value.push({ caption: '', subCaption: '', linkText: '', description: '', targetUrl: '', sortOrder: items.value.length, image: null as File | null, imageUrl: '', uploading: false })
 }
 
 function removeItem(idx: number) {
@@ -215,6 +218,7 @@ async function onUpdate() {
         caption: item.caption,
         subCaption: item.subCaption,
         linkText: item.linkText,
+        description: item.description || '',
         targetUrl: item.targetUrl,
         sortOrder: parseInt(item.sortOrder || idx) // Ensure sortOrder is number
       }))
@@ -325,6 +329,12 @@ function onCancel() {
                       URL)</label>
                     <input v-model="item.targetUrl" placeholder="https://example.com"
                       class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mô tả chi tiết
+                      (Description)</label>
+                    <textarea v-model="item.description" rows="3" placeholder="Nhập mô tả chi tiết"
+                      class="w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-y"></textarea>
                   </div>
                   <div class="grid grid-cols-2 gap-2">
                     <div>

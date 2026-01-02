@@ -19,6 +19,7 @@ const PlansSettings = defineAsyncComponent(() => import('@/components/settings/P
 const AuditLogSettings = defineAsyncComponent(() => import('@/components/settings/AuditLogSettings.vue'))
 const AIFeaturesSettings = defineAsyncComponent(() => import('@/components/settings/AIFeaturesSettings.vue'))
 const MetafieldsSettings = defineAsyncComponent(() => import('@/components/settings/MetafieldsSettings.vue'))
+const ApiKeysSettings = defineAsyncComponent(() => import('@/components/settings/ApiKeysSettings.vue'))
 
 const route = useRoute()
 const currentTab = computed(() => String(route.query.tab || 'general'))
@@ -80,6 +81,9 @@ const currentTab = computed(() => String(route.query.tab || 'general'))
     </div>
     <div v-else-if="currentTab === 'orders'">
       <OrderProcessingSettings />
+    </div>
+    <div v-else-if="currentTab === 'api-keys'">
+      <ApiKeysSettings />
     </div>
     <div v-else>
       <UCard>

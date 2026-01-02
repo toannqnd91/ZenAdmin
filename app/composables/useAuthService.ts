@@ -58,6 +58,7 @@ export const useAuthService = () => {
           httpOnly: false,
           secure: isProd,
           sameSite: 'strict',
+          path: '/',
           maxAge: 60 * 60 * 24 * 7 // 7 days
         })
 
@@ -65,6 +66,7 @@ export const useAuthService = () => {
           httpOnly: true,
           secure: isProd,
           sameSite: 'strict',
+          path: '/',
           maxAge: 60 * 60 * 24 * 30 // 30 days
         })
 
@@ -72,6 +74,12 @@ export const useAuthService = () => {
         const encodedToken = import.meta.client ? btoa(tokenData.accessToken) : Buffer.from(tokenData.accessToken).toString('base64')
         accessTokenCookie.value = encodedToken
         refreshTokenCookie.value = tokenData.refreshToken
+
+        console.log('[Auth] Login successful, token saved:', {
+          email: credentials.email,
+          tokenLength: encodedToken.length,
+          cookieSet: !!accessTokenCookie.value
+        })
 
         toast.add({
           title: 'Đăng nhập thành công',
@@ -188,6 +196,11 @@ export const useAuthService = () => {
   function initialize() {
     const accessTokenCookie = useCookie('access_token')
 
+    console.log('[Auth] Initialize called, cookie value:', {
+      hasCookie: !!accessTokenCookie.value,
+      cookieLength: accessTokenCookie.value?.length || 0
+    })
+
     if (accessTokenCookie.value) {
       // Decode token like useAuth stores it
       try {
@@ -197,8 +210,10 @@ export const useAuthService = () => {
         try {
           const decodedFromBase64 = import.meta.client ? atob(accessTokenCookie.value) : Buffer.from(accessTokenCookie.value, 'base64').toString('utf8')
           token = decodedFromBase64
+          console.log('[Auth] Token decoded successfully, JWT parts:', token.split('.').length)
         } catch {
           // If base64 decode fails, use original value
+          console.warn('[Auth] Failed to decode token from base64')
           token = accessTokenCookie.value
         }
 
@@ -214,17 +229,19 @@ export const useAuthService = () => {
               }).join(''))
               const payload = JSON.parse(jsonPayload)
               user.value = payload
+              console.log('[Auth] User info decoded:', { email: payload.email, role: payload.role })
               } catch (jwtError) {
-              console.error('Failed to decode JWT payload:', jwtError)
+              console.error('[Auth] Failed to decode JWT payload:', jwtError)
             }
           }
         }
       } catch (error) {
-        console.error('Failed to process token:', error)
+        console.error('[Auth] Failed to process token:', error)
         accessToken.value = accessTokenCookie.value
       }
     } else {
-      }
+      console.warn('[Auth] No access token cookie found')
+    }
   }
 
   // Auto-initialize on composable creation

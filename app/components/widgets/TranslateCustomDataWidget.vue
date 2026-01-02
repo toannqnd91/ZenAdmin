@@ -236,18 +236,18 @@ function handleCancel() {
                         </div>
 
                         <!-- Items -->
-                        <div v-else v-for="(item, idx) in enData.items" :key="idx"
+                        <div v-else v-for="(item, idx) in enData.items" :key="String(idx)"
                             class="py-4 border-b border-gray-200 dark:border-gray-700 last:border-b-0 relative">
 
                             <!-- Remove button -->
                             <div class="absolute top-4 right-0">
                                 <UButton icon="i-lucide-trash-2" size="sm" color="error" variant="ghost"
-                                    @click="() => removeItem(idx)" :disabled="enData.items.length <= 1" />
+                                    @click="() => removeItem(Number(idx))" :disabled="enData.items.length <= 1" />
                             </div>
 
                             <h3
                                 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
-                                Item #{{ idx + 1 }}
+                                Item #{{ Number(idx) + 1 }}
                             </h3>
 
                             <div class="space-y-4">
@@ -284,6 +284,17 @@ function handleCancel() {
                                     </label>
                                     <input v-model="item.LinkText" type="text" placeholder="Enter English link text"
                                         class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                                </div>
+
+                                <!-- Description -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Description (EN)
+                                        <span class="text-xs text-gray-500 ml-2">(VN: {{ vnData.items[idx]?.Description ||
+                                            'N/A' }})</span>
+                                    </label>
+                                    <textarea v-model="item.Description" rows="3" placeholder="Enter English description"
+                                        class="w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-y"></textarea>
                                 </div>
 
                                 <!-- TargetUrl & SortOrder - 2 columns -->

@@ -131,6 +131,23 @@ export interface SimpleNewsWidgetData {
 // Create simple news widget request (same shape as data, id should be 0 for create)
 export type CreateSimpleNewsWidgetRequest = SimpleNewsWidgetData
 
+// Simple product widget
+export interface SimpleProductWidgetData {
+  id: number
+  name: string
+  widgetZoneId: number
+  publishStart: string | null
+  publishEnd: string | null
+  displayOrder: number
+  products: Array<{
+    id: number
+    name: string
+    isPublished: boolean
+  }>
+}
+
+export type CreateSimpleProductWidgetRequest = SimpleProductWidgetData
+
 export interface NewsWidgetSetting {
   numberOfNews: number
   categoryId: number | null
@@ -146,6 +163,23 @@ export interface CreateNewsWidgetRequest {
   publishEnd: string | null
   displayOrder: number
   setting: NewsWidgetSetting
+}
+
+export interface ProductWidgetSetting {
+  numberOfProducts: number
+  categoryId: number | null
+  orderBy: number
+  featuredOnly: boolean
+}
+
+export interface CreateProductWidgetRequest {
+  id: number
+  name: string
+  widgetZoneId: number
+  publishStart: string | null
+  publishEnd: string | null
+  displayOrder: number
+  setting: ProductWidgetSetting
 }
 
 export interface CreateWidgetApiResponse {
@@ -220,6 +254,13 @@ export class WidgetsService extends BaseService {
    */
   async createNewsWidget(data: CreateNewsWidgetRequest): Promise<ApiResponse<null>> {
     return this.post<null>(API_ENDPOINTS.NEWS_WIDGET, data)
+  }
+
+  /**
+   * Create product widget
+   */
+  async createProductWidget(data: CreateProductWidgetRequest): Promise<ApiResponse<null>> {
+    return this.post<null>(API_ENDPOINTS.PRODUCT_WIDGET, data)
   }
 
   /**
@@ -304,6 +345,27 @@ export class WidgetsService extends BaseService {
    */
   async createSimpleNewsWidget(data: CreateSimpleNewsWidgetRequest): Promise<ApiResponse<null>> {
     return this.post<null>(API_ENDPOINTS.SIMPLE_NEWS_WIDGETS, data)
+  }
+
+  /**
+   * Get simple product widget by ID
+   */
+  async getSimpleProductWidget(id: number): Promise<ApiResponse<SimpleProductWidgetData>> {
+    return this.get<SimpleProductWidgetData>(API_ENDPOINTS.SIMPLE_PRODUCT_WIDGET_BY_ID(id))
+  }
+
+  /**
+   * Update simple product widget by ID
+   */
+  async updateSimpleProductWidget(id: number, data: SimpleProductWidgetData): Promise<ApiResponse<null>> {
+    return this.put<null>(API_ENDPOINTS.SIMPLE_PRODUCT_WIDGET_BY_ID(id), data)
+  }
+
+  /**
+   * Create simple product widget
+   */
+  async createSimpleProductWidget(data: CreateSimpleProductWidgetRequest): Promise<ApiResponse<null>> {
+    return this.post<null>(API_ENDPOINTS.SIMPLE_PRODUCT_WIDGETS, data)
   }
 
   /**

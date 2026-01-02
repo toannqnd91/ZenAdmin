@@ -3,8 +3,6 @@ import type { UseFetchOptions } from '#app'
 export function useApiFetch<T>(url: string | (() => string), options: UseFetchOptions<T> = {}) {
   const { accessToken } = useAuthService()
 
-  // Always decode from base64 if possible. If accessToken composable isn't ready yet
-  // (e.g., on first SSR load), fallback to reading cookie directly.
   let token = accessToken.value
   if (!token) {
     const cookieToken = useCookie<string | null>('access_token').value
@@ -12,15 +10,22 @@ export function useApiFetch<T>(url: string | (() => string), options: UseFetchOp
       token = cookieToken
     }
   }
+  
   if (token) {
     try {
-      // Only decode if looks like base64 (not a JWT)
-      if (!token.includes('.')) {
-        token = typeof atob !== 'undefined' ? atob(token) : Buffer.from(token, 'base64').toString('utf8')
-      }
-    } catch {
+      // Token is stored as base64, decode it
+      token = typeof atob !== 'undefined' ? atob(token) : Buffer.from(token, 'base64').toString('utf8')
+      console.log('[ApiFetch] Token decoded for request:', {
+        url: typeof url === 'string' ? url : 'dynamic',
+        tokenParts: token.split('.').length,
+        tokenPreview: token.substring(0, 50) + '...'
+      })
+    } catch (e) {
+      console.error('[ApiFetch] Failed to decode token:', e)
       // If decode fails, use as is
     }
+  } else {
+    console.warn('[ApiFetch] No token available for request:', typeof url === 'string' ? url : 'dynamic')
   }
 
   return useFetch<T>(url, {

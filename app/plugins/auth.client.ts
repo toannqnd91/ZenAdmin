@@ -17,52 +17,60 @@ export default defineNuxtPlugin(async () => {
       // Try to decode JWT to check if it's expired
       const tokenParts = token.split('.')
       if (tokenParts.length === 3 && tokenParts[1]) {
-        const payload = JSON.parse(atob(tokenParts[1]))
-        const isExpired = payload.exp * 1000 < Date.now()
+        try {
+          // JWT uses base64url encoding, need to convert to standard base64
+          const base64 = tokenParts[1].replace(/-/g, '+').replace(/_/g, '/')
+          // Add padding if needed
+          const padded = base64 + '='.repeat((4 - base64.length % 4) % 4)
+          const payload = JSON.parse(atob(padded))
+          const isExpired = payload.exp * 1000 < Date.now()
 
-        if (isExpired && refreshTokenCookie.value) {
-          // Token is expired, try to refresh
-          const { getApiEndpoints } = await import('@/utils/api')
-          const endpoints = getApiEndpoints()
-          const response = await fetch(endpoints.refreshToken, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              refreshToken: refreshTokenCookie.value
+          if (isExpired && refreshTokenCookie.value) {
+            // Token is expired, try to refresh
+            const { getApiEndpoints } = await import('@/utils/api')
+            const endpoints = getApiEndpoints()
+            const response = await fetch(endpoints.refreshToken, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                refreshToken: refreshTokenCookie.value
+              })
             })
-          })
 
-          if (response.ok) {
-            const data = await response.json()
-            if (data.success) {
-              // Encode token like useAuth does
-              const encodedToken = import.meta.client ? btoa(data.data.accessToken) : Buffer.from(data.data.accessToken).toString('base64')
-              accessTokenCookie.value = encodedToken
+            if (response.ok) {
+              const data = await response.json()
+              if (data.success) {
+                // Encode token like useAuth does
+                const encodedToken = import.meta.client ? btoa(data.data.accessToken) : Buffer.from(data.data.accessToken).toString('base64')
+                accessTokenCookie.value = encodedToken
 
-              if (data.data.refreshToken) {
-                refreshTokenCookie.value = data.data.refreshToken
+                if (data.data.refreshToken) {
+                  refreshTokenCookie.value = data.data.refreshToken
+                }
+                } else {
+                console.warn('Token refresh failed:', data.message)
+                // Clear invalid tokens
+                accessTokenCookie.value = null
+                refreshTokenCookie.value = null
               }
-              } else {
-              console.warn('Token refresh failed:', data.message)
+            } else {
+              console.warn('Token refresh request failed')
               // Clear invalid tokens
               accessTokenCookie.value = null
               refreshTokenCookie.value = null
             }
-          } else {
-            console.warn('Token refresh request failed')
-            // Clear invalid tokens
-            accessTokenCookie.value = null
-            refreshTokenCookie.value = null
           }
+        } catch (jwtError) {
+          console.error('Error decoding JWT payload:', jwtError)
+          // Don't clear tokens just because we can't decode - let the server validate
         }
       }
     } catch (error) {
       console.error('Error validating/refreshing token:', error)
-      // Clear invalid tokens
-      accessTokenCookie.value = null
-      refreshTokenCookie.value = null
+      // Don't automatically clear tokens on decode errors
+      // Let the server validate the token instead
     }
   }
 

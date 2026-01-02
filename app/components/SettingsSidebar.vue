@@ -21,7 +21,8 @@ const links = [
   { label: 'Gói dịch vụ', value: 'plans', icon: 'i-lucide-badge-dollar-sign' },
   { label: 'Nhật ký hoạt động', value: 'audit-log', icon: 'i-lucide-history' },
   { label: 'Metafield', value: 'metafields', icon: 'i-lucide-table-properties' },
-  { label: 'Chatbot AI và tính năng AI', value: 'ai', icon: 'i-lucide-bot' }
+  { label: 'Chatbot AI và tính năng AI', value: 'ai', icon: 'i-lucide-bot' },
+  { label: 'Quản lý khoá API', value: 'api-keys', icon: 'i-lucide-key' }
 ]
 </script>
 
@@ -29,15 +30,12 @@ const links = [
   <div class="space-y-1 p-2 rounded-xl bg-white border-gray-200">
     <ul>
       <li v-for="item in links" :key="item.value">
-        <NuxtLink
-          :to="{ path: '/settings', query: { tab: item.value } }"
-          :class="[
-            'flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-gray-50',
-            currentTab === item.value
-              ? 'bg-blue-50 text-blue-700 font-medium border-l-2 border-blue-600'
-              : 'text-gray-700'
-          ]"
-        >
+        <NuxtLink :to="{ path: '/settings', query: { tab: item.value } }" :class="[
+          'flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-gray-50',
+          currentTab === item.value
+            ? 'bg-blue-50 text-blue-700 font-medium border-l-2 border-blue-600'
+            : 'text-gray-700'
+        ]">
           <UIcon :name="item.icon" class="w-4 h-4" />
           <span>{{ item.label }}</span>
         </NuxtLink>
