@@ -82,13 +82,13 @@ function formatPrice(price: number) {
                     </h3>
                     <div class="mt-auto pt-2 flex items-center justify-between">
                         <span class="font-bold text-slate-900">{{ formatPrice(getPrice(product)) }}</span>
-                        <button
-                            class="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-colors">
+                        <div
+                            class="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors pointer-events-none">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M12 4v16m8-8H4" />
                             </svg>
-                        </button>
+                        </div>
                     </div>
                 </div>
             </div>

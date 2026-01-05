@@ -579,7 +579,13 @@ function removeVoucher() {
 }
 
 // --- Promotion Functions ---
+const isCalculatingPromotions = ref(false)
+
 function calculatePromotions() {
+  if (isCalculatingPromotions.value) return // Prevent recursive calls
+
+  isCalculatingPromotions.value = true
+
   // Remove old gift items from cart
   cart.value = cart.value.filter(item => !item.isGift)
 
@@ -605,6 +611,10 @@ function calculatePromotions() {
       })
     }
   })
+
+  nextTick(() => {
+    isCalculatingPromotions.value = false
+  })
 }
 
 function removePromotion(promotionId: string) {
@@ -617,7 +627,9 @@ function removePromotion(promotionId: string) {
 
 // Watch cart changes to recalculate promotions
 watch(cart, () => {
-  calculatePromotions()
+  if (!isCalculatingPromotions.value) {
+    calculatePromotions()
+  }
 }, { deep: true })
 
 // --- Product Note Functions ---

@@ -12,17 +12,11 @@ export function useApiFetch<T>(url: string | (() => string), options: UseFetchOp
   }
   
   if (token) {
-    try {
-      // Token is stored as base64, decode it
-      token = typeof atob !== 'undefined' ? atob(token) : Buffer.from(token, 'base64').toString('utf8')
-      console.log('[ApiFetch] Token decoded for request:', {
-        url: typeof url === 'string' ? url : 'dynamic',
-        tokenParts: token.split('.').length,
-        tokenPreview: token.substring(0, 50) + '...'
-      })
-    } catch (e) {
-      console.error('[ApiFetch] Failed to decode token:', e)
-      // If decode fails, use as is
+    // Token is likely a JWT
+    const isJWT = token.includes('.') && token.split('.').length === 3
+    
+    if (!isJWT) {
+      console.warn('[ApiFetch] Token does not look like a valid JWT')
     }
   } else {
     console.warn('[ApiFetch] No token available for request:', typeof url === 'string' ? url : 'dynamic')

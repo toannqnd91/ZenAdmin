@@ -60,7 +60,7 @@ export const API_ENDPOINTS = {
   NEWS_DELETE: (id: number) => `/News/${id}/delete`,
   NEWS_DELETE_MULTI: '/News/delete-multiple',
   // Product endpoints
-  PRODUCT_CATEGORIES: '/ProductCategories',
+  PRODUCT_CATEGORIES: '/product-categories',
   PRODUCT_CATEGORY_BY_ID: (id: number) => `/ProductCategories/${id}`,
   // Some backends expose singular route for detail fetch
   PRODUCT_CATEGORY_DETAIL_BY_ID: (id: number) => `/ProductCategory/${id}`,

@@ -70,14 +70,13 @@ export const useAuthService = () => {
           maxAge: 60 * 60 * 24 * 30 // 30 days
         })
 
-        // Encode token like useAuth does
-        const encodedToken = import.meta.client ? btoa(tokenData.accessToken) : Buffer.from(tokenData.accessToken).toString('base64')
-        accessTokenCookie.value = encodedToken
+        // Store raw token (JWT is already base64url encoded and safe for cookies)
+        accessTokenCookie.value = tokenData.accessToken
         refreshTokenCookie.value = tokenData.refreshToken
 
         console.log('[Auth] Login successful, token saved:', {
           email: credentials.email,
-          tokenLength: encodedToken.length,
+          tokenLength: tokenData.accessToken.length,
           cookieSet: !!accessTokenCookie.value
         })
 
@@ -88,6 +87,10 @@ export const useAuthService = () => {
 
         // Redirect to dashboard
         await router.push('/')
+
+        // Trigger bootstrap after successful login
+        const shouldRunBootstrap = useState('shouldRunBootstrap', () => false)
+        shouldRunBootstrap.value = true
 
         return tokenData
       } else {
@@ -162,8 +165,7 @@ export const useAuthService = () => {
           sameSite: 'strict',
           maxAge: 60 * 60 * 24 * 7 // 7 days
         })
-        const encodedToken = import.meta.client ? btoa(response.data.accessToken) : Buffer.from(response.data.accessToken).toString('base64')
-        accessTokenCookie.value = encodedToken
+        accessTokenCookie.value = response.data.accessToken
 
         return response.data
       } else {
@@ -202,23 +204,8 @@ export const useAuthService = () => {
     })
 
     if (accessTokenCookie.value) {
-      // Decode token like useAuth stores it
-      try {
-        let token = accessTokenCookie.value
-
-        // First decode from base64 if needed
-        try {
-          const decodedFromBase64 = import.meta.client ? atob(accessTokenCookie.value) : Buffer.from(accessTokenCookie.value, 'base64').toString('utf8')
-          token = decodedFromBase64
-          console.log('[Auth] Token decoded successfully, JWT parts:', token.split('.').length)
-        } catch {
-          // If base64 decode fails, use original value
-          console.warn('[Auth] Failed to decode token from base64')
-          token = accessTokenCookie.value
-        }
-
-        accessToken.value = token
         // Decode JWT token to get user info
+        let token = accessTokenCookie.value
         if (token && typeof token === 'string' && token.includes('.')) {
           const parts = token.split('.')
           if (parts.length === 3 && parts[1]) {
@@ -230,15 +217,12 @@ export const useAuthService = () => {
               const payload = JSON.parse(jsonPayload)
               user.value = payload
               console.log('[Auth] User info decoded:', { email: payload.email, role: payload.role })
-              } catch (jwtError) {
+            } catch (jwtError) {
               console.error('[Auth] Failed to decode JWT payload:', jwtError)
             }
           }
         }
-      } catch (error) {
-        console.error('[Auth] Failed to process token:', error)
-        accessToken.value = accessTokenCookie.value
-      }
+        accessToken.value = token || null
     } else {
       console.warn('[Auth] No access token cookie found')
     }

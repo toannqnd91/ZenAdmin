@@ -1,6 +1,5 @@
-import { computed } from 'vue'
-import { useApiFetch } from '@/composables/useApiFetch'
-import { getApiEndpoints } from '@/utils/api'
+import { ref, onMounted } from 'vue'
+import { productService } from '@/services/product.service'
 
 export interface ProductCategory {
   id: number
@@ -25,64 +24,44 @@ export interface ProductCategory {
   thumbnailImageUrl?: string | null
 }
 
-export interface ProductCategoriesApiResponse {
-  code: string
-  success: boolean
-  message: string
-  data: ProductCategory[]
-}
+export const useProductsCategoriesService = () => {
+  const data = ref<ProductCategory[]>([])
+  const loading = ref(false)
+  const error = ref<string | null>(null)
 
-export const useProductsCategoriesService = (options?: { server?: boolean }) => {
-  const { accessToken } = useAuthService()
-
-  // Fetch data from API using POST with required body
-  const { data: response, error, pending: loading } = useApiFetch<ProductCategoriesApiResponse>(
-    getApiEndpoints().productCategories,
-    {
-      method: 'POST',
-      server: options?.server ?? false, // Default to client-side only
-      headers: computed(() => ({
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken.value}`
-      })),
-      body: {
-        Pagination: {
-          Start: 0,
-          TotalItemCount: 0,
-          Number: 1000,
-          NumberOfPages: 1
-        },
-        Search: {
-          QueryObject: {
-            Name: null
-          }
-        },
-        Sort: {
-          Field: 'Id',
-          Reverse: true
-        }
-      }
+  const fetchCategories = async () => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const response = await productService.getCategories({
+        pagination: { start: 0, number: 1000 }
+      })
+      
+      // Response is ApiResponse<ProductCategory[]>, extract data
+      const categories = (response as any).data || response
+      
+      // Filter out deleted categories
+      data.value = Array.isArray(categories) 
+        ? categories.filter((category: ProductCategory) => !category.isDeleted)
+        : []
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to fetch categories'
+      console.error('Error fetching product categories:', err)
+    } finally {
+      loading.value = false
     }
-  )
+  }
 
-  // Transform data - handle wrapped response structure
-  const data = computed(() => {
-    if (!response.value) {
-      return []
-    }
-
-    // Response has structure: { code, success, message, data }
-    const apiResponse = response.value as unknown as ProductCategoriesApiResponse
-    if (apiResponse.success && apiResponse.data) {
-      return apiResponse.data.filter((category: ProductCategory) => !category.isDeleted)
-    }
-
-    return []
+  // Auto-fetch on mount (client-side only)
+  onMounted(() => {
+    fetchCategories()
   })
 
   return {
     data,
     loading,
-    error
+    error,
+    refresh: fetchCategories
   }
 }

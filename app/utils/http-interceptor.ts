@@ -9,7 +9,6 @@ export class HttpInterceptor {
   private refreshPromise: Promise<unknown> | null = null
 
   async request(url: string, options: RequestInit = {}): Promise<Response> {
-    // Add auth headers
     const headers = await this.addAuthHeaders(options.headers)
 
     const response = await fetch(url, {
@@ -66,16 +65,7 @@ export class HttpInterceptor {
       // Get access token from cookie (consistent with useAuth)
       const accessTokenCookie = useCookie('access_token')
       if (accessTokenCookie.value) {
-        // Decode the token if it's encoded
-        let token = accessTokenCookie.value
-        try {
-          // Try to decode if it's base64 encoded
-          const decoded = import.meta.client ? atob(token) : Buffer.from(token, 'base64').toString('utf8')
-          token = decoded
-        } catch {
-          // If decode fails, use as is
-        }
-        headers.set('Authorization', `Bearer ${token}`)
+        headers.set('Authorization', `Bearer ${accessTokenCookie.value}`)
       }
     } catch (error) {
       console.debug('Could not get auth token:', error)
@@ -145,9 +135,7 @@ export class HttpInterceptor {
 
     // Update tokens (consistent with useAuth)
     const accessTokenCookie = useCookie('access_token')
-    // Encode the token like useAuth does
-    const encodedToken = import.meta.client ? btoa(data.data.accessToken) : Buffer.from(data.data.accessToken).toString('base64')
-    accessTokenCookie.value = encodedToken
+    accessTokenCookie.value = data.data.accessToken
 
     if (data.data.refreshToken) {
       refreshTokenCookie.value = data.data.refreshToken

@@ -61,7 +61,7 @@ export const useAuthStore = defineStore('auth', {
           const accessTokenCookie = useCookie('access_token')
           const refreshTokenCookie = useCookie('refresh_token')
           
-          accessTokenCookie.value = btoa(response.data.accessToken)
+          accessTokenCookie.value = response.data.accessToken
           refreshTokenCookie.value = response.data.refreshToken
 
           return true
@@ -131,7 +131,7 @@ export const useAuthStore = defineStore('auth', {
           const accessTokenCookie = useCookie('access_token')
           const refreshTokenCookie = useCookie('refresh_token')
           
-          accessTokenCookie.value = btoa(response.data.accessToken)
+          accessTokenCookie.value = response.data.accessToken
           if (response.data.refreshToken) {
             refreshTokenCookie.value = response.data.refreshToken
           }
@@ -155,13 +155,9 @@ export const useAuthStore = defineStore('auth', {
       const refreshTokenCookie = useCookie('refresh_token')
 
       if (accessTokenCookie.value && refreshTokenCookie.value) {
-        try {
-          this.accessToken = atob(accessTokenCookie.value)
-          this.refreshToken = refreshTokenCookie.value
-          this.isAuthenticated = true
-        } catch (error) {
-          this.clearAuth()
-        }
+        this.accessToken = accessTokenCookie.value
+        this.refreshToken = refreshTokenCookie.value
+        this.isAuthenticated = true
       }
     }
   }
