@@ -25,6 +25,7 @@ import AddCustomerModal from '~/components/pos/modals/AddCustomerModal.vue'
 import CustomProductModal from '~/components/pos/modals/CustomProductModal.vue'
 import ProductSelectorModal from '~/components/pos/modals/ProductSelectorModal.vue'
 import VoucherModal from '~/components/pos/modals/VoucherModal.vue'
+import PromotionsModal from '~/components/pos/PromotionsModal.vue'
 
 // Import promotion components
 import PromotionDisplay from '~/components/pos/PromotionDisplay.vue'
@@ -50,6 +51,7 @@ interface Product {
   price: number
   imageUrl: string
   category: string
+  stock?: number
 }
 
 interface CartItem extends Product {
@@ -134,38 +136,38 @@ const tabs = ref<PosTab[]>([
 // --- Mock Data: Products ---
 const products = ref<Product[]>([
   // Cà phê
-  { id: 1, sku: 'CF001', name: 'Cà phê đen đá', price: 25000, category: 'Cà phê', imageUrl: 'https://images.unsplash.com/photo-1559496417-e7f25cb247f3?w=400&q=80' },
-  { id: 2, sku: 'CF002', name: 'Cà phê sữa đá', price: 29000, category: 'Cà phê', imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400&q=80' },
-  { id: 3, sku: 'CF003', name: 'Bạc xỉu', price: 32000, category: 'Cà phê', imageUrl: 'https://images.unsplash.com/photo-1585849834997-6a1b2d77d13e?w=400&q=80' },
-  { id: 4, sku: 'CF004', name: 'Espresso', price: 35000, category: 'Cà phê', imageUrl: 'https://images.unsplash.com/photo-1510591509098-f40718131299?w=400&q=80' },
-  { id: 5, sku: 'CF005', name: 'Latte', price: 45000, category: 'Cà phê', imageUrl: 'https://images.unsplash.com/photo-1570968992193-6e5c9f506821?w=400&q=80' },
-  { id: 6, sku: 'CF006', name: 'Capuchino', price: 45000, category: 'Cà phê', imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400&q=80' },
-  { id: 7, sku: 'CF007', name: 'Americano', price: 35000, category: 'Cà phê', imageUrl: 'https://images.unsplash.com/photo-1551030173-122f5236b5ec?w=400&q=80' },
+  { id: 1, sku: 'CF001', name: 'Cà phê đen đá', price: 25000, category: 'Cà phê', imageUrl: 'https://images.unsplash.com/photo-1559496417-e7f25cb247f3?w=400&q=80', stock: 100 },
+  { id: 2, sku: 'CF002', name: 'Cà phê sữa đá', price: 29000, category: 'Cà phê', imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400&q=80', stock: 50 },
+  { id: 3, sku: 'CF003', name: 'Bạc xỉu', price: 32000, category: 'Cà phê', imageUrl: 'https://images.unsplash.com/photo-1585849834997-6a1b2d77d13e?w=400&q=80', stock: 0 }, // Out of stock example
+  { id: 4, sku: 'CF004', name: 'Espresso', price: 35000, category: 'Cà phê', imageUrl: 'https://images.unsplash.com/photo-1510591509098-f40718131299?w=400&q=80', stock: 12 },
+  { id: 5, sku: 'CF005', name: 'Latte', price: 45000, category: 'Cà phê', imageUrl: 'https://images.unsplash.com/photo-1570968992193-6e5c9f506821?w=400&q=80', stock: 25 },
+  { id: 6, sku: 'CF006', name: 'Capuchino', price: 45000, category: 'Cà phê', imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400&q=80', stock: 8 },
+  { id: 7, sku: 'CF007', name: 'Americano', price: 35000, category: 'Cà phê', imageUrl: 'https://images.unsplash.com/photo-1551030173-122f5236b5ec?w=400&q=80', stock: 15 },
 
   // Trà & Trà Sữa
-  { id: 20, sku: 'TS001', name: 'Trà đào cam sả', price: 45000, category: 'Trà', imageUrl: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&q=80' },
-  { id: 21, sku: 'TS002', name: 'Trà vải hạt sen', price: 45000, category: 'Trà', imageUrl: 'https://images.unsplash.com/photo-1627435601361-ec25f5b1d0e5?w=400&q=80' },
-  { id: 22, sku: 'TS003', name: 'Trà chanh mật ong', price: 35000, category: 'Trà', imageUrl: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=400&q=80' },
-  { id: 23, sku: 'TS004', name: 'Trà sữa trân châu', price: 42000, category: 'Trà sữa', imageUrl: 'https://images.unsplash.com/photo-1558160074-4d7d8bdf4256?w=400&q=80' },
-  { id: 24, sku: 'TS005', name: 'Trà sữa matcha', price: 45000, category: 'Trà sữa', imageUrl: 'https://images.unsplash.com/photo-1563822249548-9a72b6353cd1?w=400&q=80' },
-  { id: 25, sku: 'TS006', name: 'Trà sữa khoai môn', price: 45000, category: 'Trà sữa', imageUrl: 'https://images.unsplash.com/photo-1595981267035-7b04ca84a82d?w=400&q=80' },
-  { id: 26, sku: 'TS007', name: 'Hồng trà kem cheese', price: 48000, category: 'Trà sữa', imageUrl: 'https://images.unsplash.com/photo-1546173159-315724a31696?w=400&q=80' },
+  { id: 20, sku: 'TS001', name: 'Trà đào cam sả', price: 45000, category: 'Trà', imageUrl: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&q=80', stock: 40 },
+  { id: 21, sku: 'TS002', name: 'Trà vải hạt sen', price: 45000, category: 'Trà', imageUrl: 'https://images.unsplash.com/photo-1627435601361-ec25f5b1d0e5?w=400&q=80', stock: 35 },
+  { id: 22, sku: 'TS003', name: 'Trà chanh mật ong', price: 35000, category: 'Trà', imageUrl: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=400&q=80', stock: 60 },
+  { id: 23, sku: 'TS004', name: 'Trà sữa trân châu', price: 42000, category: 'Trà sữa', imageUrl: 'https://images.unsplash.com/photo-1558160074-4d7d8bdf4256?w=400&q=80', stock: 10 },
+  { id: 24, sku: 'TS005', name: 'Trà sữa matcha', price: 45000, category: 'Trà sữa', imageUrl: 'https://images.unsplash.com/photo-1563822249548-9a72b6353cd1?w=400&q=80', stock: 5 },
+  { id: 25, sku: 'TS006', name: 'Trà sữa khoai môn', price: 45000, category: 'Trà sữa', imageUrl: 'https://images.unsplash.com/photo-1595981267035-7b04ca84a82d?w=400&q=80', stock: 0 }, // Out of stock
+  { id: 26, sku: 'TS007', name: 'Hồng trà kem cheese', price: 48000, category: 'Trà sữa', imageUrl: 'https://images.unsplash.com/photo-1546173159-315724a31696?w=400&q=80', stock: 22 },
 
   // Sinh tố & Nước ép
-  { id: 40, sku: 'F001', name: 'Nước ép cam', price: 45000, category: 'Nước ép', imageUrl: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=400&q=80' },
-  { id: 41, sku: 'F002', name: 'Nước ép táo', price: 45000, category: 'Nước ép', imageUrl: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=400&q=80' },
-  { id: 42, sku: 'F003', name: 'Nước ép dưa hấu', price: 40000, category: 'Nước ép', imageUrl: 'https://images.unsplash.com/photo-1589733955941-5eeaf752f6dd?w=400&q=80' },
-  { id: 43, sku: 'ST001', name: 'Sinh tố bơ', price: 55000, category: 'Sinh tố', imageUrl: 'https://images.unsplash.com/photo-1598462058440-ad81f147983c?w=400&q=80' },
-  { id: 44, sku: 'ST002', name: 'Sinh tố xoài', price: 50000, category: 'Sinh tố', imageUrl: 'https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?w=400&q=80' },
-  { id: 45, sku: 'ST003', name: 'Sinh tố dâu', price: 52000, category: 'Sinh tố', imageUrl: 'https://images.unsplash.com/photo-1629528146389-122e17627448?w=400&q=80' },
+  { id: 40, sku: 'F001', name: 'Nước ép cam', price: 45000, category: 'Nước ép', imageUrl: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=400&q=80', stock: 30 },
+  { id: 41, sku: 'F002', name: 'Nước ép táo', price: 45000, category: 'Nước ép', imageUrl: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=400&q=80', stock: 28 },
+  { id: 42, sku: 'F003', name: 'Nước ép dưa hấu', price: 40000, category: 'Nước ép', imageUrl: 'https://images.unsplash.com/photo-1589733955941-5eeaf752f6dd?w=400&q=80', stock: 15 },
+  { id: 43, sku: 'ST001', name: 'Sinh tố bơ', price: 55000, category: 'Sinh tố', imageUrl: 'https://images.unsplash.com/photo-1598462058440-ad81f147983c?w=400&q=80', stock: 8 },
+  { id: 44, sku: 'ST002', name: 'Sinh tố xoài', price: 50000, category: 'Sinh tố', imageUrl: 'https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?w=400&q=80', stock: 12 },
+  { id: 45, sku: 'ST003', name: 'Sinh tố dâu', price: 52000, category: 'Sinh tố', imageUrl: 'https://images.unsplash.com/photo-1629528146389-122e17627448?w=400&q=80', stock: 18 },
 
   // Đồ ăn & Bánh
-  { id: 60, sku: 'CK001', name: 'Bánh Croissant', price: 29000, category: 'Bánh', imageUrl: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&q=80' },
-  { id: 61, sku: 'CK002', name: 'Bánh Tiramisu', price: 45000, category: 'Bánh', imageUrl: 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?w=400&q=80' },
-  { id: 62, sku: 'CK003', name: 'Bánh Mousse Chanh Leo', price: 42000, category: 'Bánh', imageUrl: 'https://images.unsplash.com/photo-1542826438-bd32f43d626f?w=400&q=80' },
-  { id: 63, sku: 'SN001', name: 'Hạt hướng dương', price: 15000, category: 'Ăn vặt', imageUrl: 'https://images.unsplash.com/photo-1516054575922-f0b8eeadec1a?w=400&q=80' },
-  { id: 64, sku: 'SN002', name: 'Khô gà lá chanh', price: 35000, category: 'Ăn vặt', imageUrl: 'https://images.unsplash.com/photo-1599423300746-b62533397364?w=400&q=80' },
-  { id: 65, sku: 'SN003', name: 'Khoai tây chiên', price: 30000, category: 'Ăn vặt', imageUrl: 'https://images.unsplash.com/photo-1630384060421-a4323ceca0ad?w=400&q=80' },
+  { id: 60, sku: 'CK001', name: 'Bánh Croissant', price: 29000, category: 'Bánh', imageUrl: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&q=80', stock: 25 },
+  { id: 61, sku: 'CK002', name: 'Bánh Tiramisu', price: 45000, category: 'Bánh', imageUrl: 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?w=400&q=80', stock: 10 },
+  { id: 62, sku: 'CK003', name: 'Bánh Mousse Chanh Leo', price: 42000, category: 'Bánh', imageUrl: 'https://images.unsplash.com/photo-1542826438-bd32f43d626f?w=400&q=80', stock: 5 },
+  { id: 63, sku: 'SN001', name: 'Hạt hướng dương', price: 15000, category: 'Ăn vặt', imageUrl: 'https://images.unsplash.com/photo-1516054575922-f0b8eeadec1a?w=400&q=80', stock: 200 },
+  { id: 64, sku: 'SN002', name: 'Khô gà lá chanh', price: 35000, category: 'Ăn vặt', imageUrl: 'https://images.unsplash.com/photo-1599423300746-b62533397364?w=400&q=80', stock: 150 },
+  { id: 65, sku: 'SN003', name: 'Khoai tây chiên', price: 30000, category: 'Ăn vặt', imageUrl: 'https://images.unsplash.com/photo-1630384060421-a4323ceca0ad?w=400&q=80', stock: 80 },
 ])
 
 // --- Mock Data: Customers ---
@@ -181,6 +183,12 @@ const customers = ref<Customer[]>([
 const customerSearchQuery = ref('')
 const selectedCustomer = ref<Customer | null>(null)
 const isCustomerDropdownOpen = ref(false)
+const customerDropdownRef = ref(null)
+const customerToggleButtonRef = ref(null)
+
+onClickOutside(customerDropdownRef, () => {
+  isCustomerDropdownOpen.value = false
+}, { ignore: [customerToggleButtonRef] })
 
 // --- Add Customer Modal State ---
 const showAddCustomerModal = ref(false)
@@ -218,6 +226,8 @@ const posSettings = ref({
   showProductImages: true,
   allowDebt: true,
   requireCustomer: false,
+  enableOfflineMode: false,
+  autoSync: true,
 })
 
 // Load/Save Settings
@@ -253,6 +263,8 @@ const availablePromotions = ref<Promotion[]>(mockPromotions.filter(p => p.active
 
 // --- Product Note Modal State ---
 const showProductNoteModal = ref(false)
+const showPromotionsModal = ref(false) // 2. Add showPromotionsModal state
+const isCartSummaryOpen = ref(true) // Collapsible cart summary state
 const editingProductNote = ref<CartItem | null>(null)
 const tempProductNote = ref('')
 
@@ -427,6 +439,18 @@ function closeTab(id: number) {
 }
 
 function addToCart(product: Product) {
+  // Check stock
+  if (product.stock !== undefined) {
+    const currentQtyInCart = cart.value
+      .filter(i => i.id === product.id && !i.isReturn)
+      .reduce((sum, item) => sum + item.quantity, 0)
+
+    if (currentQtyInCart + 1 > product.stock) {
+      alert(`Xin lỗi, sản phẩm "${product.name}" chỉ còn ${product.stock} trong kho!`)
+      return
+    }
+  }
+
   // Find item with same ID AND same Note (empty) AND same Price (original)
   // This allows creating separate lines for items with different notes/prices
   const existingItem = cart.value.find(item =>
@@ -878,6 +902,11 @@ function updateQuantity(item: CartItem, delta: number) {
     // Normal items (Positive quantity)
     const newQty = item.quantity + delta
     if (newQty > 0) {
+      // Check Stock logic if increasing
+      if (delta > 0 && item.stock !== undefined && newQty > item.stock) {
+        alert(`Xin lỗi, sản phẩm "${item.name}" chỉ còn ${item.stock} trong kho!`)
+        return
+      }
       item.quantity = newQty
     }
   }
@@ -1158,132 +1187,100 @@ onUnmounted(() => {
       <!-- Right Sidebar (Checkout Cart) - Only show in sales mode OR return mode IF order is selected -->
       <aside v-if="viewMode === 'sales' || (viewMode === 'return' && isReturnOrderSelected)"
         class="w-96 bg-white border-l border-slate-200 flex flex-col z-10 shadow-xl shrink-0">
-        <!-- Customer Search -->
-        <div class="p-4 border-b border-slate-100 flex flex-col gap-3">
-          <!-- Selected Customer View -->
-          <div v-if="selectedCustomer"
-            class="bg-blue-50 rounded-lg p-3 border border-blue-100 flex items-center justify-between group relative">
-            <div class="flex items-center gap-3">
-              <div
-                class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-blue-600 font-bold border border-blue-200">
-                {{ selectedCustomer.name.charAt(0) }}
-              </div>
-              <div>
-                <div class="font-bold text-slate-800 text-sm">{{ selectedCustomer.name }}</div>
-                <div class="text-xs text-slate-500">{{ selectedCustomer.phone }} • <span
-                    class="text-amber-600 font-medium">{{
-                      selectedCustomer.level }}</span></div>
-              </div>
+        <!-- Compact Header with Customer & Promotions Icons -->
+        <div class="relative p-2 border-b border-slate-100 flex items-center justify-between gap-2 shrink-0">
+          <!-- Customer Badge -->
+          <button v-if="selectedCustomer" @click="removeCustomer"
+            class="flex-1 flex items-center gap-2 px-2 py-1.5 bg-blue-50 rounded-lg border border-blue-100 hover:bg-blue-100 transition-colors min-w-0">
+            <div
+              class="w-6 h-6 rounded-full bg-white flex items-center justify-center text-blue-600 font-bold text-xs border border-blue-200 shrink-0">
+              {{ selectedCustomer.name.charAt(0) }}
             </div>
-            <button @click="removeCustomer"
-              class="text-slate-400 hover:text-red-500 p-1 rounded-full hover:bg-white transition-colors">
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-semibold text-slate-800 truncate">{{ selectedCustomer.name }}</div>
+            </div>
+            <svg class="w-3 h-3 text-slate-400 hover:text-red-500 shrink-0" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
 
-          <!-- Search Input -->
-          <div v-else class="relative">
-            <div class="flex gap-2">
-              <div class="relative flex-1">
-                <input v-model="customerSearchQuery" @input="onCustomerSearchInput" type="text"
-                  placeholder="Tìm khách hàng (F4)"
-                  class="w-full h-10 pl-10 pr-4 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-sm transition-all outline-none" />
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-              </div>
+          <button v-else ref="customerToggleButtonRef" @click="isCustomerDropdownOpen = !isCustomerDropdownOpen"
+            class="flex-1 flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors">
+            <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span class="text-xs text-slate-500">Khách hàng</span>
+          </button>
 
-              <button @click="openAddCustomerModal"
-                class="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-600 flex items-center justify-center transition-colors"
-                title="Thêm khách hàng mới">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          <!-- Promotions Badge -->
+          <button v-if="appliedPromotions.length > 0 || appliedVoucher" @click="showPromotionsModal = true"
+            class="relative px-2 py-1.5 bg-purple-50 rounded-lg border border-purple-200 hover:bg-purple-100 transition-colors shrink-0 flex items-center gap-1.5"
+            title="Xem chi tiết khuyến mãi">
+            <svg class="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+            </svg>
+            <span class="text-xs font-semibold text-purple-600">{{ appliedPromotions.length + (appliedVoucher ? 1 : 0)
+            }} khuyến mãi</span>
+          </button>
+
+          <button v-else @click="openVoucherModal"
+            class="px-2 py-1.5 bg-slate-50 rounded-lg border border-slate-200 hover:bg-purple-50 hover:border-purple-200 transition-colors shrink-0"
+            title="Thêm mã giảm giá">
+            <svg class="w-4 h-4 text-slate-400 hover:text-purple-600" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+            </svg>
+          </button>
+
+          <!-- Customer Search Dropdown (Popup) -->
+          <div v-if="isCustomerDropdownOpen && !selectedCustomer" ref="customerDropdownRef"
+            class="absolute top-full left-2 right-2 mt-2 bg-white rounded-lg shadow-2xl border border-slate-200 z-50 max-h-64 overflow-hidden">
+            <div class="relative p-2 border-b border-slate-100">
+              <input v-model="customerSearchQuery" @input="onCustomerSearchInput" type="text" autofocus
+                placeholder="Tìm khách hàng..."
+                class="w-full h-9 pl-9 pr-3 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 text-sm transition-all outline-none" />
+              <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
-              </button>
+              </div>
             </div>
 
-            <!-- Dropdown Results -->
-            <div v-if="customerSearchQuery && isCustomerDropdownOpen"
-              class="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border border-slate-100 z-50 max-h-64 overflow-y-auto">
+            <div class="max-h-48 overflow-y-auto">
               <div v-if="filteredCustomers.length > 0">
-                <div v-for="cust in filteredCustomers" :key="cust.id" @click="selectCustomer(cust)"
-                  class="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 flex items-center justify-between">
-                  <div>
-                    <div class="font-medium text-slate-800 text-sm">{{ cust.name }}</div>
-                    <div class="text-xs text-slate-500">{{ cust.phone }}</div>
+                <div v-for="cust in filteredCustomers" :key="cust.id"
+                  @click="selectCustomer(cust); isCustomerDropdownOpen = false"
+                  class="p-2 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 flex items-center justify-between">
+                  <div class="flex-1 min-w-0">
+                    <div class="font-medium text-slate-800 text-sm truncate">{{ cust.name }}</div>
+                    <div class="text-xs text-slate-500 truncate">{{ cust.phone }}</div>
                   </div>
-                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{{ cust.level }}</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 shrink-0">{{ cust.level
+                  }}</span>
                 </div>
               </div>
 
               <div v-else class="p-4 flex flex-col items-center text-center">
-                <p class="text-sm text-slate-500 mb-3">Không tìm thấy khách hàng nào</p>
-                <button @click="openAddCustomerModal"
-                  class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-sm font-medium hover:bg-blue-100 transition-colors flex items-center gap-1">
-                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                  </svg>
-                  Thêm mới khách hàng
+                <p class="text-sm text-slate-500 mb-2">Không tìm thấy</p>
+                <button @click="openAddCustomerModal; isCustomerDropdownOpen = false"
+                  class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-medium hover:bg-blue-100 transition-colors">
+                  + Thêm mới
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Promotions & Voucher Section -->
-        <div v-if="cart.length > 0" class="px-4 py-3 border-b border-slate-100 bg-white">
-          <!-- Voucher Button -->
-          <button @click="openVoucherModal"
-            class="w-full h-10 rounded-lg border-2 border-dashed border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-600 font-semibold text-sm transition-all flex items-center justify-center gap-2 group mb-3">
-            <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-            </svg>
-            {{ appliedVoucher ? 'Đổi mã giảm giá' : 'Nhập mã giảm giá' }}
-          </button>
-
-          <!-- Applied Voucher Display -->
-          <div v-if="appliedVoucher"
-            class="mb-3 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-lg p-3 relative overflow-hidden">
-            <div class="absolute top-0 right-0 w-16 h-16 bg-purple-500 opacity-10 rounded-bl-full"></div>
-            <div class="relative flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <div
-                  class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
-                  <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <p class="font-mono font-bold text-sm text-purple-600">{{ appliedVoucher.code }}</p>
-                  <p class="text-xs text-slate-600">Giảm {{ formatPrice(appliedVoucher.amount) }}₫</p>
-                </div>
-              </div>
-              <button @click="removeVoucher"
-                class="text-slate-400 hover:text-red-500 p-1 rounded-full hover:bg-white/50 transition-colors">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <!-- Promotion Display -->
-          <PromotionDisplay :applied-promotions="appliedPromotions" :available-promotions="availablePromotions"
-            :cart-total="subTotal" @remove-promotion="removePromotion" />
-        </div>
-
         <!-- Cart Items List -->
         <div class="flex-1 overflow-y-auto bg-slate-50/30">
           <div v-if="cart.length > 0">
             <div v-for="item in cart" :key="item.id"
-              class="p-3 bg-white border-b border-slate-100 flex gap-3 group relative hover:bg-slate-50"
+              class="p-2.5 bg-white border-b border-slate-100 flex gap-2.5 group relative hover:bg-slate-50"
               :class="{ 'bg-gradient-to-r from-pink-50 to-purple-50 border-pink-200': item.isGift }">
               <!-- Gift Badge -->
               <div v-if="item.isGift"
@@ -1391,7 +1388,7 @@ onUnmounted(() => {
 
         <!-- Price List Selector (Above Footer) -->
         <!-- Price List Selector & Return Reason (Above Footer) -->
-        <div class="border-t border-slate-100 bg-slate-50/80 shrink-0 z-20 flex flex-col">
+        <div class="border-t border-slate-200 bg-slate-50 p-4 pt-2 space-y-3">
           <!-- Return Reason (Only in Return Mode) -->
           <div v-if="viewMode === 'return'"
             class="px-4 py-3 border-b border-slate-100 flex items-center justify-between text-sm">
@@ -1421,46 +1418,92 @@ onUnmounted(() => {
             </PosDropdown>
           </div>
 
-          <!-- Price List Selector (Always Visible) -->
-          <div class="px-4 py-3 flex items-center justify-between text-sm">
-            <div class="flex items-center gap-2 text-slate-500 font-bold">
-              <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-              </svg>
-              <span>Bảng giá</span>
-            </div>
-
-            <PosDropdown :options="priceLists" :model-value="selectedPriceList"
-              @update:model-value="selectedPriceList = $event" width="w-64" placement="top-right">
-
-              <template #trigger="{ isOpen }">
-                <button
-                  class="flex items-center gap-1 text-slate-800 hover:text-blue-600 transition-colors font-bold group">
-                  <span>{{ selectedPriceList.name }}</span>
-                  <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-500 pt-0.5"
-                    :class="isOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          <!-- Collapsible Section: Price List, Subtotal, Discount -->
+          <Transition enter-active-class="transition-all duration-300 ease-out overflow-hidden"
+            leave-active-class="transition-all duration-200 ease-in overflow-hidden"
+            enter-from-class="max-h-0 opacity-0" enter-to-class="max-h-48 opacity-100"
+            leave-from-class="max-h-48 opacity-100" leave-to-class="max-h-0 opacity-0">
+            <div v-show="isCartSummaryOpen" class="space-y-3 pb-3 border-b border-dashed border-slate-200">
+              <!-- Price List Selector -->
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex items-center gap-2 text-slate-500 font-bold">
+                  <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                   </svg>
-                </button>
-              </template>
+                  <span>Bảng giá</span>
+                </div>
 
-              <template #option="{ option }">
-                <span>{{ option.name }}</span>
-                <span v-if="option.type === 'percent' && option.value !== 0"
-                  class="text-[10px] px-2 py-0.5 rounded-full font-bold ml-2"
-                  :class="option.value < 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
-                  {{ option.value > 0 ? '+' : '' }}{{ option.value }}%
-                </span>
-              </template>
-            </PosDropdown>
+                <PosDropdown :options="priceLists" :model-value="selectedPriceList"
+                  @update:model-value="selectedPriceList = $event" width="w-64" placement="top-right">
+                  <template #trigger="{ isOpen }">
+                    <button
+                      class="flex items-center gap-1 text-slate-800 hover:text-blue-600 transition-colors font-bold group">
+                      <span>{{ selectedPriceList.name }}</span>
+                      <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-500 pt-0.5"
+                        :class="isOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </template>
+                  <template #option="{ option }">
+                    <span>{{ option.name }}</span>
+                    <span v-if="option.type === 'percent' && option.value !== 0"
+                      class="text-[10px] px-2 py-0.5 rounded-full font-bold ml-2"
+                      :class="option.value < 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+                      {{ option.value > 0 ? '+' : '' }}{{ option.value }}%
+                    </span>
+                  </template>
+                </PosDropdown>
+              </div>
+
+              <!-- Subtotal -->
+              <div class="flex justify-between text-sm">
+                <span class="text-slate-500">Tổng tiền hàng ({{ totalQuantity }})</span>
+                <span class="font-medium">{{ formatPrice(subTotal) }} ₫</span>
+              </div>
+
+              <!-- Discount -->
+              <div class="flex justify-between text-sm items-center">
+                <button @click="openDiscountModal"
+                  class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 group">
+                  <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                  Giảm giá (F6)
+                </button>
+                <span class="text-slate-500">{{ discount > 0 ? '-' + formatPrice(discount) : '0' }} ₫</span>
+              </div>
+            </div>
+          </Transition>
+
+          <!-- Total Due & Toggle (Always Visible) -->
+          <div class="flex justify-between items-end">
+            <div class="flex items-center gap-2 cursor-pointer group select-none"
+              @click="isCartSummaryOpen = !isCartSummaryOpen" title="Hiện/Ẩn chi tiết giá">
+              <span class="text-slate-900 font-bold text-lg">Khách phải trả</span>
+              <div
+                class="w-5 h-5 rounded-full bg-slate-100 group-hover:bg-blue-100 flex items-center justify-center transition-colors">
+                <svg class="w-3 h-3 text-slate-500 group-hover:text-blue-600 transition-transform duration-300"
+                  :class="isCartSummaryOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+            <span class="text-blue-600 font-bold text-2xl">{{ formatPrice(totalAmount) }} ₫</span>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="pt-2">
+            <button @click="openPaymentModal"
+              class="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-[0.98]">
+              <span>THANH TOÁN</span>
+              <span class="bg-white/20 text-white text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">F9</span>
+            </button>
           </div>
         </div>
-
-        <!-- Totals & Payment -->
-        <PosFooter v-model:auto-print="posSettings.autoPrint" :total-quantity="totalQuantity" :sub-total="subTotal"
-          :discount="discount" :total-amount="totalAmount" @open-discount="openDiscountModal"
-          @open-payment="openPaymentModal" />
       </aside>
     </div>
 
@@ -1539,6 +1582,11 @@ onUnmounted(() => {
       @apply="applyVoucherCode" />
 
     <ProductNoteModal v-model:show="showProductNoteModal" :item="editingProductNote" @save="handleSaveProductNote" />
+
+    <PromotionsModal :show="showPromotionsModal" :applied-promotions="appliedPromotions"
+      :applied-voucher="appliedVoucher" @close="showPromotionsModal = false" @remove-promotion="removePromotion"
+      @remove-voucher="removeVoucher" />
+
   </div>
 </template>
 

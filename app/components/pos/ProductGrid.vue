@@ -8,6 +8,7 @@ interface Product {
     price: number
     imageUrl: string
     category: string
+    stock?: number
 }
 
 interface Props {
@@ -50,7 +51,7 @@ function formatPrice(price: number) {
                 class="group bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md hover:border-blue-400 transition-all flex flex-col h-full active:scale-[0.98]">
                 <!-- Image -->
                 <div v-if="showImages" class="aspect-square relative overflow-hidden transition-colors"
-                    :class="imageErrors[product.id] ? getProductColor(product.id) : 'bg-slate-100'">
+                    :class="[imageErrors[product.id] ? getProductColor(product.id) : 'bg-slate-100', { 'grayscale opacity-80': product.stock === 0 }]">
                     <!-- Real Image -->
                     <img v-if="!imageErrors[product.id] && product.imageUrl" :src="product.imageUrl" :alt="product.name"
                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -67,10 +68,23 @@ function formatPrice(price: number) {
                     <div v-if="!imageErrors[product.id]"
                         class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors"></div>
 
+                    <!-- Sold Out Overlay -->
+                    <div v-if="product.stock === 0"
+                        class="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
+                        <span class="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded shadow-sm">HẾT
+                            HÀNG</span>
+                    </div>
+
                     <!-- SKU Badge -->
                     <div
                         class="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
                         {{ product.sku }}
+                    </div>
+
+                    <!-- Stock Badge -->
+                    <div v-if="product.stock !== undefined && product.stock > 0"
+                        class="absolute top-2 right-2 bg-white/90 backdrop-blur-sm text-slate-700 text-[10px] px-1.5 py-0.5 rounded font-bold shadow-sm border border-slate-200">
+                        Kho: {{ product.stock }}
                     </div>
                 </div>
 
