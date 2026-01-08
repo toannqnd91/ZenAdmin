@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html {{ htmlAttrs }}>
+
+<head>
+    {{ head }}
+    <style id="bootstrap-loading-style">
+        #bootstrap-loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0f172a;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        html,
+        body {
+            background: #0f172a;
+            margin: 0;
+            padding: 0;
+        }
+
+        #bootstrap-loading-overlay .box {
+            text-align: center;
+            max-width: 480px;
+            width: 100%;
+            padding: 2rem;
+        }
+
+        #bootstrap-loading-overlay .logo-wrapper {
+            margin-bottom: 3.5rem;
+        }
+
+        #bootstrap-loading-overlay .logo {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            letter-spacing: -0.02em;
+            color: #f1f5f9;
+        }
+
+        #bootstrap-loading-overlay .logo-highlight {
+            color: #10b981;
+        }
+
+        #bootstrap-loading-overlay .logo-subtitle {
+            font-size: 0.875rem;
+            color: #64748b;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        #bootstrap-loading-overlay .progress-section {
+            margin-bottom: 2rem;
+        }
+
+        #bootstrap-loading-overlay .progress-container {
+            width: 100%;
+            height: 3px;
+            background: #1e293b;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 0 auto 1rem;
+            position: relative;
+        }
+
+        #bootstrap-loading-overlay .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #059669);
+            border-radius: 3px;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 0%;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+
+        #bootstrap-loading-overlay .progress-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        #bootstrap-loading-overlay .message {
+            font-size: 0.95rem;
+            color: #cbd5e1;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        #bootstrap-loading-overlay .step-description {
+            font-size: 0.8rem;
+            color: #64748b;
+            font-weight: 400;
+        }
+
+        #bootstrap-loading-overlay .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #1e293b;
+            border-top-color: #10b981;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        #bootstrap-loading-overlay .btn {
+            display: inline-block;
+            margin-top: 2rem;
+            background: #10b981;
+            color: #0f172a;
+            padding: 0.75rem 2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            border: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        #bootstrap-loading-overlay .btn:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        #bootstrap-loading-overlay .err {
+            color: #fca5a5;
+            background: #7f1d1d;
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            border-left: 3px solid #ef4444;
+        }
+    </style>
+</head>
+
+<body {{ bodyAttrs }}>
+    {{ bodyTags }}
+    {{ bodyTagsOpen }}
+
+    <div id="bootstrap-loading-overlay">
+        <div class="box">
+            <div class="logo-wrapper">
+                <div class="logo">Zen<span class="logo-highlight">Pos</span></div>
+                <div class="logo-subtitle">Bán hàng chuyên nghiệp</div>
+            </div>
+
+            <div class="progress-section">
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: 0%"></div>
+                </div>
+                <div class="progress-info">
+                    <span>Initializing...</span>
+                    <span>0%</span>
+                </div>
+            </div>
+
+            <div class="message">
+                Loading your dashboard...
+                <span class="spinner"></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="__nuxt">{{ app }}</div>
+
+    {{ bodyTagsClose }}
+</body>
+
+</html>

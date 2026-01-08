@@ -8,6 +8,11 @@ export default defineNuxtPlugin(async (nuxtApp) => {
   if (import.meta.server) return
 
   const ready = useState('bootstrapReady', () => false)
+  
+  // Init settings from cache immediately
+  const { initFromCache } = useGlobalSettings()
+  initFromCache()
+
   if (ready.value) return
 
   const overlayId = 'bootstrap-loading-overlay'
@@ -211,9 +216,18 @@ export default defineNuxtPlugin(async (nuxtApp) => {
       return false
     }
 
-    mountOverlay('Đang tải cấu hình', 25, 'Tải menu dashboard')
+    // Step 2: Load Global Settings (25-40%)
+    mountOverlay('Đang tải cấu hình', 25, 'Tải cài đặt hệ thống')
+    try {
+      const { fetchSettings } = useGlobalSettings()
+      await fetchSettings()
+    } catch (e) {
+      console.warn('Failed to fetch global settings during bootstrap:', e)
+    }
 
-    // Step 2: Load dashboard menu (25-50%)
+    mountOverlay('Đang tải cấu hình', 40, 'Tải menu dashboard')
+
+    // Step 3: Load dashboard menu (40-60%)
     try {
       const { fetchMenu } = useDashboard()
       await fetchMenu()
@@ -221,9 +235,9 @@ export default defineNuxtPlugin(async (nuxtApp) => {
       console.warn('Failed to fetch dashboard menu during bootstrap:', e)
     }
 
-    mountOverlay('Đang đồng bộ', 50, 'Tải danh sách kho hàng')
+    mountOverlay('Đang đồng bộ', 60, 'Tải danh sách kho hàng')
 
-    // Step 3: Load warehouses (50-75%)
+    // Step 4: Load warehouses (60-80%)
     try {
       const { warehouseService } = await import('@/services/warehouse.service')
       const warehousesResponse = await warehouseService.getWarehouses()

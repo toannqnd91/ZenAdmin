@@ -200,16 +200,19 @@ onMounted(async () => {
   })
 })
 
-// Provide loading state and sidebar collapsed state for child components
-provide('dashboardLoading', menuLoading)
-provide('dashboardError', menuError)
 provide('refreshDashboard', retryFetchMenu)
 provide('sidebarCollapsed', sidebarCollapsed)
+
+// Bootstrap ready state
+const bootstrapReady = useState('bootstrapReady', () => false)
 </script>
 
 <template>
-  <!-- Offline Banner -->
-  <div v-if="isOffline"
+
+  
+  <template v-if="bootstrapReady">
+    <!-- Offline Banner -->
+    <div v-if="isOffline"
     class="bg-orange-500 text-white px-4 py-2 text-center text-sm font-medium fixed top-0 left-0 right-0 z-50">
     ⚠️ Chế độ offline - Một số tính năng có thể bị hạn chế
     <span v-if="connectionQuality !== 'unknown'" class="ml-2 opacity-75">
@@ -367,4 +370,5 @@ provide('sidebarCollapsed', sidebarCollapsed)
       </div>
     </div>
   </UDashboardGroup>
+  </template>
 </template>

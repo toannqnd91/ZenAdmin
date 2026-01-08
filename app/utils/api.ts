@@ -1,6 +1,7 @@
 // API Endpoints configuration
 export const API_ENDPOINTS = {
   SHOP_OWNER: '/Identity/shop-owner',
+  APP_SETTINGS: '/app-settings',
   PRODUCT_QUICK_CREATE: '/Product/quick-create',
   // Warehouse endpoints
   WAREHOUSES: '/Warehouse',

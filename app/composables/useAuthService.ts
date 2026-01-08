@@ -51,38 +51,41 @@ export const useAuthService = () => {
           user.value = tokenData.user || { fullName: 'User' } // fallback if no token data
         }
 
-        // Store in localStorage/cookies (consistent with useAuth)
-        // In development, avoid secure cookies so they work over http://localhost
+        // Security Strategy:
+        // - access_token: NOT httpOnly (needed for API calls), but short-lived (1 hour) + secure flags
+        // - refresh_token: httpOnly (maximum security), long-lived (30 days)
         const isProd = !import.meta.dev
+        
         const accessTokenCookie = useCookie('access_token', {
-          httpOnly: false,
-          secure: isProd,
-          sameSite: 'strict',
+          httpOnly: false,  // Must be readable for Authorization header
+          secure: isProd,   // HTTPS only in production
+          sameSite: 'strict', // CSRF protection
           path: '/',
-          maxAge: 60 * 60 * 24 * 7 // 7 days
+          maxAge: 60 * 60 // 1 hour (short-lived to minimize XSS risk)
         })
 
         const refreshTokenCookie = useCookie('refresh_token', {
-          httpOnly: true,
+          httpOnly: true,   // Maximum security - cannot be read by JavaScript
           secure: isProd,
           sameSite: 'strict',
           path: '/',
           maxAge: 60 * 60 * 24 * 30 // 30 days
         })
 
-        // Store raw token (JWT is already base64url encoded and safe for cookies)
+        // Store tokens
         accessTokenCookie.value = tokenData.accessToken
         refreshTokenCookie.value = tokenData.refreshToken
+        accessToken.value = tokenData.accessToken
 
-        console.log('[Auth] Login successful, token saved:', {
+        console.log('[Auth] Login successful, tokens stored securely:', {
           email: credentials.email,
-          tokenLength: tokenData.accessToken.length,
-          cookieSet: !!accessTokenCookie.value
+          user: user.value?.email || user.value?.name,
+          tokenExpiry: '1 hour'
         })
 
         toast.add({
           title: 'Đăng nhập thành công',
-          description: `Chào mừng ${tokenData.user?.fullName || 'bạn'}!`
+          description: `Chào mừng ${user.value?.name || user.value?.email || 'bạn'}!`
         })
 
         // Redirect to dashboard
@@ -131,6 +134,10 @@ export const useAuthService = () => {
       accessTokenCookie.value = null
       refreshTokenCookie.value = null
 
+      // Clear global settings
+      const { clearSettings } = useGlobalSettings()
+      clearSettings()
+
       toast.add({
         title: 'Đăng xuất thành công',
         description: 'Hẹn gặp lại bạn!'
@@ -157,16 +164,18 @@ export const useAuthService = () => {
         accessToken.value = response.data.accessToken
         user.value = response.data.user
 
-        // Update access token cookie (encode like useAuth)
+        // Update access token cookie with short expiry
         const isProd = !import.meta.dev
         const accessTokenCookie = useCookie('access_token', {
           httpOnly: false,
           secure: isProd,
           sameSite: 'strict',
-          maxAge: 60 * 60 * 24 * 7 // 7 days
+          path: '/',
+          maxAge: 60 * 60 // 1 hour
         })
         accessTokenCookie.value = response.data.accessToken
 
+        console.log('[Auth] Token refreshed successfully')
         return response.data
       } else {
         throw new Error(response.message)
@@ -194,37 +203,33 @@ export const useAuthService = () => {
     }
   }
 
-  // Initialize from cookies (consistent with useAuth)
+  // Initialize from cookies
   function initialize() {
     const accessTokenCookie = useCookie('access_token')
 
-    console.log('[Auth] Initialize called, cookie value:', {
-      hasCookie: !!accessTokenCookie.value,
-      cookieLength: accessTokenCookie.value?.length || 0
-    })
-
     if (accessTokenCookie.value) {
-        // Decode JWT token to get user info
-        let token = accessTokenCookie.value
-        if (token && typeof token === 'string' && token.includes('.')) {
-          const parts = token.split('.')
-          if (parts.length === 3 && parts[1]) {
-            try {
-              const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
-              const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                  return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-              }).join(''))
-              const payload = JSON.parse(jsonPayload)
-              user.value = payload
-              console.log('[Auth] User info decoded:', { email: payload.email, role: payload.role })
-            } catch (jwtError) {
-              console.error('[Auth] Failed to decode JWT payload:', jwtError)
-            }
+      // Decode JWT token to get user info
+      const token = accessTokenCookie.value
+      if (token && typeof token === 'string' && token.includes('.')) {
+        const parts = token.split('.')
+        if (parts.length === 3 && parts[1]) {
+          try {
+            const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+            }).join(''))
+            const payload = JSON.parse(jsonPayload)
+            user.value = payload
+            console.log('[Auth] User info decoded:', { email: payload.email, role: payload.role })
+          } catch (jwtError) {
+            console.error('[Auth] Failed to decode JWT payload:', jwtError)
           }
         }
-        accessToken.value = token || null
+      }
+      accessToken.value = token
+      console.log('[Auth] Access token restored from cookie')
     } else {
-      console.warn('[Auth] No access token cookie found')
+      console.log('[Auth] No access token found')
     }
   }
 
