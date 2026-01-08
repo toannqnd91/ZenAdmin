@@ -208,7 +208,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
     await new Promise(r => setTimeout(r, 200))
     
     const { accessToken, initialize } = useAuthService()
-    initialize()
+    await initialize() // Wait for token decryption
     
     // If not authenticated, skip bootstrap entirely
     if (!accessToken.value) {

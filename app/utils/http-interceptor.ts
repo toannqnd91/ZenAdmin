@@ -62,10 +62,11 @@ export class HttpInterceptor {
         // ignore header set errors
       }
 
-      // Get access token from cookie (consistent with useAuth)
-      const accessTokenCookie = useCookie('access_token')
-      if (accessTokenCookie.value) {
-        headers.set('Authorization', `Bearer ${accessTokenCookie.value}`)
+      // Get access token from global state (decrypted)
+      // Do NOT read generic cookie as it is now encrypted
+      const accessTokenState = useState<string | null>('auth:accessToken')
+      if (accessTokenState.value) {
+        headers.set('Authorization', `Bearer ${accessTokenState.value}`)
       }
     } catch (error) {
       console.debug('Could not get auth token:', error)
@@ -133,9 +134,22 @@ export class HttpInterceptor {
       throw new Error(data.message)
     }
 
-    // Update tokens (consistent with useAuth)
+    // Update tokens
     const accessTokenCookie = useCookie('access_token')
-    accessTokenCookie.value = data.data.accessToken
+    
+    // Encrypt new token before storing
+    try {
+      const { encryptToken } = await import('@/utils/crypto')
+      const encryptedToken = await encryptToken(data.data.accessToken)
+      accessTokenCookie.value = encryptedToken
+    } catch (e) {
+      console.error('Failed to encrypt refreshed token:', e)
+      throw e
+    }
+
+    // Update global state with decrypted token
+    const accessTokenState = useState<string | null>('auth:accessToken')
+    accessTokenState.value = data.data.accessToken
 
     if (data.data.refreshToken) {
       refreshTokenCookie.value = data.data.refreshToken
@@ -161,6 +175,12 @@ export class HttpInterceptor {
 
     accessTokenCookie.value = null
     refreshTokenCookie.value = null
+    
+    // Clear global state
+    const accessTokenState = useState<string | null>('auth:accessToken')
+    const userState = useState<any>('auth:user')
+    accessTokenState.value = null
+    userState.value = null
 
     // Show notification
     const toast = useToast()

@@ -10,9 +10,10 @@ export default defineNuxtRouteMiddleware((to) => {
     return navigateTo('/login')
   }
 
-  // Validate that token can be decoded (it's stored as base64)
-  // Check if token is a valid JWT (has 3 parts)
-  if (!encodedToken || encodedToken.split('.').length !== 3) {
+  // Check if token cookie exists
+  // Note: Token is encrypted, so we cannot validate JWT structure here
+  // Real validation happens in bootstrap/services
+  if (!encodedToken) {
     return navigateTo('/login')
   }
 })

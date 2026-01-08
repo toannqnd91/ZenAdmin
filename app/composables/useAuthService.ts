@@ -7,10 +7,11 @@ export const useAuthService = () => {
   const router = useRouter()
 
   // State
-  const loading = ref(false)
-  const user = ref<any>(null)
-  const accessToken = ref<string | null>(null)
-  const error = ref<Error | null>(null)
+  // State - use useState for global state sharing across composables
+  const loading = useState<boolean>('auth:loading', () => false)
+  const user = useState<any>('auth:user', () => null)
+  const accessToken = useState<string | null>('auth:accessToken', () => null)
+  const error = useState<Error | null>('auth:error', () => null)
 
   // Computed
   const isAuthenticated = computed(() => !!accessToken.value)
@@ -51,13 +52,17 @@ export const useAuthService = () => {
           user.value = tokenData.user || { fullName: 'User' } // fallback if no token data
         }
 
-        // Security Strategy:
-        // - access_token: NOT httpOnly (needed for API calls), but short-lived (1 hour) + secure flags
+        // Security Strategy (Enhanced):
+        // - access_token: ENCRYPTED before storing in cookie (AES-GCM)
         // - refresh_token: httpOnly (maximum security), long-lived (30 days)
         const isProd = !import.meta.dev
         
+        // Encrypt access token before storing
+        const { encryptToken } = await import('@/utils/crypto')
+        const encryptedToken = await encryptToken(tokenData.accessToken)
+        
         const accessTokenCookie = useCookie('access_token', {
-          httpOnly: false,  // Must be readable for Authorization header
+          httpOnly: false,  // Must be readable for decryption
           secure: isProd,   // HTTPS only in production
           sameSite: 'strict', // CSRF protection
           path: '/',
@@ -72,9 +77,10 @@ export const useAuthService = () => {
           maxAge: 60 * 60 * 24 * 30 // 30 days
         })
 
-        // Store tokens
-        accessTokenCookie.value = tokenData.accessToken
+        // Store ENCRYPTED token in cookie
+        accessTokenCookie.value = encryptedToken
         refreshTokenCookie.value = tokenData.refreshToken
+        // Store original token in memory for API calls
         accessToken.value = tokenData.accessToken
 
         console.log('[Auth] Login successful, tokens stored securely:', {
@@ -164,7 +170,10 @@ export const useAuthService = () => {
         accessToken.value = response.data.accessToken
         user.value = response.data.user
 
-        // Update access token cookie with short expiry
+        // Encrypt and update access token cookie with short expiry
+        const { encryptToken } = await import('@/utils/crypto')
+        const encryptedToken = await encryptToken(response.data.accessToken)
+        
         const isProd = !import.meta.dev
         const accessTokenCookie = useCookie('access_token', {
           httpOnly: false,
@@ -173,7 +182,7 @@ export const useAuthService = () => {
           path: '/',
           maxAge: 60 * 60 // 1 hour
         })
-        accessTokenCookie.value = response.data.accessToken
+        accessTokenCookie.value = encryptedToken
 
         console.log('[Auth] Token refreshed successfully')
         return response.data
@@ -204,30 +213,39 @@ export const useAuthService = () => {
   }
 
   // Initialize from cookies
-  function initialize() {
+  async function initialize() {
     const accessTokenCookie = useCookie('access_token')
 
     if (accessTokenCookie.value) {
-      // Decode JWT token to get user info
-      const token = accessTokenCookie.value
-      if (token && typeof token === 'string' && token.includes('.')) {
-        const parts = token.split('.')
-        if (parts.length === 3 && parts[1]) {
-          try {
-            const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-            }).join(''))
-            const payload = JSON.parse(jsonPayload)
-            user.value = payload
-            console.log('[Auth] User info decoded:', { email: payload.email, role: payload.role })
-          } catch (jwtError) {
-            console.error('[Auth] Failed to decode JWT payload:', jwtError)
+      try {
+        // Decrypt the encrypted token from cookie
+        const { decryptToken } = await import('@/utils/crypto')
+        const token = await decryptToken(accessTokenCookie.value as string)
+        
+        // Decode JWT token to get user info
+        if (token && typeof token === 'string' && token.includes('.')) {
+          const parts = token.split('.')
+          if (parts.length === 3 && parts[1]) {
+            try {
+              const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+              const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                  return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+              }).join(''))
+              const payload = JSON.parse(jsonPayload)
+              user.value = payload
+              console.log('[Auth] User info decoded:', { email: payload.email, role: payload.role })
+            } catch (jwtError) {
+              console.error('[Auth] Failed to decode JWT payload:', jwtError)
+            }
           }
         }
+        accessToken.value = token
+        console.log('[Auth] Access token restored and decrypted from cookie')
+      } catch (error) {
+        console.error('[Auth] Failed to decrypt access token:', error)
+        // Clear invalid cookie
+        accessTokenCookie.value = null
       }
-      accessToken.value = token
-      console.log('[Auth] Access token restored from cookie')
     } else {
       console.log('[Auth] No access token found')
     }
