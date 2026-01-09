@@ -27,7 +27,11 @@ const form = reactive({
   slug: '',
   includeInMenu: false,
   isPublished: false,
-  displayOrder: 0
+  displayOrder: 0,
+  // SEO fields
+  metaTitle: '',
+  metaKeywords: '',
+  metaDescription: ''
 })
 
 const submitting = ref(false)
@@ -60,6 +64,9 @@ function prefillFromCategory(cat: NonNullable<Props['category']>) {
   form.includeInMenu = !!cat.includeInMenu
   form.isPublished = !!cat.isPublished
   form.displayOrder = Number(cat.displayOrder || 0)
+  form.metaTitle = (cat as any).metaTitle || ''
+  form.metaKeywords = (cat as any).metaKeywords || ''
+  form.metaDescription = (cat as any).metaDescription || ''
   // preview
   if (form.imageUrl) {
     const isAbsolute = /^https?:\/\//i.test(form.imageUrl)
@@ -189,22 +196,41 @@ async function onSubmit() {
         id: Number(props.categoryId || props.category!.id),
         name: form.name.trim(),
         description: form.description || '',
-        parentId: undefined,
-        sortOrder: undefined,
         slug: form.slug || slugify(form.name),
+        metaTitle: form.metaTitle || '',
+        metaKeywords: form.metaKeywords || '',
+        metaDescription: form.metaDescription || '',
+        displayOrder: form.displayOrder || 0,
+        parentId: undefined,
         includeInMenu: form.includeInMenu,
         isPublished: form.isPublished,
-        displayOrder: form.displayOrder || 0,
-        thumbnailImage: form.imageUrl || null
+        thumbnailImage: form.imageUrl || '',
+        thumbnailImageUrl: form.imageUrl || ''
       })
       toast.add({ title: 'Thành công', description: 'Đã cập nhật danh mục', color: 'success' })
     } else {
-      await productService.createCategory({
-        name: form.name.trim(),
-        description: form.description || '',
-        parentId: undefined,
-        sortOrder: undefined
-      })
+      const payload: any = {
+        name: form.name.trim()
+      }
+      
+      // Only add optional fields if they have values
+      if (form.slug) payload.slug = form.slug
+      else payload.slug = slugify(form.name)
+      
+      if (form.description) payload.description = form.description
+      if (form.metaTitle) payload.metaTitle = form.metaTitle
+      if (form.metaKeywords) payload.metaKeywords = form.metaKeywords
+      if (form.metaDescription) payload.metaDescription = form.metaDescription
+      if (form.displayOrder) payload.displayOrder = form.displayOrder
+      if (form.imageUrl) {
+        payload.thumbnailImage = form.imageUrl
+        payload.thumbnailImageUrl = form.imageUrl
+      }
+      
+      payload.includeInMenu = form.includeInMenu
+      payload.isPublished = form.isPublished
+      
+      await productService.createCategory(payload)
       toast.add({ title: 'Thành công', description: 'Đã tạo danh mục sản phẩm', color: 'success' })
     }
     router.push('/products-categories')
@@ -283,6 +309,32 @@ function cancel() {
                   </div>
                 </div>
               </form>
+            </UPageCard>
+
+            <UPageCard :title="'SEO'" variant="soft" class="bg-white rounded-lg overflow-hidden">
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Meta Title
+                  </label>
+                  <input v-model="form.metaTitle" type="text" placeholder="Nhập meta title"
+                    class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Meta Keywords
+                  </label>
+                  <input v-model="form.metaKeywords" type="text" placeholder="Nhập meta keywords"
+                    class="w-full px-3 h-9 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Meta Description
+                  </label>
+                  <textarea v-model="form.metaDescription" rows="3" placeholder="Nhập meta description"
+                    class="w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
+                </div>
+              </div>
             </UPageCard>
 
             <UPageCard :title="'Điều kiện'" variant="soft" class="bg-white rounded-lg">

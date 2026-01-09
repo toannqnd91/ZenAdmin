@@ -207,8 +207,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
     mountOverlay('Đang khởi động', 0, 'Kiểm tra xác thực')
     await new Promise(r => setTimeout(r, 200))
     
-    const { accessToken, initialize } = useAuthService()
-    await initialize() // Wait for token decryption
+    const { accessToken } = useAuthService()
     
     // If not authenticated, skip bootstrap entirely
     if (!accessToken.value) {

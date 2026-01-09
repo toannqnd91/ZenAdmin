@@ -29,34 +29,19 @@ const emit = defineEmits<{
   'delete': [string[]]
 }>()
 
-// Table configuration
+// Table configuration - explicit order: name, description, productCount
 const columns: TableColumn[] = [
-  {
-    key: 'name',
-    label: 'Tên danh mục',
-    class: 'py-3 text-left font-medium'
-  },
-  {
-    key: 'productCount',
-    label: 'Sản phẩm',
-    class: 'py-3 text-right font-medium pr-4',
-    align: 'right'
-  },
-  {
-    key: 'description',
-    label: 'Mô tả',
-    class: 'py-3 text-right font-medium pr-6',
-    align: 'right'
-  }
+  { key: 'name', label: 'Tên danh mục', class: 'py-3 text-left font-medium', align: 'left' },
+  { key: 'description', label: 'Mô tả', class: 'py-3 text-left font-medium', align: 'left' },
+  { key: 'productCount', label: 'Sản phẩm', class: 'py-3 text-right font-medium pr-4', align: 'right' }
 ]
 
-// Column widths align with the columns order above: [Tên danh mục, Sản phẩm, Mô tả]
+// Column widths align with the columns order above: [Tên danh mục, Mô tả, Sản phẩm]
 // Use explicit px units for colgroup widths to avoid browser ignoring raw numbers
-// Leave the last column flexible (empty string = auto)
 const colWidths = [
-  '350px', // Tên danh mục
-  '150px', // Sản phẩm
-  '' // Mô tả (auto)
+  '400px', // Tên danh mục
+  '300px', // Mô tả
+  '150px' // Sản phẩm
 ]
 
 const addButton = {
@@ -165,10 +150,16 @@ function flatten(nodes: CatNode[], depth = 0, parentExpanded = true): Array<Reco
 }
 
 const tableData = computed(() => flatten(treeRoots.value))
+
+// Debug: log columns order
+onMounted(() => {
+  console.log('[ProductsCategoriesTable] Columns order:', columns.map(c => c.key))
+})
 </script>
 
 <template>
   <BaseTable
+    key="products-categories-table-v2"
     :q="q"
     :row-selection="rowSelection"
     :pagination="pagination"
@@ -188,37 +179,34 @@ const tableData = computed(() => flatten(treeRoots.value))
   >
     <!-- Custom name column with image -->
     <template #column-name="{ item }">
-        <div class="flex items-center gap-2 min-h-[36px]">
-        <!-- Tree indentation + toggle -->
-        <div :style="{ paddingLeft: `${(item as any).__depth * 16}px` }" class="flex items-center">
+        <div class="flex items-center min-h-[36px]">
           <button
             v-if="(item as any).__hasChildren"
             type="button"
-            class="h-6 w-6 inline-flex items-center justify-center text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded"
+            class="h-6 w-6 inline-flex items-center justify-center text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded flex-shrink-0 mr-2"
             aria-label="Toggle children"
+            :style="{ marginLeft: `${(item as any).__depth * 16}px` }"
             @click.stop.prevent="toggleExpand((item as any).id)"
           >
             <UIcon :name="(item as any).__expanded ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" class="h-4 w-4 transition-transform" />
           </button>
-          <span v-else class="h-6 w-6 inline-flex items-center justify-center" />
-        </div>
-          <div class="h-8 w-8 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
-          <img
-            :src="(item as any).imageUrl || '/no-image.svg'"
-            :alt="(item as any).name"
-            class="h-full w-full object-cover"
-            @error="(e: any) => e.target && (e.target.src='/no-image.svg')"
-          >
+          <div class="h-8 w-8 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0 mr-2">
+            <img
+              :src="(item as any).imageUrl || '/no-image.svg'"
+              :alt="(item as any).name"
+              class="h-full w-full object-cover"
+              @error="(e: any) => e.target && (e.target.src='/no-image.svg')"
+            >
           </div>
           <div class="text-sm text-gray-900 font-medium">
-          {{ (item as any).name }}
+            {{ (item as any).name }}
           </div>
         </div>
     </template>
 
     <!-- Custom description column -->
     <template #column-description="{ item }">
-      <div class="text-sm text-gray-500 text-right pr-6">
+      <div class="text-sm text-gray-600">
         {{ (item as any).description || 'Không có mô tả' }}
       </div>
     </template>

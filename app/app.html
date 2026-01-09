@@ -2,6 +2,17 @@
 <html {{ htmlAttrs }}>
 
 <head>
+    <style>
+        /* Critical CSS - loads immediately to prevent white flash */
+        html, body {
+            background: #0f172a !important;
+            margin: 0;
+            padding: 0;
+        }
+        #bootstrap-loading-overlay {
+            display: flex !important;
+        }
+    </style>
     {{ head }}
     <style id="bootstrap-loading-style">
         #bootstrap-loading-overlay {
@@ -148,6 +159,7 @@
 </head>
 
 <body {{ bodyAttrs }}>
+    <script>document.body.style.background='#0f172a';document.documentElement.style.background='#0f172a';</script>
     {{ bodyTags }}
     {{ bodyTagsOpen }}
 
@@ -163,17 +175,33 @@
                     <div class="progress-bar" style="width: 0%"></div>
                 </div>
                 <div class="progress-info">
-                    <span>Initializing...</span>
+                    <span>Đang khởi động...</span>
                     <span>0%</span>
                 </div>
             </div>
 
             <div class="message">
-                Loading your dashboard...
+                Đang tải dữ liệu...
                 <span class="spinner"></span>
             </div>
         </div>
     </div>
+
+    <script>
+        // Hide loading overlay immediately if user is not authenticated
+        (function() {
+            var hasToken = document.cookie.split(';').some(function(c) {
+                return c.trim().startsWith('access_token=');
+            });
+            
+            if (!hasToken) {
+                var overlay = document.getElementById('bootstrap-loading-overlay');
+                if (overlay) {
+                    overlay.style.display = 'none';
+                }
+            }
+        })();
+    </script>
 
     <div id="__nuxt">{{ app }}</div>
 

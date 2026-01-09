@@ -5,6 +5,8 @@ import BaseCardHeader from '~/components/BaseCardHeader.vue'
 import RemoteSearchSelect from '@/components/RemoteSearchSelect.vue'
 import { locationService } from '@/services/location.service'
 import { customersService } from '@/services/customers.service'
+import { employeesService } from '@/services/employees.service'
+import type { EmployeeItem } from '@/services/employees.service'
 
 interface CustomerForm {
   fullName: string
@@ -41,10 +43,27 @@ const form = ref<CustomerForm>({
   ward: '',
   address: '',
   note: '',
-  manager: 'Phạm Văn Toàn',
+  manager: '',
   tagsInput: '',
   tags: []
 })
+
+// Employees
+const employees = ref<EmployeeItem[]>([])
+const loadingEmployees = ref(false)
+
+async function loadEmployees() {
+  try {
+    loadingEmployees.value = true
+    const res = await employeesService.getEmployeesCached()
+    employees.value = res.data || []
+  } catch (e) {
+    console.error('Failed to load employees:', e)
+    employees.value = []
+  } finally {
+    loadingEmployees.value = false
+  }
+}
 
 // Location selections (Province & Ward)
 type GenericItem = Record<string, unknown>
@@ -194,6 +213,11 @@ function removeTag(i: number) {
 function goBack() {
   router.back()
 }
+
+// Load employees on mount
+onMounted(() => {
+  loadEmployees()
+})
 </script>
 
 <template>
@@ -378,13 +402,13 @@ function goBack() {
               <BaseCardHeader>Nhân viên phụ trách</BaseCardHeader>
               <div class="-mx-6 px-6">
                 <label class="block text-xs font-medium text-gray-600 mb-1">Nhân viên phụ trách</label>
-                <select v-model="form.manager"
-                  class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                  <option>
-                    Phạm Văn Toàn
+                <select v-model="form.manager" :disabled="loadingEmployees"
+                  class="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                  <option value="">
+                    {{ loadingEmployees ? 'Đang tải...' : 'Chọn nhân viên' }}
                   </option>
-                  <option>
-                    Nguyễn Văn B
+                  <option v-for="emp in employees" :key="emp.id" :value="emp.fullName">
+                    {{ emp.fullName }}
                   </option>
                 </select>
               </div>

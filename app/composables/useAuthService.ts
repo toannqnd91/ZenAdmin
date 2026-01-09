@@ -217,13 +217,6 @@ export const useAuthService = () => {
     const accessTokenCookie = useCookie('access_token')
 
     if (accessTokenCookie.value) {
-      // Optimization: If state is already hydrated from server (SSR), skip client-side decryption
-      // This prevents issues where client-side crypto might fail or behave differently
-      if (accessToken.value && user.value) {
-        console.log('[Auth] State hydrated from server, skipping re-initialization')
-        return
-      }
-
       try {
         // Decrypt the encrypted token from cookie
         const { decryptToken } = await import('@/utils/crypto')
@@ -250,18 +243,13 @@ export const useAuthService = () => {
         console.log('[Auth] Access token restored and decrypted from cookie')
       } catch (error) {
         console.error('[Auth] Failed to decrypt access token:', error)
-        // Only clear cookie if we don't have a valid state
-        if (!accessToken.value) {
-          accessTokenCookie.value = null
-        }
+        // Clear invalid cookie
+        accessTokenCookie.value = null
       }
     } else {
       console.log('[Auth] No access token found')
     }
   }
-
-  // Auto-initialize on composable creation
-  initialize()
 
   return {
     // State

@@ -81,7 +81,7 @@ const bankAccount = ref<BankAccountPayload>({
 
 const presetAccounts = [
   { bankName: 'BIDV', accountHolder: 'Thuỳ', accountNumber: '8886666339', bankBranch: '', label: 'BIDV - 8886666339 (Thuỳ)' },
-  { bankName: 'BIDV', accountHolder: 'Tùng Phong', accountNumber: '8611026688', bankBranch: '', label: 'Tài khoản công ty - 8611026688 (Tùng Phong)' },
+  { bankName: 'BIDV', accountHolder: 'ZenPOS', accountNumber: '8611026688', bankBranch: '', label: 'Tài khoản công ty - 8611026688 (ZenPOS)' },
   { bankName: 'BIDV', accountHolder: 'Chị Hồng', accountNumber: '8800851686', bankBranch: '', label: 'BIDV - 8800851686 (Chị Hồng)' },
   { bankName: 'Techcombank', accountHolder: 'Hà', accountNumber: '19075091311012', bankBranch: '', label: 'Techcombank - 19075091311012 (Hà)' },
   { bankName: 'Agribank', accountHolder: 'Châm', accountNumber: '8888348625559', bankBranch: '', label: 'Agribank - 8888348625559 (Châm)' }

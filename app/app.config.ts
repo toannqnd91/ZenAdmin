@@ -13,14 +13,14 @@ export default defineAppConfig({
     preference: 'light'
   },
   settings: {
-    title: 'Tùng Phong',
-    description: 'Tùng Phong - Nơi cung cấp các sản phẩm chất lượng cao',
+    title: 'ZenPOS',
+    description: 'ZenPOS - Nơi cung cấp các sản phẩm chất lượng cao',
     favicon: '/favicon.png',
     team: {
-      label: 'Tùng Phong',
+      label: 'ZenPOS',
       avatar: {
         src: '',
-        alt: 'Tùng Phong'
+        alt: 'ZenPOS'
       }
     }
   }

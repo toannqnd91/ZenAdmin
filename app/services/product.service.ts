@@ -44,23 +44,22 @@ export interface UpdateProductRequest extends Partial<CreateProductRequest> {
 }
 
 export interface CreateProductCategoryRequest {
+  slug?: string
   name: string
-  description: string
+  description?: string
+  metaTitle?: string
+  metaKeywords?: string
+  metaDescription?: string
+  displayOrder?: number
   parentId?: number
-  sortOrder?: number
+  includeInMenu?: boolean
+  isPublished?: boolean
+  thumbnailImage?: string
+  thumbnailImageUrl?: string
 }
 
 export interface UpdateProductCategoryRequest extends Partial<CreateProductCategoryRequest> {
   id: number
-  slug?: string
-  metaTitle?: string | null
-  metaKeywords?: string | null
-  metaDescription?: string | null
-  displayOrder?: number
-  includeInMenu?: boolean
-  isPublished?: boolean
-  thumbnailImage?: string | null
-  thumbnailImageUrl?: string | null
 }
 
 export class ProductService extends BaseService {
@@ -188,7 +187,7 @@ export class ProductService extends BaseService {
    * Create new product category
    */
   async createCategory(data: CreateProductCategoryRequest) {
-    const result = await this.post<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORIES, data)
+    const result = await this.post<ProductCategory>(API_ENDPOINTS.PRODUCT_CATEGORY_CREATE, data)
     // Auto-invalidate category cache
     this.invalidateCache('ProductService:GET:/product-categories')
     return result
