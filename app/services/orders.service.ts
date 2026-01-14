@@ -360,7 +360,8 @@ export interface RawOrderItem {
 
 export interface RawOrderEntity {
   id: number
-  customerId: string
+  orderCode: string
+  customerId: number | string
   customerName: string
   customerEmail: string
   createdOn: string
@@ -410,7 +411,63 @@ export interface RawCustomerInfo {
 }
 export interface OrderDetailRawEnvelope {
   order: RawOrderEntity
-  customerInfo: RawCustomerInfo | null
+  customerInfo?: RawCustomerInfo | null
+  customer?: {
+    id: number | string
+    code: string | null
+    name: string
+    email: string | null
+    phoneNumber: string | null
+  }
+  shippingAddress?: {
+    contactName: string | null
+    phoneNumber: string | null
+    email: string | null
+    addressLine1: string | null
+    addressLine2: string | null
+    city: string | null
+    districtName: string | null
+    stateOrProvinceName: string | null
+    countryId: string | null
+    zipCode: string | null
+  }
+  warehouse?: {
+    id: number | string
+    name: string
+  }
+  employee?: {
+    id: number | string
+    code: string | null
+    name: string
+    phoneNumber?: string | null
+    email?: string | null
+    department?: string | null
+    position?: string | null
+  }
+  createdBy?: {
+    id: string
+    name: string
+    email?: string | null
+    phoneNumber?: string | null
+  }
+  return?: {
+    refundedAmount: number
+    returnedValue: number
+    pendingRefund: number
+    netRevenue: number
+  }
+  lines?: Array<{
+    orderItemId?: number | string
+    orderId?: number | string
+    productId: number | string
+    productName: string
+    orderedQuantity: number
+    shippedQuantity: number
+    returnedQuantity: number
+    netDelivered: number
+    unitPrice: number
+    lineTotal: number
+  }>
 }
 export interface OrderDetailRawResponse {
   code: string

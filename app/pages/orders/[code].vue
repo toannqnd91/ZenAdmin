@@ -35,6 +35,7 @@ interface RawOrderItem {
 }
 interface RawOrder {
   id: number | string
+  orderCode?: string
   createdOn: string
   orderStatusString?: string
   orderItems?: RawOrderItem[]
@@ -127,7 +128,8 @@ interface RawPayload {
     canCreateMoreReturn?: boolean
   }
   lines?: Array<{
-    id: number | string
+    id?: number | string
+    orderItemId?: number | string
     productId: number | string
     productName: string
     orderedQuantity: number
@@ -393,20 +395,23 @@ function getDiscountPercent(item: PriceLike) {
 }
 
 async function fetchData() {
+  loading.value = true
   try {
-    loading.value = true
     const rawCode = orderCodeParam.value || ''
     const codeForApi = rawCode.replace(/^#/, '')
-    const [orderRes, historyRes] = await Promise.all([
-      ordersService.getOrderById(codeForApi),
-      ordersService.getOrderHistory(codeForApi)
-    ])
+
+    // 1. Fetch Order Detail first
+    const orderRes = await ordersService.getOrderById(codeForApi)
+
+    // Validate Order Response
     if (orderRes && 'success' in orderRes && (orderRes as OrderDetailRawResponse).success && orderRes.data) {
       const payload = orderRes.data as unknown as RawPayload
       const o = payload.order
       let rawCustomer: RawCustomer | undefined = payload.customer
       let rawAddress: RawAddress | undefined = payload.shippingAddress
       const rawWarehouse: RawWarehouse | undefined = payload.warehouse
+
+      // Fallback for customerInfo if direct fields are missing (legacy support)
       if (!rawCustomer || !rawAddress) {
         const ci = payload.customerInfo as unknown
         if (ci && typeof ci === 'object') {
@@ -415,6 +420,7 @@ async function fetchData() {
           if (!rawAddress && obj.address && typeof obj.address === 'object') rawAddress = obj.address as RawAddress
         }
       }
+
       if (o) {
         let items: UIOrderItem[] = []
         if (Array.isArray(o.orderItems)) {
@@ -424,6 +430,7 @@ async function fetchData() {
             const originalPrice = typeof it.productPrice === 'number' ? it.productPrice : effectivePrice
             const itemDiscountAmount = Math.max(0, originalPrice - effectivePrice)
             const discountPercent = originalPrice > 0 ? Math.round((itemDiscountAmount * 100) / originalPrice) : 0
+
             return {
               id: it.id,
               productId: it.productId,
@@ -438,7 +445,9 @@ async function fetchData() {
             }
           })
         }
+
         const totalQty = items.reduce((a, i) => a + (i.quantity || 0), 0)
+
         const mappedCustomer: UIOrderCustomer | null = rawCustomer
           ? {
             id: (rawCustomer.customerId ?? rawCustomer.id) as string | number,
@@ -450,6 +459,7 @@ async function fetchData() {
             code: rawCustomer.code || null
           }
           : null
+
         const mappedAddress = rawAddress
           ? {
             contactName: rawAddress.contactName || rawCustomer?.name || null,
@@ -464,11 +474,12 @@ async function fetchData() {
             zipCode: rawAddress.zipCode || null
           }
           : null
-        // Map return lines (if any) using payload.lines; fall back to empty list otherwise
+
+        // Map return lines
         let returnLines: Array<{ id: number | string, productId: number | string, productName: string, qty: number, unitPrice: number, lineTotal: number, shippedQuantity?: number, returnedQuantity?: number }> = []
         if (Array.isArray(payload.lines)) {
           returnLines = payload.lines.map(l => ({
-            id: l.id,
+            id: l.orderItemId ?? l.id ?? 0,
             productId: l.productId,
             productName: l.productName,
             qty: l.orderedQuantity,
@@ -478,6 +489,7 @@ async function fetchData() {
             returnedQuantity: l.returnedQuantity
           }))
         }
+
         let returnDataLocal: UIOrderDetail['returnData'] = null
         if (payload.return) {
           returnDataLocal = {
@@ -487,9 +499,10 @@ async function fetchData() {
             netRevenue: Number(payload.return.netRevenue || 0)
           }
         }
+
         detail.value = {
           id: o.id,
-          orderCode: rawCode || `#${o.id}`,
+          orderCode: o.orderCode || rawCode || `#${o.id}`,
           status: o.orderStatusString || '',
           processStatus: o.orderStatusString || '',
           paymentStatus: o.paymentStatus || o.paymentStatusString || o.orderStatusString || null,
@@ -518,7 +531,7 @@ async function fetchData() {
             discountAmount: o.discountAmount || 0,
             shippingFeeAmount: o.shippingAmount || 0,
             orderTotal: o.orderTotal || 0,
-            paidAmount: o.paidAmount ?? 0, // Use nullish coalescing to only default to 0, not orderTotal
+            paidAmount: o.paidAmount ?? 0,
             paymentMethod: o.paymentMethod || null,
             paymentStatus: o.paymentStatus || o.paymentStatusString || o.orderStatusString || null
           },
@@ -540,12 +553,36 @@ async function fetchData() {
           returnWorkflow: payload.returnWorkflow || {},
           returnLines
         }
+
+        // 2. Fetch History using the numeric ID (more reliable than code)
+        try {
+          // If o.id is numeric, use it. Otherwise fall back to codeForApi.
+          // But standard endpoints usually prefer ID.
+          const historyId = (o.id && !isNaN(Number(o.id))) ? o.id : codeForApi
+          const historyRes = await ordersService.getOrderHistory(historyId)
+
+          if (historyRes && 'success' in historyRes) {
+            const hr = historyRes as OrderHistoryListResponse
+            history.value = hr.success && hr.data
+              ? hr.data.items.map(h => ({
+                id: h.id,
+                createdOn: h.createdOn,
+                actorName: null,
+                message: h.note || h.newStatusText || 'Cập nhật trạng thái',
+                meta: { oldStatus: h.oldStatusText, newStatus: h.newStatusText }
+              }))
+              : []
+          }
+        } catch (hErr) {
+          console.warn('Failed to fetch order history', hErr)
+          // Don't breakdown the whole page if history fails
+        }
       }
     }
-    if (historyRes && 'success' in historyRes) {
-      const hr = historyRes as OrderHistoryListResponse
-      history.value = hr.success && hr.data ? hr.data.items.map(h => ({ id: h.id, createdOn: h.createdOn, actorName: null, message: h.note || h.newStatusText || 'Cập nhật trạng thái', meta: { oldStatus: h.oldStatusText, newStatus: h.newStatusText } })) : []
-    }
+  } catch (err: unknown) {
+    const error = err as Error
+    console.error('Fetch Order Detail Error:', error)
+    useToast().add({ title: 'Lỗi tải đơn hàng', description: error.message, color: 'error' })
   } finally {
     loading.value = false
   }
