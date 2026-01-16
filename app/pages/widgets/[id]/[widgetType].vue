@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue'
-
-const EditCarouselWidget = defineAsyncComponent(() => import('@/components/widgets/EditCarouselWidget.vue'))
-const EditCategoryWidget = defineAsyncComponent(() => import('@/components/widgets/EditCategoryWidget.vue'))
-const EditHtmlWidget = defineAsyncComponent(() => import('@/components/widgets/EditHtmlWidget.vue'))
-const EditCustomDataWidget = defineAsyncComponent(() => import('@/components/widgets/EditCustomDataWidget.vue'))
-const EditSimpleNewsWidget = defineAsyncComponent(() => import('@/components/widgets/EditSimpleNewsWidget.vue'))
-const EditNewsWidget = defineAsyncComponent(() => import('@/components/widgets/EditNewsWidget.vue'))
-const EditFeatureSectionWidget = defineAsyncComponent(() => import('@/components/widgets/EditFeatureSectionWidget.vue'))
+import EditCarouselWidget from '@/components/widgets/EditCarouselWidget.vue'
+import EditCategoryWidget from '@/components/widgets/EditCategoryWidget.vue'
+import EditHtmlWidget from '@/components/widgets/EditHtmlWidget.vue'
+import EditCustomDataWidget from '@/components/widgets/EditCustomDataWidget.vue'
+import EditSimpleNewsWidget from '@/components/widgets/EditSimpleNewsWidget.vue'
+import EditSimpleProductWidget from '@/components/widgets/EditSimpleProductWidget.vue'
+import EditNewsWidget from '@/components/widgets/EditNewsWidget.vue'
+import EditFeatureSectionWidget from '@/components/widgets/EditFeatureSectionWidget.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -43,7 +42,8 @@ if (!validWidgetTypes.includes(widgetType.toLowerCase())) {
 <template>
   <UDashboardPanel class="flex flex-col h-full w-full">
     <template #header>
-      <UDashboardNavbar title="Widget Translation">
+      <UDashboardNavbar
+        :title="`Edit ${widgetType.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}`">
         <template #leading>
           <UButton icon="i-lucide-arrow-left" variant="ghost" color="neutral" @click="router.push('/widgets')" />
         </template>
@@ -58,11 +58,12 @@ if (!validWidgetTypes.includes(widgetType.toLowerCase())) {
           : widgetType === 'html-widget' ? EditHtmlWidget
             : widgetType === 'custom-data-widget' ? EditCustomDataWidget
               : widgetType === 'simple-news-widget' ? EditSimpleNewsWidget
-                : widgetType === 'news-widget' ? EditNewsWidget
-                  : widgetType === 'feature-section-widget' || widgetType === 'feature-section-widget-widget' ? EditFeatureSectionWidget
-                    : null
+                : widgetType === 'simple-product-widget' ? EditSimpleProductWidget
+                  : widgetType === 'news-widget' ? EditNewsWidget
+                    : widgetType === 'feature-section-widget' || widgetType === 'feature-section-widget-widget' ? EditFeatureSectionWidget
+                      : null
         "
-        v-if="['carousel-widget', 'category-widget', 'html-widget', 'custom-data-widget', 'simple-news-widget', 'news-widget', 'feature-section-widget', 'feature-section-widget-widget'].includes(widgetType)" />
+        v-if="['carousel-widget', 'category-widget', 'html-widget', 'custom-data-widget', 'simple-news-widget', 'simple-product-widget', 'news-widget', 'feature-section-widget', 'feature-section-widget-widget'].includes(widgetType)" />
       <div v-else class="w-full mt-6">
         <UCard class="w-full">
           <div class="text-center py-8">
